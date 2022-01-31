@@ -3,7 +3,10 @@ mod tests {
     use crate::{pallet, Error, Pallet as CeresLaunchpadPallet};
     use common::fixnum::ops::CheckedAdd;
     use common::prelude::FixedWrapper;
-    use common::{balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, PSWAP, XOR};
+    use common::{
+        balance, AssetName, AssetSymbol, Balance, PoolXykPallet, DEFAULT_BALANCE_PRECISION, PSWAP,
+        XOR,
+    };
     use frame_support::{assert_err, assert_ok};
     use pswap_distribution::{ClaimableShares, ShareholderAccounts};
     use sp_runtime::traits::AccountIdConversion;
@@ -808,6 +811,44 @@ mod tests {
                     balance!(0.21)
                 ),
                 Error::<Runtime>::ILODoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn contribute_not_enough_ceres() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.5),
+                balance!(10),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::contribute(
+                    Origin::signed(DAN),
+                    CERES_ASSET_ID.into(),
+                    balance!(0.6)
+                ),
+                Error::<Runtime>::NotEnoughCeres
             );
         });
     }
@@ -2104,22 +2145,6 @@ mod tests {
         });
     }
 
-    /*#[test]
-    fn claim_lp_tokens_cant_claim_lp_tokens_already_claimed() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-
-
-            assert_err!(
-                CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
-                    Origin::signed(ALICE),
-                    CERES_ASSET_ID.into()
-                ),
-                Error::<Runtime>::ILODoesNotExist
-            );
-        });
-    }*/
-
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens() {
         let mut ext = ExtBuilder::default().build();
@@ -2156,10 +2181,9 @@ mod tests {
         });
     }
 
-    /*#[test]
+    #[test]
     fn claim_lp_tokens_unauthorized() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -2170,7 +2194,7 @@ mod tests {
                 balance!(600),
                 balance!(1000),
                 balance!(0.2),
-                balance!(0.25),
+                balance!(850),
                 true,
                 balance!(0.75),
                 balance!(0.25),
@@ -2182,15 +2206,179 @@ mod tests {
                 balance!(0.2)
             ));
 
+            run_to_block(6);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                balance!(800)
+            ),);
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let unlocking_block = ilo_info
+                .finish_block
+                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+
+            run_to_block(unlocking_block);
+
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
                     Origin::signed(CHARLES),
                     CERES_ASSET_ID.into()
                 ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn claim_lp_tokens_ok() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(850),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(800);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ),);
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            let mut ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+
+            let unlocking_block = ilo_info
+                .finish_block
+                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+
+            run_to_block(unlocking_block);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID
+            ));
+
+            ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+
+            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pool_account =
+                pool_xyk::Pallet::<Runtime>::properties_of_pool(XOR.into(), CERES_ASSET_ID.into())
+                    .expect("Pool doesn't exist")
+                    .0;
+            let lp_tokens =
+                pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(pool_account, pallet_account)
+                    .unwrap_or(0);
+
+            assert_eq!(lp_tokens, balance!(0));
+
+            let lp_tokens_alice =
+                pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(pool_account, ALICE)
+                    .unwrap_or(0);
+
+            assert_eq!(lp_tokens_alice, ilo_info.lp_tokens);
+            assert_eq!(ilo_info.claimed_lp_tokens, true);
+        });
+    }
+
+    #[test]
+    fn claim_lp_tokens_cant_claim_lp_tokens_already_claimed() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(850),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(800);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ),);
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+
+            let unlocking_block = ilo_info
+                .finish_block
+                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+
+            run_to_block(unlocking_block);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID
+            ));
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID
+                ),
                 Error::<Runtime>::CantClaimLPTokens
             );
         });
-    }*/
+    }
 
     #[test]
     fn claim_pswap_rewards_unauthorized() {
@@ -2323,6 +2511,36 @@ mod tests {
             );
 
             assert_eq!(ilo_info.failed, true);
+        });
+    }
+
+    #[test]
+    fn change_ceres_contribution_fee_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::change_ceres_contribution_fee(
+                    Origin::signed(ALICE),
+                    balance!(100)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_ceres_contribution_fee_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::change_ceres_contribution_fee(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    balance!(100)
+                )
+            );
+
+            assert_eq!(
+                pallet::CeresForContributionInILO::<Runtime>::get(),
+                balance!(100)
+            );
         });
     }
 }

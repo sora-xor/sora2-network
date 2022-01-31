@@ -52,6 +52,7 @@ construct_runtime! {
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
+pub const DAN: AccountId = 4;
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));

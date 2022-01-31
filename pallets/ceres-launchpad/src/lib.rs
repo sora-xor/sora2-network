@@ -122,6 +122,17 @@ pub mod pallet {
         StorageValue<_, Balance, ValueQuery, DefaultCeresBurnFeeAmount<T>>;
 
     #[pallet::type_value]
+    pub fn DefaultCeresForContributionInILO<T: Config>() -> Balance {
+        balance!(0.5)
+    }
+
+    /// Amount of CERES for contribution in ILO
+    #[pallet::storage]
+    #[pallet::getter(fn ceres_for_contribution_in_ilo)]
+    pub type CeresForContributionInILO<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultCeresForContributionInILO<T>>;
+
+    #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
@@ -375,6 +386,13 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             let current_block = frame_system::Pallet::<T>::block_number();
+
+            ensure!(
+                CeresForContributionInILO::<T>::get()
+                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                        .unwrap_or(0),
+                Error::<T>::NotEnoughCeres
+            );
 
             // Get ILO info
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
@@ -823,6 +841,26 @@ pub mod pallet {
             }
 
             CeresBurnFeeAmount::<T>::put(ceres_fee);
+
+            // Emit an event
+            Self::deposit_event(Event::FeeChanged(ceres_fee));
+
+            Ok(().into())
+        }
+
+        /// Change CERES contribution fee
+        #[pallet::weight(10000)]
+        pub fn change_ceres_contribution_fee(
+            origin: OriginFor<T>,
+            ceres_fee: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            CeresForContributionInILO::<T>::put(ceres_fee);
 
             // Emit an event
             Self::deposit_event(Event::FeeChanged(ceres_fee));
