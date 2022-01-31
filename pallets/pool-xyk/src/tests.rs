@@ -654,7 +654,7 @@ fn cannot_initialize_with_non_divisible_asset() {
                 GoldenTicket.into(),
                 Mango.into(),
             ),
-            crate::Error::<Runtime>::PoolInitializationIsInvalid
+            crate::Error::<Runtime>::UnableToCreatePoolWithIndivisibleAssets
         );
     });
 }
