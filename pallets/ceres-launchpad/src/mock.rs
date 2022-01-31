@@ -55,9 +55,7 @@ pub const CHARLES: AccountId = 3;
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
-
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -287,5 +285,6 @@ pub fn run_to_block(n: u64) {
         System::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         System::on_initialize(System::block_number());
+        CeresLaunchpad::on_initialize(System::block_number());
     }
 }

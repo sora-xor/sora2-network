@@ -24,6 +24,7 @@ sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 hex-literal = "0.3.1"
 

@@ -1,9 +1,11 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, Pallet as CeresLaunchpadPallet};
+    use common::fixnum::ops::CheckedAdd;
     use common::prelude::FixedWrapper;
-    use common::{balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, XOR};
+    use common::{balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, PSWAP, XOR};
     use frame_support::{assert_err, assert_ok};
+    use pswap_distribution::{ClaimableShares, ShareholderAccounts};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
@@ -40,6 +42,18 @@ mod tests {
                 None,
             ));
 
+            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+                ALICE,
+                GetIncentiveAssetId::get().into(),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
             assert_ok!(assets::Module::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
@@ -66,6 +80,13 @@ mod tests {
                 &ALICE,
                 &CHARLES,
                 balance!(2000)
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &PSWAP,
+                &ALICE,
+                &GetPswapDistributionAccountId::get(),
+                balance!(900000)
             ));
 
             assert_eq!(
@@ -2170,4 +2191,138 @@ mod tests {
             );
         });
     }*/
+
+    #[test]
+    fn claim_pswap_rewards_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim_pswap_rewards(Origin::signed(ALICE)),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn claim_pswap_rewards_ok() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                false,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ));
+
+            run_to_block(20000);
+
+            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let share = FixedWrapper::from(1.00).get().unwrap();
+            ShareholderAccounts::<Runtime>::mutate(&pallet_account, |current| {
+                *current = current.saturating_add(share)
+            });
+            ClaimableShares::<Runtime>::mutate(|current| *current = current.saturating_add(share));
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_pswap_rewards(
+                Origin::signed(pallet::AuthorityAccount::<Runtime>::get())
+            ));
+
+            assert_eq!(
+                Assets::free_balance(&PSWAP, &pallet_account)
+                    .expect("Failed to query free balance."),
+                balance!(0)
+            );
+
+            assert_eq!(
+                Assets::free_balance(&PSWAP, &pallet::AuthorityAccount::<Runtime>::get())
+                    .expect("Failed to query free balance."),
+                balance!(share)
+            );
+        });
+    }
+
+    #[test]
+    fn on_initialize_fail_ilo() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(300000);
+
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
+                    .expect("Failed to query free balance."),
+                balance!(0)
+            );
+
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                    .expect("Failed to query free balance."),
+                balance!(15990)
+            );
+
+            assert_eq!(ilo_info.failed, true);
+        });
+    }
 }

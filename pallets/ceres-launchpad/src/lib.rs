@@ -60,12 +60,14 @@ pub mod pallet {
     use crate::{ContributionInfo, ILOInfo, VestingInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::{balance, DEXId, PoolXykPallet};
+    use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
     use hex_literal::hex;
-    use sp_runtime::traits::{AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto};
+    use sp_runtime::traits::{
+        AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto, Zero,
+    };
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crslaunc");
@@ -77,6 +79,7 @@ pub mod pallet {
         + trading_pair::Config
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
+        + pswap_distribution::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -86,6 +89,7 @@ pub mod pallet {
     type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
+    type PSWAPDistribution<T> = pswap_distribution::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
@@ -169,6 +173,8 @@ pub mod pallet {
         Claimed(AccountIdOf<T>, AssetIdOf<T>),
         /// Fee changed [balance]
         FeeChanged(Balance),
+        /// PSWAP claimed
+        ClaimedPSWAP(),
     }
 
     #[pallet::error]
@@ -240,9 +246,6 @@ pub mod pallet {
         /// ILO is failed
         ILOIsFailed,
     }
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -825,6 +828,85 @@ pub mod pallet {
             Self::deposit_event(Event::FeeChanged(ceres_fee));
 
             Ok(().into())
+        }
+
+        /// Claim PSWAP rewards
+        #[pallet::weight(10000)]
+        pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let pallet_account = Self::account_id();
+            PSWAPDistribution::<T>::claim_incentive(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+            )?;
+
+            let pswap_rewards =
+                Assets::<T>::free_balance(&PSWAP.into(), &pallet_account).unwrap_or(0);
+
+            // Claim PSWAP rewards
+            Assets::<T>::transfer_from(
+                &PSWAP.into(),
+                &pallet_account,
+                &AuthorityAccount::<T>::get(),
+                pswap_rewards,
+            )?;
+
+            // Emit an event
+            Self::deposit_event(Event::ClaimedPSWAP());
+
+            Ok(().into())
+        }
+    }
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            let mut counter: u64 = 0;
+
+            if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                let days_to_finish_ilo = 14u32;
+                let pallet_account = Self::account_id();
+
+                for ilo in <ILOs<T>>::iter() {
+                    if now > ilo.1.end_block && !ilo.1.failed && !ilo.1.succeeded {
+                        let finish_block = ilo.1.end_block
+                            + (T::BLOCKS_PER_ONE_DAY.saturating_mul(days_to_finish_ilo.into()))
+                                .into();
+                        if now >= finish_block {
+                            let mut ilo_info = <ILOs<T>>::get(&ilo.0);
+                            ilo_info.failed = true;
+
+                            let total_tokens =
+                                ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
+                            if !ilo_info.refund_type {
+                                let _ = Assets::<T>::burn(
+                                    RawOrigin::Signed(pallet_account.clone()).into(),
+                                    ilo.0.into(),
+                                    total_tokens,
+                                );
+                            } else {
+                                let _ = Assets::<T>::transfer_from(
+                                    &ilo.0.into(),
+                                    &pallet_account,
+                                    &ilo_info.ilo_organizer,
+                                    total_tokens,
+                                );
+                            }
+
+                            <ILOs<T>>::insert(&ilo.0, ilo_info);
+                            counter += 1;
+                        }
+                    }
+                }
+            }
+
+            T::DbWeight::get()
+                .reads(counter)
+                .saturating_add(T::DbWeight::get().writes(counter))
         }
     }
 
