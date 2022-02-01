@@ -1448,6 +1448,7 @@ parameter_types! {
 
 impl ceres_launchpad::Config for Runtime {
     type Event = Event;
+    type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
