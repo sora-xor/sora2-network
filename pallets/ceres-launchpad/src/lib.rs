@@ -6,6 +6,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod benchmarking;
+
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
