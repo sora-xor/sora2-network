@@ -126,6 +126,7 @@ std = [
     "bridge-multisig/std",
     "codec/std",
     "common/std",
+    "ceres-launchpad/std",
     "ceres-liquidity-locker/std",
     "ceres-staking/std",
     "dex-api/std",
@@ -204,6 +205,7 @@ private-net = [
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
     "dex-api-benchmarking",
     "ceres-staking/runtime-benchmarks",

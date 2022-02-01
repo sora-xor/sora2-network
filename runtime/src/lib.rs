@@ -1446,6 +1446,10 @@ parameter_types! {
     pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
+impl ceres_launchpad::Config for Runtime {
+    type Event = Event;
+}
+
 impl ceres_staking::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
@@ -1535,6 +1539,7 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 47,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1600,6 +1605,7 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 47,
     }
 }
 
@@ -2196,6 +2202,7 @@ impl_runtime_apis! {
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
