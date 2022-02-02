@@ -98,6 +98,7 @@ impl frame_system::Config for Runtime {
 
 impl crate::Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 parameter_types! {
