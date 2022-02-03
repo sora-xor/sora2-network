@@ -81,6 +81,7 @@ pub mod pallet {
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use frame_support::transactional;
     use frame_system::{ensure_signed, RawOrigin};
     use hex_literal::hex;
     use sp_runtime::traits::{
@@ -121,7 +122,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForPenaltiesAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("0a0455d92e1fda8dee17b2c58761c8efca490ef2a1a03322dbfea7379481d517");
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
@@ -155,7 +156,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
@@ -277,6 +278,10 @@ pub mod pallet {
         NothingToClaim,
         /// ILO is failed
         ILOIsFailed,
+        /// ILO is succeeded
+        ILOIsSucceeded,
+        /// Can't create ILO for listed token
+        CantCreateILOForListedToken,
     }
 
     #[pallet::call]
@@ -312,6 +317,17 @@ pub mod pallet {
             ensure!(
                 ilo_info.ilo_price == balance!(0),
                 Error::<T>::ILOAlreadyExists
+            );
+
+            ensure!(
+                TradingPair::<T>::is_trading_pair_enabled(
+                    &DEXId::Polkaswap.into(),
+                    &XOR.into(),
+                    &asset_id.into()
+                )
+                .unwrap_or(true)
+                    == false,
+                Error::<T>::CantCreateILOForListedToken
             );
 
             // Get current block
@@ -476,6 +492,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::emergency_withdraw())]
         pub fn emergency_withdraw(
             origin: OriginFor<T>,
@@ -542,6 +559,7 @@ pub mod pallet {
         }
 
         /// Finish ILO
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
             origin: OriginFor<T>,
@@ -562,6 +580,7 @@ pub mod pallet {
                 Error::<T>::ILOIsNotFinished
             );
             ensure!(!ilo_info.failed, Error::<T>::ILOIsFailed);
+            ensure!(!ilo_info.succeeded, Error::<T>::ILOIsSucceeded);
             if user != ilo_info.ilo_organizer {
                 return Err(Error::<T>::Unauthorized.into());
             }
@@ -813,10 +832,15 @@ pub mod pallet {
                         * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
                     .try_into_balance()
                     .unwrap_or(0);
-                    let claimable = (FixedWrapper::from(tokens_per_claim)
+                    let mut claimable = (FixedWrapper::from(tokens_per_claim)
                         * FixedWrapper::from(balance!(allowed_claims)))
                     .try_into_balance()
                     .unwrap_or(0);
+                    let left_to_claim = contribution_info.tokens_bought - contribution_info.tokens_claimed;
+
+                    if left_to_claim < claimable {
+                        claimable = left_to_claim;
+                    }
 
                     // Claim tokens
                     Assets::<T>::transfer_from(
@@ -826,7 +850,7 @@ pub mod pallet {
                         claimable,
                     )?;
                     contribution_info.tokens_claimed += claimable;
-                    contribution_info.number_of_claims += allowed_claims;
+                    contribution_info.number_of_claims += (claimable / tokens_per_claim) as u32;
 
                     let claimed_percent =
                         (FixedWrapper::from(ilo_info.token_vesting.vesting_percent)
@@ -835,7 +859,7 @@ pub mod pallet {
                         .unwrap_or(0)
                             + ilo_info.token_vesting.first_release_percent;
 
-                    if claimed_percent == balance!(1) {
+                    if claimed_percent >= balance!(1) {
                         contribution_info.claiming_finished = true;
                     }
                 }
@@ -890,6 +914,7 @@ pub mod pallet {
         }
 
         /// Claim PSWAP rewards
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -1018,11 +1043,11 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidMaximumContribution.into());
             }
 
-            if liquidity_percent < balance!(0.51) {
+            if liquidity_percent > balance!(1) || liquidity_percent < balance!(0.51) {
                 return Err(Error::<T>::InvalidLiquidityPercent.into());
             }
 
-            if lockup_days < 30 {
+            if lockup_days < 1 {
                 return Err(Error::<T>::InvalidLockupDays.into());
             }
 
