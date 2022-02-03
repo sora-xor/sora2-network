@@ -1469,6 +1469,12 @@ impl ceres_token_locker::Config for Runtime {
     type WeightInfo = ceres_token_locker::weights::WeightInfo<Runtime>;
 }
 
+impl ceres_governance_platform::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1542,6 +1548,7 @@ construct_runtime! {
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1608,6 +1615,7 @@ construct_runtime! {
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
     }
 }
 
@@ -2201,10 +2209,12 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, referrals, Referrals);
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
+            add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
