@@ -879,6 +879,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "ceres-token-locker"
+version = "1.2.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
 name = "cexpr"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2459,6 +2487,7 @@ dependencies = [
  "ceres-liquidity-locker",
  "ceres-liquidity-locker-benchmarking",
  "ceres-staking",
+ "ceres-token-locker",
  "common",
  "dex-api",
  "dex-api-benchmarking",
