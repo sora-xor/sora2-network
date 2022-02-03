@@ -829,6 +829,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "ceres-launchpad"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
 name = "ceres-liquidity-locker"
 version = "1.2.0"
 dependencies = [
@@ -2517,6 +2545,7 @@ dependencies = [
  "assets",
  "assets-runtime-api",
  "ceres-governance-platform",
+ "ceres-launchpad",
  "ceres-liquidity-locker",
  "ceres-liquidity-locker-benchmarking",
  "ceres-staking",

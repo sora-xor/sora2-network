@@ -358,7 +358,7 @@ impl pallet_babe::Config for Runtime {
         pallet_babe::AuthorityId,
     )>>::IdentificationTuple;
     type HandleEquivocation =
-        pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
+    pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
 }
 
@@ -467,7 +467,7 @@ impl pallet_grandpa::Config for Runtime {
     type KeyOwnerProofSystem = Historical;
 
     type KeyOwnerProof =
-        <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+    <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
 
     type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
         KeyTypeId,
@@ -636,7 +636,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -675,9 +675,9 @@ impl pool_xyk::Config for Runtime {
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
@@ -759,13 +759,13 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
 impl dex_api::Config for Runtime {
     type Event = Event;
     type MockLiquiditySource =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
+    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
     type MockLiquiditySource3 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
+    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
+    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
     type XSTPool = xst::Module<Runtime>;
@@ -810,17 +810,17 @@ impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     }
 
     fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
-    where
-        F: Fn(&Account<T>) -> TPayload,
-        TPayload: frame_system::offchain::SignedPayload<T>,
+        where
+            F: Fn(&Account<T>) -> TPayload,
+            TPayload: frame_system::offchain::SignedPayload<T>,
     {
         unimplemented!()
     }
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
-where
-    Call: From<LocalCall>,
+    where
+        Call: From<LocalCall>,
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
         call: Call,
@@ -845,7 +845,7 @@ where
             ChargeTransactionPayment::<Runtime>::new(),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
-        let raw_payload = SignedPayload::new(call, extra)
+            let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
                 debug::native::warn!("SignedPayload error: {:?}", e);
             })
@@ -865,8 +865,8 @@ impl frame_system::offchain::SigningTypes for Runtime {
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
-where
-    Call: From<C>,
+    where
+        Call: From<C>,
 {
     type OverarchingCall = Call;
     type Extrinsic = UncheckedExtrinsic;
@@ -920,13 +920,13 @@ impl xor_fee::ExtractProxySwap for Call {
     type Amount = SwapAmount<u128>;
     fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
         if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            selected_source_types,
-            filter_mode,
-        )) = self
+                                        dex_id,
+                                        input_asset_id,
+                                        output_asset_id,
+                                        amount,
+                                        selected_source_types,
+                                        filter_mode,
+                                    )) = self
         {
             Some(xor_fee::SwapInfo {
                 dex_id: *dex_id,
@@ -973,15 +973,15 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
             },
             _ => None,
         }
-        .unwrap_or(false)
+            .unwrap_or(false)
     }
 }
 
 pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
-where
-    T: pallet_staking::ValBurnedNotifier<Balance>,
+    where
+        T: pallet_staking::ValBurnedNotifier<Balance>,
 {
     fn on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
@@ -999,19 +999,19 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
         match call {
             Call::Referrals(referrals::Call::set_referrer(referrer))
-                if Referrals::can_set_referrer(who) =>
-            {
-                Referrals::withdraw_fee(referrer, fee)?;
-                Ok((
-                    referrer.clone(),
-                    Some(Balances::withdraw(
-                        &ReferralsReservesAcc::get(),
-                        fee,
-                        WithdrawReasons::TRANSACTION_PAYMENT,
-                        ExistenceRequirement::KeepAlive,
-                    )?),
-                ))
-            }
+            if Referrals::can_set_referrer(who) =>
+                {
+                    Referrals::withdraw_fee(referrer, fee)?;
+                    Ok((
+                        referrer.clone(),
+                        Some(Balances::withdraw(
+                            &ReferralsReservesAcc::get(),
+                            fee,
+                            WithdrawReasons::TRANSACTION_PAYMENT,
+                            ExistenceRequirement::KeepAlive,
+                        )?),
+                    ))
+                }
             _ => Ok((
                 who.clone(),
                 Some(Balances::withdraw(
@@ -1446,6 +1446,11 @@ parameter_types! {
     pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
+impl ceres_launchpad::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
+}
+
 impl ceres_staking::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
@@ -1549,6 +1554,7 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1616,6 +1622,7 @@ construct_runtime! {
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
     }
 }
 
@@ -1627,8 +1634,8 @@ impl Serialize for Runtime {
         &self,
         _serializer: S,
     ) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         unreachable!("we never serialize runtime; qed")
     }
@@ -2215,6 +2222,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
+            add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
