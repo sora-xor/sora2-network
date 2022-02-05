@@ -840,6 +840,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -854,6 +855,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]

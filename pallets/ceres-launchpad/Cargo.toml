@@ -25,6 +25,7 @@ sp-std = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
+vested-rewards = { path = "../vested-rewards", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical" , default-features = false}
 hex-literal = "0.3.1"
@@ -39,6 +40,7 @@ pallet-balances = { version = "3" }
 permissions = { path = "../permissions" }
 technical = { path = "../technical", default-features = false }
 pswap-distribution = { path = "../pswap-distribution" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 
 [features]

@@ -108,27 +108,27 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        ///Invalid Votes
+        /// Invalid votes
         InvalidVotes,
-        ///Poll Is Finished
+        /// Poll is finished
         PollIsFinished,
-        ///Poll Is Not Started
+        /// Poll is not started
         PollIsNotStarted,
-        ///Not Enough Funds
+        /// Not enough funds
         NotEnoughFunds,
-        ///Invalid Number Of Option
+        /// Invalid number of option
         InvalidNumberOfOption,
-        ///Vote Denied
+        /// Vote denied
         VoteDenied,
-        ///Invalid Start Block
+        /// Invalid start block
         InvalidStartBlock,
-        ///Invalid End Block
+        /// Invalid end block
         InvalidEndBlock,
-        ///Poll Is Not Finished
+        /// Poll is not finished
         PollIsNotFinished,
-        ///InvalidNumberOfVotes
+        /// Invalid number of votes
         InvalidNumberOfVotes,
-        ///FundsAlreadyWithdrawn,
+        /// Funds already withdrawn,
         FundsAlreadyWithdrawn,
     }
 
@@ -201,7 +201,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Create Poll
+        /// Create poll
         #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
@@ -246,7 +246,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Withdraw
+        /// Withdraw voting funds
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(origin: OriginFor<T>, poll_id: Vec<u8>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;

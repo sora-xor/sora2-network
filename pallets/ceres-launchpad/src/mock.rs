@@ -44,6 +44,8 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>}
     }
@@ -69,6 +71,9 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = 100;
     pub GetPswapDistributionAccountId: AccountId = 101;
+    pub GetMarketMakerRewardsAccountId: AccountId = 102;
+    pub GetBondingCurveRewardsAccountId: AccountId = 103;
+    pub GetFarmingRewardsAccountId: AccountId = 104;
 }
 
 impl frame_system::Config for Runtime {
@@ -149,6 +154,24 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = ();
+    type VestedRewardsPallet = VestedRewards;
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 

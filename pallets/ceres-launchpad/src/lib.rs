@@ -80,8 +80,8 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
     use frame_support::transactional;
+    use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
     use hex_literal::hex;
     use sp_runtime::traits::{
@@ -99,6 +99,7 @@ pub mod pallet {
         + pool_xyk::Config
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
+        + vested_rewards::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -112,6 +113,7 @@ pub mod pallet {
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
     type PSWAPDistribution<T> = pswap_distribution::Pallet<T>;
+    type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
@@ -246,21 +248,21 @@ pub mod pallet {
         NotEnoughCeres,
         /// Not enough ILO tokens
         NotEnoughTokens,
-        /// ILONotStarted
+        /// ILO not started
         ILONotStarted,
         /// ILO is finished,
         ILOIsFinished,
-        /// CantContributeInILO
+        /// Can't contribute in ILO
         CantContributeInILO,
-        /// HardCapIsHit
+        /// Hard cap is hit
         HardCapIsHit,
-        /// NotEnoughTokensToBuy
+        /// Not enough tokens to buy
         NotEnoughTokensToBuy,
-        /// ContributionIsLowerThenMin
+        /// Contribution is lower than min
         ContributionIsLowerThenMin,
-        /// ContributionIsBiggerThenMax
+        /// Contribution is bigger than max
         ContributionIsBiggerThenMax,
-        /// NotEnoughFunds
+        /// Not enough funds
         NotEnoughFunds,
         /// ILO for token does not exist
         ILODoesNotExist,
@@ -270,7 +272,7 @@ pub mod pallet {
         PoolDoesNotExist,
         /// Unauthorized
         Unauthorized,
-        /// CantClaimLPTokens
+        /// Can't claim LP tokens
         CantClaimLPTokens,
         /// Funds already claimed
         FundsAlreadyClaimed,
@@ -492,6 +494,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Emergency withdraw
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::emergency_withdraw())]
         pub fn emergency_withdraw(
@@ -703,6 +706,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Claim LP tokens
         #[pallet::weight(<T as Config>::WeightInfo::claim_lp_tokens())]
         pub fn claim_lp_tokens(
             origin: OriginFor<T>,
@@ -760,6 +764,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Claim tokens
         #[pallet::weight(<T as Config>::WeightInfo::claim())]
         pub fn claim(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -836,7 +841,8 @@ pub mod pallet {
                         * FixedWrapper::from(balance!(allowed_claims)))
                     .try_into_balance()
                     .unwrap_or(0);
-                    let left_to_claim = contribution_info.tokens_bought - contribution_info.tokens_claimed;
+                    let left_to_claim =
+                        contribution_info.tokens_bought - contribution_info.tokens_claimed;
 
                     if left_to_claim < claimable {
                         claimable = left_to_claim;
@@ -927,6 +933,9 @@ pub mod pallet {
             PSWAPDistribution::<T>::claim_incentive(
                 RawOrigin::Signed(pallet_account.clone()).into(),
             )?;
+
+            let _ =
+                VestedRewards::<T>::claim_rewards(RawOrigin::Signed(pallet_account.clone()).into());
 
             let pswap_rewards =
                 Assets::<T>::free_balance(&PSWAP.into(), &pallet_account).unwrap_or(0);
@@ -1047,7 +1056,7 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidLiquidityPercent.into());
             }
 
-            if lockup_days < 1 {
+            if lockup_days < 30 {
                 return Err(Error::<T>::InvalidLockupDays.into());
             }
 
@@ -1094,7 +1103,7 @@ pub mod pallet {
             }
 
             let vesting_amount = one - first_release_percent;
-            if vesting_amount % vesting_percent != 0 {
+            if first_release_percent != one && vesting_amount % vesting_percent != 0 {
                 return Err(Error::<T>::InvalidVestingPercent.into());
             }
 

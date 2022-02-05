@@ -125,17 +125,17 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        ///Number of tokens equals zero
+        /// Number of tokens equals zero
         InvalidNumberOfTokens,
-        ///Unauthorized access
+        /// Unauthorized access
         Unauthorized,
-        ///Block number in past,
+        /// Block number in past,
         InvalidUnlockingBlock,
-        ///Not enough funds
+        /// Not enough funds
         NotEnoughFunds,
-        ///Tokens not unlocked yet
+        /// Tokens not unlocked yet
         NotUnlockedYet,
-        ///Lock info does not exist
+        /// Lock info does not exist
         LockInfoDoesNotExist,
     }
 
