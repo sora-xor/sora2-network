@@ -418,7 +418,7 @@ benchmarks! {
     }
 
     change_ceres_burn_fee {
-        let caller = AUTHORITY::<T>();
+        let caller = authority::<T>();
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
@@ -426,7 +426,7 @@ benchmarks! {
     }
 
     change_ceres_contribution_fee {
-        let caller = AUTHORITY::<T>();
+        let caller = authority::<T>();
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
@@ -512,7 +512,7 @@ benchmarks! {
             *current = current.saturating_add(share)
         });
         ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
-    }: _(RawOrigin::Signed(AUTHORITY::<T>()))
+    }: _(RawOrigin::Signed(authority::<T>()))
     verify {
         assert_last_event::<T>(Event::ClaimedPSWAP().into());
     }

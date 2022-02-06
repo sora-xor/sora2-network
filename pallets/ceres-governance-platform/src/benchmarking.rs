@@ -13,7 +13,6 @@ use sp_std::prelude::*;
 
 use crate::Pallet as CeresGovernancePlatform;
 use assets::Pallet as Assets;
-use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use technical::Pallet as Technical;
 
