@@ -521,7 +521,7 @@ mod tests {
 
     #[test]
     fn test_benchmarks() {
-        ExtBuilder::empty().build().execute_with(|| {
+        ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_create_ilo::<Runtime>());
             assert_ok!(test_benchmark_contribute::<Runtime>());
             assert_ok!(test_benchmark_emergency_withdraw::<Runtime>());
