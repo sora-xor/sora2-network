@@ -4,14 +4,13 @@ pub use common::mock::*;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, XOR};
+use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -55,9 +54,6 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
 pub const DAN: AccountId = 4;
-pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
-    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
-));
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {

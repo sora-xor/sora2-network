@@ -55,7 +55,7 @@ pub mod pallet {
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"crsgvrnc");
+    const PALLET_ID: ModuleId = ModuleId(*b"ceresgov");
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {

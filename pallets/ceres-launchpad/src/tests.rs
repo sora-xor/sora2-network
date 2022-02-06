@@ -4,8 +4,8 @@ mod tests {
     use common::fixnum::ops::CheckedAdd;
     use common::prelude::FixedWrapper;
     use common::{
-        balance, AssetName, AssetSymbol, Balance, PoolXykPallet, DEFAULT_BALANCE_PRECISION, PSWAP,
-        XOR,
+        balance, AssetName, AssetSymbol, Balance, PoolXykPallet, CERES_ASSET_ID,
+        DEFAULT_BALANCE_PRECISION, PSWAP, XOR,
     };
     use frame_support::{assert_err, assert_ok};
     use pswap_distribution::{ClaimableShares, ShareholderAccounts};

@@ -7,7 +7,7 @@ use super::*;
 use codec::Decode;
 use common::fixnum::ops::CheckedAdd;
 use common::prelude::FixedWrapper;
-use common::{balance, AccountIdOf, AssetId32, FromGenericPair, PSWAP, XOR};
+use common::{balance, AccountIdOf, FromGenericPair, CERES_ASSET_ID, PSWAP, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -20,11 +20,6 @@ use crate::Pallet as CeresLaunchpad;
 use assets::Module as Assets;
 use frame_support::traits::{Get, Hooks};
 use technical::Module as Technical;
-
-pub type AssetId = AssetId32<common::PredefinedAssetId>;
-pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
-    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
-));
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
