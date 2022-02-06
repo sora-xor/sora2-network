@@ -39,9 +39,9 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
     use sp_runtime::traits::{AccountIdConversion, Zero};
     use sp_runtime::ModuleId;
-    use hex_literal::hex;
 
     const PALLET_ID: ModuleId = ModuleId(*b"cerstake");
 
