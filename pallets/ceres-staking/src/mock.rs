@@ -1,8 +1,10 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
+pub use common::TechAssetId as Tas;
+pub use common::TechPurpose::*;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId, Description,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
@@ -32,6 +34,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>},
     }
 }
@@ -40,6 +43,8 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -119,6 +124,15 @@ impl common::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type Event = Event;
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 impl tokens::Config for Runtime {

@@ -50,7 +50,7 @@ pub mod pallet {
     type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 

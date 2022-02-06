@@ -32,11 +32,6 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-fn authority<T: Config>() -> T::AccountId {
-    let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
-}
-
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     let events = frame_system::Module::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
@@ -418,7 +413,7 @@ benchmarks! {
     }
 
     change_ceres_burn_fee {
-        let caller = authority::<T>();
+        let caller = AuthorityAccount::<T>::get();
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
@@ -426,7 +421,7 @@ benchmarks! {
     }
 
     change_ceres_contribution_fee {
-        let caller = authority::<T>();
+        let caller = AuthorityAccount::<T>::get();
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
@@ -512,7 +507,7 @@ benchmarks! {
             *current = current.saturating_add(share)
         });
         ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
-    }: _(RawOrigin::Signed(authority::<T>()))
+    }: _(RawOrigin::Signed(AuthorityAccount::<T>::get()))
     verify {
         assert_last_event::<T>(Event::ClaimedPSWAP().into());
     }
