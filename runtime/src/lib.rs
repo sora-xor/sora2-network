@@ -1443,7 +1443,7 @@ parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
-    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+    pub const MaximumCeresInStakingPool: Balance = balance!(14400);
 }
 
 impl ceres_launchpad::Config for Runtime {

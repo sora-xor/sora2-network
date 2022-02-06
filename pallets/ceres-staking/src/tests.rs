@@ -168,4 +168,28 @@ mod tests {
             );
         });
     }
+
+    #[test]
+    fn change_rewards_remaining_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                CeresStaking::change_rewards_remaining(Origin::signed(ALICE), balance!(100)),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_rewards_remaining_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(CeresStaking::change_rewards_remaining(
+                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                balance!(100)
+            ));
+
+            assert_eq!(pallet::RewardsRemaining::<Runtime>::get(), balance!(100));
+        });
+    }
 }
