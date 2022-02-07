@@ -12,6 +12,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
+use common::Balance;
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
@@ -22,7 +23,7 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct VotingInfo<Balance> {
+pub struct VotingInfo {
     /// Voting option
     voting_option: u32,
     /// Number of votes
@@ -50,6 +51,7 @@ pub mod pallet {
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
+    use frame_support::transactional;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
@@ -76,18 +78,11 @@ pub mod pallet {
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
-    /// Poll_id -> Account_id -> VotingInfo
+    /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn votings)]
-    pub type Voting<T: Config> = StorageDoubleMap<
-        _,
-        Identity,
-        Vec<u8>,
-        Identity,
-        AccountIdOf<T>,
-        VotingInfo<Balance>,
-        ValueQuery,
-    >;
+    pub type Voting<T: Config> =
+        StorageDoubleMap<_, Identity, Vec<u8>, Identity, AccountIdOf<T>, VotingInfo, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn poll_data)]
@@ -98,8 +93,8 @@ pub mod pallet {
     #[pallet::metadata(AccountIdOf<T> = "AccountId", T::BlockNumber = "BlockNumber")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Voting [who, option, balance]
-        Voted(AccountIdOf<T>, u32, Balance),
+        /// Voting [who, poll, option, balance]
+        Voted(AccountIdOf<T>, Vec<u8>, u32, Balance),
         /// Create poll [who, option, start_block, end_block]
         Created(AccountIdOf<T>, u32, T::BlockNumber, T::BlockNumber),
         /// Withdrawn [who, balance]
@@ -130,11 +125,14 @@ pub mod pallet {
         InvalidNumberOfVotes,
         /// Funds already withdrawn,
         FundsAlreadyWithdrawn,
+        /// Poll id already exists
+        PollIdAlreadyExists,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Voting for option
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -175,12 +173,6 @@ pub mod pallet {
                 )
             }
 
-            ensure!(
-                number_of_votes
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get(), &user).unwrap_or(0),
-                Error::<T>::NotEnoughFunds
-            );
-
             voting_info.number_of_votes += number_of_votes;
 
             // Transfer Ceres to pallet
@@ -189,13 +181,19 @@ pub mod pallet {
                 &user,
                 &Self::account_id(),
                 number_of_votes,
-            )?;
+            )
+            .map_err(|_assets_err| Error::<T>::NotEnoughFunds)?;
 
             // Update storage
             <Voting<T>>::insert(&poll_id, &user, voting_info);
 
             //Emit event
-            Self::deposit_event(Event::<T>::Voted(user, voting_option, number_of_votes));
+            Self::deposit_event(Event::<T>::Voted(
+                user,
+                poll_id,
+                voting_option,
+                number_of_votes,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -213,6 +211,12 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             let current_block = frame_system::Pallet::<T>::block_number();
+
+            let poll_info = <PollData<T>>::get(&poll_id);
+            ensure!(
+                poll_info.number_of_options == 0,
+                Error::<T>::PollIdAlreadyExists
+            );
 
             ensure!(number_of_options >= 2, Error::<T>::InvalidNumberOfOption);
 

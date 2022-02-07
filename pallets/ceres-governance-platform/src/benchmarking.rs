@@ -80,7 +80,7 @@ benchmarks! {
         );
     }
     verify {
-        assert_last_event::<T>(Event::Voted(caller, voting_option, number_of_votes).into());
+        assert_last_event::<T>(Event::Voted(caller, poll_id, voting_option, number_of_votes).into());
     }
 
     create_poll {

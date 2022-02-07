@@ -91,6 +91,35 @@ mod tests {
     }
 
     #[test]
+    fn create_poll_poll_id_already_exists() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let poll_id = Vec::from([1, 2, 3, 4]);
+            let number_of_option = 2;
+            let poll_start_block = frame_system::Pallet::<Runtime>::block_number();
+            let poll_end_block = frame_system::Pallet::<Runtime>::block_number() + 1;
+            assert_ok!(CeresGovernancePlatform::create_poll(
+                Origin::signed(ALICE),
+                poll_id.clone(),
+                number_of_option,
+                poll_start_block,
+                poll_end_block
+            ));
+
+            assert_err!(
+                CeresGovernancePlatform::create_poll(
+                    Origin::signed(ALICE),
+                    poll_id.clone(),
+                    number_of_option,
+                    poll_start_block,
+                    poll_end_block
+                ),
+                Error::<Runtime>::PollIdAlreadyExists
+            );
+        })
+    }
+
+    #[test]
     fn vote_invalid_number_of_votes() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
