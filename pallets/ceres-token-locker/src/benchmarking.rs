@@ -126,6 +126,7 @@ mod tests {
     use frame_support::assert_ok;
 
     #[test]
+    #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_lock_tokens::<Runtime>());
