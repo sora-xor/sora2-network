@@ -50,7 +50,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, DispatchResult};
+use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -450,6 +450,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;

@@ -769,13 +769,13 @@ fn calculating_distribution_should_pass() {
         // divisible small amount
         let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
         assert_eq!(distribution.liquidity_providers, 70u128);
-        assert_eq!(distribution.vesting, 20u128);
+        assert_eq!(distribution.vesting, 19u128);
         assert_eq!(distribution.parliament, 10u128);
 
         // regular amount
         let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(70));
-        assert_eq!(distribution.vesting, balance!(19.8));
+        assert_eq!(distribution.vesting, balance!(19.4));
         assert_eq!(distribution.parliament, balance!(10));
 
         // large value, balance is limited to i128 max because of Fixed type calculation
@@ -788,7 +788,7 @@ fn calculating_distribution_should_pass() {
         );
         assert_eq!(
             distribution.vesting,
-            33687954325172907882874086135745052916u128
+            33007389591331030955947336920881516493u128
         );
         assert_eq!(
             distribution.parliament,
@@ -798,7 +798,7 @@ fn calculating_distribution_should_pass() {
             distribution
                 .liquidity_providers
                 .saturating_add(distribution.parliament)
-                .saturating_add((distribution.vesting / 99).saturating_mul(100)),
+                .saturating_add((distribution.vesting / 97).saturating_mul(100)),
             balance_max,
             50u128
         );
