@@ -15,7 +15,7 @@ use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -185,6 +185,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 
 impl pswap_distribution::Config for Runtime {
     type Event = Event;
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;

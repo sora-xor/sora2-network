@@ -14,7 +14,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -153,6 +153,7 @@ impl pool_xyk::Config for Runtime {
 
 impl pswap_distribution::Config for Runtime {
     type Event = Event;
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
