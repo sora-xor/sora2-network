@@ -44,7 +44,7 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{AccountId32, Perbill};
+use sp_runtime::{AccountId32, Perbill, Percent};
 use sp_std::vec;
 
 use crate::Config;
@@ -166,6 +166,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
