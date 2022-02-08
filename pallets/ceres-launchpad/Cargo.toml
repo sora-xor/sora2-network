@@ -1,10 +1,10 @@
 [package]
-description = "Pallet for CERES staking."
-authors = ["Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>"]
+description = "Pallet for CERES Launchpad/ILO platform."
+authors = ["Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>, Jovan Milosevic <jovan.milosevic@cerestoken.io>"]
 license = "BSD-4-Clause"
 homepage = "https://cerestoken.io"
 repository = "https://github.com/sora-xor/sora2-network"
-name = "ceres-staking"
+name = "ceres-launchpad"
 version = "1.0.0"
 edition = "2018"
 
@@ -12,6 +12,7 @@ edition = "2018"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
@@ -22,6 +23,10 @@ sp-core = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
+vested-rewards = { path = "../vested-rewards", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical" , default-features = false}
 hex-literal = "0.3.1"
 
@@ -34,6 +39,9 @@ tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 pallet-balances = { version = "3" }
 permissions = { path = "../permissions" }
 technical = { path = "../technical", default-features = false }
+pswap-distribution = { path = "../pswap-distribution" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
 
 [features]
 default = ["std"]

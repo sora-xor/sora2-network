@@ -394,9 +394,9 @@ pub mod pallet {
         AssetIdNotExists,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length <= 7.
+        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length is from 1 to 7.
         InvalidAssetSymbol,
-        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
+        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length is from 1 to 33.
         InvalidAssetName,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
@@ -410,6 +410,8 @@ pub mod pallet {
         InvalidContentSource,
         /// Description is not valid. It must be 200 characters long at max.
         InvalidDescription,
+        /// The asset is not mintable and its initial balance is 0.
+        DeadAsset,
     }
 
     /// Asset Id -> Owner Account Id
@@ -562,6 +564,7 @@ impl<T: Config> Pallet<T> {
         );
         ensure!(symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
         ensure!(name.is_valid(), Error::<T>::InvalidAssetName);
+        ensure!(initial_supply > 0 || is_mintable, Error::<T>::DeadAsset);
         ensure!(
             !Self::asset_exists(&asset_id),
             Error::<T>::AssetIdAlreadyExists

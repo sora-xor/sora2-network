@@ -1,11 +1,9 @@
-use crate::{self as ceres_staking};
+use crate::{self as ceres_token_locker};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
-    Description, CERES_ASSET_ID,
+    balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, Fixed, CERES_ASSET_ID,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
@@ -16,11 +14,13 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 construct_runtime! {
     pub enum Runtime where
@@ -33,9 +33,14 @@ construct_runtime! {
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -43,8 +48,6 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -54,6 +57,12 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = 100;
+    pub GetPswapDistributionAccountId: AccountId = 101;
 }
 
 impl frame_system::Config for Runtime {
@@ -82,17 +91,12 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
-    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
 impl crate::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
     type Event = Event;
-    type CeresPerDay = CeresPerDay;
     type CeresAssetId = CeresAssetId;
-    type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
     type WeightInfo = ();
 }
 
@@ -123,13 +127,61 @@ impl permissions::Config for Runtime {
     type Event = Event;
 }
 
+impl dex_manager::Config for Runtime {}
+
+impl trading_pair::Config for Runtime {
+    type Event = Event;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 impl technical::Config for Runtime {
     type Event = Event;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl tokens::Config for Runtime {
@@ -197,22 +249,14 @@ impl Default for ExtBuilder {
                 None,
             )],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID, balance!(7300)),
-                (BOB, CERES_ASSET_ID, balance!(100)),
+                (ALICE, CERES_ASSET_ID, balance!(3000)),
+                (BOB, CERES_ASSET_ID, balance!(500)),
             ],
         }
     }
 }
 
 impl ExtBuilder {
-    #[allow(dead_code)]
-    pub fn empty() -> Self {
-        ExtBuilder {
-            endowed_assets: vec![],
-            endowed_accounts: vec![],
-        }
-    }
-
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
@@ -254,6 +298,5 @@ pub fn run_to_block(n: u64) {
         System::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         System::on_initialize(System::block_number());
-        CeresStaking::on_initialize(System::block_number());
     }
 }
