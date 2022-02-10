@@ -52,7 +52,7 @@ fn should_add_peer_in_eth_network() {
         );
         assert_eq!(
             crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
-            new_peer_id
+            Some(new_peer_id.clone())
         );
         assert_eq!(
             crate::PeerAddress::<Runtime>::get(net_id, &new_peer_id),
@@ -168,7 +168,7 @@ fn should_add_peer_in_simple_networks() {
         );
         assert_eq!(
             crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
-            new_peer_id
+            Some(new_peer_id.clone())
         );
         assert_eq!(
             crate::PeerAddress::<Runtime>::get(net_id, &new_peer_id),

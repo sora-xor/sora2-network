@@ -343,6 +343,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -461,7 +462,7 @@ pub mod pallet {
     pub(super) type Quorums<T: Config> = StorageMap<_, Blake2_128Concat, String, u8, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type Account<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type Account<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub(super) type MigratedAccounts<T: Config> =
@@ -477,7 +478,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub account_id: T::AccountId,
+        pub account_id: Option<T::AccountId>,
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
     }
 
@@ -494,8 +495,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.account_id).unwrap();
-            Account::<T>::put(&self.account_id);
+            frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
+            Account::<T>::put(&self.account_id.as_ref().unwrap());
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
                 Balances::<T>::insert(account_id, *balance);

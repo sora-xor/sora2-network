@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchError;
 use orml_traits::parameter_type_with_key;
 #[cfg(feature = "std")]
@@ -38,7 +38,17 @@ use sp_runtime::AccountId32;
 use sp_std::convert::TryFrom;
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]

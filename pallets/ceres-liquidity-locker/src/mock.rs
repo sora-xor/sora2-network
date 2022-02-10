@@ -104,6 +104,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl permissions::Config for Runtime {
@@ -225,7 +226,7 @@ pub fn ALICE() -> AccountId {
 #[allow(non_snake_case)]
 pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
     let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
-    AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 #[allow(non_snake_case)]

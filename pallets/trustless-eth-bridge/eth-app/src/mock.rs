@@ -70,6 +70,7 @@ impl system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl common::Config for Test {
@@ -166,16 +167,16 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    let bob: AccountId = Keyring::Bob.into();
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
             address: H160::repeat_byte(1),
-            dest_account: Default::default(),
+            dest_account: Some(bob.clone()),
         },
         &mut storage,
     )
     .unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), balance!(1))],
     }
