@@ -246,7 +246,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -1470,7 +1470,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -1512,7 +1512,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -1853,7 +1853,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -1907,7 +1907,7 @@ version = "0.11.0"
 source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "crunchy",
- "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "fixed-hash",
  "impl-codec 0.5.0",
  "impl-serde 0.3.2",
  "tiny-keccak",
@@ -1919,7 +1919,7 @@ version = "0.11.0"
 source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "ethbloom",
- "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "fixed-hash",
  "impl-codec 0.5.0",
  "impl-serde 0.3.2",
  "primitive-types 0.9.0",
@@ -2080,18 +2080,6 @@ dependencies = [
  "num-traits",
  "parity-scale-codec",
  "parking_lot 0.11.1",
-]
-
-[[package]]
-name = "fixed-hash"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
-dependencies = [
- "byteorder",
- "rand 0.8.4",
- "rustc-hex",
- "static_assertions",
 ]
 
 [[package]]
@@ -3377,7 +3365,7 @@ dependencies = [
  "jsonrpc-derive",
  "sp-api",
  "sp-blockchain",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
 ]
 
@@ -4217,7 +4205,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -4901,7 +4889,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "serde",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-consensus-aura",
  "sp-runtime",
  "sp-std",
@@ -4936,7 +4924,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "serde",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-consensus-babe",
  "sp-consensus-vrf",
  "sp-inherents",
@@ -5002,7 +4990,7 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "serde",
- "sp-npos-elections 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-npos-elections",
  "sp-runtime",
  "sp-std",
 ]
@@ -5019,7 +5007,7 @@ dependencies = [
  "pallet-session",
  "parity-scale-codec",
  "serde",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-core",
  "sp-finality-grandpa",
  "sp-runtime",
@@ -5054,7 +5042,7 @@ dependencies = [
  "pallet-authorship",
  "parity-scale-codec",
  "serde",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5182,9 +5170,9 @@ dependencies = [
  "pallet-session",
  "parity-scale-codec",
  "serde",
- "sp-application-crypto 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-application-crypto",
  "sp-io",
- "sp-npos-elections 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-npos-elections",
  "sp-runtime",
  "sp-staking",
  "sp-std",
@@ -5251,7 +5239,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-rpc",
  "sp-runtime",
 ]
 
@@ -5869,7 +5857,7 @@ name = "primitive-types"
 version = "0.9.0"
 source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
- "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "fixed-hash",
  "funty",
  "impl-codec 0.5.0",
  "impl-serde 0.3.2",
@@ -5882,7 +5870,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06345ee39fbccfb06ab45f3a1a5798d9dafa04cb8921a76d227040003a234b0e"
 dependencies = [
- "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fixed-hash",
  "impl-codec 0.5.1",
  "impl-serde 0.3.1",
  "uint 0.9.1",
@@ -6100,7 +6088,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -6531,7 +6519,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
 ]
@@ -6910,7 +6898,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-telemetry",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -6954,7 +6942,7 @@ dependencies = [
  "schnorrkel",
  "serde",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -6998,7 +6986,7 @@ dependencies = [
  "sc-client-api",
  "sc-telemetry",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
@@ -7129,7 +7117,7 @@ dependencies = [
  "sc-telemetry",
  "serde_json",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
@@ -7174,7 +7162,7 @@ dependencies = [
  "parking_lot 0.11.1",
  "rand 0.7.3",
  "serde_json",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-core",
  "sp-keystore",
  "subtle 2.4.1",
@@ -7343,7 +7331,7 @@ dependencies = [
  "sp-core",
  "sp-keystore",
  "sp-offchain",
- "sp-rpc 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-rpc",
  "sp-runtime",
  "sp-session",
  "sp-state-machine",
@@ -7370,7 +7358,7 @@ dependencies = [
  "serde_json",
  "sp-chain-spec",
  "sp-core",
- "sp-rpc 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-rpc",
  "sp-runtime",
  "sp-transaction-pool",
  "sp-version",
@@ -7432,7 +7420,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -7991,19 +7979,6 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c52e2e6d43036b97c4fce1ed87c5262c1ffdc78c655ada4d3024a3f8094bdd2c"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-std",
-]
-
-[[package]]
-name = "sp-application-crypto"
-version = "3.0.0"
 source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "parity-scale-codec",
@@ -8109,7 +8084,7 @@ source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde52
 dependencies = [
  "parity-scale-codec",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-consensus-slots",
  "sp-inherents",
  "sp-runtime",
@@ -8125,7 +8100,7 @@ dependencies = [
  "merlin",
  "parity-scale-codec",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-consensus",
  "sp-consensus-slots",
  "sp-consensus-vrf",
@@ -8243,7 +8218,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-api",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-core",
  "sp-keystore",
  "sp-runtime",
@@ -8317,40 +8292,14 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54e6e8b84ee0dc7bb65b55beba55ffbc17803222ab7c746a74f72fc5869c7320"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-npos-elections-compact 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp-std",
-]
-
-[[package]]
-name = "sp-npos-elections"
-version = "3.0.0"
 source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-arithmetic",
  "sp-core",
- "sp-npos-elections-compact 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-npos-elections-compact",
  "sp-std",
-]
-
-[[package]]
-name = "sp-npos-elections-compact"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "085fbb1aa72d85a17524047fc1e708bc3bd038b02b46dc7ac601fa39c8af93d3"
-dependencies = [
- "proc-macro-crate 0.1.5",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -8385,16 +8334,6 @@ dependencies = [
 [[package]]
 name = "sp-rpc"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2e5b1ed655d11449073b914b048895f45241e02b3919d1d0187f315435fee18"
-dependencies = [
- "serde",
- "sp-core",
-]
-
-[[package]]
-name = "sp-rpc"
-version = "3.0.0"
 source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "serde",
@@ -8415,7 +8354,7 @@ dependencies = [
  "paste",
  "rand 0.7.3",
  "serde",
- "sp-application-crypto 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-application-crypto",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -9418,7 +9357,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core",
- "sp-rpc 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-rpc",
  "sp-runtime",
  "sp-std",
  "trading-pair-runtime-api",
