@@ -14,7 +14,7 @@ scale-info = { version = "1.0.0", default-features = false, features = [
     "derive",
 ] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-derive_more = { version = "0.99.17", default-features = false }
+# derive_more = { version = "0.99.17", default-features = false }
 fixnum = { git = "https://github.com/vovac12/fixnum", branch = "master", default-features = false, features = ["i128", "parity", "scale-info"] }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
