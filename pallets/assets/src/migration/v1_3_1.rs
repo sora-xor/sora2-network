@@ -63,13 +63,12 @@ pub fn migrate<T: Config>() -> Weight {
             ))
         },
     );
-    let content_sources: Vec<_> = OldAssetContentSource::<T::AssetId>::drain().collect();
-    let descriptions: Vec<_> = OldAssetDescription::<T::AssetId>::drain().collect();
-    if !content_sources.is_empty() || !descriptions.is_empty() {
+    let content_source_count = OldAssetContentSource::<T::AssetId>::drain().count();
+    let description_count = OldAssetDescription::<T::AssetId>::drain().count();
+    if content_source_count != 0 || description_count != 0 {
         error!(
             "remaining content sources: {}, remaining descriptions: {}",
-            content_sources.len(),
-            descriptions.len()
+            content_source_count, description_count
         );
     }
     weight
