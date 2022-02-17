@@ -15,7 +15,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, Percent};
 
 pub type DEXId = u32;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
@@ -189,6 +189,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();

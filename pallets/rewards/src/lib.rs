@@ -179,7 +179,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> OnValBurned for Pallet<T> {
     fn on_val_burned(amount: Balance) {
         ValBurnedSinceLastVesting::<T>::mutate(|v| {
-            *v = v.saturating_add(amount.saturating_sub(amount / 100))
+            *v = v.saturating_add(amount.saturating_sub(T::VAL_BURN_PERCENT * amount))
         });
     }
 }
@@ -210,6 +210,8 @@ pub mod pallet {
         const MAX_VESTING_RATIO: Percent;
         /// The amount of time until vesting ratio reaches saturation at `MAX_VESTING_RATIO`
         const TIME_TO_SATURATION: BlockNumberFor<Self>;
+        /// Percentage of VAL burned without vesting
+        const VAL_BURN_PERCENT: Percent;
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type WeightInfo: WeightInfo;
     }
