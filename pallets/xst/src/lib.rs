@@ -648,9 +648,9 @@ impl<T: Config> Module<T> {
                 &reference_asset_id,
             )
             .map(|avg| {
-                // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
+                // We don't let the price of XOR w.r.t. DAI go under $33, to prevent manipulation attacks
                 if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
-                    avg.max(balance!(100))
+                    avg.max(balance!(33))
                 } else {
                     avg
                 }
