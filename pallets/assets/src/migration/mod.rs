@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod v1_3_1;
+
 use crate::{Config, Pallet, Weight};
 use common::{balance, PSWAP};
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
@@ -42,6 +44,13 @@ pub fn migrate<T: Config>() -> Weight {
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight = mint_team_rewards::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight)
+        }
+        Some(PalletVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        }) => {
+            v1_3_1::migrate::<T>();
         }
         _ => (),
     }

@@ -48,6 +48,7 @@ pub mod tests;
 
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
+use constants::rewards::*;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -216,10 +217,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 21,
+    spec_version: 25,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 21,
+    transaction_version: 25,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -883,6 +884,7 @@ impl rewards::Config for Runtime {
     const MAX_CHUNK_SIZE: usize = 100;
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
+    const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -1302,6 +1304,7 @@ impl farming::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type Event = Event;
     type GetIncentiveAssetId = GetPswapAssetId;
     type LiquidityProxy = LiquidityProxy;
@@ -1443,7 +1446,12 @@ parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
-    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+    pub const MaximumCeresInStakingPool: Balance = balance!(14400);
+}
+
+impl ceres_launchpad::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1461,6 +1469,18 @@ impl ceres_liquidity_locker::Config for Runtime {
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
+}
+
+impl ceres_token_locker::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_token_locker::weights::WeightInfo<Runtime>;
+}
+
+impl ceres_governance_platform::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1535,6 +1555,9 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1600,6 +1623,9 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
     }
 }
 
@@ -2193,9 +2219,13 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, referrals, Referrals);
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
+            add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
+            add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

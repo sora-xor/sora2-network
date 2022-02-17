@@ -737,6 +737,11 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
+                ensure!(
+                    assets::AssetInfos::<T>::get(asset_a).2 != 0
+                        && assets::AssetInfos::<T>::get(asset_b).2 != 0,
+                    Error::<T>::UnableToCreatePoolWithIndivisibleAssets
+                );
                 let (_, tech_account_id, fees_account_id) = Module::<T>::initialize_pool_unchecked(
                     source.clone(),
                     dex_id,
@@ -892,6 +897,8 @@ pub mod pallet {
         UnsupportedQuotePath,
         /// Not enough unlocked liquidity to withdraw
         NotEnoughUnlockedLiquidity,
+        /// Cannot create a pool with indivisible assets
+        UnableToCreatePoolWithIndivisibleAssets,
     }
 
     /// Updated after last liquidity change operation.

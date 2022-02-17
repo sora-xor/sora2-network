@@ -112,6 +112,7 @@ impl Config for Runtime {
     const MAX_CHUNK_SIZE: usize = 1;
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 100;
+    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type WeightInfo = ();
 }
