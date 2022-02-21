@@ -11,7 +11,7 @@ version = "1.2.2"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = "3.0.0"
+substrate-wasm-builder = "4.0.0"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
@@ -59,7 +59,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referrals = { path = "../pallets/referrals", default-features = false}
+referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -133,7 +133,10 @@ snowbridge-core = { path = "../primitives/core", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-framenode-chain-spec = { path = "../node/chain_spec", features = ["test", "private-net"] }
+framenode-chain-spec = { path = "../node/chain_spec", features = [
+    "test",
+    "private-net",
+] }
 
 [features]
 default = ["std"]
@@ -228,10 +231,7 @@ std = [
     "xst/std",
 ]
 
-private-net = [
-    "faucet",
-    "farming/private-net"
-]
+private-net = ["faucet", "farming/private-net"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
