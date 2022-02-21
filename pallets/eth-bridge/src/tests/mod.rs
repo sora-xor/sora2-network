@@ -10,7 +10,7 @@ use frame_support::weights::Pays;
 use frame_support::{assert_err, assert_ok, ensure};
 
 use secp256k1::{PublicKey, SecretKey};
-use sp_core::{ecdsa, Public, H256};
+use sp_core::{ecdsa, H256};
 use std::collections::BTreeSet;
 
 mod asset;
@@ -75,7 +75,7 @@ pub fn approve_request(
         ensure!(
             EthBridge::approve_request(
                 Origin::signed(account_id.clone()),
-                ecdsa::Public::from_slice(&public.serialize_compressed()),
+                ecdsa::Public::from_raw(public.serialize_compressed()),
                 request_hash,
                 signature_params,
                 net_id

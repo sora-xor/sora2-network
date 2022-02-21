@@ -168,6 +168,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl dex_manager::Config for Runtime {}
@@ -710,9 +711,9 @@ impl ExtBuilder {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
-            incentives_account_id: incentives_account(),
+            incentives_account_id: Some(incentives_account()),
             initial_collateral_assets: Default::default(),
-            free_reserves_account_id: free_reserves_account(),
+            free_reserves_account_id: Some(free_reserves_account()),
         }
         .assimilate_storage(&mut t)
         .unwrap();

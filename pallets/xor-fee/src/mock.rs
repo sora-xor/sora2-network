@@ -525,7 +525,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(PhantomData<T>);
+    #[pallet::without_storage_info]    pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}

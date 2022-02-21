@@ -118,6 +118,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl technical::Config for Runtime {
@@ -327,7 +328,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     IrohaMigrationConfig {
         iroha_accounts,
-        account_id: MINTING_ACCOUNT,
+        account_id: Some(MINTING_ACCOUNT),
     }
     .assimilate_storage(&mut t)
     .unwrap();

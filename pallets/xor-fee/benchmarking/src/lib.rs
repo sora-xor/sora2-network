@@ -45,7 +45,7 @@ pub trait Config: xor_fee::Config + pool_xyk::Config + pallet_staking::Config {}
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = [1; 32];
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn init<T: Config>() {

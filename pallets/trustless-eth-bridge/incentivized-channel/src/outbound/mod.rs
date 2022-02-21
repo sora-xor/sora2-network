@@ -110,7 +110,7 @@ pub mod pallet {
 
     /// Destination account for fees
     #[pallet::storage]
-    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -118,6 +118,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -152,6 +153,8 @@ pub mod pallet {
         NoFunds,
         /// Cannot increment nonce
         Overflow,
+        /// Destination account is not set.
+        DestAccountNotSet,
     }
 
     #[pallet::call]
@@ -186,7 +189,12 @@ pub mod pallet {
 
                 // Attempt to charge a fee for message submission
                 let fee = Self::fee();
-                T::Currency::transfer(T::FeeCurrency::get(), who, &DestAccount::<T>::get(), fee)?;
+                T::Currency::transfer(
+                    T::FeeCurrency::get(),
+                    who,
+                    &DestAccount::<T>::get().ok_or(Error::<T>::DestAccountNotSet)?,
+                    fee,
+                )?;
 
                 MessageQueue::<T>::append(Message {
                     target,
@@ -253,7 +261,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub dest_account: T::AccountId,
+        pub dest_account: Option<T::AccountId>,
         pub fee: BalanceOf<T>,
         pub interval: T::BlockNumber,
     }

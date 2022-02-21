@@ -42,7 +42,7 @@ use crate::{
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Adds `n` of unaccessible rewards and after adds 1 reward that will be claimed

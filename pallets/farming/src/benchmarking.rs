@@ -47,7 +47,7 @@ use super::*;
 // Support Functions
 fn asset_owner<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn signed_origin<T: Config>(account_id: T::AccountId) -> OriginFor<T> {

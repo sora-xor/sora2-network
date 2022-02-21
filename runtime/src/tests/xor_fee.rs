@@ -137,7 +137,7 @@ fn referrer_gets_bonus_from_tx_fee() {
         let balance_after_reserving_fee = balance_after_reserving_fee.into_balance();
         assert_eq!(Balances::free_balance(alice()), balance_after_reserving_fee);
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &default_post_info(),
             len,
@@ -229,7 +229,7 @@ fn notify_val_burned_works() {
                 .pre_dispatch(&alice(), call, &dispatch_info, len)
                 .unwrap();
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-                pre,
+                Some(pre),
                 &dispatch_info,
                 &default_post_info(),
                 len,
@@ -302,7 +302,7 @@ fn custom_fees_work() {
             let result = balance_after_fee_withdrawal.clone().into_balance();
             assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-                pre,
+                Some(pre),
                 &dispatch_info,
                 &default_post_info(),
                 len,
@@ -329,7 +329,7 @@ fn custom_fees_work() {
             balance_after_fee_withdrawal
         );
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &default_post_info(),
             len,
@@ -359,7 +359,7 @@ fn custom_fees_work() {
             balance_after_fee_withdrawal
         );
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &default_post_info(),
             len,
@@ -406,7 +406,7 @@ fn refund_if_pays_no_works() {
             balance_after_fee_withdrawal
         );
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &post_info_pays_no(),
             len,
@@ -443,7 +443,7 @@ fn actual_weight_is_ignored_works() {
             balance_after_fee_withdrawal
         );
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &post_info_from_weight(MOCK_WEIGHT / 2),
             len,
@@ -482,7 +482,7 @@ fn reminting_for_sora_parliament_works() {
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
+            Some(pre),
             &dispatch_info,
             &default_post_info(),
             len,
@@ -508,9 +508,9 @@ fn reminting_for_sora_parliament_works() {
         // Mock uses MockLiquiditySource that doesn't exchange.
         assert!(
             Tokens::free_balance(VAL.into(), &sora_parliament_account())
-                >= (expected_balance.clone() - FixedWrapper::from(1)).into_balance()
+                >= (expected_balance.clone() - FixedWrapper::from(1i32)).into_balance()
                 && Balances::free_balance(sora_parliament_account())
-                    <= (expected_balance + FixedWrapper::from(1)).into_balance()
+                    <= (expected_balance + FixedWrapper::from(1i32)).into_balance()
         );
     });
 }

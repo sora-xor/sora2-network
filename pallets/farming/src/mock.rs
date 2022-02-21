@@ -170,6 +170,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl permissions::Config for Runtime {
@@ -321,6 +322,8 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {

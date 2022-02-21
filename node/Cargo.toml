@@ -25,7 +25,7 @@ ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.61"
 jsonrpc-core = "18.0.0"
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.15", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.16", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
 
 framenode-chain-spec = { path = "chain_spec" }
@@ -91,11 +91,11 @@ pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrat
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", optional = true }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.15" }
-beefy-gadget = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.15" }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.16" }
+beefy-gadget = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.16" }
 pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.15" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.16" }
 pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 leaf-provider-rpc = { path = "../pallets/trustless-eth-bridge/leaf-provider/rpc", default-features = false }
 
