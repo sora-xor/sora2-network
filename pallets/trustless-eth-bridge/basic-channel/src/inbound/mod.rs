@@ -5,10 +5,11 @@ mod benchmarking;
 
 pub mod weights;
 
+mod payload;
 #[cfg(test)]
 mod test;
 
-use bridge_types::traits::{MessageDispatch, Verifier};
+use bridge_types::traits::{AppRegistry, MessageDispatch, Verifier};
 use bridge_types::types::{ChannelId, Message, MessageId};
 use bridge_types::EthNetworkId;
 use frame_system::ensure_signed;
@@ -25,9 +26,11 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::traits::OutboundRouter;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -47,6 +50,8 @@ pub mod pallet {
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, MessageId>;
 
+        type OutboundRouter: OutboundRouter<Self::AccountId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -59,6 +64,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        /// Message came from an invalid etherem network
+        InvalidNetwork,
         /// Message came from an invalid outbound channel on the Ethereum side.
         InvalidSourceChannel,
         /// Message has an invalid envelope.
@@ -69,23 +76,19 @@ pub mod pallet {
         ChannelExists,
     }
 
-    /// Source channel on the ethereum side
     #[pallet::storage]
-    #[pallet::getter(fn source_channel)]
-    pub type ChannelOwners<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, OptionQuery>;
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
 
     #[pallet::storage]
-    pub type ChannelNonces<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, u64, ValueQuery>;
+    pub type ChannelAddresses<T: Config> = StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub networks: Vec<(EthNetworkId, Vec<(H160, T::AccountId)>)>,
+    pub struct GenesisConfig {
+        pub networks: Vec<(EthNetworkId, H160)>,
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
+    impl Default for GenesisConfig {
         fn default() -> Self {
             Self {
                 networks: Default::default(),
@@ -94,12 +97,10 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            for (network_id, channels) in &self.networks {
-                for (channel, owner) in channels {
-                    <ChannelOwners<T>>::insert(network_id, channel, owner);
-                }
+            for (network_id, channel) in &self.networks {
+                <ChannelAddresses<T>>::insert(network_id, channel);
             }
         }
     }
@@ -123,23 +124,20 @@ pub mod pallet {
             let envelope = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
 
             ensure!(
-                <ChannelOwners<T>>::contains_key(network_id, envelope.channel),
+                <ChannelAddresses<T>>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?
+                    == envelope.channel,
                 Error::<T>::InvalidSourceChannel
             );
 
             // Verify message nonce
-            <ChannelNonces<T>>::try_mutate(
-                network_id,
-                envelope.channel,
-                |nonce| -> DispatchResult {
-                    if envelope.nonce != *nonce + 1 {
-                        Err(Error::<T>::InvalidNonce.into())
-                    } else {
-                        *nonce += 1;
-                        Ok(())
-                    }
-                },
-            )?;
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if envelope.nonce != *nonce + 1 {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce += 1;
+                    Ok(())
+                }
+            })?;
 
             let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
             T::MessageDispatch::dispatch(
@@ -158,13 +156,41 @@ pub mod pallet {
             network_id: EthNetworkId,
             channel: H160,
         ) -> DispatchResult {
-            let owner = ensure_signed(origin)?;
+            ensure_root(origin)?;
             ensure!(
-                <ChannelOwners<T>>::contains_key(network_id, channel) == false,
+                <ChannelAddresses<T>>::contains_key(network_id) == false,
                 Error::<T>::ChannelExists
             );
 
-            <ChannelOwners<T>>::insert(network_id, channel, owner);
+            <ChannelAddresses<T>>::insert(network_id, channel);
+            Ok(())
+        }
+    }
+
+    impl<T: Config> AppRegistry for Pallet<T> {
+        fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+            let target =
+                ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                &payload::RegisterOperatorPayload { operator: app }.encode(),
+            )?;
+            Ok(())
+        }
+
+        fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+            let target =
+                ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                &payload::DeregisterOperatorPayload { operator: app }.encode(),
+            )?;
             Ok(())
         }
     }

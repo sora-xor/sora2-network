@@ -5,7 +5,7 @@ use clap::*;
 use ethers::prelude::*;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct FetchEthereumHeader {
+pub(super) struct Command {
     #[clap(flatten)]
     url: EthereumUrl,
     #[clap(long, short)]
@@ -14,7 +14,7 @@ pub(super) struct FetchEthereumHeader {
     number: Option<usize>,
 }
 
-impl FetchEthereumHeader {
+impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let client = EthereumClient::new(self.url.ethereum_url.clone()).await?;
         let number = match (self.descendants_until_final, self.number) {

@@ -6,7 +6,9 @@ use bridge_types::traits::OutboundRouter;
 use bridge_types::types::ChannelId;
 use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use common::{
+    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -16,6 +18,7 @@ use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
+use system::RawOrigin;
 
 use crate as eth_app;
 
@@ -35,6 +38,7 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
@@ -138,6 +142,18 @@ impl assets::Config for Test {
     type GetTotalBalance = ();
 }
 
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+
+impl technical::Config for Test {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+}
+
 impl dispatch::Config for Test {
     type Origin = Origin;
     type Event = Event;
@@ -151,9 +167,8 @@ pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
 impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
     fn submit(
         _: EthNetworkId,
-        _: H160,
         channel: ChannelId,
-        _: &AccountId,
+        _: &RawOrigin<AccountId>,
         _: H160,
         _: &[u8],
     ) -> DispatchResult {
@@ -164,11 +179,28 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
     }
 }
 
+parameter_types! {
+    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+}
+
 impl eth_app::Config for Test {
     type Event = Event;
     type OutboundRouter = MockOutboundRouter<Self::AccountId>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
-    type FeeCurrency = ();
+    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();
 }
 
@@ -177,12 +209,18 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    technical::GenesisConfig::<Test> {
+        register_tech_accounts: vec![(
+            GetTrustlessBridgeAccountId::get(),
+            GetTrustlessBridgeTechAccountId::get(),
+        )],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            networks: vec![(
-                BASE_NETWORK_ID,
-                vec![(H160::repeat_byte(1), Default::default(), XOR)],
-            )],
+            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR)],
         },
         &mut storage,
     )

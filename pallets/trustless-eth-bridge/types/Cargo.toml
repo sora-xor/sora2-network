@@ -5,6 +5,7 @@ authors = ["Snowfork <contact@snowfork.com>"]
 edition = "2021"
 
 [dependencies]
+common = { path = "../../../common", default-features = false }
 enum-iterator = "0.6.0"
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
 	"derive",
@@ -68,6 +69,11 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 	"sp-std/std",
+	"beefy-primitives/std",
+	"common/std",
 ]
 
-runtime-benchmarks = []
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+]

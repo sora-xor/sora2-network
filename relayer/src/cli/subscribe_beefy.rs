@@ -3,12 +3,12 @@ use crate::prelude::*;
 use clap::*;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct SubscribeBeefy {
+pub(super) struct Command {
     #[clap(flatten)]
     url: SubstrateUrl,
 }
 
-impl SubscribeBeefy {
+impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let sub_api = SubUnsignedClient::new(Url::parse("ws://localhost:9944")?).await?;
 

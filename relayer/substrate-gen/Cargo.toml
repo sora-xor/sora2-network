@@ -3,6 +3,17 @@ name = "substrate-gen"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+    "chain-error",
+] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
+framenode-runtime = { path = "../../runtime", features = ["private-net"] }
+hex = "0.4.3"
+
 [dependencies]
 common = { path = "../../common" }
 subxt = { git = "https://github.com/paritytech/subxt", rev = "5db9b738" }

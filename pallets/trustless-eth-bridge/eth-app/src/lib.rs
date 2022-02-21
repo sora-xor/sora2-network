@@ -32,7 +32,8 @@ use bridge_types::EthNetworkId;
 mod payload;
 use payload::OutboundPayload;
 
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -46,7 +47,7 @@ pub mod weights;
 pub trait WeightInfo {
     fn burn() -> Weight;
     fn mint() -> Weight;
-    fn register_new_asset() -> Weight;
+    fn register_network() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -57,7 +58,7 @@ impl WeightInfo for () {
         0
     }
 
-    fn register_new_asset() -> Weight {
+    fn register_network() -> Weight {
         0
     }
 }
@@ -71,33 +72,31 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
+    use frame_system::RawOrigin;
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + permissions::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H160)>;
 
-        type FeeCurrency: Get<Self::AssetId>;
+        type BridgeTechAccountId: Get<Self::TechAccountId>;
 
         type WeightInfo: WeightInfo;
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn address)]
-    pub(super) type Address<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, AssetIdOf<T>, OptionQuery>;
-
-    /// Destination account for bridge funds
-    #[pallet::storage]
-    pub type DestAccount<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, OptionQuery>;
+    #[pallet::getter(fn address_and_asset)]
+    pub(super) type Addresses<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, (H160, AssetIdOf<T>), OptionQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -114,15 +113,16 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     /// Events for the ETH module.
     pub enum Event<T: Config> {
-        Burned(AccountIdOf<T>, H160, U256),
-        Minted(H160, AccountIdOf<T>, U256),
+        Burned(EthNetworkId, AccountIdOf<T>, H160, BalanceOf<T>),
+        Minted(EthNetworkId, H160, AccountIdOf<T>, BalanceOf<T>),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         /// The submitted payload could not be decoded.
         InvalidPayload,
-        BridgeNotFound,
+        AppIsNotRegistered,
+        InvalidAppAddress,
     }
 
     #[pallet::call]
@@ -132,20 +132,16 @@ pub mod pallet {
         #[transactional]
         pub fn burn(
             origin: OriginFor<T>,
-            channel_id: ChannelId,
             network_id: EthNetworkId,
-            channel: H160,
-            bridge: H160,
+            channel_id: ChannelId,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let dest =
-                DestAccount::<T>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
-            let asset_id =
-                <Address<T>>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
+            let (target, asset_id) =
+                Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
-            T::Currency::transfer(asset_id, &who, &dest, amount)?;
+            T::Currency::withdraw(asset_id, &who, amount)?;
 
             let message = OutboundPayload {
                 sender: who.clone(),
@@ -155,13 +151,12 @@ pub mod pallet {
 
             T::OutboundRouter::submit(
                 network_id,
-                channel,
                 channel_id,
-                &who,
-                bridge,
+                &RawOrigin::Signed(who.clone()),
+                target,
                 &message.encode(),
             )?;
-            Self::deposit_event(Event::Burned(who.clone(), recipient, amount.into()));
+            Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
 
             Ok(())
         }
@@ -172,36 +167,73 @@ pub mod pallet {
             origin: OriginFor<T>,
             sender: H160,
             recipient: <T::Lookup as StaticLookup>::Source,
-            amount: BalanceOf<T>,
+            amount: U256,
         ) -> DispatchResult {
             let (network_id, who) = T::CallOrigin::ensure_origin(origin)?;
-            let asset = Address::<T>::get(network_id, who).ok_or(Error::<T>::BridgeNotFound)?;
+            let (contract, asset_id) =
+                Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+            ensure!(who == contract, Error::<T>::InvalidAppAddress);
 
+            let amount: BalanceOf<T> = amount.as_u128().into();
             let recipient = T::Lookup::lookup(recipient)?;
-            T::Currency::deposit(asset, &recipient, amount)?;
-            Self::deposit_event(Event::Minted(sender, recipient.clone(), amount.into()));
+            T::Currency::deposit(asset_id, &recipient, amount)?;
+            Self::deposit_event(Event::Minted(network_id, sender, recipient.clone(), amount));
 
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
-        pub fn register_new_asset(
+        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
+        #[transactional]
+        pub fn register_network(
             origin: OriginFor<T>,
-            dest_account: T::AccountId,
             network_id: EthNetworkId,
             asset_id: AssetIdOf<T>,
-            channel: H160,
+            contract: H160,
         ) -> DispatchResult {
-            ensure_signed(origin)?;
-            <DestAccount<T>>::insert(network_id, channel, dest_account);
-            <Address<T>>::insert(network_id, channel, asset_id);
+            ensure_root(origin)?;
+            Self::register_network_inner(network_id, asset_id, contract)?;
             Ok(().into())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn bridge_account() -> Result<T::AccountId, DispatchError> {
+            Ok(technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::BridgeTechAccountId::get(),
+            )?)
+        }
+
+        fn register_network_inner(
+            network_id: EthNetworkId,
+            asset_id: AssetIdOf<T>,
+            contract: H160,
+        ) -> DispatchResult {
+            Addresses::<T>::insert(network_id, (contract, asset_id));
+            let bridge_account = Self::bridge_account()?;
+            for permission_id in [permissions::BURN, permissions::MINT] {
+                let scope = permissions::Scope::Limited(common::hash(&asset_id));
+                if permissions::Pallet::<T>::check_permission_with_scope(
+                    bridge_account.clone(),
+                    permission_id,
+                    &scope,
+                )
+                .is_err()
+                {
+                    permissions::Pallet::<T>::assign_permission(
+                        bridge_account.clone(),
+                        &bridge_account,
+                        permission_id,
+                        scope,
+                    )?;
+                }
+            }
+            Ok(())
         }
     }
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub networks: Vec<(EthNetworkId, Vec<(H160, T::AccountId, T::AssetId)>)>,
+        pub networks: Vec<(EthNetworkId, H160, T::AssetId)>,
     }
 
     #[cfg(feature = "std")]
@@ -216,11 +248,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            for (network_id, channels) in &self.networks {
-                for (channel, dest_account, asset_id) in channels {
-                    <DestAccount<T>>::insert(network_id, channel, dest_account.clone());
-                    <Address<T>>::insert(network_id, channel, asset_id);
-                }
+            for (network_id, contract, asset_id) in &self.networks {
+                Pallet::<T>::register_network_inner(*network_id, *asset_id, *contract).unwrap();
             }
         }
     }

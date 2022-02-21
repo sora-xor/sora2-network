@@ -220,6 +220,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "fee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -283,19 +296,19 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_configUpdater",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_feeSource",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "configUpdaters",
+        "type": "address[]"
       },
       {
         "internalType": "address[]",
         "name": "defaultOperators",
         "type": "address[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
       }
     ],
     "name": "initialize",

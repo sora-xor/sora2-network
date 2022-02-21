@@ -145,6 +145,8 @@ pub mod pallet {
         DecodeFailed,
         /// Unknown network id passed
         NetworkNotFound,
+        /// Network with given id already registered
+        NetworkAlreadyExists,
         /// This should never be returned - indicates a bug
         Unknown,
     }
@@ -202,7 +204,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
             for (network_id, header, difficulty) in &self.initial_networks {
-                Pallet::<T>::initialize_storage(
+                Pallet::<T>::initialize_storage_inner(
                     *network_id,
                     vec![header.clone()],
                     difficulty.clone(),
@@ -223,19 +225,34 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::WeightInfo::import_header())]
+        #[pallet::weight(T::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
             header: EthereumHeader,
             initial_difficulty: U256,
         ) -> DispatchResult {
+            ensure_root(origin)?;
             ensure!(
                 <BestBlock<T>>::contains_key(network_id) == false,
-                Error::<T>::NetworkNotFound
+                Error::<T>::NetworkAlreadyExists
             );
-            Pallet::<T>::initialize_storage(network_id, vec![header], initial_difficulty, 0)
-                .map_err(|_| Error::<T>::NetworkNotFound)?;
+            Pallet::<T>::initialize_storage_inner(
+                network_id,
+                vec![header.clone()],
+                initial_difficulty,
+                0,
+            )
+            // should never fail with single header
+            .map_err(|_| Error::<T>::Unknown)?;
+
+            <BlocksToPrune<T>>::insert(
+                network_id,
+                PruningRange {
+                    oldest_unpruned_block: header.number,
+                    oldest_block_to_keep: header.number,
+                },
+            );
             Ok(())
         }
         /// Import a single Ethereum PoW header.
@@ -614,7 +631,7 @@ pub mod pallet {
         /// validation.
         ///
         /// NOTE: This should only be used to initialize empty storage.
-        fn initialize_storage(
+        pub(crate) fn initialize_storage_inner(
             network_id: EthNetworkId,
             headers: Vec<EthereumHeader>,
             initial_difficulty: U256,
@@ -699,6 +716,8 @@ pub mod pallet {
                         _ => break,
                     }
                 }
+            } else {
+                panic!("Network don't have finalized header");
             }
 
             Ok(())
@@ -742,6 +761,20 @@ pub mod pallet {
             }
 
             Ok(log)
+        }
+
+        fn initialize_storage(
+            network_id: EthNetworkId,
+            headers: Vec<bridge_types::Header>,
+            difficulty: u128,
+            descendants_until_final: u8,
+        ) -> Result<(), &'static str> {
+            Self::initialize_storage_inner(
+                network_id,
+                headers,
+                difficulty.into(),
+                descendants_until_final,
+            )
         }
     }
 }

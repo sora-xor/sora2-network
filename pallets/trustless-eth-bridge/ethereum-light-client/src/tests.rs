@@ -1,11 +1,11 @@
 use crate::mock::{
     child_of_genesis_ethereum_header, child_of_header, ethereum_header_from_file,
-    ethereum_header_proof_from_file, genesis_ethereum_block_hash, log_payload,
-    message_with_receipt_proof, new_tester, new_tester_with_config, receipt_root_and_proof,
-    ropsten_london_header, ropsten_london_message, AccountId,
+    ethereum_header_proof_from_file, genesis_ethereum_block_hash, genesis_ethereum_header,
+    log_payload, message_with_receipt_proof, new_tester, new_tester_with_config,
+    receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
 };
 use bridge_types::traits::Verifier as VerifierConfig;
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, U256};
 
 use crate::mock::mock_verifier_with_pow;
 
@@ -15,7 +15,7 @@ use crate::{
     BestBlock, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers, HeadersByNumber,
     PruningRange,
 };
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::DispatchError;
 
@@ -566,5 +566,41 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
             BASE_NETWORK_ID,
             &message_with_receipt_proof(log.clone(), block1_alt_hash, receipt_proof.clone()),
         ));
+    });
+}
+
+#[test]
+fn test_register_network() {
+    new_tester::<Test>().execute_with(|| {
+        assert_ok!(Verifier::register_network(
+            Origin::root(),
+            123,
+            genesis_ethereum_header(),
+            U256::zero(),
+        ));
+
+        let caller: AccountId = Keyring::Ferdie.into();
+        let header = child_of_genesis_ethereum_header();
+        assert_ok!(Verifier::import_header(
+            Origin::signed(caller),
+            123,
+            header,
+            Default::default()
+        ));
+    });
+}
+
+#[test]
+fn test_register_network_exists() {
+    new_tester::<Test>().execute_with(|| {
+        assert_noop!(
+            Verifier::register_network(
+                Origin::root(),
+                BASE_NETWORK_ID,
+                genesis_ethereum_header(),
+                U256::zero(),
+            ),
+            Error::<Test>::NetworkAlreadyExists
+        );
     });
 }

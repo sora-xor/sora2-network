@@ -2,10 +2,11 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use common::mock::ExistentialDeposits;
-use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
@@ -32,6 +33,7 @@ frame_support::construct_runtime!(
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         IncentivizedOutboundChannel: incentivized_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -138,6 +140,20 @@ impl assets::Config for Test {
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 128;
     pub const MaxMessagesPerCommit: u64 = 5;
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl incentivized_outbound_channel::Config for Test {
@@ -147,8 +163,20 @@ impl incentivized_outbound_channel::Config for Test {
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type FeeCurrency = ();
-    type SetFeeOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
+}
+
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+
+impl technical::Config for Test {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -156,17 +184,19 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    technical::GenesisConfig::<Test> {
+        register_tech_accounts: vec![(
+            GetTrustlessBridgeFeesAccountId::get(),
+            GetTrustlessBridgeFeesTechAccountId::get(),
+        )],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
-            networks: vec![(
-                BASE_NETWORK_ID,
-                vec![(
-                    H160::from(SOURCE_CHANNEL_ADDR),
-                    Default::default(),
-                    Default::default(),
-                )],
-            )],
-            interval: 1u64,
+            networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
+            interval: 10u64,
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
@@ -210,28 +240,20 @@ fn test_submit() {
         Assets::mint_to(&XOR, &who, &who, 300u32.into()).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who.clone()),
             BASE_NETWORK_ID,
-            H160::from(SOURCE_CHANNEL_ADDR),
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR),),
-            1
-        );
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who),
             BASE_NETWORK_ID,
-            H160::from(SOURCE_CHANNEL_ADDR),
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR),),
-            2
-        );
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
     });
 }
 
@@ -247,9 +269,8 @@ fn test_submit_fees_burned() {
         let old_balance = Assets::total_balance(&XOR, &who).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who.clone()),
             BASE_NETWORK_ID,
-            H160::from(SOURCE_CHANNEL_ADDR),
             target,
             &vec![0, 1, 2]
         ));
@@ -271,9 +292,8 @@ fn test_submit_not_enough_funds() {
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 &vec![0, 1, 2]
             ),
@@ -294,9 +314,8 @@ fn test_submit_exceeds_queue_limit() {
         let max_messages = MaxMessagesPerCommit::get();
         (0..max_messages).for_each(|_| {
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who.clone()),
                 BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 &vec![0, 1, 2],
             )
@@ -305,9 +324,8 @@ fn test_submit_exceeds_queue_limit() {
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 &vec![0, 1, 2]
             ),
@@ -338,9 +356,8 @@ fn test_submit_exceeds_payload_limit() {
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 payload.as_slice()
             ),
@@ -355,12 +372,11 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR), u64::MAX);
+        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
         assert_noop!(
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 &vec![0, 1, 2]
             ),
@@ -377,85 +393,14 @@ fn test_submit_with_wrong_network_id() {
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(
-                &who,
+                &RawOrigin::Signed(who),
                 BASE_NETWORK_ID + 1,
-                H160::from(SOURCE_CHANNEL_ADDR),
                 target,
                 &vec![0, 1, 2]
             ),
             Error::<Test>::InvalidChannel
         );
 
-        assert_eq!(
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
-            0
-        );
-    });
-}
-
-#[test]
-fn test_submit_with_wrong_channel_address() {
-    new_tester().execute_with(|| {
-        let target = H160::zero();
-        let who: AccountId = Keyring::Bob.into();
-
-        assert_noop!(
-            IncentivizedOutboundChannel::submit(
-                &who,
-                BASE_NETWORK_ID,
-                H160::repeat_byte(12),
-                target,
-                &vec![0, 1, 2]
-            ),
-            Error::<Test>::InvalidChannel
-        );
-
-        assert_eq!(
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::repeat_byte(12)),
-            0
-        );
-    });
-}
-
-#[test]
-fn test_register_channel() {
-    new_tester().execute_with(|| {
-        let who: AccountId = Keyring::Bob.into();
-        let source: AccountId = Keyring::Charlie.into();
-
-        assert_ok!(IncentivizedOutboundChannel::register_channel(
-            Origin::signed(who.clone()),
-            BASE_NETWORK_ID + 1,
-            H160::from(SOURCE_CHANNEL_ADDR),
-            source.clone()
-        ));
-
-        assert_eq!(
-            ChannelOwners::<Test>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
-            Some(who.clone())
-        );
-
-        assert_eq!(
-            DestAccounts::<Test>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
-            source.clone()
-        );
-    });
-}
-
-#[test]
-fn test_register_channel_wrong() {
-    new_tester().execute_with(|| {
-        let who: AccountId = Keyring::Bob.into();
-        let source: AccountId = Keyring::Charlie.into();
-
-        assert_noop!(
-            IncentivizedOutboundChannel::register_channel(
-                Origin::signed(who.clone()),
-                BASE_NETWORK_ID,
-                H160::from(SOURCE_CHANNEL_ADDR),
-                source.clone()
-            ),
-            Error::<Test>::ChannelExists
-        );
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1), 0);
     });
 }

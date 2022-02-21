@@ -1,6 +1,11 @@
 mod error;
+mod estimate_gas;
 mod ethereum_relay;
 mod fetch_ethereum_header;
+mod mint_test_token;
+mod register_bridge;
+mod register_erc20_app;
+mod register_erc20_asset;
 mod subscribe_beefy;
 mod substrate_relay;
 mod transfer_to_ethereum;
@@ -27,12 +32,17 @@ impl Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    SubscribeBeefy(subscribe_beefy::SubscribeBeefy),
-    FetchEthereumHeader(fetch_ethereum_header::FetchEthereumHeader),
-    EthereumRelay(ethereum_relay::EthereumRelayer),
-    SubstrateRelay(substrate_relay::SubstrateRelay),
-    TransferToSora(transfer_to_sora::TransferToSora),
-    TransferToEthereum(transfer_to_ethereum::TransferToEthereum),
+    SubscribeBeefy(subscribe_beefy::Command),
+    FetchEthereumHeader(fetch_ethereum_header::Command),
+    EthereumRelay(ethereum_relay::Command),
+    SubstrateRelay(substrate_relay::Command),
+    TransferToSora(transfer_to_sora::Command),
+    TransferToEthereum(transfer_to_ethereum::Command),
+    RegisterBridge(register_bridge::Command),
+    RegisterErc20App(register_erc20_app::Command),
+    RegisterErc20Asset(register_erc20_asset::Command),
+    EstimateGas(estimate_gas::Command),
+    MintTestToken(mint_test_token::Command),
 }
 
 impl Commands {
@@ -44,6 +54,11 @@ impl Commands {
             Self::EthereumRelay(cmd) => cmd.run().await,
             Self::TransferToSora(cmd) => cmd.run().await,
             Self::TransferToEthereum(cmd) => cmd.run().await,
+            Self::RegisterBridge(cmd) => cmd.run().await,
+            Self::RegisterErc20App(cmd) => cmd.run().await,
+            Self::RegisterErc20Asset(cmd) => cmd.run().await,
+            Self::EstimateGas(cmd) => cmd.run().await,
+            Self::MintTestToken(cmd) => cmd.run().await,
         }
     }
 }

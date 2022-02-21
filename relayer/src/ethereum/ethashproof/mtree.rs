@@ -272,7 +272,7 @@ fn test_sha256_hash() {
     let a = H128::from_low_u64_le(1);
     let b = H128::from_low_u64_le(2);
     let hash = sha256_hash(a, b);
-    assert_eq!(hash, hex!("db192e3f40b4d8bd138bd60750ffa373").into());
+    assert_eq!(hash, hex!("bb257770266f380b7be21b7d2b1e96b8").into());
 }
 
 #[test]
@@ -282,5 +282,5 @@ fn test_sha256_element_hash() {
     e.0[0] = 1;
     e.0[127] = 2;
     let hash = e.hash();
-    assert_eq!(hash, hex!("89327b9464fb6be9198bff70824d7d9e").into());
+    assert_eq!(hash, hex!("9f5b55ceb4fa2e01d310ef4ecafc3856").into());
 }

@@ -47,8 +47,9 @@ std = [
     "bridge-types/std",
 ]
 runtime-benchmarks = [
-    "bridge-types/runtime-benchmarks",
     "frame-benchmarking",
     "sp-runtime/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
 ]

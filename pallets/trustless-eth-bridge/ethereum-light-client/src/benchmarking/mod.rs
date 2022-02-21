@@ -2,12 +2,15 @@
 use super::*;
 
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_support::assert_ok;
 use frame_system::RawOrigin;
 
 #[allow(unused_imports)]
 use crate::Pallet as EthereumLightClient;
 
 mod data;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 /// The index up until which headers are reserved for pruning. The header at
 /// `data::headers_11963025_to_11963069()[RESERVED_FOR_PRUNING]` is specially
@@ -16,24 +19,27 @@ mod data;
 const RESERVED_FOR_PRUNING: usize = HEADERS_TO_PRUNE_IN_SINGLE_IMPORT as usize;
 
 fn get_best_block<T: Config>() -> (EthereumHeaderId, U256) {
-    <BestBlock<T>>::get()
+    <BestBlock<T>>::get(BASE_NETWORK_ID).unwrap()
 }
 
 fn get_blocks_to_prune<T: Config>() -> PruningRange {
-    <BlocksToPrune<T>>::get()
+    <BlocksToPrune<T>>::get(BASE_NETWORK_ID).unwrap()
 }
 
 fn set_blocks_to_prune<T: Config>(oldest_unpruned: u64, oldest_to_keep: u64) {
-    <BlocksToPrune<T>>::put(PruningRange {
-        oldest_unpruned_block: oldest_unpruned,
-        oldest_block_to_keep: oldest_to_keep,
-    });
+    <BlocksToPrune<T>>::insert(
+        BASE_NETWORK_ID,
+        PruningRange {
+            oldest_unpruned_block: oldest_unpruned,
+            oldest_block_to_keep: oldest_to_keep,
+        },
+    );
 }
 
 fn assert_header_pruned<T: Config>(hash: H256, number: u64) {
-    assert!(Headers::<T>::get(hash).is_none());
+    assert!(Headers::<T>::get(BASE_NETWORK_ID, hash).is_none());
 
-    let hashes_at_number = <HeadersByNumber<T>>::get(number);
+    let hashes_at_number = <HeadersByNumber<T>>::get(BASE_NETWORK_ID, number);
     assert!(hashes_at_number.is_none() || !hashes_at_number.unwrap().contains(&hash),);
 }
 
@@ -58,7 +64,8 @@ benchmarks! {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
-        EthereumLightClient::<T>::initialize_storage(
+        EthereumLightClient::<T>::initialize_storage_inner(
+            BASE_NETWORK_ID,
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -69,7 +76,7 @@ benchmarks! {
             headers[next_finalized_idx].number,
         );
 
-    }: _(RawOrigin::Signed(caller.clone()), header, header_proof)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -114,11 +121,12 @@ benchmarks! {
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
         let mut header_sibling = header.clone();
-        header_sibling.difficulty -= 1.into();
+        header_sibling.difficulty -= 1u32.into();
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
-        EthereumLightClient::<T>::initialize_storage(
+        EthereumLightClient::<T>::initialize_storage_inner(
+            BASE_NETWORK_ID,
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -129,7 +137,7 @@ benchmarks! {
             headers[finalized_idx].number,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -169,7 +177,8 @@ benchmarks! {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
-        EthereumLightClient::<T>::initialize_storage(
+        EthereumLightClient::<T>::initialize_storage_inner(
+            BASE_NETWORK_ID,
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -180,7 +189,7 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -218,11 +227,12 @@ benchmarks! {
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
         let mut header_sibling = header.clone();
-        header_sibling.difficulty -= 1.into();
+        header_sibling.difficulty -= 1u32.into();
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
-        EthereumLightClient::<T>::initialize_storage(
+        EthereumLightClient::<T>::initialize_storage_inner(
+            BASE_NETWORK_ID,
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -233,7 +243,7 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -252,6 +262,20 @@ benchmarks! {
             get_blocks_to_prune::<T>().oldest_unpruned_block,
             oldest_header.number + 1,
         );
+    }
+
+    register_network {
+        let descendants_until_final = T::DescendantsUntilFinalized::get();
+
+        let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
+        let next_tip_idx = next_finalized_idx + descendants_until_final as usize;
+        let headers = data::headers_11963025_to_11963069();
+    }: _(RawOrigin::Root, 12, headers[next_tip_idx-1].clone(), U256::zero())
+    verify {
+        let header = headers[next_tip_idx].clone();
+        let header_proof = data::header_proof(header.compute_hash()).unwrap();
+        let caller: T::AccountId = whitelisted_caller();
+        assert_ok!(EthereumLightClient::<T>::import_header(RawOrigin::Signed(caller.clone()).into(), 12, header, header_proof));
     }
 }
 

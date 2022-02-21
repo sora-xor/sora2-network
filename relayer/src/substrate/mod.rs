@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::prelude::*;
 use bridge_types::H256;
 use codec::IoReader;
+use common::{AssetId32, Balance, PredefinedAssetId};
 pub use jsonrpsee::types::Subscription;
 use pallet_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use pallet_mmr_rpc::{LeafIndex, LeafProof as RawLeafProof};
@@ -30,6 +31,7 @@ pub type DigestHash = beefy_merkle_tree::Hash;
 pub type BeefySignedCommitment = beefy_primitives::SignedCommitment<BlockNumber, MmrHash>;
 pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber, MmrHash>;
 pub type MmrLeaf = bridge_types::types::MmrLeaf<BlockNumber, BlockHash, MmrHash, DigestHash>;
+pub type AssetId = AssetId32<PredefinedAssetId>;
 
 pub enum StorageKind {
     Persistent,
@@ -191,6 +193,27 @@ impl UnsignedClient {
         ))
     }
 
+    pub async fn get_total_balance(
+        &self,
+        asset_id: AssetId,
+        account: AccountId,
+    ) -> AnyResult<Option<Balance>> {
+        let res = self
+            .api()
+            .client
+            .rpc()
+            .client
+            .request::<Option<assets_runtime_api::BalanceInfo<Balance>>>(
+                "assets_totalBalance",
+                &[
+                    serde_json::to_value(asset_id)?,
+                    serde_json::to_value(account)?,
+                ],
+            )
+            .await?;
+        Ok(res.map(|x| x.balance))
+    }
+
     pub fn api(&self) -> &ApiInner {
         &self.0
     }
@@ -212,6 +235,10 @@ impl SignedClient {
         };
         res.load_nonce().await?;
         Ok(res)
+    }
+
+    pub fn account_id(&self) -> AccountId {
+        self.key.account_id().clone()
     }
 
     pub fn unsigned(self) -> UnsignedClient {

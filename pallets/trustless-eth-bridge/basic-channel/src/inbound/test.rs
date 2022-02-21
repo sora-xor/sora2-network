@@ -1,16 +1,19 @@
+use std::marker::PhantomData;
+
 use super::*;
 
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_support::{assert_err, assert_noop, assert_ok, parameter_types};
+use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{DispatchResult, MultiSignature};
 use sp_std::convert::From;
 
-use bridge_types::traits::MessageDispatch;
+use bridge_types::traits::{MessageDispatch, OutboundRouter};
 use bridge_types::types::{Message, Proof};
 use bridge_types::Log;
 
@@ -75,6 +78,15 @@ impl Verifier for MockVerifier {
         let log: Log = rlp::decode(&message.data).unwrap();
         Ok(log)
     }
+
+    fn initialize_storage(
+        _network_id: EthNetworkId,
+        _headers: Vec<bridge_types::Header>,
+        _difficulty: u128,
+        _descendants_until_final: u8,
+    ) -> Result<(), &'static str> {
+        Ok(())
+    }
 }
 
 // Mock Dispatch
@@ -94,16 +106,34 @@ impl basic_inbound_channel::Config for Test {
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type WeightInfo = ();
+    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+}
+
+pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+
+impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+    fn submit(
+        _: EthNetworkId,
+        channel: ChannelId,
+        _: &RawOrigin<AccountId>,
+        _: H160,
+        _: &[u8],
+    ) -> DispatchResult {
+        if channel == ChannelId::Incentivized {
+            return Err(DispatchError::Other("some error!"));
+        }
+        Ok(())
+    }
 }
 
 pub fn new_tester(source_channel: H160) -> sp_io::TestExternalities {
     new_tester_with_config(basic_inbound_channel::GenesisConfig {
-        networks: vec![(BASE_NETWORK_ID, vec![(source_channel, Default::default())])],
+        networks: vec![(BASE_NETWORK_ID, source_channel)],
     })
 }
 
 pub fn new_tester_with_config(
-    config: basic_inbound_channel::GenesisConfig<Test>,
+    config: basic_inbound_channel::GenesisConfig,
 ) -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
@@ -203,8 +233,7 @@ fn test_submit() {
             BASE_NETWORK_ID,
             message_1
         ));
-        let nonce: u64 =
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit message 2
@@ -221,8 +250,7 @@ fn test_submit() {
             BASE_NETWORK_ID,
             message_2
         ));
-        let nonce: u64 =
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
     });
 }
@@ -247,8 +275,7 @@ fn test_submit_with_invalid_nonce() {
             BASE_NETWORK_ID,
             message.clone()
         ));
-        let nonce: u64 =
-            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
@@ -276,7 +303,7 @@ fn test_submit_with_invalid_network_id() {
         };
         assert_noop!(
             BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID + 1, message.clone()),
-            Error::<Test>::InvalidSourceChannel
+            Error::<Test>::InvalidNetwork
         );
     });
 }
@@ -284,17 +311,15 @@ fn test_submit_with_invalid_network_id() {
 #[test]
 fn test_register_channel() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
-        let owner: AccountId = Keyring::Charlie.into();
-
         assert_ok!(BasicInboundChannel::register_channel(
-            Origin::signed(owner.clone()),
+            Origin::root(),
             BASE_NETWORK_ID + 1,
             H160::from(SOURCE_CHANNEL_ADDR),
         ));
 
         assert_eq!(
-            ChannelOwners::<Test>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
-            Some(owner.clone())
+            ChannelAddresses::<Test>::get(BASE_NETWORK_ID + 1),
+            Some(H160::from(SOURCE_CHANNEL_ADDR))
         );
     });
 }
@@ -302,20 +327,53 @@ fn test_register_channel() {
 #[test]
 fn test_register_existing_channel() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
-        let owner: AccountId = Keyring::Charlie.into();
-
         assert_noop!(
             BasicInboundChannel::register_channel(
-                Origin::signed(owner.clone()),
+                Origin::root(),
                 BASE_NETWORK_ID,
                 H160::from(SOURCE_CHANNEL_ADDR),
             ),
             Error::<Test>::ChannelExists
         );
-
-        assert_eq!(
-            ChannelOwners::<Test>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR)),
-            Some(Default::default())
-        );
     });
+}
+
+#[test]
+fn test_register_app() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_ok!(BasicInboundChannel::register_app(
+            BASE_NETWORK_ID,
+            H160::repeat_byte(7)
+        ));
+    })
+}
+
+#[test]
+fn test_register_app_invalid_network() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_err!(
+            BasicInboundChannel::register_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
+            Error::<Test>::InvalidNetwork
+        );
+    })
+}
+
+#[test]
+fn test_deregister_app() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_ok!(BasicInboundChannel::deregister_app(
+            BASE_NETWORK_ID,
+            H160::repeat_byte(7)
+        ));
+    })
+}
+
+#[test]
+fn test_deregister_app_invalid_network() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_err!(
+            BasicInboundChannel::deregister_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
+            Error::<Test>::InvalidNetwork
+        );
+    })
 }

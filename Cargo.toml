@@ -82,6 +82,12 @@ thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", br
 #orml-traits = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 #orml-tokens = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 
+[patch."https://github.com/open-web3-stack/open-runtime-module-library.git"]
+orml-tokens = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.15" }
+orml-traits = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.15" }
+orml-currencies = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.15" }
+orml-utilities = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.15" }
+
 #[patch."https://github.com/soramitsu/sora2-frame-pallets.git"]
 #pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
 #pallet-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
@@ -160,6 +166,7 @@ sp-trie = { git = "https://github.com/paritytech//substrate.git", branch = "polk
 sp-version = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 sp-rpc = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 sc-telemetry = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
+sp-keyring = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 pallet-mmr-primitives = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 pallet-mmr-rpc = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
@@ -171,6 +178,7 @@ pallet-beefy-mmr = { git = "https://github.com/paritytech//substrate.git", branc
 beefy-gadget = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
 beefy-merkle-tree = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.15" }
+substrate-wasm-builder = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.16" }
 
 # https://github.com/soramitsu/sora2-frame-pallets.git
 #git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.8#74101dc21cfffb4c2d014fcc28edc166d5ca1b16
@@ -352,6 +360,7 @@ members = [
     "pallets/trustless-eth-bridge/incentivized-channel",
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/eth-app",
+    "pallets/trustless-eth-bridge/erc20-app",
     "pallets/trustless-eth-bridge/leaf-provider",
     "pallets/trustless-eth-bridge/types",
     "relayer",

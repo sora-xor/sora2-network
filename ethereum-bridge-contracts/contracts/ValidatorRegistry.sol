@@ -2,7 +2,7 @@
 pragma solidity ^0.8.5;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./sora2-eth/Ownable.sol";
 import "./utils/MerkleProof.sol";
 
 /**

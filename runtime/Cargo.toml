@@ -11,7 +11,7 @@ version = "1.2.2"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = "3.0.0"
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.16" }
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
@@ -35,6 +35,7 @@ basic-channel = { path = "../pallets/trustless-eth-bridge/basic-channel", defaul
 incentivized-channel = { path = "../pallets/trustless-eth-bridge/incentivized-channel", default-features = false }
 dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
+erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
 leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
 leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
 
@@ -170,6 +171,7 @@ std = [
     "incentivized-channel/std",
     "dispatch/std",
     "eth-app/std",
+    "erc20-app/std",
     "leaf-provider/std",
     "leaf-provider-runtime-api/std",
     "bridge-types/std",
@@ -249,6 +251,7 @@ runtime-benchmarks = [
     "incentivized-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
     "eth-app/runtime-benchmarks",
+    "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",

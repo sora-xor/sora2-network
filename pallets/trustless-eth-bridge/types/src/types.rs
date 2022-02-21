@@ -79,7 +79,7 @@ impl From<Digest> for AuxiliaryDigest {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(ChannelId, EthNetworkId, H256),
+    Commitment(EthNetworkId, ChannelId, H256),
 }
 
 impl Into<DigestItem> for AuxiliaryDigestItem {
@@ -113,3 +113,19 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     /// Digest hash of previous block (because digest for current block can be incomplete)
     pub digest_hash: DigestHash,
 }
+
+/// A type of asset registered on a bridge.
+///
+/// - Thischain: a Sora asset.
+/// - Sidechain: an Ethereum token.
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum AssetKind {
+    Thischain,
+    Sidechain,
+}
+
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
+pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+pub const TECH_ACCOUNT_FEES: &[u8] = b"fees";
+pub const TECH_ACCOUNT_TREASURY_PREFIX: &[u8] = b"treasury";

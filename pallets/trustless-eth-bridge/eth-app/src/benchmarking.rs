@@ -1,50 +1,60 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
+use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
 use sp_core::H160;
+use traits::MultiCurrency;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 #[allow(unused_imports)]
 use crate::Pallet as ETHApp;
 
 benchmarks! {
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>}
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic
     burn {
         let caller: T::AccountId = whitelisted_caller();
         let recipient = H160::repeat_byte(2);
-        let amount: U256 = 500.into();
+        let amount = balance!(20);
+        let asset_id: T::AssetId = XOR.into();
 
-        T::Asset::deposit(&caller, amount)?;
+        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
 
-    }: _(RawOrigin::Signed(caller.clone()), ChannelId::Incentivized, recipient, amount)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Incentivized, recipient, amount)
     verify {
-        assert_eq!(T::Asset::balance(&caller), U256::zero());
+        assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &caller).unwrap(), balance!(0));
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
     // * `mint` successfully adds amount to recipient account
     mint {
-        let origin = T::CallOrigin::successful_origin();
-        if let Ok(caller) = T::CallOrigin::try_origin(origin.clone()) {
-            <Address<T>>::put(caller);
-        } else {
-            return Err("Failed to extract caller address from origin");
-        }
+        let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, contract);
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
         let sender = H160::zero();
-        let amount: U256 = 500.into();
+        let amount = balance!(500);
 
-        let call = Call::<T>::mint(sender, recipient_lookup, amount);
+        let call = Call::<T>::mint{sender, recipient: recipient_lookup, amount: amount.into()};
 
-    }: { call.dispatch_bypass_filter(origin)? }
+    }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(T::Asset::balance(&recipient), amount);
+        assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &recipient).unwrap(), amount);
+    }
+
+    register_network {
+        let asset_id: T::AssetId = XOR.into();
+        let contract = H160::repeat_byte(6);
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id, contract)
+    verify {
+        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID), Some((contract, asset_id)));
     }
 }
 

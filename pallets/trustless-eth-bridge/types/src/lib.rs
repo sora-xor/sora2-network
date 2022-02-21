@@ -41,4 +41,4 @@ impl From<ethabi::Error> for DecodeError {
     }
 }
 
-pub type EthNetworkId = u64;
+pub type EthNetworkId = u32;

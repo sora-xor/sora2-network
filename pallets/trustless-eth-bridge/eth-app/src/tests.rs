@@ -16,7 +16,7 @@ fn last_event() -> Event {
 #[test]
 fn mints_after_handling_ethereum_event() {
     new_tester().execute_with(|| {
-        let peer_contract = H160::repeat_byte(1);
+        let peer_contract = H160::default();
         let sender = H160::repeat_byte(7);
         let recipient: AccountId = Keyring::Bob.into();
         let amount = balance!(10);
@@ -34,9 +34,10 @@ fn mints_after_handling_ethereum_event() {
 
         assert_eq!(
             Event::EthApp(crate::Event::<Test>::Minted(
+                BASE_NETWORK_ID,
                 sender,
                 recipient,
-                amount.into()
+                amount
             )),
             last_event()
         );
@@ -48,20 +49,24 @@ fn burn_should_emit_bridge_event() {
     new_tester().execute_with(|| {
         let recipient = H160::repeat_byte(2);
         let bob: AccountId = Keyring::Bob.into();
-        assert_ok!(Assets::mint_to(&XOR, &bob, &bob, 500u32.into()));
+        let amount = balance!(20);
+        assert_ok!(Assets::mint_to(&XOR, &bob, &bob, balance!(500)));
 
         assert_ok!(EthApp::burn(
             Origin::signed(bob.clone()),
-            ChannelId::Incentivized,
             BASE_NETWORK_ID,
-            H160::repeat_byte(1),
-            H160::repeat_byte(1),
+            ChannelId::Incentivized,
             recipient.clone(),
-            20u32.into()
+            amount.into()
         ));
 
         assert_eq!(
-            Event::EthApp(crate::Event::<Test>::Burned(bob, recipient, 20.into())),
+            Event::EthApp(crate::Event::<Test>::Burned(
+                BASE_NETWORK_ID,
+                bob,
+                recipient,
+                amount
+            )),
             last_event()
         );
     });
@@ -72,18 +77,17 @@ fn should_not_burn_on_commitment_failure() {
     new_tester().execute_with(|| {
         let sender: AccountId = Keyring::Bob.into();
         let recipient = H160::repeat_byte(9);
+        let amount = balance!(20);
 
-        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, 500u32.into()));
+        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, balance!(500)));
 
         assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
-                ChannelId::Basic,
                 BASE_NETWORK_ID,
-                H160::repeat_byte(1),
-                H160::repeat_byte(1),
+                ChannelId::Basic,
                 recipient.clone(),
-                20u32.into()
+                amount
             ),
             DispatchError::Other("some error!")
         );

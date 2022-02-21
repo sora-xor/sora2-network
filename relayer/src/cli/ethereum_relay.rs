@@ -4,7 +4,7 @@ use clap::*;
 use std::path::PathBuf;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct EthereumRelayer {
+pub(super) struct Command {
     #[clap(flatten)]
     ethereum: EthereumUrl,
     #[clap(flatten)]
@@ -15,7 +15,7 @@ pub(super) struct EthereumRelayer {
     key: SubstrateKey,
 }
 
-impl EthereumRelayer {
+impl Command {
     pub async fn run(&self) -> AnyResult<()> {
         let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone()).await?;
         let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone())
