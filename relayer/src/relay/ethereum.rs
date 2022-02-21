@@ -13,7 +13,7 @@ use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
 use futures::TryFutureExt;
 use std::path::PathBuf;
-use substrate_gen::DefaultConfig;
+use substrate_gen::{runtime, DefaultConfig};
 use subxt::TransactionProgress;
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
@@ -235,13 +235,14 @@ impl Relay {
 
     async fn finalize_transaction<'a>(
         &'a self,
-        progress: TransactionProgress<'a, DefaultConfig>,
+        progress: TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>,
         block_number: u64,
     ) -> AnyResult<()> {
         let events = match progress.wait_for_finalized_success().await {
-            Err(subxt::Error::Runtime(subxt::RuntimeError::Module(err)))
-                if err.error == "DuplicateHeader" =>
-            {
+            Err(subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module {
+                index,
+                error,
+            }))) if index == 94 && error == 3 => {
                 warn!("DublicateHeader {}", block_number);
                 return Ok(());
             }
@@ -264,7 +265,9 @@ impl Relay {
     async fn process_block<'a>(
         &'a self,
         block: Block<H256>,
-    ) -> AnyResult<Option<TransactionProgress<'a, DefaultConfig>>> {
+    ) -> AnyResult<
+        Option<TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>>,
+    > {
         let nonce = block.nonce.unwrap_or_default();
         let header = make_header(block);
         debug!("Process ethereum header: {:?}", header);

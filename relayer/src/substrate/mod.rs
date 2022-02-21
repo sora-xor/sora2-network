@@ -1,34 +1,38 @@
-pub mod event_subscription;
-
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::prelude::*;
 use bridge_types::H256;
 use codec::IoReader;
-pub use jsonrpsee::types::Subscription;
 use pallet_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use pallet_mmr_rpc::{LeafIndex, LeafProof as RawLeafProof};
 use std::sync::RwLock;
+use substrate_gen::runtime::DefaultAccountData;
 pub use substrate_gen::{runtime, DefaultConfig};
+pub use subxt::rpc::Subscription;
+use subxt::rpc::{rpc_params, ClientT, SubscriptionClientT};
 use subxt::sp_core::{Bytes, Pair};
 pub use subxt::*;
 use tokio::time::Instant;
 
-pub type ApiInner = runtime::RuntimeApi<DefaultConfig>;
+pub type DefaultExtra = subxt::DefaultExtraWithTxPayment<
+    DefaultConfig,
+    subxt::extrinsic::ChargeTransactionPayment<DefaultConfig>,
+>;
+pub type ApiInner = runtime::RuntimeApi<DefaultConfig, DefaultExtra>;
 pub type KeyPair = subxt::sp_core::sr25519::Pair;
-pub type PairSigner = subxt::PairSigner<DefaultConfig, KeyPair>;
+pub type PairSigner = subxt::PairSigner<DefaultConfig, DefaultExtra, KeyPair>;
 pub type AccountId = <DefaultConfig as subxt::Config>::AccountId;
-pub type AccountData = <DefaultConfig as ExtrinsicExtraData<DefaultConfig>>::AccountData;
 pub type Index = <DefaultConfig as subxt::Config>::Index;
 pub type BlockNumber = <DefaultConfig as subxt::Config>::BlockNumber;
 pub type BlockHash = <DefaultConfig as subxt::Config>::Hash;
-pub type SignedPayload = subxt::extrinsic::SignedPayload<DefaultConfig>;
-pub type UncheckedExtrinsic = subxt::extrinsic::UncheckedExtrinsic<DefaultConfig>;
+pub type SignedPayload = subxt::extrinsic::SignedPayload<DefaultConfig, DefaultExtra>;
+pub type UncheckedExtrinsic = subxt::extrinsic::UncheckedExtrinsic<DefaultConfig, DefaultExtra>;
 pub type MmrHash = H256;
 pub type DigestHash = beefy_merkle_tree::Hash;
-pub type BeefySignedCommitment = beefy_primitives::SignedCommitment<BlockNumber, MmrHash>;
-pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber, MmrHash>;
+pub type BeefySignedCommitment =
+    beefy_primitives::SignedCommitment<BlockNumber, beefy_primitives::crypto::Signature>;
+pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber>;
 pub type MmrLeaf = bridge_types::types::MmrLeaf<BlockNumber, BlockHash, MmrHash, DigestHash>;
 
 pub enum StorageKind {
@@ -123,16 +127,15 @@ impl UnsignedClient {
         storage: StorageKind,
         key: Vec<u8>,
     ) -> AnyResult<Option<Vec<u8>>> {
-        let params = [
-            serde_json::to_value(storage.as_string())?,
-            serde_json::to_value(Bytes(key))?,
-        ];
         let res = self
             .api()
             .client
             .rpc()
             .client
-            .request::<Option<Bytes>>("offchain_localStorageGet", &params)
+            .request::<Option<Bytes>>(
+                "offchain_localStorageGet",
+                rpc_params![storage.as_string(), Bytes(key)],
+            )
             .await?;
         Ok(res.map(|x| x.0))
     }
@@ -145,7 +148,7 @@ impl UnsignedClient {
             .client
             .subscribe(
                 "beefy_subscribeJustifications",
-                &[],
+                None,
                 "beefy_unsubscribeJustifications",
             )
             .await?;
@@ -162,10 +165,7 @@ impl UnsignedClient {
             .client
             .rpc()
             .client
-            .request::<RawLeafProof<BlockHash>>(
-                "mmr_generateProof",
-                &[serde_json::to_value(leaf_index)?, serde_json::to_value(at)?],
-            )
+            .request::<RawLeafProof<BlockHash>>("mmr_generateProof", rpc_params![leaf_index, at])
             .await?;
         let leaf = MmrLeaf::decode(
             &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
@@ -178,17 +178,6 @@ impl UnsignedClient {
             proof,
             block_hash: res.block_hash,
         })
-    }
-
-    pub async fn subscribe_finalized_events(
-        &self,
-    ) -> AnyResult<event_subscription::EventSubscription<DefaultConfig>> {
-        let decoder = self.api().client.events_decoder().clone();
-        let subscription = self.api().client.rpc().subscribe_finalized_events().await?;
-        Ok(event_subscription::EventSubscription::new(
-            subscription,
-            decoder,
-        ))
     }
 
     pub fn api(&self) -> &ApiInner {
@@ -230,16 +219,14 @@ impl SignedClient {
 
     pub async fn load_nonce(&self) -> AnyResult<()> {
         let account_storage_entry =
-            <AccountData as subxt::AccountData<DefaultConfig>>::storage_entry(
-                self.account_id().clone(),
-            );
+            DefaultAccountData::storage_entry(self.account_id().clone().into());
         let account_data = self
             .api()
             .client
             .storage()
             .fetch_or_default(&account_storage_entry, None)
             .await?;
-        let nonce = <AccountData as subxt::AccountData<DefaultConfig>>::nonce(&account_data);
+        let nonce = DefaultAccountData::nonce(&account_data);
         self.set_nonce(nonce);
         Ok(())
     }
@@ -260,7 +247,7 @@ impl DerefMut for SignedClient {
 }
 
 #[async_trait::async_trait]
-impl Signer<DefaultConfig> for SignedClient {
+impl Signer<DefaultConfig, DefaultExtra> for SignedClient {
     fn account_id(&self) -> &AccountId {
         self.key.account_id()
     }

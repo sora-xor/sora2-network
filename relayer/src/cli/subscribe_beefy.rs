@@ -15,7 +15,7 @@ impl SubscribeBeefy {
         let proof = sub_api.mmr_generate_proof(0, None).await?;
         info!("Proof: {:?}", proof);
         let mut beefy_sub = sub_api.subscribe_beefy().await?;
-        while let Some(commitment) = beefy_sub.next().await.unwrap() {
+        while let Some(commitment) = beefy_sub.next().await.transpose()? {
             println!("{:?}", commitment.decode()?);
         }
         Ok(())

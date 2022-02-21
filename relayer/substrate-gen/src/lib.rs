@@ -14,7 +14,7 @@ pub struct SignatureParams {
 
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
-    generated_type_derives = "Clone, Debug"
+    generated_type_derives = "Clone"
 )]
 pub mod runtime {
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
@@ -54,13 +54,7 @@ pub mod runtime {
 pub use config::DefaultConfig;
 
 pub mod config {
-    use super::runtime;
     use std::fmt::Debug;
-    use std::marker::PhantomData;
-    use subxt::extrinsic::*;
-    use subxt::sp_runtime::generic::Era;
-    use subxt::sp_runtime::transaction_validity::TransactionValidityError;
-    use subxt::storage::SignedExtension;
     use subxt::*;
 
     #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -76,100 +70,5 @@ pub mod config {
             sp_runtime::generic::Header<Self::BlockNumber, sp_runtime::traits::BlakeTwo256>;
         type Signature = sp_runtime::MultiSignature;
         type Extrinsic = sp_runtime::OpaqueExtrinsic;
-    }
-
-    impl ExtrinsicExtraData<DefaultConfig> for DefaultConfig {
-        type AccountData = AccountData;
-        type Extra = DefaultExtra<DefaultConfig>;
-    }
-
-    pub type AccountData = runtime::system::storage::Account;
-    impl subxt::AccountData<DefaultConfig> for AccountData {
-        fn nonce(result: &<Self as StorageEntry>::Value) -> <DefaultConfig as Config>::Index {
-            result.nonce
-        }
-        fn storage_entry(account_id: <DefaultConfig as Config>::AccountId) -> Self {
-            Self(account_id)
-        }
-    }
-
-    #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, scale_info::TypeInfo)]
-    #[scale_info(skip_type_params(T))]
-    pub struct ChargeAssetTxPayment(#[codec(compact)] pub u128);
-
-    impl SignedExtension for ChargeAssetTxPayment {
-        const IDENTIFIER: &'static str = "ChargeTransactionPayment";
-        type AccountId = u64;
-        type Call = ();
-        type AdditionalSigned = ();
-        type Pre = ();
-        fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-            Ok(())
-        }
-    }
-
-    /// Default `SignedExtra` for substrate runtimes.
-    #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, scale_info::TypeInfo)]
-    #[scale_info(skip_type_params(T))]
-    pub struct DefaultExtra<T: Config> {
-        spec_version: u32,
-        tx_version: u32,
-        nonce: T::Index,
-        genesis_hash: T::Hash,
-    }
-
-    impl<T: subxt::Config + Clone + Debug + Eq + Send + Sync> subxt::extrinsic::SignedExtra<T>
-        for DefaultExtra<T>
-    {
-        type Extra = (
-            subxt::extrinsic::CheckSpecVersion<T>,
-            subxt::extrinsic::CheckTxVersion<T>,
-            subxt::extrinsic::CheckGenesis<T>,
-            subxt::extrinsic::CheckMortality<T>,
-            subxt::extrinsic::CheckNonce<T>,
-            subxt::extrinsic::CheckWeight<T>,
-            ChargeAssetTxPayment,
-        );
-        type Parameters = ();
-
-        fn new(
-            spec_version: u32,
-            tx_version: u32,
-            nonce: T::Index,
-            genesis_hash: T::Hash,
-            _params: Self::Parameters,
-        ) -> Self {
-            DefaultExtra {
-                spec_version,
-                tx_version,
-                nonce,
-                genesis_hash,
-            }
-        }
-
-        fn extra(&self) -> Self::Extra {
-            (
-                CheckSpecVersion(PhantomData, self.spec_version),
-                CheckTxVersion(PhantomData, self.tx_version),
-                CheckGenesis(PhantomData, self.genesis_hash),
-                CheckMortality((Era::Immortal, PhantomData), self.genesis_hash),
-                CheckNonce(self.nonce),
-                CheckWeight(PhantomData),
-                ChargeAssetTxPayment(Default::default()),
-            )
-        }
-    }
-
-    impl<T: Config + Clone + Debug + Eq + Send + Sync> SignedExtension for DefaultExtra<T> {
-        const IDENTIFIER: &'static str = "DefaultExtra";
-        type AccountId = T::AccountId;
-        type Call = ();
-        type AdditionalSigned =
-            <<Self as SignedExtra<T>>::Extra as SignedExtension>::AdditionalSigned;
-        type Pre = ();
-
-        fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-            self.extra().additional_signed()
-        }
     }
 }

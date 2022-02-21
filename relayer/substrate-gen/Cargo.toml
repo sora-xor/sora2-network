@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../../common" }
-subxt = { git = "https://github.com/paritytech/subxt", rev = "5db9b738" }
+subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
 codec = { package = "parity-scale-codec", version = "2", features = ["derive"] }
 scale-info = { version = "1.0.0", features = ["derive"] }
 bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }

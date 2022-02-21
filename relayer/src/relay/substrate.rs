@@ -140,7 +140,7 @@ impl Relay {
         justification: &BeefyJustification,
     ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
         let eth_commitment = beefy_light_client::Commitment {
-            payload: justification.commitment.payload.to_fixed_bytes(),
+            payload: justification.get_raw_payload().expect("should be checked"),
             block_number: justification.commitment.block_number as u64,
             validator_set_id: justification.commitment.validator_set_id as u32,
         };
@@ -440,11 +440,14 @@ impl Relay {
     }
 
     pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
-        let mut beefy_sub = self.sub.subscribe_beefy().await?;
         let beefy_block_gap = self.contract.maximum_block_gap().call().await?;
-        while let Some(encoded_commitment) = beefy_sub.next().await? {
+        let mut beefy_sub = self.sub.subscribe_beefy().await?;
+        while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification =
                 BeefyJustification::create(self.sub.clone(), encoded_commitment).await?;
+            if !justification.is_supported() {
+                continue;
+            }
             let latest_block = self.contract.latest_beefy_block().call().await?;
             let should_send = !ignore_unneeded_commitments
                 || (justification.commitment.block_number as u64

@@ -72,6 +72,17 @@ impl BeefyJustification {
         })
     }
 
+    pub fn is_supported(&self) -> bool {
+        self.get_raw_payload().is_some()
+    }
+
+    pub fn get_raw_payload(&self) -> Option<[u8; 32]> {
+        self.commitment
+            .payload
+            .get_raw(&beefy_primitives::known_payload_ids::MMR_ROOT_ID)
+            .and_then(|x| x.clone().try_into().ok())
+    }
+
     pub fn validator_eth_signature(&self, pos: usize) -> Bytes {
         let mut validator_signature = self.signatures[pos].clone().expect("signed").to_vec();
         validator_signature[64] += 27;

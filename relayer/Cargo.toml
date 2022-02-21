@@ -11,7 +11,7 @@ substrate-gen = { path = "./substrate-gen" }
 bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
 ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "4c677933" }
 common = { path = "../common" }
-subxt = { git = "https://github.com/paritytech/subxt", rev = "5db9b738" }
+subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
 tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
 anyhow = "1.0.51"
