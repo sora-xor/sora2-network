@@ -84,12 +84,12 @@ pub mod pallet {
     /// Source of funds to pay relayers
     #[pallet::storage]
     #[pallet::getter(fn source_account)]
-    pub(super) type SourceAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type SourceAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// Treasury Account
     #[pallet::storage]
     #[pallet::getter(fn treasury_account)]
-    pub(super) type TreasuryAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type TreasuryAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -97,6 +97,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -182,12 +183,17 @@ pub mod pallet {
             if amount.is_zero() {
                 return;
             }
+            let source_account = if let Some(acc) = SourceAccount::<T>::get() {
+                acc
+            } else {
+                return;
+            };
             let reward_fraction: Perbill = RewardFraction::<T>::get();
             let reward_amount = reward_fraction.mul_ceil(amount);
 
             if let Err(err) = T::Currency::transfer(
                 T::FeeAssetId::get(),
-                &SourceAccount::<T>::get(),
+                &source_account,
                 relayer,
                 reward_amount,
             ) {
@@ -195,11 +201,17 @@ pub mod pallet {
                 return;
             }
 
+            let treasury_account = if let Some(acc) = TreasuryAccount::<T>::get() {
+                acc
+            } else {
+                return;
+            };
+
             if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
                 if let Err(err) = T::Currency::transfer(
                     T::FeeAssetId::get(),
-                    &SourceAccount::<T>::get(),
-                    &TreasuryAccount::<T>::get(),
+                    &source_account,
+                    &treasury_account,
                     treasure_amount,
                 ) {
                     warn!("Unable to transfer reward to relayer: {:?}", err);
@@ -212,8 +224,8 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         pub source_channel: H160,
         pub reward_fraction: Perbill,
-        pub source_account: T::AccountId,
-        pub treasury_account: T::AccountId,
+        pub source_account: Option<T::AccountId>,
+        pub treasury_account: Option<T::AccountId>,
     }
 
     #[cfg(feature = "std")]

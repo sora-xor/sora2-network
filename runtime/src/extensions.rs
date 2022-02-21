@@ -95,7 +95,7 @@ where
     }
 
     fn post_dispatch(
-        pre: Self::Pre,
+        pre: Option<Self::Pre>,
         info: &sp_runtime::traits::DispatchInfoOf<Self::Call>,
         post_info: &sp_runtime::traits::PostDispatchInfoOf<Self::Call>,
         len: usize,

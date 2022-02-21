@@ -32,6 +32,7 @@
 
 //! Service implementation. Specialized wrapper over substrate service.
 
+use beefy_gadget::notification::{BeefyBestBlockSender, BeefySignedCommitmentSender};
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
     self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
@@ -41,13 +42,13 @@ use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
-use sc_client_api::{Backend, ExecutorProvider};
+use sc_client_api::{Backend, BlockBackend, ExecutorProvider};
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
 use sc_service::{Configuration, TaskManager};
 use sp_core::offchain::OffchainStorage;
-use sp_core::{Pair, Public};
+use sp_core::{ByteArray, Pair};
 use sp_keystore::SyncCryptoStore;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use std::collections::BTreeSet;
@@ -103,7 +104,10 @@ pub fn new_partial(
                 sc_consensus_babe::BabeBlockImport<Block, FullClient, FullGrandpaBlockImport>,
                 sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
                 sc_consensus_babe::BabeLink<Block>,
-                beefy_gadget::notification::BeefySignedCommitmentSender<Block>,
+                (
+                    BeefySignedCommitmentSender<Block>,
+                    BeefyBestBlockSender<Block>,
+                ),
             ),
             sc_finality_grandpa::SharedVoterState,
             std::time::Duration, // slot-duration
@@ -140,6 +144,7 @@ pub fn new_partial(
         config.wasm_method,
         config.default_heap_pages,
         config.max_runtime_instances,
+        config.runtime_cache_size,
     );
 
     let (client, backend, keystore_container, task_manager) =
@@ -157,7 +162,8 @@ pub fn new_partial(
             .first()
             .map(|x| x.1.clone())
     {
-        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..]);
+        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
+            .expect("should have correct size");
         if let Some(keystore) = keystore_container.local_keystore() {
             if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
                 let seed = kep.to_raw_vec();
@@ -249,7 +255,7 @@ pub fn new_partial(
         )?;
 
     let (babe_block_import, babe_link) = sc_consensus_babe::block_import(
-        sc_consensus_babe::Config::get_or_compute(&*client)?,
+        sc_consensus_babe::Config::get(&*client)?,
         grandpa_block_import.clone(),
         client.clone(),
     )?;
@@ -279,14 +285,17 @@ pub fn new_partial(
         telemetry.as_ref().map(|x| x.handle()),
     )?;
 
-    let (beefy_link, beefy_commitment_stream) =
-        beefy_gadget::notification::BeefySignedCommitmentStream::channel();
+    let (beefy_commitment_link, beefy_commitment_stream) =
+        beefy_gadget::notification::BeefySignedCommitmentStream::<Block>::channel();
+    let (beefy_best_block_link, beefy_best_block_stream) =
+        beefy_gadget::notification::BeefyBestBlockStream::<Block>::channel();
+    let beefy_links = (beefy_commitment_link, beefy_best_block_link);
 
     let import_setup = (
         babe_block_import.clone(),
         grandpa_link,
         babe_link.clone(),
-        beefy_link,
+        beefy_links,
     );
     let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
     let rpc_setup = shared_voter_state.clone();
@@ -304,6 +313,7 @@ pub fn new_partial(
                 deny_unsafe,
                 beefy: crate::rpc::BeefyDeps {
                     beefy_commitment_stream: beefy_commitment_stream.clone(),
+                    beefy_best_block_stream: beefy_best_block_stream.clone(),
                     subscription_executor,
                 },
             };
@@ -362,15 +372,37 @@ pub fn new_full(
         )));
     }
 
-    config
-        .network
-        .extra_sets
-        .push(sc_finality_grandpa::grandpa_peers_set_config());
+    let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
+        &client
+            .block_hash(0)
+            .ok()
+            .flatten()
+            .expect("Genesis block exists; qed"),
+        &config.chain_spec,
+    );
 
     config
         .network
         .extra_sets
-        .push(beefy_gadget::beefy_peers_set_config());
+        .push(sc_finality_grandpa::grandpa_peers_set_config(
+            grandpa_protocol_name.clone(),
+        ));
+
+    let beefy_protocol_name = beefy_gadget::protocol_standard_name(
+        &client
+            .block_hash(0)
+            .ok()
+            .flatten()
+            .expect("Genesis block exists; qed"),
+        &config.chain_spec,
+    );
+
+    config
+        .network
+        .extra_sets
+        .push(beefy_gadget::beefy_peers_set_config(
+            beefy_protocol_name.clone(),
+        ));
 
     let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
@@ -405,7 +437,7 @@ pub fn new_full(
     let enable_grandpa = !config.disable_grandpa;
     let prometheus_registry = config.prometheus_registry().cloned();
 
-    let (block_import, link_half, babe_link, beefy_link) = import_setup;
+    let (block_import, link_half, babe_link, beefy_links) = import_setup;
 
     let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
         network: network.clone(),
@@ -507,11 +539,13 @@ pub fn new_full(
 
     if !disable_beefy {
         let beefy_params = beefy_gadget::BeefyParams {
+            protocol_name: beefy_protocol_name,
             client: client.clone(),
             backend: backend.clone(),
             key_store: keystore.clone(),
             network: network.clone(),
-            signed_commitment_sender: beefy_link,
+            signed_commitment_sender: beefy_links.0,
+            beefy_best_block_sender: beefy_links.1,
             min_block_delta: 8,
             prometheus_registry: prometheus_registry.clone(),
         };
@@ -525,6 +559,7 @@ pub fn new_full(
 
     let grandpa_config = sc_finality_grandpa::Config {
         // FIXME #1578 make this available through chainspec
+        protocol_name: grandpa_protocol_name,
         gossip_duration: Duration::from_millis(333),
         justification_period: 512,
         name: Some(name),

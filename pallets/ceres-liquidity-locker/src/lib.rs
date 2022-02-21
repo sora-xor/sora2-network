@@ -67,12 +67,13 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::type_value]
     pub fn DefaultForFeesOptionOneAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
     }
 
     /// Account for collecting fees from Option 1
@@ -84,7 +85,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("0a0455d92e1fda8dee17b2c58761c8efca490ef2a1a03322dbfea7379481d517");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
     }
 
     /// Account for collecting fees from Option 2
@@ -107,7 +108,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
     }
 
     /// Account which has permissions for changing CERES amount fee

@@ -99,6 +99,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {

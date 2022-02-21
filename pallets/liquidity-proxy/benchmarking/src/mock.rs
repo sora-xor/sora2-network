@@ -150,6 +150,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -699,9 +700,9 @@ impl ExtBuilder {
             distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
-            incentives_account_id: GetMbcRewardsAccountId::get(),
+            incentives_account_id: Some(GetMbcRewardsAccountId::get()),
             initial_collateral_assets: vec![VAL.into()],
-            free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
+            free_reserves_account_id: Some(GetMbcFreeReservesAccountId::get()),
         }
         .assimilate_storage(&mut t)
         .unwrap();

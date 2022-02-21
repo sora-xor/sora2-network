@@ -63,6 +63,7 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
+use sp_core::crypto::ByteArray;
 use sp_core::{Public, H160, H256, U256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
@@ -161,11 +162,11 @@ pub fn authority_keys_from_public_keys(
     (
         stash_address.into(),
         controller_address.into(),
-        AuraId::from_slice(&sr25519_key),
-        BabeId::from_slice(&sr25519_key),
-        GrandpaId::from_slice(&ed25519_key),
-        ImOnlineId::from_slice(&sr25519_key),
-        BeefyId::from_slice(&ecdsa_key),
+        AuraId::from_slice(&sr25519_key).unwrap(),
+        BabeId::from_slice(&sr25519_key).unwrap(),
+        GrandpaId::from_slice(&ed25519_key).unwrap(),
+        ImOnlineId::from_slice(&sr25519_key).unwrap(),
+        BeefyId::from_slice(&ecdsa_key).unwrap(),
     )
 }
 
@@ -318,6 +319,7 @@ pub fn dev_net_coded() -> ChainSpec {
         vec![],
         None,
         Some("sora-substrate-dev"),
+        None,
         Some(properties),
         None,
     )
@@ -464,6 +466,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
         boot_nodes,
         None,
         Some(protocol),
+        None,
         Some(properties),
         None,
     )
@@ -620,6 +623,7 @@ pub fn local_testnet_config() -> ChainSpec {
             )
         },
         vec![],
+        None,
         None,
         None,
         Some(properties),
@@ -945,14 +949,14 @@ fn testnet_genesis(
         } else {
             our_include!("bytes/iroha_migration_accounts_staging.in")
         },
-        account_id: iroha_migration_account_id.clone(),
+        account_id: Some(iroha_migration_account_id.clone()),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         eth_app: EthAppConfig {
             address: get_eth_app_address(),
-            dest_account: treasury_account.clone(),
+            dest_account: Some(treasury_account.clone()),
         },
         ethereum_light_client: EthereumLightClientConfig {
             initial_header: get_ethereum_header(),
@@ -961,11 +965,11 @@ fn testnet_genesis(
         incentivized_inbound_channel: IncentivizedInboundChannelConfig {
             source_channel: get_incentivized_channel_address(),
             reward_fraction: Perbill::from_percent(80),
-            source_account: treasury_account.clone(),
-            treasury_account: treasury_account.clone(),
+            source_account: Some(treasury_account.clone()),
+            treasury_account: Some(treasury_account.clone()),
         },
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            dest_account: treasury_account,
+            dest_account: Some(treasury_account.clone()),
             fee: 10000,
             interval: 10,
         },
@@ -974,13 +978,13 @@ fn testnet_genesis(
         },
         basic_outbound_channel: BasicOutboundChannelConfig {
             interval: 10,
-            principal: Default::default(),
+            principal: Some(treasury_account.clone()),
         },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
         },
         sudo: SudoConfig {
-            key: root_key.clone(),
+            key: Some(root_key.clone()),
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
@@ -1235,7 +1239,7 @@ fn testnet_genesis(
             .into(),
         },
         eth_bridge: EthBridgeConfig {
-            authority_account: eth_bridge_authority_account_id.clone(),
+            authority_account: Some(eth_bridge_authority_account_id.clone()),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
@@ -1285,9 +1289,9 @@ fn testnet_genesis(
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
-            incentives_account_id: mbc_pool_rewards_account_id,
+            incentives_account_id: Some(mbc_pool_rewards_account_id),
             initial_collateral_assets,
-            free_reserves_account_id: mbc_pool_free_reserves_account_id,
+            free_reserves_account_id: Some(mbc_pool_free_reserves_account_id),
         },
         pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1413,6 +1417,7 @@ pub fn main_net_coded() -> ChainSpec {
         boot_nodes,
         None,
         Some("sora-substrate-1"),
+        None,
         Some(properties),
         None,
     )
@@ -1441,7 +1446,7 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-    treasury_account: AccountId,
+    _treasury_account: AccountId,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
@@ -1722,14 +1727,12 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        eth_app: EthAppConfig {
-            address: get_eth_app_address(),
-            dest_account: treasury_account.clone(),
-        },
-        ethereum_light_client: EthereumLightClientConfig {
-            initial_header: get_ethereum_header(),
-            initial_difficulty: U256::zero(),
-        },
+        eth_app: Default::default(),
+        ethereum_light_client: Default::default(),
+        incentivized_inbound_channel: Default::default(),
+        incentivized_outbound_channel: Default::default(),
+        basic_inbound_channel: Default::default(),
+        basic_outbound_channel: Default::default(),
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
         },
@@ -1952,7 +1955,7 @@ fn mainnet_genesis(
             .into(),
         },
         eth_bridge: EthBridgeConfig {
-            authority_account: eth_bridge_authority_account_id.clone(),
+            authority_account: Some(eth_bridge_authority_account_id.clone()),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
@@ -1977,9 +1980,9 @@ fn mainnet_genesis(
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
-            incentives_account_id: mbc_pool_rewards_account_id,
+            incentives_account_id: Some(mbc_pool_rewards_account_id),
             initial_collateral_assets,
-            free_reserves_account_id: mbc_pool_free_reserves_account_id,
+            free_reserves_account_id: Some(mbc_pool_free_reserves_account_id),
         },
         pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1987,7 +1990,7 @@ fn mainnet_genesis(
         },
         iroha_migration: IrohaMigrationConfig {
             iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
-            account_id: iroha_migration_account_id,
+            account_id: Some(iroha_migration_account_id),
         },
         rewards: rewards_config,
         democracy: DemocracyConfig::default(),
@@ -2005,8 +2008,6 @@ fn mainnet_genesis(
             members: council_accounts,
             phantom: Default::default(),
         },
-        incentivized_inbound_channel: Default::default(),
-        incentivized_outbound_channel: Default::default(),
         technical_committee: TechnicalCommitteeConfig {
             members: technical_committee_accounts,
             phantom: Default::default(),

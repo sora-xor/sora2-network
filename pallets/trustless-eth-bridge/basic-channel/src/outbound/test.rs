@@ -57,6 +57,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
@@ -81,7 +82,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
-            principal: Keyring::Bob.into(),
+            principal: Some(Keyring::Bob.into()),
             interval: 1u64,
         };
     config.assimilate_storage(&mut storage).unwrap();
@@ -187,6 +188,6 @@ fn test_set_principal() {
             Origin::root(),
             alice.clone()
         ));
-        assert_eq!(<Principal<Test>>::get(), alice);
+        assert_eq!(<Principal<Test>>::get().unwrap(), alice);
     });
 }

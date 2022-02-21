@@ -65,6 +65,7 @@ pub mod mock_verifier {
         type SystemWeightInfo = ();
         type SS58Prefix = ();
         type OnSetCode = ();
+        type MaxConsumers = frame_support::traits::ConstU32<65536>;
     }
 
     parameter_types! {
@@ -124,6 +125,7 @@ pub mod mock_verifier_with_pow {
         type SystemWeightInfo = ();
         type SS58Prefix = ();
         type OnSetCode = ();
+        type MaxConsumers = frame_support::traits::ConstU32<65536>;
     }
 
     parameter_types! {

@@ -63,9 +63,9 @@ use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-use frame_support::traits::{Currency, OnRuntimeUpgrade};
+use frame_support::traits::{Currency, EnsureOneOf, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::{EnsureOneOf, EnsureRoot};
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -177,23 +177,19 @@ type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
 type MoreThanHalfCouncil = EnsureOneOf<
-    AccountId,
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
 type AtLeastHalfCouncil = EnsureOneOf<
-    AccountId,
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
     EnsureRoot<AccountId>,
 >;
 type AtLeastTwoThirdsCouncil = EnsureOneOf<
-    AccountId,
     pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>,
     EnsureRoot<AccountId>,
 >;
 
 type SlashCancelOrigin = EnsureOneOf<
-    AccountId,
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
 >;
@@ -233,6 +229,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 21,
+    state_version: 0,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -316,6 +313,7 @@ parameter_types! {
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
+    pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl frame_system::Config for Runtime {
@@ -357,6 +355,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl pallet_babe::Config for Runtime {
@@ -419,12 +418,10 @@ impl pallet_democracy::Config for Runtime {
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
     type FastTrackOrigin = EnsureOneOf<
-        AccountId,
         pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, TechnicalCollective>,
         EnsureRoot<AccountId>,
     >;
     type InstantOrigin = EnsureOneOf<
-        AccountId,
         pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>,
         EnsureRoot<AccountId>,
     >;
@@ -597,6 +594,8 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = NoPreimagePostponement;
 }
 
 parameter_types! {
@@ -2385,7 +2384,7 @@ impl_runtime_apis! {
     }
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
-        fn validator_set() -> beefy_primitives::ValidatorSet<BeefyId> {
+        fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
             Beefy::validator_set()
         }
     }

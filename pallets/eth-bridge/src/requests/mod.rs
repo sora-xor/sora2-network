@@ -345,11 +345,8 @@ impl<T: Config> IncomingRequest<T> {
                 })
             }
             ContractEvent::ChangePeers(peer_address, added) => {
-                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address);
-                ensure!(
-                    peer_account_id != T::AccountId::default(),
-                    Error::<T>::UnknownPeerAddress
-                );
+                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address)
+                    .ok_or(Error::<T>::UnknownPeerAddress)?;
                 IncomingRequest::ChangePeers(IncomingChangePeers {
                     peer_account_id,
                     peer_address,

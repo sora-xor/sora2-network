@@ -158,6 +158,16 @@ impl SignedExtension for MyExtra {
     fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
         Ok(())
     }
+
+    fn pre_dispatch(
+        self,
+        _who: &Self::AccountId,
+        _call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> Result<Self::Pre, TransactionValidityError> {
+        Ok(())
+    }
 }
 
 impl<Origin, Call, Extra> Applyable for MyTestXt<Call, Extra>
@@ -273,6 +283,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -420,6 +431,8 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl crate::Config for Runtime {
@@ -871,7 +884,7 @@ impl ExtBuilder {
 
         if !endowed_accounts.is_empty() {
             SudoConfig {
-                key: endowed_accounts[0].0.clone(),
+                key: Some(endowed_accounts[0].0.clone()),
             }
             .assimilate_storage(&mut storage)
             .unwrap();
@@ -904,7 +917,7 @@ impl ExtBuilder {
 
         EthBridgeConfig {
             networks: bridge_network_configs,
-            authority_account: authority_account_id.clone(),
+            authority_account: Some(authority_account_id.clone()),
             val_master_contract_address: sp_core::H160::from_str(
                 "47e229aa491763038f6a505b4f85d8eb463f0962",
             )
