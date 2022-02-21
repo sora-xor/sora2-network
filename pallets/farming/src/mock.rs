@@ -117,6 +117,9 @@ parameter_types! {
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub const SchedulerMaxWeight: Weight = 1024;
 }
 
@@ -288,9 +291,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
-    type GetMarketMakerRewardsAccountId = ();
-    type GetBondingCurveRewardsAccountId = ();
-    type GetFarmingRewardsAccountId = ();
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 

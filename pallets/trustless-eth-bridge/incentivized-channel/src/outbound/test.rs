@@ -1,7 +1,7 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
-use common::mock::ExistentialDeposits;
+use common::mock::{alice, ExistentialDeposits};
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -114,7 +114,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = alice();
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;

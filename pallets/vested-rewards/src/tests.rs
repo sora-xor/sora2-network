@@ -241,15 +241,15 @@ fn trying_to_add_market_maker_entry_no_side_effect() {
     ext.execute_with(|| {
         prepare_mm_pairs();
 
-        let root_a = frame_support::storage_root();
+        let root_a = frame_support::storage_root(frame_support::StateVersion::V1);
         VestedRewards::update_market_maker_records(&alice(), balance!(1), 1, &XOR, &ETH, None)
             .unwrap();
-        let root_b = frame_support::storage_root();
+        let root_b = frame_support::storage_root(frame_support::StateVersion::V1);
         assert_ne!(root_a, root_b);
         // adding record should not add default value explicitly for non-eligible volume
         VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1, &XOR, &ETH, None)
             .unwrap();
-        let root_c = frame_support::storage_root();
+        let root_c = frame_support::storage_root(frame_support::StateVersion::V1);
         assert_eq!(root_b, root_c);
     });
 }
