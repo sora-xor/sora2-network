@@ -177,7 +177,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(T::WeightInfo::register_channel())]
+        #[pallet::weight(T::WeightInfo::register_operator())]
         pub fn register_operator(
             origin: OriginFor<T>,
             network_id: EthNetworkId,

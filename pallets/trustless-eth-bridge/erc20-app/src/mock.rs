@@ -214,7 +214,7 @@ where
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 256;
+    pub const MaxMessagePayloadSize: u64 = 2048;
     pub const MaxMessagesPerCommit: u64 = 3;
     pub const Decimals: u32 = 12;
 }

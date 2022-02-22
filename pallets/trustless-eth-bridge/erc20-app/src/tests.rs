@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
-use crate::TokenAddresses;
-use bridge_types::types::ChannelId;
-use common::{balance, XOR};
+use crate::{AppAddresses, AssetKinds, TokenAddresses};
+use bridge_types::types::{AssetKind, ChannelId};
+use common::{balance, ETH, XOR};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
@@ -122,4 +122,84 @@ fn should_not_burn_on_commitment_failure() {
             incentivized_channel::outbound::Error::<Test>::QueueSizeLimitReached
         );
     });
+}
+
+#[test]
+fn test_register_asset_internal() {
+    new_tester().execute_with(|| {
+        let asset_id = ETH;
+        let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, who);
+        let address = H160::repeat_byte(98);
+        assert!(!TokenAddresses::<Test>::contains_key(
+            BASE_NETWORK_ID,
+            asset_id
+        ));
+        Erc20App::register_asset_internal(origin.into(), asset_id, address).unwrap();
+        assert_eq!(
+            AssetKinds::<Test>::get(BASE_NETWORK_ID, asset_id),
+            Some(AssetKind::Thischain)
+        );
+        assert!(TokenAddresses::<Test>::contains_key(
+            BASE_NETWORK_ID,
+            asset_id
+        ));
+    })
+}
+
+#[test]
+fn test_register_erc20_asset() {
+    new_tester().execute_with(|| {
+        let asset_id = ETH;
+        let address = H160::repeat_byte(98);
+        let network_id = BASE_NETWORK_ID;
+        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
+        Erc20App::register_erc20_asset(Origin::root(), network_id, asset_id, address).unwrap();
+        assert!(TokenAddresses::<Test>::contains_key(network_id, asset_id));
+    })
+}
+
+#[test]
+fn test_register_native_asset() {
+    new_tester().execute_with(|| {
+        let asset_id = ETH;
+        let network_id = BASE_NETWORK_ID;
+        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
+        Erc20App::register_native_asset(Origin::root(), network_id, asset_id).unwrap();
+        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
+    })
+}
+
+#[test]
+fn test_register_erc20_app() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(98);
+        let network_id = BASE_NETWORK_ID + 1;
+        assert!(!AppAddresses::<Test>::contains_key(
+            network_id,
+            AssetKind::Sidechain
+        ));
+        Erc20App::register_erc20_app(Origin::root(), network_id, address).unwrap();
+        assert!(AppAddresses::<Test>::contains_key(
+            network_id,
+            AssetKind::Sidechain
+        ));
+    })
+}
+
+#[test]
+fn test_register_native_app() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(98);
+        let network_id = BASE_NETWORK_ID + 1;
+        assert!(!AppAddresses::<Test>::contains_key(
+            network_id,
+            AssetKind::Thischain
+        ));
+        Erc20App::register_native_app(Origin::root(), network_id, address).unwrap();
+        assert!(AppAddresses::<Test>::contains_key(
+            network_id,
+            AssetKind::Thischain
+        ));
+    })
 }

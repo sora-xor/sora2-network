@@ -212,7 +212,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
         #[transactional]
         pub fn register_asset_internal(
             origin: OriginFor<T>,
@@ -291,7 +291,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         #[transactional]
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
@@ -321,7 +321,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
         #[transactional]
         pub fn register_native_asset(
             origin: OriginFor<T>,
@@ -355,7 +355,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
         #[transactional]
         pub fn register_native_app(
             origin: OriginFor<T>,
@@ -372,7 +372,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_app())]
         #[transactional]
         pub fn register_erc20_app(
             origin: OriginFor<T>,

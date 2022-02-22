@@ -41,8 +41,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod weights;
-
 /// Weight functions needed for this pallet.
 pub trait WeightInfo {
     fn burn() -> Weight;
@@ -57,7 +55,6 @@ impl WeightInfo for () {
     fn mint() -> Weight {
         0
     }
-
     fn register_network() -> Weight {
         0
     }
@@ -122,8 +119,12 @@ pub mod pallet {
     pub enum Error<T> {
         /// The submitted payload could not be decoded.
         InvalidPayload,
+        /// App for given network is not registered.
         AppIsNotRegistered,
+        /// Message came from wrong address.
         InvalidAppAddress,
+        /// App for given network exists.
+        AppAlreadyExists,
     }
 
     #[pallet::call]
@@ -192,6 +193,10 @@ pub mod pallet {
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            ensure!(
+                !Addresses::<T>::contains_key(network_id),
+                Error::<T>::AppAlreadyExists
+            );
             Self::register_network_inner(network_id, asset_id, contract)?;
             Ok(().into())
         }

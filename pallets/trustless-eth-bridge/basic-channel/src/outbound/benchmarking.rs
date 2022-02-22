@@ -3,6 +3,7 @@ use super::*;
 
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
+use frame_system::RawOrigin;
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BasicOutboundChannel;
@@ -60,6 +61,15 @@ benchmarks! {
         let block_number = Interval::<T>::get();
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
+
+    register_operator {
+        let operator: T::AccountId = frame_benchmarking::account("operator", 11, 11);
+        assert!(!ChannelOperators::<T>::get(BASE_NETWORK_ID, &operator));
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, operator.clone())
+    verify {
+        assert!(ChannelOperators::<T>::get(BASE_NETWORK_ID, &operator));
+
+    }
 }
 
 impl_benchmark_test_suite!(

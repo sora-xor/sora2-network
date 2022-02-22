@@ -52,9 +52,9 @@ benchmarks! {
     register_network {
         let asset_id: T::AssetId = XOR.into();
         let contract = H160::repeat_byte(6);
-    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract)
     verify {
-        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID), Some((contract, asset_id)));
+        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id)));
     }
 }
 

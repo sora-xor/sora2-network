@@ -4,8 +4,7 @@ pub trait WeightInfo {
     fn on_initialize(num_messages: u32, avg_payload_bytes: u32) -> Weight;
     fn on_initialize_non_interval() -> Weight;
     fn on_initialize_no_messages() -> Weight;
-    fn register_channel() -> Weight;
-    fn register_network() -> Weight;
+    fn register_operator() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -18,10 +17,7 @@ impl WeightInfo for () {
     fn on_initialize_no_messages() -> Weight {
         0
     }
-    fn register_network() -> Weight {
-        0
-    }
-    fn register_channel() -> Weight {
+    fn register_operator() -> Weight {
         0
     }
 }

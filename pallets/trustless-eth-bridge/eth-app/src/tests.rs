@@ -1,6 +1,7 @@
 use crate::mock::{
     new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test, BASE_NETWORK_ID,
 };
+use crate::{Addresses, Error};
 use common::{balance, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::{assert_noop, assert_ok};
@@ -91,5 +92,31 @@ fn should_not_burn_on_commitment_failure() {
             ),
             DispatchError::Other("some error!")
         );
+    });
+}
+
+#[test]
+fn test_register_network() {
+    new_tester().execute_with(|| {
+        assert!(!Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
+        assert_ok!(EthApp::register_network(
+            Origin::root(),
+            BASE_NETWORK_ID + 1,
+            XOR,
+            H160::repeat_byte(12)
+        ));
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
+    });
+}
+
+#[test]
+fn test_existing_register_network() {
+    new_tester().execute_with(|| {
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
+        assert_noop!(
+            EthApp::register_network(Origin::root(), BASE_NETWORK_ID, XOR, H160::repeat_byte(12)),
+            Error::<Test>::AppAlreadyExists
+        );
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
     });
 }

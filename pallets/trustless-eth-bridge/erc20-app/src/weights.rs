@@ -40,10 +40,11 @@ pub trait WeightInfo {
 	fn burn_basic_channel() -> Weight;
 	fn burn_incentivized_channel() -> Weight;
 	fn mint() -> Weight;
-	fn register_asset() -> Weight;
+	fn register_erc20_asset() -> Weight;
 	fn register_native_asset() -> Weight;
 	fn register_erc20_app() -> Weight;
 	fn register_native_app() -> Weight;
+	fn register_asset_internal() -> Weight;
 }
 
 /// Weights for erc20_app using the Snowbridge node and recommended hardware.
@@ -65,7 +66,7 @@ impl<T: frame_system::Config> WeightInfo for SnowbridgeWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 
-	fn register_asset() -> Weight {
+	fn register_erc20_asset() -> Weight {
 		Default::default()
     }
 
@@ -78,6 +79,10 @@ impl<T: frame_system::Config> WeightInfo for SnowbridgeWeight<T> {
     }
 
 	fn register_native_app() -> Weight {
+		Default::default()
+    }
+
+	fn register_asset_internal() -> Weight {
 		Default::default()
     }
 }
@@ -100,19 +105,23 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 
-fn register_asset() -> Weight {
-	Default::default()
+	fn register_erc20_asset() -> Weight {
+		Default::default()
     }
 
-fn register_native_asset() -> Weight {
-	Default::default()
+	fn register_native_asset() -> Weight {
+		Default::default()
     }
 
-fn register_erc20_app() -> Weight {
-	Default::default()
+	fn register_erc20_app() -> Weight {
+		Default::default()
     }
 
-fn register_native_app() -> Weight {
-	Default::default()
+	fn register_native_app() -> Weight {
+		Default::default()
+    }
+
+	fn register_asset_internal() -> Weight {
+		Default::default()
     }
 }
