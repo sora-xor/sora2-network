@@ -60,6 +60,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
@@ -248,7 +249,7 @@ fn test_submit_with_wrong_network_id() {
                 target,
                 &vec![0, 1, 2]
             ),
-            Error::<Test>::InvalidNetwork
+            Error::<Test>::NotAuthorized
         );
 
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1), 0);

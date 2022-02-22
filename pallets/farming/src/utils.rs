@@ -17,5 +17,5 @@ pub fn account<T: Config>(shift: u32) -> T::AccountId {
             }
         }
     }
-    T::AccountId::decode(&mut &bytes[..]).unwrap()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }

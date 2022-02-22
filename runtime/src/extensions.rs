@@ -95,7 +95,7 @@ where
     }
 
     fn post_dispatch(
-        pre: Self::Pre,
+        pre: Option<Self::Pre>,
         info: &sp_runtime::traits::DispatchInfoOf<Self::Call>,
         post_info: &sp_runtime::traits::PostDispatchInfoOf<Self::Call>,
         len: usize,
@@ -158,6 +158,7 @@ mod tests {
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     use sp_runtime::traits::SignedExtension;
+    use sp_runtime::AccountId32;
 
     use common::{balance, VAL, XOR};
 
@@ -175,7 +176,7 @@ mod tests {
             });
 
         let dispatch_info = DispatchInfo::default();
-        let who = Default::default();
+        let who = AccountId32::from([0; 32]);
 
         let pre_info =
             ChargeTransactionPayment::<Runtime>::pre_dispatch_info(&who, call, &dispatch_info);
@@ -265,7 +266,7 @@ mod tests {
         assert!(call_batch.check_for_swap_in_batch().is_err());
         assert!(call_batch_all.check_for_swap_in_batch().is_err());
 
-        let who = Default::default();
+        let who = AccountId32::from([0; 32]);
         let dispatch_info = DispatchInfo::default();
         let len = 10;
 

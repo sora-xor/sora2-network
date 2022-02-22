@@ -33,7 +33,7 @@ fn alice<T: Config>() -> T::AccountId {
 #[allow(non_snake_case)]
 pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
     let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
-    AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {

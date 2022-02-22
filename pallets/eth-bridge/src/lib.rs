@@ -392,6 +392,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -460,7 +461,7 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
@@ -496,7 +497,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called add_sidechain_token");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddToken(
@@ -647,7 +648,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called change_peers_out");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeer(
@@ -692,7 +693,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called change_peers_out");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
@@ -738,7 +739,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(
@@ -771,7 +772,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Migrate(
@@ -1090,6 +1091,8 @@ pub mod pallet {
         ExpectedEthNetwork,
         /// Request was removed and refunded.
         RemovedAndRefunded,
+        /// Authority account is not set.
+        AuthorityAccountNotSet,
     }
 
     impl<T: Config> Error<T> {
@@ -1237,7 +1240,7 @@ pub mod pallet {
         Blake2_128Concat,
         Address,
         T::AccountId,
-        ValueQuery,
+        OptionQuery,
     >;
 
     /// Peer address on Sidechain.
@@ -1262,7 +1265,7 @@ pub mod pallet {
     /// Thischain authority account.
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
-    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// Bridge status.
     #[pallet::storage]
@@ -1297,7 +1300,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub authority_account: T::AccountId,
+        pub authority_account: Option<T::AccountId>,
         pub xor_master_contract_address: Address,
         pub val_master_contract_address: Address,
         pub networks: Vec<NetworkConfig<T>>,
@@ -1318,7 +1321,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            AuthorityAccount::<T>::put(&self.authority_account);
+            AuthorityAccount::<T>::put(&self.authority_account.as_ref().unwrap());
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             for network in &self.networks {

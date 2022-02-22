@@ -117,6 +117,9 @@ parameter_types! {
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub const SchedulerMaxWeight: Weight = 1024;
 }
 
@@ -170,6 +173,7 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl permissions::Config for Runtime {
@@ -287,9 +291,9 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
-    type GetMarketMakerRewardsAccountId = ();
-    type GetBondingCurveRewardsAccountId = ();
-    type GetFarmingRewardsAccountId = ();
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -321,6 +325,8 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {

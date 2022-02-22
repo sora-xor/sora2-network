@@ -54,7 +54,6 @@ use frame_support::sp_runtime::traits::{One, Saturating, Zero};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
-use sp_core::crypto::Public;
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -80,7 +79,7 @@ impl<T: Config> Pallet<T> {
         // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
         let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
         let call = Call::approve_request {
-            ocw_public: ecdsa::Public::from_slice(&public.serialize_compressed()),
+            ocw_public: ecdsa::Public::from_raw(public.serialize_compressed()),
             hash,
             signature_params: signature,
             network_id: request.network_id(),

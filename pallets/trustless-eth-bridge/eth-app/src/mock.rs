@@ -17,7 +17,7 @@ use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{AccountId32, MultiSignature};
 use system::RawOrigin;
 
 use crate as eth_app;
@@ -78,6 +78,7 @@ impl system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl common::Config for Test {
@@ -126,7 +127,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 impl assets::Config for Test {
@@ -227,6 +228,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
+
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), balance!(1))],
     }

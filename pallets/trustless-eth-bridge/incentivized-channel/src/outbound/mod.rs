@@ -110,6 +110,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -151,8 +152,6 @@ pub mod pallet {
         NoFunds,
         /// Cannot increment nonce
         Overflow,
-        /// Target channel not exists
-        InvalidChannel,
         /// This channel already exists
         ChannelExists,
     }

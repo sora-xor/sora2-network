@@ -13,7 +13,7 @@ use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
 use futures::TryFutureExt;
 use std::path::PathBuf;
-use substrate_gen::DefaultConfig;
+use substrate_gen::{runtime, DefaultConfig};
 use subxt::TransactionProgress;
 use tokio::sync::broadcast::Sender;
 use tokio::task::JoinHandle;
@@ -268,24 +268,19 @@ impl Relay {
 
     async fn finalize_transaction<'a>(
         &'a self,
-        progress: TransactionProgress<'a, DefaultConfig>,
+        progress: TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>,
         block_number: u64,
     ) -> AnyResult<()> {
-        let progress = progress
-            .wait_for_finalized()
-            .await
-            .context("wait for in block")?;
-        let events = match progress.wait_for_success().await {
-            Err(subxt::Error::Runtime(subxt::RuntimeError::Module(err)))
-                if err.error == "DuplicateHeader" =>
-            {
+        let events = match progress.wait_for_finalized_success().await {
+            Err(subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module(
+                runtime::runtime_types::sp_runtime::ModuleError { index, error, .. },
+            )))) if index == 94 && error == 3 => {
                 warn!("DublicateHeader {}", block_number);
                 return Ok(());
             }
-            Err(subxt::Error::Rpc(jsonrpsee::types::Error::RequestTimeout)) => {
+            Err(subxt::Error::Rpc(subxt::rpc::RpcError::RequestTimeout)) => {
                 warn!("Request timeout {}", block_number);
-                // self.sub.api().client.rpc().client;
-                progress.wait_for_success().await?
+                return Ok(());
             }
             Err(err) => {
                 error!("Failed to import header {}: {}", block_number, err);
@@ -311,7 +306,9 @@ impl Relay {
     async fn process_block<'a>(
         &'a self,
         block: Block<H256>,
-    ) -> AnyResult<Option<TransactionProgress<'a, DefaultConfig>>> {
+    ) -> AnyResult<
+        Option<TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>>,
+    > {
         let nonce = block.nonce.unwrap_or_default();
         let header = make_header(block);
         debug!("Process ethereum header: {:?}", header);

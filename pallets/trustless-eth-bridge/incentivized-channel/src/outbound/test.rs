@@ -12,7 +12,7 @@ use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 
 use crate::outbound as incentivized_outbound_channel;
@@ -71,6 +71,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl common::Config for Test {
@@ -119,7 +120,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -202,6 +203,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     config.assimilate_storage(&mut storage).unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
+
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), 1u32.into())],
     }
@@ -382,25 +384,5 @@ fn test_submit_fails_on_nonce_overflow() {
             ),
             Error::<Test>::Overflow,
         );
-    });
-}
-
-#[test]
-fn test_submit_with_wrong_network_id() {
-    new_tester().execute_with(|| {
-        let target = H160::zero();
-        let who: AccountId = Keyring::Bob.into();
-
-        assert_noop!(
-            IncentivizedOutboundChannel::submit(
-                &RawOrigin::Signed(who),
-                BASE_NETWORK_ID + 1,
-                target,
-                &vec![0, 1, 2]
-            ),
-            Error::<Test>::InvalidChannel
-        );
-
-        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1), 0);
     });
 }

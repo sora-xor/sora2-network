@@ -50,7 +50,7 @@ use alloc::string::String;
 use codec::{Decode, Encode};
 use common::{eth, Balance};
 use ethabi::ParamType;
-use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core, Public};
+use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::sp_runtime::MultiSigner;
@@ -63,6 +63,7 @@ pub use http::*;
 use rustc_hex::ToHex;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryInto;

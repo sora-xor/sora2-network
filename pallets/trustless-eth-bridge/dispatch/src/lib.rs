@@ -57,6 +57,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
@@ -145,7 +146,7 @@ mod tests {
     use super::*;
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
-    use frame_support::traits::Everything;
+    use frame_support::traits::{ConstU32, Everything};
     use frame_system::{EventRecord, Phase};
     use sp_core::H256;
     use sp_runtime::testing::Header;
@@ -197,6 +198,7 @@ mod tests {
         type DbWeight = ();
         type SS58Prefix = ();
         type OnSetCode = ();
+        type MaxConsumers = ConstU32<65536>;
     }
 
     pub struct CallFilter;
