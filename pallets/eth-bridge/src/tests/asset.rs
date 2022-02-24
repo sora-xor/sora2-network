@@ -566,7 +566,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
 }
 
 #[test]
-fn should_convert_amount_for_nft_token() {
+fn should_convert_amount_for_indivisible_token() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
