@@ -273,12 +273,16 @@ pub mod pallet {
             name: AssetName,
             initial_supply: Balance,
             is_mintable: bool,
-            is_nft: bool,
+            is_indivisible: bool,
             opt_content_src: Option<ContentSource>,
             opt_desc: Option<Description>,
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
-            let precision = if is_nft { 0 } else { DEFAULT_BALANCE_PRECISION };
+            let precision = if is_indivisible {
+                0
+            } else {
+                DEFAULT_BALANCE_PRECISION
+            };
 
             let asset_id = Self::register_from(
                 &author,
