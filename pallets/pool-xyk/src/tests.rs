@@ -617,6 +617,49 @@ fn depositliq_valid_range_but_desired_is_corrected() {
 }
 
 #[test]
+fn cannot_initialize_with_non_divisible_asset() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            Mango.into(),
+            AssetSymbol(b"MANGO".to_vec()),
+            AssetName(b"MANGO".to_vec()),
+            0,
+            1,
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(trading_pair::Module::<Runtime>::register(
+            Origin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Mango.into()
+        ));
+        assert_noop!(
+            crate::Module::<Runtime>::initialize_pool(
+                Origin::signed(BOB()),
+                DEX_A_ID,
+                GoldenTicket.into(),
+                Mango.into(),
+            ),
+            crate::Error::<Runtime>::UnableToCreatePoolWithIndivisibleAssets
+        );
+    });
+}
+
+#[test]
 fn pool_is_already_initialized_and_other_after_depositliq() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {

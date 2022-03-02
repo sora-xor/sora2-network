@@ -610,7 +610,7 @@ mod tests {
                 None,
                 None,
             ));
-            let (_, _, precision, _) = Assets::asset_infos(next_asset_id);
+            let (_, _, precision, ..) = Assets::asset_infos(next_asset_id);
             assert_eq!(precision, 0u8);
         })
     }
