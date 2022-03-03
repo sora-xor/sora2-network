@@ -21,7 +21,9 @@ frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 hex-literal = "0.3"
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+serde = { version = "1.0", features = ["derive"], default-features = false }
+serde_json = { version = "1.0", default-features = false }
+serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
@@ -50,14 +52,16 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
+    'multicollateral-bonding-curve-pool/std',
+    'serde_bytes/std',
+    'serde_json/std',
     'serde/std',
     'sp-core/std',
     'sp-io/std',
+    'sp-runtime/std',
     'sp-std/std',
     'tokens/std',
     'traits/std',
-    'sp-runtime/std',
-    'multicollateral-bonding-curve-pool/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

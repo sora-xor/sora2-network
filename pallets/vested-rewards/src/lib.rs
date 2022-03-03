@@ -36,14 +36,18 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP};
+use common::{
+    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
 use frame_support::{fail, transactional};
+use serde::Deserialize;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
+use sp_std::str;
 use sp_std::vec::Vec;
 
 mod migration;
@@ -80,14 +84,47 @@ pub struct RewardInfo {
     pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
-/// Denotes information about users who make transactions counted for market makers strategic rewards
-/// programme. To participate in rewards distribution account needs to get 500+ tx's over 1 XOR in volume each.
+/// Denotes information about users who make transactions counted for market makers strategic
+/// rewards programme. To participate in rewards distribution account needs to get 500+ tx's over 1
+/// XOR in volume each.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct MarketMakerInfo {
     /// Number of eligible transactions - namely those with individual volume over 1 XOR.
     count: u32,
     /// Cumulative volume of eligible transactions.
     volume: Balance,
+}
+
+/// A vested reward for crowdloan.
+#[derive(Encode, Decode, Deserialize, Clone, Debug, Default)]
+pub struct CrowdloanReward {
+    /// The user id
+    #[serde(with = "serde_bytes", rename = "ID")]
+    id: Vec<u8>,
+    /// The user address
+    #[serde(with = "serde_bytes", rename = "Address")]
+    address: Vec<u8>,
+    /// Kusama contribution
+    #[serde(rename = "Contribution")]
+    contribution: Fixed,
+    /// Contribution date
+    #[serde(with = "serde_bytes", rename = "Date")]
+    date: Vec<u8>,
+    /// Reward in XOR
+    #[serde(rename = "XOR Reward")]
+    xor_reward: Fixed,
+    /// Reward in VAL
+    #[serde(rename = "Val Reward")]
+    val_reward: Fixed,
+    /// Reward in PSWAP
+    #[serde(rename = "PSWAP Reward")]
+    pswap_reward: Fixed,
+    /// Reward in XSTUSD
+    #[serde(rename = "XSTUSD Reward")]
+    xstusd_reward: Fixed,
+    /// Reward in percents of the total contribution
+    #[serde(rename = "Percent")]
+    percent: Fixed,
 }
 
 pub trait WeightInfo {
@@ -465,4 +502,10 @@ pub mod pallet {
         (),
         ValueQuery,
     >;
+
+    /// Crowdloan vested rewards storage.
+    #[pallet::storage]
+    #[pallet::getter(fn crowdloan_rewards)]
+    pub type CrowdloanRewards<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
 }

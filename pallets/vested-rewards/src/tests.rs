@@ -510,6 +510,14 @@ fn storage_has_allowed_market_maker_pools() {
 }
 
 #[test]
+fn crowdloan() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        crate::migration::add_crowdloan_rewards::<Runtime>();
+    });
+}
+
+#[test]
 fn claiming_single_user() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
