@@ -277,7 +277,6 @@ pub mod pallet {
             for users in user_info.iter_mut() {
                 if users.pool_asset == pool_asset
                     && users.reward_asset == reward_asset
-                    && users.pooled_tokens == pooled_tokens
                     && users.is_farm == is_farm
                 {
                     ensure!(
@@ -293,8 +292,8 @@ pub mod pallet {
                             pooled_tokens,
                         )?;
                     }
+                    users.pooled_tokens -= pooled_tokens;
                 }
-                users.pooled_tokens -= pooled_tokens;
             }
 
             // Get token info
