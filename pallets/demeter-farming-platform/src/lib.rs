@@ -1,11 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(destructuring_assignment)]
 
 use codec::{Decode, Encode};
+use common::Balance;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PoolInfo<Balance> {
+pub struct PoolInfo {
     multiplier: u32,
     deposit_fee: Balance,
     is_core: bool,
@@ -17,7 +17,7 @@ pub struct PoolInfo<Balance> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct TokenInfo<Balance> {
+pub struct TokenInfo {
     farms_total_multiplier: u32,
     staking_total_multiplier: u32,
     token_per_block: Balance,
@@ -28,7 +28,7 @@ pub struct TokenInfo<Balance> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct UserInfo<Balance, AssetId> {
+pub struct UserInfo<AssetId> {
     pool_asset: AssetId,
     reward_asset: AssetId,
     is_farm: bool,
@@ -45,7 +45,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_runtime::ModuleId;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"dmtrfarm");
+    const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
@@ -65,12 +65,12 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn token_info)]
     pub type TokenInfos<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo<Balance>, ValueQuery>;
+        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn user_info)]
     pub type UserInfos<T: Config> =
-        StorageMap<_, Identity, AccountIdOf<T>, Vec<UserInfo<Balance, AssetIdOf<T>>>, ValueQuery>;
+        StorageMap<_, Identity, AccountIdOf<T>, Vec<UserInfo<AssetIdOf<T>>>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn pools)]
@@ -80,20 +80,137 @@ pub mod pallet {
         AssetIdOf<T>,
         Identity,
         AssetIdOf<T>,
-        Vec<PoolInfo<Balance>>,
+        Vec<PoolInfo>,
         ValueQuery,
     >;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
-    pub enum Event<T: Config> {}
+    pub enum Event<T: Config> {
+        /// Token registered [who, what]
+        TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
+        /// Pool added [who, pool_asset, reward_asset, is_farm]
+        PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
+    }
 
     #[pallet::error]
-    pub enum Error<T> {}
+    pub enum Error<T> {
+        /// Token is already registered
+        TokenAlreadyRegistered,
+        /// Token per block can't be zero
+        TokenPerBlockCantBeZero,
+        /// Invalid allocation parameters
+        InvalidAllocationParameters,
+        /// Multiplier must be greater or equal to 1
+        InvalidMultiplier,
+        /// Token is not registered
+        RewardTokenIsNotRegistered,
+        /// Pool already exists
+        PoolAlreadyExists,
+    }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// Register token for farming
+        #[pallet::weight(10000)]
+        pub fn register_token(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            token_per_block: Balance,
+            farms_allocation: Balance,
+            staking_allocation: Balance,
+            team_allocation: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get token info
+            let token_info = <TokenInfos<T>>::get(&pool_asset);
+
+            // Check if token is already registered
+            ensure!(
+                token_info.token_per_block == 0,
+                Error::<T>::TokenAlreadyRegistered
+            );
+
+            // Check if token_per_block is zero
+            ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
+
+            if (farms_allocation == 0 && staking_allocation == 0)
+                || (farms_allocation + staking_allocation + team_allocation != 1)
+            {
+                return Err(Error::<T>::InvalidAllocationParameters.into());
+            }
+
+            let token_info = TokenInfo {
+                farms_total_multiplier: 0,
+                staking_total_multiplier: 0,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+            };
+
+            <TokenInfos<T>>::insert(&pool_asset, &token_info);
+
+            // Emit an event
+            Self::deposit_event(Event::TokenRegistered(user, pool_asset));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Add pool
+        #[pallet::weight(10000)]
+        pub fn add_pool(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            multiplier: u32,
+            deposit_fee: Balance,
+            is_core: bool,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Check if multiplier is valid
+            ensure!(multiplier >= 1, Error::<T>::InvalidMultiplier);
+
+            // Get token info
+            let token_info = <TokenInfos<T>>::get(&reward_asset);
+
+            // Check if token is registered
+            ensure!(
+                token_info.token_per_block != 0,
+                Error::<T>::RewardTokenIsNotRegistered
+            );
+
+            // Get token info
+            let pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos {
+                if !pool_info.is_removed && pool_info.is_farm == is_farm {
+                    return Err(Error::<T>::PoolAlreadyExists.into());
+                }
+            }
+
+            let pool_info = PoolInfo {
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 0,
+                is_removed: false,
+            };
+            <Pools<T>>::append(&pool_asset, &reward_asset, pool_info);
+
+            // Emit an event
+            Self::deposit_event(Event::PoolAdded(user, pool_asset, reward_asset, is_farm));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+    }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
