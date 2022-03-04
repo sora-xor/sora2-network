@@ -43,6 +43,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
@@ -64,8 +65,7 @@ pub mod pallet {
     /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn token_info)]
-    pub type TokenInfos<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo, ValueQuery>;
+    pub type TokenInfos<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, TokenInfo, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn user_info)]
@@ -92,6 +92,8 @@ pub mod pallet {
         TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
         /// Pool added [who, pool_asset, reward_asset, is_farm]
         PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
+        /// Ceres deposited. [who, amount]
+        RewardWithdrawn(AccountIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -210,10 +212,55 @@ pub mod pallet {
             // Return a successful DispatchResult
             Ok(().into())
         }
+
+        /// Get rewards
+        #[pallet::weight(10000)]
+        pub fn get_rewards(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get user info
+            let mut user_info = <UserInfos<T>>::get(&user);
+
+            let mut rewards = 0;
+
+            for users in user_info.iter_mut() {
+                if users.pool_asset == pool_asset
+                    && users.reward_asset == reward_asset
+                    && users.is_farm == is_farm
+                {
+                    Assets::<T>::transfer_from(
+                        &users.reward_asset,
+                        &Self::account_id(),
+                        &user,
+                        users.rewards,
+                    )?;
+                }
+                rewards = users.rewards;
+                users.rewards = 0;
+            }
+            // Update storage
+            <UserInfos<T>>::insert(&user, user_info);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::RewardWithdrawn(user, rewards));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
     }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// The account ID of pallet
+        fn account_id() -> T::AccountId {
+            PALLET_ID.into_account()
+        }
+    }
 }
