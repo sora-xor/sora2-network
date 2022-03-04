@@ -92,8 +92,10 @@ pub mod pallet {
         TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
         /// Pool added [who, pool_asset, reward_asset, is_farm]
         PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Ceres deposited. [who, amount]
+        /// Reward Withdrawn [who, amount]
         RewardWithdrawn(AccountIdOf<T>, Balance),
+        /// Withdrawn [who, amount]
+        Withdrawn(AccountIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -110,6 +112,10 @@ pub mod pallet {
         RewardTokenIsNotRegistered,
         /// Pool already exists
         PoolAlreadyExists,
+        /// Insufficient Funds
+        InsufficientFunds,
+        /// Zero Rewards
+        ZeroRewards,
     }
 
     #[pallet::call]
@@ -233,6 +239,8 @@ pub mod pallet {
                     && users.reward_asset == reward_asset
                     && users.is_farm == is_farm
                 {
+                    ensure!(users.rewards == 0, Error::<T>::ZeroRewards);
+
                     Assets::<T>::transfer_from(
                         &users.reward_asset,
                         &Self::account_id(),
@@ -248,6 +256,61 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::<T>::RewardWithdrawn(user, rewards));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Withdraw
+        #[pallet::weight(10000)]
+        pub fn withdraw(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            pooled_tokens: Balance,
+            is_farm: bool,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            let mut user_info = <UserInfos<T>>::get(&user);
+
+            for users in user_info.iter_mut() {
+                if users.pool_asset == pool_asset
+                    && users.reward_asset == reward_asset
+                    && users.pooled_tokens == pooled_tokens
+                    && users.is_farm == is_farm
+                {
+                    ensure!(
+                        pooled_tokens <= users.pooled_tokens,
+                        Error::<T>::InsufficientFunds
+                    );
+
+                    if is_farm == false {
+                        Assets::<T>::transfer_from(
+                            &pool_asset,
+                            &Self::account_id(),
+                            &user,
+                            pooled_tokens,
+                        )?;
+                    }
+                }
+                users.pooled_tokens -= pooled_tokens;
+            }
+
+            // Get token info
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm {
+                    pool_info.total_tokens_in_pool -= pooled_tokens;
+                }
+            }
+
+            // Update storage
+            <UserInfos<T>>::insert(&user, user_info);
+            <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::Withdrawn(user, pooled_tokens));
 
             // Return a successful DispatchResult
             Ok(().into())
