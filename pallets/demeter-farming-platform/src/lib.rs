@@ -45,6 +45,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
@@ -87,6 +88,17 @@ pub mod pallet {
         Vec<PoolInfo>,
         ValueQuery,
     >;
+
+    #[pallet::type_value]
+    pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn authority_account)]
+    pub type AuthorityAccount<T: Config> =
+    StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
@@ -136,6 +148,8 @@ pub mod pallet {
         InsufficientLPTokens,
         /// Pool does not have rewards,
         PoolDoesNotHaveRewards,
+        /// Unauthorized
+        Unauthorized,
     }
 
     #[pallet::call]
@@ -151,6 +165,10 @@ pub mod pallet {
             team_allocation: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
 
             // Get token info
             let token_info = <TokenInfos<T>>::get(&pool_asset);
@@ -200,6 +218,10 @@ pub mod pallet {
             is_core: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
 
             // Check if multiplier is valid
             ensure!(multiplier >= 1, Error::<T>::InvalidMultiplier);
@@ -454,6 +476,10 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
@@ -486,6 +512,10 @@ pub mod pallet {
             new_multiplier: u32,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
 
             // Check if multiplier is valid
             ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
@@ -539,6 +569,10 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             // Get pool info and check if pool exists
             let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
             let mut pool_info = &mut Default::default();
@@ -575,6 +609,10 @@ pub mod pallet {
             team_allocation: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
 
             // Get token info
             let mut token_info = <TokenInfos<T>>::get(&pool_asset);
