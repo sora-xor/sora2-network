@@ -96,6 +96,8 @@ pub mod pallet {
         RewardWithdrawn(AccountIdOf<T>, Balance),
         /// Withdrawn [who, amount]
         Withdrawn(AccountIdOf<T>, Balance),
+        /// Pool removed [who, pool_asset, reward_asset, is_farm]
+        PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
     }
 
     #[pallet::error]
@@ -310,6 +312,38 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::<T>::Withdrawn(user, pooled_tokens));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Remove pool
+        #[pallet::weight(10000)]
+        pub fn remove_pool(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get token info
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm {
+                    pool_info.is_removed = true;
+                }
+            }
+
+            <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::PoolRemoved(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
