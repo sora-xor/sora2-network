@@ -104,6 +104,12 @@ pub mod pallet {
         PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
         /// Deposited [who, pool_asset, reward_asset, is_farm, amount]
         Deposited(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Multiplier Changed [who, pool_asset, reward_asset, is_farm, amount]
+        MultiplierChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, u32),
+        /// DepositFeeChanged [who, pool_asset, reward_asset, is_farm, amount]
+        DepositFeeChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Token info changed [who, what]
+        TokenInfoChanged(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -465,6 +471,138 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
             ));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change pool multiplier
+        #[pallet::weight(10000)]
+        pub fn change_pool_multiplier(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            new_multiplier: u32,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Check if multiplier is valid
+            ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
+
+            // Get pool info and check if pool exists
+            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut pool_info = &mut Default::default();
+            for p_info in pool_infos.iter_mut() {
+                if !p_info.is_removed && p_info.is_farm == is_farm {
+                    pool_info = p_info;
+                }
+            }
+            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+
+            let old_multiplier = pool_info.multiplier;
+            pool_info.multiplier = new_multiplier;
+
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset);
+
+            if is_farm {
+                token_info.farms_total_multiplier =
+                    token_info.farms_total_multiplier - old_multiplier + new_multiplier;
+            } else {
+                token_info.staking_total_multiplier =
+                    token_info.staking_total_multiplier - old_multiplier + new_multiplier;
+            }
+
+            <TokenInfos<T>>::insert(&reward_asset, &token_info);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::MultiplierChanged(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                new_multiplier,
+            ));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change pool deposit fee
+        #[pallet::weight(10000)]
+        pub fn change_pool_deposit_fee(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            deposit_fee: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get pool info and check if pool exists
+            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut pool_info = &mut Default::default();
+            for p_info in pool_infos.iter_mut() {
+                if !p_info.is_removed && p_info.is_farm == is_farm {
+                    pool_info = p_info;
+                }
+            }
+            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+
+            pool_info.deposit_fee = deposit_fee;
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::DepositFeeChanged(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                deposit_fee,
+            ));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change token info
+        #[pallet::weight(10000)]
+        pub fn change_token_info(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            token_per_block: Balance,
+            farms_allocation: Balance,
+            staking_allocation: Balance,
+            team_allocation: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get token info
+            let mut token_info = <TokenInfos<T>>::get(&pool_asset);
+
+            // Check if token is already registered
+            ensure!(
+                token_info.token_per_block != 0,
+                Error::<T>::RewardTokenIsNotRegistered
+            );
+
+            // Check if token_per_block is zero
+            ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
+
+            if (farms_allocation == 0 && staking_allocation == 0)
+                || (farms_allocation + staking_allocation + team_allocation != 1)
+            {
+                return Err(Error::<T>::InvalidAllocationParameters.into());
+            }
+
+            token_info.token_per_block = token_per_block;
+            token_info.farms_allocation = farms_allocation;
+            token_info.staking_allocation = staking_allocation;
+            token_info.team_allocation = team_allocation;
+
+            <TokenInfos<T>>::insert(&pool_asset, &token_info);
+
+            // Emit an event
+            Self::deposit_event(Event::TokenInfoChanged(user, pool_asset));
 
             // Return a successful DispatchResult
             Ok(().into())
