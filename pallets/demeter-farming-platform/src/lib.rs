@@ -12,6 +12,7 @@ pub struct PoolInfo {
     is_farm: bool,
     total_tokens_in_pool: Balance,
     rewards: Balance,
+    rewards_to_be_distributed: Balance,
     is_removed: bool,
 }
 
@@ -40,6 +41,7 @@ pub struct UserInfo<AssetId> {
 pub mod pallet {
     use crate::{PoolInfo, TokenInfo, UserInfo};
     use common::prelude::Balance;
+    use common::{PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_system::pallet_prelude::*;
@@ -49,12 +51,15 @@ pub mod pallet {
     const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + pool_xyk::Config + technical::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
 
     type Assets<T> = assets::Pallet<T>;
+    type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
@@ -62,7 +67,6 @@ pub mod pallet {
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
-    /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn token_info)]
     pub type TokenInfos<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, TokenInfo, ValueQuery>;
@@ -92,12 +96,14 @@ pub mod pallet {
         TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
         /// Pool added [who, pool_asset, reward_asset, is_farm]
         PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Reward Withdrawn [who, amount]
-        RewardWithdrawn(AccountIdOf<T>, Balance),
-        /// Withdrawn [who, amount]
-        Withdrawn(AccountIdOf<T>, Balance),
+        /// Reward Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
+        RewardWithdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
+        /// Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
+        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
         /// Pool removed [who, pool_asset, reward_asset, is_farm]
         PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
+        /// Deposited [who, pool_asset, reward_asset, is_farm, amount]
+        Deposited(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
     }
 
     #[pallet::error]
@@ -118,6 +124,12 @@ pub mod pallet {
         InsufficientFunds,
         /// Zero Rewards
         ZeroRewards,
+        /// Pool does not exist
+        PoolDoesNotExist,
+        /// Insufficient LP tokens
+        InsufficientLPTokens,
+        /// Pool does not have rewards,
+        PoolDoesNotHaveRewards,
     }
 
     #[pallet::call]
@@ -187,7 +199,7 @@ pub mod pallet {
             ensure!(multiplier >= 1, Error::<T>::InvalidMultiplier);
 
             // Get token info
-            let token_info = <TokenInfos<T>>::get(&reward_asset);
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset);
 
             // Check if token is registered
             ensure!(
@@ -195,7 +207,7 @@ pub mod pallet {
                 Error::<T>::RewardTokenIsNotRegistered
             );
 
-            // Get token info
+            // Check if pool already exists
             let pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos {
                 if !pool_info.is_removed && pool_info.is_farm == is_farm {
@@ -210,12 +222,91 @@ pub mod pallet {
                 is_farm,
                 total_tokens_in_pool: 0,
                 rewards: 0,
+                rewards_to_be_distributed: 0,
                 is_removed: false,
             };
+
+            if is_farm {
+                token_info.farms_total_multiplier += multiplier;
+            } else {
+                token_info.staking_total_multiplier += multiplier;
+            }
+
+            <TokenInfos<T>>::insert(&reward_asset, token_info);
             <Pools<T>>::append(&pool_asset, &reward_asset, pool_info);
 
             // Emit an event
             Self::deposit_event(Event::PoolAdded(user, pool_asset, reward_asset, is_farm));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Deposit to pool
+        #[pallet::weight(10000)]
+        pub fn deposit(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            pooled_tokens: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get pool info and check if pool exists
+            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut pool_info = &mut Default::default();
+            for p_info in pool_infos.iter_mut() {
+                if !p_info.is_removed && p_info.is_farm == is_farm {
+                    pool_info = p_info;
+                }
+            }
+            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+
+            // Get user info if exists or create new if does not exist
+            let mut user_info = &mut UserInfo {
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens: 0,
+                rewards: 0,
+            };
+            let user_infos: &mut Vec<UserInfo<AssetIdOf<T>>> = &mut <UserInfos<T>>::get(&user);
+            for u_info in user_infos.iter_mut() {
+                if u_info.is_farm == is_farm {
+                    user_info = u_info;
+                }
+            }
+
+            // Transfer pooled_tokens
+            if !is_farm {
+                ensure!(
+                    pooled_tokens <= Assets::<T>::free_balance(&pool_asset, &user).unwrap_or(0),
+                    Error::<T>::InsufficientFunds
+                );
+                Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
+            } else {
+                let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), pool_asset.clone())
+                    .ok_or(Error::<T>::PoolDoesNotExist)?
+                    .0;
+                let lp_tokens =
+                    PoolXYK::<T>::balance_of_pool_provider(pool_account, user.clone()).unwrap_or(0);
+                ensure!(
+                    pooled_tokens <= lp_tokens - user_info.pooled_tokens,
+                    Error::<T>::InsufficientLPTokens
+                )
+            }
+            user_info.pooled_tokens += pooled_tokens;
+            pool_info.total_tokens_in_pool += pooled_tokens;
+
+            // Emit an event
+            Self::deposit_event(Event::Deposited(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -231,33 +322,56 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
+            // Get pool info and check if pool has rewards
+            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut pool_info = &mut Default::default();
+            for p_info in pool_infos.iter_mut() {
+                if p_info.is_farm == is_farm {
+                    pool_info = p_info;
+                }
+            }
+            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+
             // Get user info
-            let mut user_info = <UserInfos<T>>::get(&user);
+            let mut user_infos = <UserInfos<T>>::get(&user);
 
             let mut rewards = 0;
 
-            for users in user_info.iter_mut() {
-                if users.pool_asset == pool_asset
-                    && users.reward_asset == reward_asset
-                    && users.is_farm == is_farm
+            for user_info in user_infos.iter_mut() {
+                if user_info.pool_asset == pool_asset
+                    && user_info.reward_asset == reward_asset
+                    && user_info.is_farm == is_farm
                 {
-                    ensure!(users.rewards == 0, Error::<T>::ZeroRewards);
+                    ensure!(user_info.rewards != 0, Error::<T>::ZeroRewards);
+                    ensure!(
+                        pool_info.rewards >= user_info.rewards,
+                        Error::<T>::PoolDoesNotHaveRewards
+                    );
 
                     Assets::<T>::transfer_from(
-                        &users.reward_asset,
+                        &user_info.reward_asset,
                         &Self::account_id(),
                         &user,
-                        users.rewards,
+                        user_info.rewards,
                     )?;
+
+                    rewards = user_info.rewards;
+                    user_info.rewards = 0;
+                    pool_info.rewards -= user_info.rewards;
                 }
-                rewards = users.rewards;
-                users.rewards = 0;
             }
+
             // Update storage
-            <UserInfos<T>>::insert(&user, user_info);
+            <UserInfos<T>>::insert(&user, user_infos);
 
             // Emit an event
-            Self::deposit_event(Event::<T>::RewardWithdrawn(user, rewards));
+            Self::deposit_event(Event::<T>::RewardWithdrawn(
+                user,
+                rewards,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -274,15 +388,16 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let mut user_info = <UserInfos<T>>::get(&user);
+            // Get user info
+            let mut user_infos = <UserInfos<T>>::get(&user);
 
-            for users in user_info.iter_mut() {
-                if users.pool_asset == pool_asset
-                    && users.reward_asset == reward_asset
-                    && users.is_farm == is_farm
+            for user_info in user_infos.iter_mut() {
+                if user_info.pool_asset == pool_asset
+                    && user_info.reward_asset == reward_asset
+                    && user_info.is_farm == is_farm
                 {
                     ensure!(
-                        pooled_tokens <= users.pooled_tokens,
+                        pooled_tokens <= user_info.pooled_tokens,
                         Error::<T>::InsufficientFunds
                     );
 
@@ -294,11 +409,11 @@ pub mod pallet {
                             pooled_tokens,
                         )?;
                     }
-                    users.pooled_tokens -= pooled_tokens;
+                    user_info.pooled_tokens -= pooled_tokens;
                 }
             }
 
-            // Get token info
+            // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
                 if pool_info.is_farm == is_farm {
@@ -307,11 +422,17 @@ pub mod pallet {
             }
 
             // Update storage
-            <UserInfos<T>>::insert(&user, user_info);
+            <UserInfos<T>>::insert(&user, user_infos);
             <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
 
             // Emit an event
-            Self::deposit_event(Event::<T>::Withdrawn(user, pooled_tokens));
+            Self::deposit_event(Event::<T>::Withdrawn(
+                user,
+                pooled_tokens,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -327,7 +448,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            // Get token info
+            // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
                 if pool_info.is_farm == is_farm {
