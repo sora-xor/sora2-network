@@ -834,6 +834,7 @@ version = "1.0.0"
 dependencies = [
  "assets",
  "ceres-liquidity-locker",
+ "ceres-token-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",

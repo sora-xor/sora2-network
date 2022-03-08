@@ -13,6 +13,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+ceres-token-locker = { path = "../ceres-token-locker", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }

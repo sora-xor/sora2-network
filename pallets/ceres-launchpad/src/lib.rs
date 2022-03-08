@@ -42,7 +42,8 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     lockup_days: u32,
     start_block: BlockNumber,
     end_block: BlockNumber,
-    token_vesting: VestingTokensInfo<Balance, BlockNumber>,
+    contributors_vesting: ContributorsVesting<Balance, BlockNumber>,
+    team_vesting: TeamVesting<Balance, BlockNumber>,
     sold_tokens: Balance,
     funds_raised: Balance,
     succeeded: bool,
@@ -54,7 +55,16 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct VestingTokensInfo<Balance, BlockNumber> {
+pub struct TeamVesting<Balance, BlockNumber> {
+    team_vesting_total_tokens: Balance,
+    team_vesting_first_release_percent: Balance,
+    team_vesting_period: BlockNumber,
+    team_vesting_percent: Balance,
+}
+
+#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct ContributorsVesting<Balance, BlockNumber> {
     first_release_percent: Balance,
     vesting_period: BlockNumber,
     vesting_percent: Balance,
@@ -75,7 +85,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::{ContributionInfo, ILOInfo, VestingTokensInfo};
+    use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
@@ -101,6 +111,7 @@ pub mod pallet {
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
         + vested_rewards::Config
+        + ceres_token_locker::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -113,11 +124,13 @@ pub mod pallet {
     type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
+    type TokenLocker<T> = ceres_token_locker::Pallet<T>;
     type PSWAPDistribution<T> = pswap_distribution::Pallet<T>;
     type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -303,6 +316,14 @@ pub mod pallet {
         CantCreateILOForListedToken,
         /// Account is not whitelisted
         AccountIsNotWhitelisted,
+        /// Team first release percent can't be zero
+        InvalidTeamFirstReleasePercent,
+        /// Team invalid vesting percent
+        InvalidTeamVestingPercent,
+        /// Team vesting period can't be zero
+        InvalidTeamVestingPeriod,
+        /// Not enough team tokens to lock
+        NotEnoughTeamTokensToLock,
     }
 
     #[pallet::call]
@@ -325,14 +346,14 @@ pub mod pallet {
             lockup_days: u32,
             start_block: T::BlockNumber,
             end_block: T::BlockNumber,
+            team_vesting_total_tokens: Balance,
+            team_vesting_first_release_percent: Balance,
+            team_vesting_period: T::BlockNumber,
+            team_vesting_percent: Balance,
             first_release_percent: Balance,
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
         ) -> DispatchResultWithPostInfo {
-            /* team_vesting_total_tokens: Balance,
-            team_vesting_first_release_percent: Balance,
-            team_vesting_period: T::BlockNumber,
-            team_vesting_percent: Balance, */
             let user = ensure_signed(origin.clone())?;
 
             if !WhitelistedIloOrganizers::<T>::get().contains(&user) {
@@ -377,6 +398,10 @@ pub mod pallet {
                 start_block,
                 end_block,
                 current_block,
+                team_vesting_total_tokens,
+                team_vesting_first_release_percent,
+                team_vesting_period,
+                team_vesting_percent,
                 first_release_percent,
                 vesting_period,
                 vesting_percent,
@@ -384,7 +409,7 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
@@ -398,7 +423,7 @@ pub mod pallet {
             // Burn CERES as fee
             Assets::<T>::burn(
                 origin,
-                T::CeresAssetId::get().into(),
+                CeresAssetIdOf::<T>::get().into(),
                 CeresBurnFeeAmount::<T>::get(),
             )?;
 
@@ -420,10 +445,16 @@ pub mod pallet {
                 lockup_days,
                 start_block,
                 end_block,
-                token_vesting: VestingTokensInfo {
+                contributors_vesting: ContributorsVesting {
                     first_release_percent,
                     vesting_period,
                     vesting_percent,
+                },
+                team_vesting: TeamVesting {
+                    team_vesting_total_tokens,
+                    team_vesting_first_release_percent,
+                    team_vesting_period,
+                    team_vesting_percent,
                 },
                 sold_tokens: balance!(0),
                 funds_raised: balance!(0),
@@ -460,7 +491,7 @@ pub mod pallet {
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
@@ -615,7 +646,7 @@ pub mod pallet {
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
             ensure!(
-                current_block > ilo_info.end_block,
+                current_block > ilo_info.end_block || ilo_info.funds_raised == ilo_info.hard_cap,
                 Error::<T>::ILOIsNotFinished
             );
             ensure!(!ilo_info.failed, Error::<T>::ILOIsFailed);
@@ -732,6 +763,45 @@ pub mod pallet {
             ilo_info.finish_block = current_block;
             <ILOs<T>>::insert(&asset_id, &ilo_info);
 
+            // Lock team tokens
+            if ilo_info.team_vesting.team_vesting_total_tokens != balance!(0) {
+                let mut vesting_amount =
+                    balance!(1) - ilo_info.team_vesting.team_vesting_first_release_percent;
+                let tokens_to_lock =
+                    (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
+                        * FixedWrapper::from(vesting_amount))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                ensure!(
+                    tokens_to_lock
+                        <= Assets::<T>::free_balance(&asset_id.into(), &user).unwrap_or(0),
+                    Error::<T>::NotEnoughTeamTokensToLock
+                );
+
+                let mut unlocking_block =
+                    current_block + ilo_info.team_vesting.team_vesting_period.into();
+                let tokens_to_lock_per_period =
+                    (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
+                        * FixedWrapper::from(ilo_info.team_vesting.team_vesting_percent))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                while vesting_amount > balance!(0) {
+                    TokenLocker::<T>::lock_tokens(
+                        origin.clone(),
+                        asset_id.clone(),
+                        unlocking_block,
+                        tokens_to_lock_per_period,
+                    )?;
+
+                    unlocking_block += ilo_info.team_vesting.team_vesting_period.into();
+                    vesting_amount = vesting_amount
+                        .checked_sub(ilo_info.team_vesting.team_vesting_percent)
+                        .unwrap_or(balance!(0));
+                }
+            }
+
             // Emit an event
             Self::deposit_event(Event::ILOFinished(user.clone(), asset_id));
 
@@ -835,7 +905,7 @@ pub mod pallet {
                 // First claim
                 if contribution_info.tokens_claimed == balance!(0) {
                     let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+                        * FixedWrapper::from(ilo_info.contributors_vesting.first_release_percent))
                     .try_into_balance()
                     .unwrap_or(0);
                     // Claim first time
@@ -846,7 +916,7 @@ pub mod pallet {
                         tokens_to_claim,
                     )?;
                     contribution_info.tokens_claimed += tokens_to_claim;
-                    if ilo_info.token_vesting.first_release_percent == balance!(1) {
+                    if ilo_info.contributors_vesting.first_release_percent == balance!(1) {
                         contribution_info.claiming_finished = true;
                     }
                 } else {
@@ -855,7 +925,7 @@ pub mod pallet {
                     let blocks_passed = current_block.saturating_sub(ilo_info.finish_block);
 
                     let potential_claims: u32 = blocks_passed
-                        .checked_div(&ilo_info.token_vesting.vesting_period)
+                        .checked_div(&ilo_info.contributors_vesting.vesting_period)
                         .unwrap_or(0u32.into())
                         .unique_saturated_into();
                     if potential_claims == 0 {
@@ -867,7 +937,7 @@ pub mod pallet {
                     }
 
                     let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
+                        * FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent))
                     .try_into_balance()
                     .unwrap_or(0);
                     let mut claimable = (FixedWrapper::from(tokens_per_claim)
@@ -892,11 +962,11 @@ pub mod pallet {
                     contribution_info.number_of_claims += (claimable / tokens_per_claim) as u32;
 
                     let claimed_percent =
-                        (FixedWrapper::from(ilo_info.token_vesting.vesting_percent)
+                        (FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent)
                             * FixedWrapper::from(balance!(contribution_info.number_of_claims)))
                         .try_into_balance()
                         .unwrap_or(0)
-                            + ilo_info.token_vesting.first_release_percent;
+                            + ilo_info.contributors_vesting.first_release_percent;
 
                     if claimed_percent >= balance!(1) {
                         contribution_info.claiming_finished = true;
@@ -1141,6 +1211,10 @@ pub mod pallet {
             start_block: T::BlockNumber,
             end_block: T::BlockNumber,
             current_block: T::BlockNumber,
+            team_vesting_total_tokens: Balance,
+            team_vesting_first_release_percent: Balance,
+            team_vesting_period: T::BlockNumber,
+            team_vesting_percent: Balance,
             first_release_percent: Balance,
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
@@ -1204,6 +1278,33 @@ pub mod pallet {
             .integral(RoundMode::Ceil);
             if tokens_for_liquidity != balance!(tfl) {
                 return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
+            }
+
+            // If team vesting is selected
+            if team_vesting_total_tokens != zero {
+                if team_vesting_first_release_percent == zero {
+                    return Err(Error::<T>::InvalidTeamFirstReleasePercent.into());
+                }
+
+                let one = balance!(1);
+                if team_vesting_first_release_percent != one && team_vesting_percent == zero {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                if team_vesting_first_release_percent + team_vesting_percent > one {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                let team_vesting_amount = one - team_vesting_first_release_percent;
+                if team_vesting_first_release_percent != one
+                    && team_vesting_amount % team_vesting_percent != 0
+                {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                if team_vesting_first_release_percent != one && team_vesting_period == 0u32.into() {
+                    return Err(Error::<T>::InvalidTeamVestingPeriod.into());
+                }
             }
 
             if first_release_percent == zero {
