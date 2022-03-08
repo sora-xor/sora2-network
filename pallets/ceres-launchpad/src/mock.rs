@@ -54,6 +54,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
 pub const DAN: AccountId = 4;
+pub const EMILY: AccountId = 5;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {

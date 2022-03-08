@@ -42,7 +42,7 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     lockup_days: u32,
     start_block: BlockNumber,
     end_block: BlockNumber,
-    token_vesting: VestingInfo<Balance, BlockNumber>,
+    token_vesting: VestingTokensInfo<Balance, BlockNumber>,
     sold_tokens: Balance,
     funds_raised: Balance,
     succeeded: bool,
@@ -54,7 +54,7 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct VestingInfo<Balance, BlockNumber> {
+pub struct VestingTokensInfo<Balance, BlockNumber> {
     first_release_percent: Balance,
     vesting_period: BlockNumber,
     vesting_percent: Balance,
@@ -75,11 +75,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::{ContributionInfo, ILOInfo, VestingInfo};
+    use crate::{ContributionInfo, ILOInfo, VestingTokensInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Vec;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
@@ -190,6 +191,14 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_contributors)]
+    pub type WhitelistedContributors<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_ilo_organizers)]
+    pub type WhitelistedIloOrganizers<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
+
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -210,6 +219,14 @@ pub mod pallet {
         FeeChanged(Balance),
         /// PSWAP claimed
         ClaimedPSWAP(),
+        /// Contributor whitelisted [who]
+        WhitelistedContributor(AccountIdOf<T>),
+        /// ILO organizer whitelisted [who]
+        WhitelistedIloOrganizer(AccountIdOf<T>),
+        /// Contributor removed [who]
+        RemovedWhitelistedContributor(AccountIdOf<T>),
+        /// ILO organizer removed [who]
+        RemovedWhitelistedIloOrganizer(AccountIdOf<T>),
     }
 
     #[pallet::error]
@@ -284,6 +301,8 @@ pub mod pallet {
         ILOIsSucceeded,
         /// Can't create ILO for listed token
         CantCreateILOForListedToken,
+        /// Account is not whitelisted
+        AccountIsNotWhitelisted,
     }
 
     #[pallet::call]
@@ -310,7 +329,15 @@ pub mod pallet {
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
         ) -> DispatchResultWithPostInfo {
+            /* team_vesting_total_tokens: Balance,
+            team_vesting_first_release_percent: Balance,
+            team_vesting_period: T::BlockNumber,
+            team_vesting_percent: Balance, */
             let user = ensure_signed(origin.clone())?;
+
+            if !WhitelistedIloOrganizers::<T>::get().contains(&user) {
+                return Err(Error::<T>::AccountIsNotWhitelisted.into());
+            }
 
             // Get ILO info of token
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
@@ -393,7 +420,7 @@ pub mod pallet {
                 lockup_days,
                 start_block,
                 end_block,
-                token_vesting: VestingInfo {
+                token_vesting: VestingTokensInfo {
                     first_release_percent,
                     vesting_period,
                     vesting_percent,
@@ -424,6 +451,11 @@ pub mod pallet {
             funds_to_contribute: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if !WhitelistedContributors::<T>::get().contains(&user) {
+                return Err(Error::<T>::AccountIsNotWhitelisted.into());
+            }
+
             let current_block = frame_system::Pallet::<T>::block_number();
 
             ensure!(
@@ -576,6 +608,10 @@ pub mod pallet {
             // Check if ILO for token already exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
             ensure!(
@@ -584,9 +620,6 @@ pub mod pallet {
             );
             ensure!(!ilo_info.failed, Error::<T>::ILOIsFailed);
             ensure!(!ilo_info.succeeded, Error::<T>::ILOIsSucceeded);
-            if user != ilo_info.ilo_organizer {
-                return Err(Error::<T>::Unauthorized.into());
-            }
 
             let pallet_account = Self::account_id();
             if ilo_info.funds_raised < ilo_info.soft_cap {
@@ -721,6 +754,10 @@ pub mod pallet {
             // Check if ILO for token exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             ensure!(!ilo_info.claimed_lp_tokens, Error::<T>::CantClaimLPTokens);
 
             let unlocking_block = ilo_info
@@ -730,10 +767,6 @@ pub mod pallet {
                 current_block >= unlocking_block,
                 Error::<T>::CantClaimLPTokens
             );
-
-            if user != ilo_info.ilo_organizer {
-                return Err(Error::<T>::Unauthorized.into());
-            }
 
             let pallet_account = Self::account_id();
 
@@ -950,6 +983,90 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::ClaimedPSWAP());
+
+            Ok(().into())
+        }
+
+        /// Add whitelisted contributor
+        #[pallet::weight(10000)]
+        pub fn add_whitelisted_contributor(
+            origin: OriginFor<T>,
+            contributor: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            WhitelistedContributors::<T>::append(&contributor);
+
+            // Emit an event
+            Self::deposit_event(Event::WhitelistedContributor(contributor));
+
+            Ok(().into())
+        }
+
+        /// Remove whitelisted contributor
+        #[pallet::weight(10000)]
+        pub fn remove_whitelisted_contributor(
+            origin: OriginFor<T>,
+            contributor: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let mut temp = WhitelistedContributors::<T>::get();
+            temp.retain(|x| *x != contributor);
+            WhitelistedContributors::<T>::set(temp);
+
+            // Emit an event
+            Self::deposit_event(Event::RemovedWhitelistedContributor(contributor));
+
+            Ok(().into())
+        }
+
+        /// Add whitelisted ILO organizer
+        #[pallet::weight(10000)]
+        pub fn add_whitelisted_ilo_organizer(
+            origin: OriginFor<T>,
+            ilo_organizer: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            WhitelistedIloOrganizers::<T>::append(&ilo_organizer);
+
+            // Emit an event
+            Self::deposit_event(Event::WhitelistedIloOrganizer(ilo_organizer));
+
+            Ok(().into())
+        }
+
+        /// Remove whitelisted ILO organizer
+        #[pallet::weight(10000)]
+        pub fn remove_whitelisted_ilo_organizer(
+            origin: OriginFor<T>,
+            ilo_organizer: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let mut temp = WhitelistedIloOrganizers::<T>::get();
+            temp.retain(|x| *x != ilo_organizer);
+            WhitelistedIloOrganizers::<T>::set(temp);
+
+            // Emit an event
+            Self::deposit_event(Event::RemovedWhitelistedIloOrganizer(ilo_organizer));
 
             Ok(().into())
         }

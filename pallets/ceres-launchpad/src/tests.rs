@@ -110,14 +110,23 @@ mod tests {
                 balance!(5000)
             );
 
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(ALICE);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(BOB);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(CHARLES);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(DAN);
+
+            pallet::WhitelistedContributors::<Runtime>::append(ALICE);
+            pallet::WhitelistedContributors::<Runtime>::append(BOB);
+            pallet::WhitelistedContributors::<Runtime>::append(CHARLES);
+            pallet::WhitelistedContributors::<Runtime>::append(DAN);
+
             tests();
         });
     }
 
     #[test]
     fn create_ilo_ilo_price_zero() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -147,8 +156,7 @@ mod tests {
 
     #[test]
     fn create_ilo_hard_cap_zero() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -178,8 +186,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_soft_cap() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -209,8 +216,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_minimum_contribution() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -240,8 +246,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_maximum_contribution() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -271,8 +276,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_liquidity_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -302,8 +306,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_lockup_days() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -333,8 +336,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_start_block() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -364,8 +366,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_end_block() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -395,8 +396,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_price() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -426,8 +426,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_ilo() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -457,8 +456,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_liquidity() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -488,8 +486,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_first_release_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -519,8 +516,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -550,8 +546,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent_overflow() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -581,8 +576,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent_remainder() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -612,8 +606,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_period() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -643,8 +636,7 @@ mod tests {
 
     #[test]
     fn create_ilo_not_enough_ceres() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -674,8 +666,7 @@ mod tests {
 
     #[test]
     fn create_ilo_not_enough_tokens() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -704,9 +695,41 @@ mod tests {
     }
 
     #[test]
+    fn create_ilo_account_is_not_whitelisted() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
     fn create_ilo_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(ALICE);
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -750,8 +773,7 @@ mod tests {
 
     #[test]
     fn create_ilo_ilo_already_exists() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -802,8 +824,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
                     Origin::signed(ALICE),
@@ -855,8 +876,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_not_started() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -891,8 +911,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_is_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -930,8 +949,7 @@ mod tests {
 
     #[test]
     fn contribute_contribution_is_lower_then_min() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let asset_id = CERES_ASSET_ID;
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -1057,6 +1075,44 @@ mod tests {
     }
 
     #[test]
+    fn contribute_account_is_not_whitelisted() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.5),
+                balance!(10),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::contribute(
+                    Origin::signed(EMILY),
+                    CERES_ASSET_ID.into(),
+                    balance!(0.6)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
     fn contribute_ok() {
         preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1114,8 +1170,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
                     Origin::signed(ALICE),
@@ -1128,8 +1183,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_not_started() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1164,8 +1218,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_is_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1202,8 +1255,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_not_enough_funds() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1311,8 +1363,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::finish_ilo(
                     Origin::signed(ALICE),
@@ -1325,8 +1376,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_ilo_is_not_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1361,8 +1411,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_unauthorized() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -2133,8 +2182,7 @@ mod tests {
 
     #[test]
     fn claim_lp_tokens_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
                     Origin::signed(ALICE),
@@ -2147,8 +2195,7 @@ mod tests {
 
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -2540,6 +2587,160 @@ mod tests {
             assert_eq!(
                 pallet::CeresForContributionInILO::<Runtime>::get(),
                 balance!(100)
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_contributor_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_contributor(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_contributor_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_contributor(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    EMILY
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedContributors::<Runtime>::get().contains(&EMILY),
+                true
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_contributor_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_contributor(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_contributor_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_contributor(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    ALICE
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedContributors::<Runtime>::get().contains(&BOB),
+                true
+            );
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::contribute(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(0.21)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_ilo_organizer_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_ilo_organizer(
+                    Origin::signed(ALICE),
+                    DAN
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_ilo_organizer_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_ilo_organizer(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    DAN
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedIloOrganizers::<Runtime>::get().contains(&DAN),
+                true
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_ilo_organizer_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_ilo_organizer(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_ilo_organizer_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_ilo_organizer(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    ALICE
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedIloOrganizers::<Runtime>::get().contains(&BOB),
+                true
+            );
+
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
             );
         });
     }
