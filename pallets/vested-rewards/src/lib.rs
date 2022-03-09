@@ -342,7 +342,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::{pallet_prelude::*, dispatch::DispatchResultWithPostInfo};
+    use frame_support::dispatch::DispatchResultWithPostInfo;
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
