@@ -206,20 +206,22 @@ impl<T: Config> Pallet<T> {
     pub fn claim_reward_by_reason(
         account_id: &T::AccountId,
         reason: RewardReason,
+        asset_id: &T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
+            RewardReason::Crowdloan => T::GetCrowdloanRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
-        let available_rewards = Assets::<T>::free_balance(&PSWAP.into(), &source_account)?;
+        let available_rewards = Assets::<T>::free_balance(asset_id, &source_account)?;
         if available_rewards.is_zero() {
             fail!(Error::<T>::RewardsSupplyShortage);
         }
         let amount = amount.min(available_rewards);
-        Assets::<T>::transfer_from(&PSWAP.into(), &source_account, account_id, amount)?;
+        Assets::<T>::transfer_from(asset_id, &source_account, account_id, amount)?;
         Ok(amount)
     }
 
@@ -290,7 +292,8 @@ impl<T: Config> OnPswapBurned for Module<T> {
 
 impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Module<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
-    /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
+    /// `count` is used as a multiplier if multiple times same volume is transferred inside
+    /// transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
         xor_volume: Balance,
@@ -339,7 +342,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, dispatch::DispatchResultWithPostInfo};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -354,6 +357,7 @@ pub mod pallet {
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
         type GetFarmingRewardsAccountId: Get<Self::AccountId>;
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
+        type GetCrowdloanRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -387,6 +391,12 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
             Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
+        #[transactional]
+        pub fn claim_crowdloan_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            todo!()
         }
 
         /// Inject market makers snapshot into storage.

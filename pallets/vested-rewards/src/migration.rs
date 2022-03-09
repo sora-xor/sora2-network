@@ -32,6 +32,7 @@ use crate::{
     Config, CrowdloanReward, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
     FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
+use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
@@ -269,7 +270,14 @@ fn allowed_market_making_assets<T: Config>() -> Vec<T::AssetId> {
 }
 
 pub fn add_crowdloan_rewards<T: Config>() -> Weight {
-    let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS).unwrap();
-    dbg!(rewards);
+    let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS)
+        .expect("Can't deserialize crowdloan contributors.");
+    rewards.into_iter().for_each(|reward| {
+        crate::CrowdloanRewards::<T>::insert(
+            T::AccountId::decode(&mut &reward.address[..])
+                .expect("Can't decode contributor address."),
+            reward,
+        )
+    });
     EXTRINSIC_FIXED_WEIGHT
 }
