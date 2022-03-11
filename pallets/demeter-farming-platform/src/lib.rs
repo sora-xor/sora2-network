@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 use codec::{Decode, Encode};
 use common::Balance;
 
@@ -37,11 +43,13 @@ pub struct UserInfo<AssetId> {
     rewards: Balance,
 }
 
+pub use pallet::*;
+
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{PoolInfo, TokenInfo, UserInfo};
     use common::prelude::Balance;
-    use common::{PoolXykPallet, XOR};
+    use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_system::pallet_prelude::*;
@@ -98,7 +106,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
-    StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
@@ -521,17 +529,18 @@ pub mod pallet {
             ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
 
             // Get pool info and check if pool exists
-            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut pool_info = &mut Default::default();
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut old_multiplier = 0;
+            let mut exist = false;
+
             for p_info in pool_infos.iter_mut() {
                 if !p_info.is_removed && p_info.is_farm == is_farm {
-                    pool_info = p_info;
+                    exist = true;
+                    old_multiplier = p_info.multiplier;
+                    p_info.multiplier = new_multiplier;
                 }
             }
-            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
-
-            let old_multiplier = pool_info.multiplier;
-            pool_info.multiplier = new_multiplier;
+            ensure!(exist, Error::<T>::PoolDoesNotExist);
 
             let mut token_info = <TokenInfos<T>>::get(&reward_asset);
 
@@ -544,6 +553,7 @@ pub mod pallet {
             }
 
             <TokenInfos<T>>::insert(&reward_asset, &token_info);
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
             // Emit an event
             Self::deposit_event(Event::<T>::MultiplierChanged(
@@ -627,7 +637,7 @@ pub mod pallet {
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
 
             if (farms_allocation == 0 && staking_allocation == 0)
-                || (farms_allocation + staking_allocation + team_allocation != 1)
+                || (farms_allocation + staking_allocation + team_allocation != balance!(1))
             {
                 return Err(Error::<T>::InvalidAllocationParameters.into());
             }

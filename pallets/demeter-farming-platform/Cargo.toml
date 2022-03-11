@@ -32,6 +32,7 @@ hex-literal = "0.3.1"
 [dev-dependencies]
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
