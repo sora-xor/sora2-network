@@ -35,7 +35,7 @@ use crate::{
 use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_wrapper, RewardReason, PSWAP, VAL, XOR, XSTUSD};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
@@ -71,7 +71,6 @@ pub fn migrate<T: Config>() -> Weight {
     weight
         .saturating_add(allow_market_making_pairs::<T>())
         .saturating_add(add_crowdloan_rewards::<T>())
-        .saturating_add(add_total_crowdloan_rewards::<T>())
 }
 
 pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
@@ -280,14 +279,6 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
             reward,
         )
     });
-
-    EXTRINSIC_FIXED_WEIGHT
-}
-
-pub fn add_total_crowdloan_rewards<T: Config>() -> Weight {
-    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(VAL), balance!(676393));
-    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(PSWAP), balance!(9363480));
-    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(XSTUSD), balance!(77050));
 
     EXTRINSIC_FIXED_WEIGHT
 }

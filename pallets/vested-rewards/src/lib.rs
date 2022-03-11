@@ -35,10 +35,10 @@
 extern crate alloc;
 
 use codec::{Decode, Encode};
-use common::fixnum::ops::CheckedMul;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP,
+    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
+    XSTUSD,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
@@ -412,8 +412,6 @@ pub mod pallet {
             asset_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            let total = CrowdloanRewardsTotal::<T>::try_get(asset_id)
-                .map_err(|_| Error::<T>::NoRewardsForAsset)?;
             let rewards = CrowdloanRewards::<T>::try_get(who.clone())
                 .map_err(|_| Error::<T>::NothingToClaim)?;
             let last_claim_block: u128 =
@@ -426,7 +424,15 @@ pub mod pallet {
                 current_block_number - last_claim_block
             };
             let claim_days = claim_period / BLOCKS_PER_DAY;
-            let reward = rewards.percent.saturating_mul(total as i128);
+            let reward = if asset_id == VAL.into() {
+                rewards.val_reward
+            } else if asset_id == PSWAP.into() {
+                rewards.pswap_reward
+            } else if asset_id == XSTUSD.into() {
+                rewards.xstusd_reward
+            } else {
+                return Err(Error::<T>::NoRewardsForAsset.into());
+            };
             let reward = reward / LEASE_TOTAL_DAYS.into();
             let reward = reward * claim_days;
 
@@ -566,12 +572,6 @@ pub mod pallet {
     #[pallet::getter(fn crowdloan_rewards)]
     pub type CrowdloanRewards<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
-
-    /// Crowdloan vested rewards storage.
-    #[pallet::storage]
-    #[pallet::getter(fn crowdloan_rewards_total)]
-    pub type CrowdloanRewardsTotal<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, Balance, ValueQuery>;
 
     /// This storage keeps the last block number, when the user (the first) claimed a reward for
     /// asset (the second key).
