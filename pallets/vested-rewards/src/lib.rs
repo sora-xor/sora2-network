@@ -101,7 +101,7 @@ pub struct MarketMakerInfo {
 }
 
 /// A vested reward for crowdloan.
-#[derive(Encode, Decode, Deserialize, Clone, Debug, Default)]
+#[derive(Encode, Decode, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct CrowdloanReward {
     /// The user id
     #[serde(with = "serde_bytes", rename = "ID")]

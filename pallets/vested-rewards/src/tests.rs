@@ -33,9 +33,10 @@ use crate::{
     migration, Error, MarketMakerInfo, MarketMakingPairs, RewardInfo, FARMING_REWARDS,
     MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY,
 };
+use codec::Decode;
 use common::{
     balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, ETH,
-    PSWAP, XOR, XSTUSD,
+    PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
@@ -494,6 +495,120 @@ fn migration_v0_1_0_to_v1_1_0_market_makers_fails_on_underflow() {
 }
 
 #[test]
+fn storage_has_total_crowdloan_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::CrowdloanRewardsTotal;
+
+        assert_eq!(
+            0,
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(
+                PSWAP
+            ))
+        );
+        assert_eq!(
+            0,
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(VAL))
+        );
+        assert_eq!(
+            0,
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(
+                XSTUSD
+            ))
+        );
+
+        crate::migration::add_total_crowdloan_rewards::<Runtime>();
+
+        assert_eq!(
+            balance!(9363480),
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(
+                PSWAP
+            ))
+        );
+        assert_eq!(
+            balance!(676393),
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(VAL))
+        );
+        assert_eq!(
+            balance!(77050),
+            CrowdloanRewardsTotal::<Runtime>::get(<Runtime as assets::Config>::AssetId::from(
+                XSTUSD
+            ))
+        );
+    });
+}
+
+#[test]
+fn storage_has_crowdloan_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::CrowdloanRewards;
+
+        let account_1 = <Runtime as frame_system::Config>::AccountId::decode(
+            &mut &[
+                99u8, 110, 83, 97, 119, 118, 66, 50, 86, 98, 106, 81, 115, 57, 55, 120, 99, 113,
+                97, 78, 80, 115, 122, 78, 70, 109, 118, 87, 82, 122, 99, 100, 121, 112, 76, 119,
+                101, 88, 66, 122, 72, 56, 51, 88, 71, 117, 113, 114, 77,
+            ][..],
+        )
+        .unwrap();
+        let account_2 = <Runtime as frame_system::Config>::AccountId::decode(
+            &mut &[
+                99, 110, 84, 97, 80, 77, 82, 109, 71, 75, 52, 118, 90, 105, 77, 90, 117, 83, 75,
+                121, 70, 68, 56, 80, 112, 111, 54, 72, 66, 114, 78, 56, 109, 86, 78, 120, 122, 114,
+                52, 118, 65, 97, 90, 81, 80, 85, 56, 56, 112,
+            ][..],
+        )
+        .unwrap();
+        let account_3 = <Runtime as frame_system::Config>::AccountId::decode(
+            &mut &[
+                99, 110, 85, 88, 97, 119, 97, 99, 101, 83, 117, 115, 53, 114, 81, 100, 117, 103,
+                53, 106, 85, 71, 80, 120, 118, 113, 50, 69, 85, 72, 80, 113, 90, 72, 50, 55, 54,
+                53, 99, 68, 84, 54, 116, 122, 114, 78, 72, 80, 101,
+            ][..],
+        )
+        .unwrap();
+
+        assert_eq!(
+            crate::CrowdloanReward::default(),
+            CrowdloanRewards::<Runtime>::get(&account_1)
+        );
+        assert_eq!(
+            crate::CrowdloanReward::default(),
+            CrowdloanRewards::<Runtime>::get(&account_2)
+        );
+        assert_eq!(
+            crate::CrowdloanReward::default(),
+            CrowdloanRewards::<Runtime>::get(&account_3)
+        );
+
+        crate::migration::add_crowdloan_rewards::<Runtime>();
+
+        assert_eq!(
+            account_1,
+            <Runtime as frame_system::Config>::AccountId::decode(
+                &mut &CrowdloanRewards::<Runtime>::get(&account_1).address[..]
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            account_2,
+            <Runtime as frame_system::Config>::AccountId::decode(
+                &mut &CrowdloanRewards::<Runtime>::get(&account_2).address[..]
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            account_3,
+            <Runtime as frame_system::Config>::AccountId::decode(
+                &mut &CrowdloanRewards::<Runtime>::get(&account_3).address[..]
+            )
+            .unwrap()
+        );
+    });
+}
+
+#[test]
 fn storage_has_allowed_market_maker_pools() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -506,14 +621,6 @@ fn storage_has_allowed_market_maker_pools() {
 
         assert!(MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
         assert!(MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
-    });
-}
-
-#[test]
-fn crowdloan() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        crate::migration::add_crowdloan_rewards::<Runtime>();
     });
 }
 
