@@ -35,7 +35,7 @@ use crate::{
 use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
@@ -279,5 +279,10 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
             reward,
         )
     });
+
+    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(VAL), balance!(676393));
+    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(PSWAP), balance!(9363480));
+    crate::CrowdloanRewardsTotal::<T>::insert(T::AssetId::from(XSTUSD), balance!(77050));
+
     EXTRINSIC_FIXED_WEIGHT
 }

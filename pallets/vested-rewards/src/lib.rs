@@ -35,6 +35,7 @@
 extern crate alloc;
 
 use codec::{Decode, Encode};
+use common::fixnum::ops::CheckedMul;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
     balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP,
@@ -63,11 +64,15 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
 pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
+const BLOCKS_PER_DAY: u128 = 14400;
+const LEASE_START_BLOCK: u128 = 4_397_212;
+const LEASE_TOTAL_DAYS: u128 = 318;
 
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -131,6 +136,7 @@ pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
     fn set_asset_pair() -> Weight;
+    fn claim_crowdloan_rewards() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -166,9 +172,13 @@ impl<T: Config> Pallet<T> {
                 let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
                     let claimable = (*amount).min(info.limit);
-                    let actual_claimed =
-                        Self::claim_reward_by_reason(account_id, reward_reason, claimable)
-                            .unwrap_or(balance!(0));
+                    let actual_claimed = Self::claim_reward_by_reason(
+                        account_id,
+                        reward_reason,
+                        &PSWAP.into(),
+                        claimable,
+                    )
+                    .unwrap_or(balance!(0));
                     info.limit = info.limit.saturating_sub(actual_claimed);
                     total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
                     if claimable > actual_claimed {
@@ -345,6 +355,7 @@ pub mod pallet {
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
 
     #[pallet::config]
     pub trait Config:
@@ -394,10 +405,43 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         #[transactional]
-        pub fn claim_crowdloan_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            todo!()
+        pub fn claim_crowdloan_rewards(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let total = CrowdloanRewardsTotal::<T>::try_get(asset_id)
+                .map_err(|_| Error::<T>::NoRewardsForAsset)?;
+            let rewards = CrowdloanRewards::<T>::try_get(who.clone())
+                .map_err(|_| Error::<T>::NothingToClaim)?;
+            let last_claim_block: u128 =
+                CrowdloanClaimHistory::<T>::get(who.clone(), asset_id).unique_saturated_into();
+            let current_block_number: u128 =
+                <frame_system::Pallet<T>>::block_number().unique_saturated_into();
+            let claim_period = if last_claim_block.is_zero() {
+                current_block_number - LEASE_START_BLOCK
+            } else {
+                current_block_number - last_claim_block
+            };
+            let claim_days = claim_period / BLOCKS_PER_DAY;
+            let reward = rewards.percent.saturating_mul(total as i128);
+            let reward = reward / LEASE_TOTAL_DAYS.into();
+            let reward = reward * claim_days;
+
+            Pallet::<T>::claim_reward_by_reason(
+                &who,
+                RewardReason::Crowdloan,
+                &asset_id,
+                reward.into_balance(),
+            )?;
+
+            CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
+                *value = T::BlockNumber::unique_saturated_from(current_block_number)
+            });
+
+            Ok(().into())
         }
 
         /// Inject market makers snapshot into storage.
@@ -452,7 +496,8 @@ pub mod pallet {
         ClaimLimitExceeded,
         /// Attempt to claim rewards of type, which is not handled.
         UnhandledRewardType,
-        /// Account holding dedicated reward reserves is empty. This likely means that some of reward programmes have finished.
+        /// Account holding dedicated reward reserves is empty. This likely means that some of
+        /// reward programmes have finished.
         RewardsSupplyShortage,
         /// Increment account reference error.
         IncRefError,
@@ -464,6 +509,8 @@ pub mod pallet {
         MarketMakingPairAlreadyAllowed,
         /// The market making pair is disallowed.
         MarketMakingPairAlreadyDisallowed,
+        /// There are no rewards for the asset ID.
+        NoRewardsForAsset,
     }
 
     #[pallet::event]
@@ -519,4 +566,24 @@ pub mod pallet {
     #[pallet::getter(fn crowdloan_rewards)]
     pub type CrowdloanRewards<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
+
+    /// Crowdloan vested rewards storage.
+    #[pallet::storage]
+    #[pallet::getter(fn crowdloan_rewards_total)]
+    pub type CrowdloanRewardsTotal<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AssetId, Balance, ValueQuery>;
+
+    /// This storage keeps the last block number, when the user (the first) claimed a reward for
+    /// asset (the second key).
+    #[pallet::storage]
+    #[pallet::getter(fn crowdloan_claim_history)]
+    pub type CrowdloanClaimHistory<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        T::AssetId,
+        T::BlockNumber,
+        ValueQuery,
+    >;
 }

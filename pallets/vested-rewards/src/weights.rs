@@ -78,6 +78,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn set_asset_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
+
+    fn claim_crowdloan_rewards() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -90,6 +94,10 @@ impl crate::WeightInfo for () {
     }
 
     fn set_asset_pair() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn claim_crowdloan_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
