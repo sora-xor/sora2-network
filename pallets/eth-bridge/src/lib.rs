@@ -432,10 +432,11 @@ pub mod pallet {
             bridge_contract_address: EthereumAddress,
             initial_peers: Vec<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
-            let author = ensure_signed(origin)?;
+            ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
+            ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
-                author,
+                initial_peers[0].clone(),
                 initial_peers.clone(),
             )?;
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
@@ -1126,6 +1127,8 @@ pub mod pallet {
         ExpectedEthNetwork,
         /// Request was removed and refunded.
         RemovedAndRefunded,
+        /// Not enough peers provided, need at least 1
+        NotEnoughPeers,
     }
 
     impl<T: Config> Error<T> {
@@ -1569,7 +1572,7 @@ impl<T: Config> Pallet<T> {
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
         RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
         SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
-        let scope = Scope::Unlimited;
+        let scope = Scope::Limited(common::hash(&asset_id));
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
             let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)
