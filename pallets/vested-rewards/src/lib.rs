@@ -112,9 +112,6 @@ pub struct CrowdloanReward {
     /// Kusama contribution
     #[serde(rename = "Contribution")]
     contribution: Fixed,
-    /// Contribution date
-    #[serde(with = "serde_bytes", rename = "Date")]
-    date: Vec<u8>,
     /// Reward in XOR
     #[serde(rename = "XOR Reward")]
     xor_reward: Fixed,
