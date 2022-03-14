@@ -275,7 +275,7 @@ fn should_not_add_token_if_not_bridge_account() {
 fn should_reserve_owned_asset_on_different_networks() {
     let mut builder = ExtBuilder::default();
     let net_id_0 = ETH_NETWORK_ID;
-    let net_id_1 = builder.add_network(vec![], None, None);
+    let net_id_1 = builder.add_network(vec![], None, None, Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -367,7 +367,7 @@ fn should_reserve_owned_asset_on_different_networks() {
 fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
     let mut builder = ExtBuilder::default();
     let net_id_0 = ETH_NETWORK_ID;
-    let net_id_1 = builder.add_network(vec![], None, None);
+    let net_id_1 = builder.add_network(vec![], None, None, Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {

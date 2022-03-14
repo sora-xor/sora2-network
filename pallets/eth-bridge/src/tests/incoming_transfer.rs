@@ -134,6 +134,7 @@ fn should_cancel_incoming_transfer() {
         }],
         Some(vec![(XOR.into(), Balance::from(100u32))]),
         None,
+        Default::default(),
     );
     let (mut ext, state) = builder.build();
     ext.execute_with(|| {
@@ -479,6 +480,7 @@ fn ocw_should_handle_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -550,6 +552,7 @@ fn ocw_should_not_register_pending_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -619,6 +622,7 @@ fn ocw_should_import_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -681,6 +685,7 @@ fn ocw_should_import_incoming_request_raw_response() {
         }],
         Some(vec![(VAL.into(), common::balance!(350000))]),
         Some(1),
+        hex!("077c2ec37d28709ce01ae740209bfbe185bd1eaa").into(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -738,6 +743,7 @@ fn ocw_should_not_import_pending_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(2),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
