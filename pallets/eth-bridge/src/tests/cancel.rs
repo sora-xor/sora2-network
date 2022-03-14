@@ -244,6 +244,7 @@ fn should_cancel_outgoing_prepared_requests() {
             (VAL.into(), common::balance!(33900000)),
         ]),
         Some(5),
+        Default::default(),
     );
     let (mut ext, state) = builder.build();
     ext.execute_with(|| {

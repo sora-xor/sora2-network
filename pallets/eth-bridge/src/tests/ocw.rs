@@ -127,6 +127,7 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(2),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -184,6 +185,7 @@ fn ocw_should_abort_missing_transaction() {
         }],
         Some(vec![(VAL.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -261,6 +263,7 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {

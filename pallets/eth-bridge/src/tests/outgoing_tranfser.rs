@@ -83,6 +83,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
         }],
         None,
         None,
+        Default::default(),
     );
     let (mut ext, state) = builder.build();
 
@@ -121,6 +122,7 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
         vec![AssetConfig::Thischain { id: PSWAP.into() }],
         None,
         None,
+        Default::default(),
     );
     let (mut ext, state) = builder.build();
 

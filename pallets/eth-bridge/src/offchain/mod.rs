@@ -123,10 +123,15 @@ impl<T: Config> Pallet<T> {
     /// Loops through the given array of logs and finds the first one that matches the type
     /// and topic.
     pub fn parse_main_event(
+        network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
     ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
         for log in logs {
+            // Check address to be sure what it came from our contract
+            if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
+                continue;
+            }
             if log.removed.unwrap_or(true) {
                 continue;
             }
@@ -424,7 +429,7 @@ impl<T: Config> Pallet<T> {
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
 
-        let call = Self::parse_main_event(&tx_receipt.logs, kind)?;
+        let call = Self::parse_main_event(network_id, &tx_receipt.logs, kind)?;
         // TODO (optimization): pre-validate the parsed calls.
         IncomingRequest::<T>::try_from_contract_event(call, incoming_pre_request, at_height)
     }
