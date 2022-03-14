@@ -2193,9 +2193,9 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "fixnum"
-version = "0.5.1"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5494d6a0d94f69b02f37622a502c59483ff915a1695977b8d0e2d22be7ac2f5"
+checksum = "d83b4df6079ff2f20dfd4c4a13a5c326d985ae35e289df51ff95e71e76b7ada5"
 dependencies = [
  "derive_more",
  "parity-scale-codec",
@@ -7820,6 +7820,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16ae07dd2f88a366f15bd0632ba725227018c69a1c8550a927324f8eb8368bb9"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.127"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9714,6 +9723,8 @@ dependencies = [
  "pool-xyk",
  "pswap-distribution",
  "serde",
+ "serde_bytes",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",

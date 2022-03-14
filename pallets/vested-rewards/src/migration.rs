@@ -29,20 +29,24 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight, FARMING_REWARDS,
-    MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+    Config, CrowdloanReward, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
+    FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
+use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
+use serde_json;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use traits::MultiCurrency;
+
+const CROWDLOAN_REWARDS: &'static str = include_str!("../crowdloan_rewards.json");
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
@@ -64,7 +68,9 @@ pub fn migrate<T: Config>() -> Weight {
         _ => (),
     }
 
-    weight.saturating_add(allow_market_making_pairs::<T>())
+    weight
+        .saturating_add(allow_market_making_pairs::<T>())
+        .saturating_add(add_crowdloan_rewards::<T>())
 }
 
 pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
@@ -261,4 +267,18 @@ fn allowed_market_making_assets<T: Config>() -> Vec<T::AssetId> {
     .iter()
     .map(|h| T::AssetId::from(H256::from(h)))
     .collect()
+}
+
+pub fn add_crowdloan_rewards<T: Config>() -> Weight {
+    let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS)
+        .expect("Can't deserialize crowdloan contributors.");
+    rewards.into_iter().for_each(|reward| {
+        crate::CrowdloanRewards::<T>::insert(
+            T::AccountId::decode(&mut &reward.address[..])
+                .expect("Can't decode contributor address."),
+            reward,
+        )
+    });
+
+    EXTRINSIC_FIXED_WEIGHT
 }
