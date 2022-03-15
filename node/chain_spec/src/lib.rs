@@ -29,7 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Tips:
-// * not(feature = "private-net") means "main net", however, given that "main net" is the default option and Cargo doesn't provide any way to disable "main net" if any "private net" is specified, we have to rely on such constructions.
+// * not(feature = "private-net") means "main net", however, given that "main net" is the default
+//   option and Cargo doesn't provide any way to disable "main net" if any "private net" is
+//   specified, we have to rely on such constructions.
 
 #![allow(unused_imports, unused_macros, dead_code)]
 
