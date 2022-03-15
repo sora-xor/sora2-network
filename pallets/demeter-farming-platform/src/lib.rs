@@ -382,14 +382,17 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             // Get pool info and check if pool has rewards
-            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut pool_info = &mut Default::default();
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut exist = false;
+            let mut pool_info_rewards = balance!(0);
+
             for p_info in pool_infos.iter_mut() {
                 if p_info.is_farm == is_farm {
-                    pool_info = p_info;
+                    exist = true;
+                    pool_info_rewards = p_info.rewards;
                 }
             }
-            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+            ensure!(exist, Error::<T>::PoolDoesNotExist);
 
             // Get user info
             let mut user_infos = <UserInfos<T>>::get(&user);
@@ -403,7 +406,7 @@ pub mod pallet {
                 {
                     ensure!(user_info.rewards != 0, Error::<T>::ZeroRewards);
                     ensure!(
-                        pool_info.rewards >= user_info.rewards,
+                        pool_info_rewards >= user_info.rewards,
                         Error::<T>::PoolDoesNotHaveRewards
                     );
 
@@ -415,13 +418,20 @@ pub mod pallet {
                     )?;
 
                     rewards = user_info.rewards;
+                    pool_info_rewards -= user_info.rewards;
                     user_info.rewards = 0;
-                    pool_info.rewards -= user_info.rewards;
+                }
+            }
+
+            for p_info in pool_infos.iter_mut() {
+                if p_info.is_farm == is_farm {
+                    p_info.rewards = pool_info_rewards;
                 }
             }
 
             // Update storage
             <UserInfos<T>>::insert(&user, user_infos);
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
             // Emit an event
             Self::deposit_event(Event::<T>::RewardWithdrawn(
