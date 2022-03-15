@@ -179,7 +179,7 @@ pub mod pallet {
             }
 
             // Get token info
-            let token_info = <TokenInfos<T>>::get(&pool_asset);
+            let mut token_info = <TokenInfos<T>>::get(&pool_asset);
 
             // Check if token is already registered
             ensure!(
@@ -191,12 +191,12 @@ pub mod pallet {
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
 
             if (farms_allocation == 0 && staking_allocation == 0)
-                || (farms_allocation + staking_allocation + team_allocation != 1)
+                || (farms_allocation + staking_allocation + team_allocation != balance!(1))
             {
                 return Err(Error::<T>::InvalidAllocationParameters.into());
             }
 
-            let token_info = TokenInfo {
+            token_info = TokenInfo {
                 farms_total_multiplier: 0,
                 staking_total_multiplier: 0,
                 token_per_block,
@@ -290,27 +290,30 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             // Get pool info and check if pool exists
-            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut pool_info = &mut Default::default();
-            for p_info in pool_infos.iter_mut() {
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut exist = false;
+            for p_info in &pool_infos {
                 if !p_info.is_removed && p_info.is_farm == is_farm {
-                    pool_info = p_info;
+                    exist = true;
                 }
             }
-            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+            ensure!(exist, Error::<T>::PoolDoesNotExist);
 
             // Get user info if exists or create new if does not exist
-            let mut user_info = &mut UserInfo {
+            let mut user_info = UserInfo {
                 pool_asset,
                 reward_asset,
                 is_farm,
                 pooled_tokens: 0,
                 rewards: 0,
             };
-            let user_infos: &mut Vec<UserInfo<AssetIdOf<T>>> = &mut <UserInfos<T>>::get(&user);
-            for u_info in user_infos.iter_mut() {
+            exist = false;
+            let mut user_infos = <UserInfos<T>>::get(&user);
+            for u_info in &user_infos {
                 if u_info.is_farm == is_farm {
-                    user_info = u_info;
+                    user_info.pooled_tokens = u_info.pooled_tokens;
+                    user_info.rewards = u_info.rewards;
+                    exist = true;
                 }
             }
 
@@ -332,8 +335,28 @@ pub mod pallet {
                     Error::<T>::InsufficientLPTokens
                 )
             }
-            user_info.pooled_tokens += pooled_tokens;
-            pool_info.total_tokens_in_pool += pooled_tokens;
+
+            // Update user info
+            if exist {
+                for u_info in user_infos.iter_mut() {
+                    if u_info.is_farm == is_farm {
+                        u_info.pooled_tokens += pooled_tokens;
+                    }
+                }
+                <UserInfos<T>>::insert(&user, user_infos);
+            } else {
+                user_info.pooled_tokens += pooled_tokens;
+                <UserInfos<T>>::append(&user, user_info);
+            }
+
+            // Update pool info
+            for p_info in pool_infos.iter_mut() {
+                if !p_info.is_removed && p_info.is_farm == is_farm {
+                    p_info.total_tokens_in_pool += pooled_tokens;
+                }
+            }
+
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
             // Emit an event
             Self::deposit_event(Event::Deposited(
