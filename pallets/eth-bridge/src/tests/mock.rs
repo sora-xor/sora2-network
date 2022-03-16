@@ -665,6 +665,7 @@ impl Default for ExtBuilder {
                 (VAL.into(), common::balance!(33900000)),
             ]),
             Some(4),
+            Default::default(),
         );
         builder
     }
@@ -697,6 +698,7 @@ impl ExtBuilder {
         assets: Vec<AssetConfig<AssetId32<PredefinedAssetId>>>,
         reserves: Option<Vec<(AssetId32<PredefinedAssetId>, Balance)>>,
         peers_num: Option<usize>,
+        contract_address: H160,
     ) -> u32 {
         let net_id = self.last_network_id;
         let multisig_account_id = bridge_multisig::Module::<Runtime>::multi_account_id(
@@ -712,7 +714,7 @@ impl ExtBuilder {
                     initial_peers: peers_keys.iter().map(|(_, id, _)| id).cloned().collect(),
                     bridge_account_id: multisig_account_id.clone(),
                     assets,
-                    bridge_contract_address: Default::default(),
+                    bridge_contract_address: contract_address,
                     reserves: reserves.unwrap_or_default(),
                 },
                 ocw_keypairs: peers_keys,

@@ -314,6 +314,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
         for log in logs {
+            // Check address to be sure what it came from our contract
+            if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
+                continue;
+            }
             // We assume that all events issued by our contracts are valid and, therefore, ignore
             // the invalid ones.
             let event = match Self::parse_deposit_event(&log) {
