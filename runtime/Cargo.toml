@@ -30,6 +30,7 @@ ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-f
 ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
 ceres-token-locker = { path = "../pallets/ceres-token-locker", default-features = false }
 ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
+demeter-farming-platform = { path = "../pallets/demeter-farming-platform", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
@@ -133,6 +134,7 @@ std = [
     "ceres-liquidity-locker/std",
     "ceres-staking/std",
     "ceres-token-locker/std",
+    "demeter-farming-platform/std",
     "dex-api/std",
     "dex-manager-runtime-api/std",
     "dex-manager/std",
@@ -212,6 +214,7 @@ runtime-benchmarks = [
     "ceres-governance-platform/runtime-benchmarks",
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
+    "demeter-farming-platform/runtime-benchmarks",
     "dex-api-benchmarking",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",

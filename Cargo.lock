@@ -2573,6 +2573,7 @@ dependencies = [
  "ceres-staking",
  "ceres-token-locker",
  "common",
+ "demeter-farming-platform",
  "dex-api",
  "dex-api-benchmarking",
  "dex-manager",

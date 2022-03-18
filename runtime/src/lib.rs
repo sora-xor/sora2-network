@@ -1483,6 +1483,10 @@ impl ceres_governance_platform::Config for Runtime {
     type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
 
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1558,6 +1562,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1626,6 +1631,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
     }
 }
 
@@ -2226,6 +2232,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
+            add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatform);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

@@ -6,6 +6,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod benchmarking;
+
 use codec::{Decode, Encode};
 use common::Balance;
 
@@ -48,7 +50,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{PoolInfo, TokenInfo, UserInfo};
-    use common::prelude::Balance;
+    use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
@@ -107,6 +109,18 @@ pub mod pallet {
     #[pallet::getter(fn authority_account)]
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultFeeAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    /// Account for fees
+    #[pallet::storage]
+    #[pallet::getter(fn fee_account)]
+    pub type FeeAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultFeeAccount<T>>;
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
@@ -292,9 +306,11 @@ pub mod pallet {
             // Get pool info and check if pool exists
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             let mut exist = false;
-            for p_info in &pool_infos {
+            let mut pool_info = &mut Default::default();
+            for p_info in pool_infos.iter_mut() {
                 if !p_info.is_removed && p_info.is_farm == is_farm {
                     exist = true;
+                    pool_info = p_info;
                 }
             }
             ensure!(exist, Error::<T>::PoolDoesNotExist);
@@ -323,7 +339,22 @@ pub mod pallet {
                     pooled_tokens <= Assets::<T>::free_balance(&pool_asset, &user).unwrap_or(0),
                     Error::<T>::InsufficientFunds
                 );
-                Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
+                let mut total_pooled_tokens = balance!(0);
+                if pool_info.deposit_fee != balance!(0) {
+                    let fee = (FixedWrapper::from(pooled_tokens)
+                        * FixedWrapper::from(pool_info.deposit_fee))
+                    .try_into_balance()
+                    .unwrap_or(0);
+                    total_pooled_tokens = pooled_tokens - fee;
+
+                    Assets::<T>::transfer_from(&pool_asset, &user, &FeeAccount::<T>::get(), fee)?;
+                }
+                Assets::<T>::transfer_from(
+                    &pool_asset,
+                    &user,
+                    &Self::account_id(),
+                    total_pooled_tokens,
+                )?;
             } else {
                 let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
