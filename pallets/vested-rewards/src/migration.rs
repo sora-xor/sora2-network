@@ -273,38 +273,6 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
     let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS)
         .expect("Can't deserialize crowdloan contributors.");
 
-    // add test accounts
-    #[cfg(feature = "private-net")]
-    let rewards = {
-        use common::fixed;
-
-        let mut rewards = rewards;
-
-        rewards.push(crate::CrowdloanReward {
-            id: Vec::new(),
-            address: b"f88629a067c975e17f9675ee57f011b3b1273b20768b81b097242e8581777c72".to_vec(),
-            contribution: fixed!(0.0),
-            xor_reward: fixed!(1.2),
-            pswap_reward: fixed!(2.3),
-            val_reward: fixed!(3.4),
-            xstusd_reward: fixed!(4.5),
-            percent: fixed!(5.6),
-        });
-
-        rewards.push(crate::CrowdloanReward {
-            id: Vec::new(),
-            address: b"f230e5df6850af42da63b271202cad2afe5deee8de8791c91157b353c3c1900c".to_vec(),
-            contribution: fixed!(0.0),
-            xor_reward: fixed!(2.3),
-            pswap_reward: fixed!(3.4),
-            val_reward: fixed!(4.5),
-            xstusd_reward: fixed!(5.6),
-            percent: fixed!(6.7),
-        });
-
-        rewards
-    };
-
     rewards.into_iter().for_each(|reward| {
         crate::CrowdloanRewards::<T>::insert(
             T::AccountId::decode(&mut &reward.address[..])
