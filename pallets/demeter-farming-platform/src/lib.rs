@@ -14,36 +14,36 @@ use common::Balance;
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PoolInfo {
-    multiplier: u32,
-    deposit_fee: Balance,
-    is_core: bool,
-    is_farm: bool,
-    total_tokens_in_pool: Balance,
-    rewards: Balance,
-    rewards_to_be_distributed: Balance,
-    is_removed: bool,
+    pub multiplier: u32,
+    pub deposit_fee: Balance,
+    pub is_core: bool,
+    pub is_farm: bool,
+    pub total_tokens_in_pool: Balance,
+    pub rewards: Balance,
+    pub rewards_to_be_distributed: Balance,
+    pub is_removed: bool,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TokenInfo<AccountId> {
-    farms_total_multiplier: u32,
-    staking_total_multiplier: u32,
-    token_per_block: Balance,
-    farms_allocation: Balance,
-    staking_allocation: Balance,
-    team_allocation: Balance,
-    team_account: AccountId,
+    pub farms_total_multiplier: u32,
+    pub staking_total_multiplier: u32,
+    pub token_per_block: Balance,
+    pub farms_allocation: Balance,
+    pub staking_allocation: Balance,
+    pub team_allocation: Balance,
+    pub team_account: AccountId,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct UserInfo<AssetId> {
-    pool_asset: AssetId,
-    reward_asset: AssetId,
-    is_farm: bool,
-    pooled_tokens: Balance,
-    rewards: Balance,
+    pub pool_asset: AssetId,
+    pub reward_asset: AssetId,
+    pub is_farm: bool,
+    pub pooled_tokens: Balance,
+    pub rewards: Balance,
 }
 
 pub use pallet::*;
@@ -65,7 +65,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + assets::Config + pool_xyk::Config + technical::Config
+        frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -78,7 +78,6 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type PoolXYK<T> = pool_xyk::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
@@ -365,11 +364,11 @@ pub mod pallet {
                 }
                 Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
             } else {
-                let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), pool_asset.clone())
+                let pool_account = T::XYKPool::properties_of_pool(XOR.into(), pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
                 let lp_tokens =
-                    PoolXYK::<T>::balance_of_pool_provider(pool_account.clone(), user.clone())
+                    T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                         .unwrap_or(0);
                 ensure!(
                     pooled_tokens <= lp_tokens - user_info.pooled_tokens,
@@ -383,7 +382,7 @@ pub mod pallet {
                     .unwrap_or(0);
                     pooled_tokens -= fee;
 
-                    PoolXYK::<T>::transfer_lp_tokens(
+                    T::XYKPool::transfer_lp_tokens(
                         pool_account.clone(),
                         XOR.into(),
                         pool_asset,
@@ -928,23 +927,24 @@ pub mod pallet {
                 };
 
             // Calculate number of pool tokens
-            let mut pool_tokens =
+            let pool_tokens =
                 T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
                 return false;
             }
 
+            let mut free_pool_tokens = pool_tokens;
             let user_infos = <UserInfos<T>>::get(&user);
             for user_info in user_infos {
                 if user_info.pool_asset == asset_b && user_info.is_farm {
-                    pool_tokens = pool_tokens
+                    free_pool_tokens = free_pool_tokens
                         .checked_sub(user_info.pooled_tokens)
                         .unwrap_or(0);
                 }
             }
 
-            return pool_tokens >= withdrawing_amount;
+            return free_pool_tokens == pool_tokens || free_pool_tokens >= withdrawing_amount;
         }
     }
 }

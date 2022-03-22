@@ -123,6 +123,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         DEXApi: dex_api::{Module, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -259,6 +260,12 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
 }
 
 impl pool_xyk::Config for Runtime {

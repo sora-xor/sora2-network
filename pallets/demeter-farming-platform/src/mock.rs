@@ -1,4 +1,3 @@
-use crate::{self as demeter_farming_platform};
 use common::mock::ExistentialDeposits;
 pub use common::mock::*;
 use common::prelude::Balance;
@@ -100,7 +99,7 @@ parameter_types! {
     pub const DemeterAssetId: AssetId = DEMETER_ASSET_ID;
 }
 
-impl crate::Config for Runtime {
+impl demeter_farming_platform::Config for Runtime {
     type Event = Event;
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;

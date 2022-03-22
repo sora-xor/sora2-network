@@ -30,6 +30,7 @@ traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 hex-literal = "0.3.1"
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
