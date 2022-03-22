@@ -43,7 +43,7 @@ benchmarks! {
         let team_allocation = balance!(0.2);
     }: _(
         RawOrigin::Signed(authority.clone()),
-        XOR.into(),
+        reward_asset.into(),
         token_per_block,
         farms_allocation,
         staking_allocation,
@@ -51,15 +51,15 @@ benchmarks! {
         team_account
     )
     verify {
-        assert_last_event::<T>(Event::TokenRegistered(authority, XOR.into()).into());
+        assert_last_event::<T>(Event::TokenRegistered(authority, reward_asset.into()).into());
     }
 
     add_pool {
         let authority = pallet::AuthorityAccount::<T>::get();
         let team_account = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&authority);
-        let pool_asset = XOR.into();
-        let reward_asset = CERES_ASSET_ID.into();
+        let pool_asset = XOR;
+        let reward_asset = CERES_ASSET_ID;
         let is_farm = true;
         let multiplier = 1;
         let deposit_fee = balance!(0.4);
@@ -71,7 +71,7 @@ benchmarks! {
 
         let _ = DemeterFarmingPlatform::<T>::register_token(
             RawOrigin::Signed(authority.clone()).into(),
-            XOR.into(),
+            reward_asset.into(),
             token_per_block,
             farms_allocation,
             staking_allocation,
@@ -80,26 +80,25 @@ benchmarks! {
         );
     }: _(
         RawOrigin::Signed(authority.clone()),
-        XOR.into(),
-        CERES_ASSET_ID.into(),
+        pool_asset.into(),
+        reward_asset.into(),
         is_farm,
         multiplier,
         deposit_fee,
         is_core
     )
     verify {
-        assert_last_event::<T>(Event::PoolAdded(authority, pool_asset, reward_asset, is_farm).into());
+        assert_last_event::<T>(Event::PoolAdded(authority, pool_asset.into(), reward_asset.into(), is_farm).into());
     }
 
     deposit {
         let authority = pallet::AuthorityAccount::<T>::get();
         let team_account = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&authority);
-        let pool_asset = XOR.into();
-        let reward_asset = CERES_ASSET_ID.into();
+        let reward_asset = CERES_ASSET_ID;
         let is_farm = false;
         let multiplier = 1;
-        let deposit_fee = balance!(0.4);
+        let deposit_fee = balance!(0.04);
         let is_core = true;
         let token_per_block = balance!(1);
         let farms_allocation = balance!(0.6);
@@ -107,9 +106,23 @@ benchmarks! {
         let team_allocation = balance!(0.2);
         let pooled_tokens = balance!(10);
 
+        let assets_and_permissions_tech_account_id =
+            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
+        let assets_and_permissions_account_id =
+            Technical::<T>::tech_account_id_to_account_id(
+                &assets_and_permissions_tech_account_id,
+            ).unwrap();
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+            reward_asset.into(),
+            authority.clone(),
+            balance!(20000)
+        );
+
         let _ = DemeterFarmingPlatform::<T>::register_token(
             RawOrigin::Signed(authority.clone()).into(),
-            XOR.into(),
+            reward_asset.into(),
             token_per_block,
             farms_allocation,
             staking_allocation,
@@ -118,9 +131,9 @@ benchmarks! {
         );
 
         let _ = DemeterFarmingPlatform::<T>::add_pool(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
+            RawOrigin::Signed(authority.clone()).into(),
+            reward_asset.into(),
+            reward_asset.into(),
             is_farm,
             multiplier,
             deposit_fee,
@@ -128,13 +141,13 @@ benchmarks! {
         );
     }: _(
         RawOrigin::Signed(authority.clone()),
-        XOR.into(),
-        CERES_ASSET_ID.into(),
+        reward_asset.into(),
+        reward_asset.into(),
         is_farm,
         pooled_tokens
     )
     verify {
-        assert_last_event::<T>(Event::Deposited(authority, pool_asset, reward_asset, is_farm, pooled_tokens).into());
+        assert_last_event::<T>(Event::Deposited(authority, reward_asset.into(), reward_asset.into(), is_farm, balance!(9.6)).into());
     }
 
     get_rewards {
@@ -177,19 +190,19 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             true,
             2,
-            2,
+            balance!(0),
             true
         );
 
         let user_info = UserInfo {
-                pool_asset: XOR.into(),
-                reward_asset: CERES_ASSET_ID.into(),
-                is_farm,
-                pooled_tokens: balance!(1000),
-                rewards,
-            };
+            pool_asset: XOR.into(),
+            reward_asset: CERES_ASSET_ID.into(),
+            is_farm,
+            pooled_tokens: balance!(1000),
+            rewards,
+        };
 
-        UserInfos::<T>::append(caller, user_info);
+        UserInfos::<T>::append(&caller, user_info);
 
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm)
     verify {
@@ -213,6 +226,13 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
             CERES_ASSET_ID.into(),
+            caller.clone(),
+            balance!(20000)
+        );
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+            CERES_ASSET_ID.into(),
             pallet_account.clone(),
             balance!(20000)
         );
@@ -228,14 +248,14 @@ benchmarks! {
             team_account
         );
 
-        //Add pool
+        // Add pool
         let _ = DemeterFarmingPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
             CERES_ASSET_ID.into(),
             true,
             2,
-            2,
+            balance!(0),
             true
         );
 
@@ -252,7 +272,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), pooled_tokens, is_farm)
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, pooled_tokens, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-        }
+    }
 
     remove_pool{
         let caller = AuthorityAccount::<T>::get();
@@ -278,13 +298,13 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             true,
             2,
-            2,
+            balance!(0.2),
             true
         );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm)
     verify {
         assert_last_event::<T>(Event::PoolRemoved(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-        }
+    }
 
     change_pool_multiplier {
         let caller = AuthorityAccount::<T>::get();
@@ -311,14 +331,14 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             true,
             2,
-            2,
+            balance!(0.2),
             true
         );
 
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm, new_multiplier)
     verify {
         assert_last_event::<T>(Event::MultiplierChanged(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm, new_multiplier).into());
-        }
+    }
 
     change_pool_deposit_fee {
         let caller = AuthorityAccount::<T>::get();
@@ -345,13 +365,13 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             true,
             2,
-            2,
+            balance!(0.4),
             true
         );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm, deposit_fee)
     verify {
         assert_last_event::<T>(Event::DepositFeeChanged(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm, deposit_fee).into());
-        }
+    }
 
     change_token_info {
         let caller = AuthorityAccount::<T>::get();
@@ -371,12 +391,12 @@ benchmarks! {
             farms_allocation,
             staking_allocation,
             team_allocation,
-            team_account
+            team_account.clone()
         );
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), token_per_block, farms_allocation, staking_allocation, team_allocation, team_account)
     verify {
         assert_last_event::<T>(Event::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
-        }
+    }
 }
 
 #[cfg(test)]
