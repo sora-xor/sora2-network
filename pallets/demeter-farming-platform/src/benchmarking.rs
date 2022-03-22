@@ -9,10 +9,12 @@ use common::{balance, FromGenericPair, CERES_ASSET_ID, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
 use crate::Pallet as DemeterFarmingPlatform;
 use assets::Module as Assets;
+use sp_runtime::ModuleId;
 use technical::Module as Technical;
 
 // Support Functions
@@ -56,8 +58,8 @@ benchmarks! {
         let authority = pallet::AuthorityAccount::<T>::get();
         let team_account = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&authority);
-        let pool_asset = XOR;
-        let reward_asset = CERES_ASSET_ID;
+        let pool_asset = XOR.into();
+        let reward_asset = CERES_ASSET_ID.into();
         let is_farm = true;
         let multiplier = 1;
         let deposit_fee = balance!(0.4);
@@ -93,8 +95,8 @@ benchmarks! {
         let authority = pallet::AuthorityAccount::<T>::get();
         let team_account = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&authority);
-        let pool_asset = XOR;
-        let reward_asset = CERES_ASSET_ID;
+        let pool_asset = XOR.into();
+        let reward_asset = CERES_ASSET_ID.into();
         let is_farm = false;
         let multiplier = 1;
         let deposit_fee = balance!(0.4);
@@ -140,6 +142,8 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let rewards = balance!(100);
         let is_farm = true;
+        let pallet_account: AccountIdOf<T> = ModuleId(*b"deofarms").into_account();
+        let team_account = alice::<T>();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -151,15 +155,19 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
             CERES_ASSET_ID.into(),
-            caller.clone(),
+            pallet_account.clone(),
             balance!(20000)
         );
 
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            XOR.into(),
-            caller.clone(),
-            balance!(20000)
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
         );
 
         // Add pool
@@ -170,16 +178,19 @@ benchmarks! {
             true,
             2,
             2,
-            true,
+            true
         );
 
-        // Get rewards
-        let _ = DemeterFarmingPlatform::<T>::get_rewards(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            is_farm
-        );
+        let user_info = UserInfo {
+                pool_asset: XOR.into(),
+                reward_asset: CERES_ASSET_ID.into(),
+                is_farm,
+                pooled_tokens: balance!(1000),
+                rewards,
+            };
+
+        UserInfos::<T>::append(caller, user_info);
+
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm)
     verify {
         assert_last_event::<T>(Event::RewardWithdrawn(caller, rewards, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
@@ -189,6 +200,8 @@ benchmarks! {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = true;
+        let pallet_account: AccountIdOf<T> = ModuleId(*b"deofarms").into_account();
+        let team_account = alice::<T>();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -200,18 +213,22 @@ benchmarks! {
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
             CERES_ASSET_ID.into(),
-            caller.clone(),
+            pallet_account.clone(),
             balance!(20000)
         );
 
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            XOR.into(),
-            caller.clone(),
-            balance!(20000)
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
         );
 
-        // Add pool
+        //Add pool
         let _ = DemeterFarmingPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
@@ -232,44 +249,26 @@ benchmarks! {
             is_farm,
             pooled_tokens
         );
-
-        // Withdraw
-        let _ = DemeterFarmingPlatform::<T>::withdraw(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            pooled_tokens,
-            is_farm
-        );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), pooled_tokens, is_farm)
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, pooled_tokens, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-    }
+        }
 
     remove_pool{
         let caller = AuthorityAccount::<T>::get();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = true;
+        let team_account = alice::<T>();
 
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
-            caller.clone(),
-            balance!(20000)
-        );
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            XOR.into(),
-            caller.clone(),
-            balance!(20000)
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
         );
 
         //Add pool
@@ -282,53 +281,27 @@ benchmarks! {
             2,
             true
         );
-
-        // Remove pool
-        let _ = DemeterFarmingPlatform::<T>::remove_pool(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            is_farm
-        );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm)
     verify {
         assert_last_event::<T>(Event::PoolRemoved(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-    }
+        }
 
     change_pool_multiplier {
         let caller = AuthorityAccount::<T>::get();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = true;
-
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            CERES_ASSET_ID.into(),
-            caller.clone(),
-            balance!(20000)
-        );
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            XOR.into(),
-            caller.clone(),
-            balance!(20000)
-        );
+        let new_multiplier = 2;
+        let team_account = alice::<T>();
 
         // Register token
         let _ = DemeterFarmingPlatform::<T>::register_token(
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
             balance!(1),
-            balance!(0.4),
+            balance!(0.6),
             balance!(0.2),
-            balance!(0.2)
+            balance!(0.2),
+            team_account
         );
 
         // Add pool
@@ -342,17 +315,6 @@ benchmarks! {
             true
         );
 
-        let new_multiplier = 2;
-
-        // Change pool multiplier
-        let _ = DemeterFarmingPlatform::<T>::change_pool_multiplier(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            is_farm,
-            new_multiplier
-
-        );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm, new_multiplier)
     verify {
         assert_last_event::<T>(Event::MultiplierChanged(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm, new_multiplier).into());
@@ -362,26 +324,18 @@ benchmarks! {
         let caller = AuthorityAccount::<T>::get();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = true;
+        let deposit_fee = balance!(1);
+        let team_account = alice::<T>();
 
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            CERES_ASSET_ID.into(),
-            caller.clone(),
-            balance!(20000)
-        );
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
-            caller.clone(),
-            balance!(20000)
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
         );
 
         // Add pool
@@ -393,17 +347,6 @@ benchmarks! {
             2,
             2,
             true
-        );
-
-        let deposit_fee = balance!(1);
-
-        // Change pool deposit fee
-        let _ = DemeterFarmingPlatform::<T>::change_pool_deposit_fee(
-            RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            is_farm,
-            deposit_fee
         );
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm, deposit_fee)
     verify {
@@ -417,27 +360,8 @@ benchmarks! {
         let farms_allocation = balance!(0.2);
         let staking_allocation = balance!(0.4);
         let team_allocation = balance!(0.4);
-
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            CERES_ASSET_ID.into(),
-            caller.clone(),
-            balance!(20000)
-        );
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
-            XOR.into(),
-            caller.clone(),
-            balance!(20000)
-        );
+        let deposit_fee = balance!(1);
+        let team_account = alice::<T>();
 
         // Register token
         let _ = DemeterFarmingPlatform::<T>::register_token(
@@ -446,22 +370,10 @@ benchmarks! {
             token_per_block,
             farms_allocation,
             staking_allocation,
-            team_allocation
+            team_allocation,
+            team_account
         );
-
-        let deposit_fee = balance!(1);
-
-        // Change token info
-        let _ = DemeterFarmingPlatform::<T>::change_token_info(
-            RawOrigin::Signed(caller.clone()).into(),
-            CERES_ASSET_ID.into(),
-            token_per_block,
-            farms_allocation,
-            staking_allocation,
-            team_allocation
-        );
-
-    }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), token_per_block, farms_allocation, staking_allocation, team_allocation)
+    }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), token_per_block, farms_allocation, staking_allocation, team_allocation, team_account)
     verify {
         assert_last_event::<T>(Event::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
         }
