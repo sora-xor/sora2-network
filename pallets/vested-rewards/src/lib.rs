@@ -107,7 +107,7 @@ pub struct CrowdloanReward {
     #[serde(with = "serde_bytes", rename = "ID")]
     pub id: Vec<u8>,
     /// The user address
-    #[serde(with = "serde_bytes", rename = "Address")]
+    #[serde(with = "hex", rename = "Address")]
     pub address: Vec<u8>,
     /// Kusama contribution
     #[serde(rename = "Contribution")]
