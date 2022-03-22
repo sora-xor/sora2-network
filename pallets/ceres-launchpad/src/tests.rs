@@ -2114,8 +2114,6 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
-
             current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),

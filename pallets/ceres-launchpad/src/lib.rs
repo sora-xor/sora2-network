@@ -23,6 +23,10 @@ pub trait WeightInfo {
     fn change_ceres_burn_fee() -> Weight;
     fn change_ceres_contribution_fee() -> Weight;
     fn claim_pswap_rewards() -> Weight;
+    fn add_whitelisted_contributor() -> Weight;
+    fn remove_whitelisted_contributor() -> Weight;
+    fn add_whitelisted_ilo_organizer() -> Weight;
+    fn remove_whitelisted_ilo_organizer() -> Weight;
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -1058,7 +1062,7 @@ pub mod pallet {
         }
 
         /// Add whitelisted contributor
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_contributor())]
         pub fn add_whitelisted_contributor(
             origin: OriginFor<T>,
             contributor: AccountIdOf<T>,
@@ -1078,7 +1082,7 @@ pub mod pallet {
         }
 
         /// Remove whitelisted contributor
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_contributor())]
         pub fn remove_whitelisted_contributor(
             origin: OriginFor<T>,
             contributor: AccountIdOf<T>,
@@ -1100,7 +1104,7 @@ pub mod pallet {
         }
 
         /// Add whitelisted ILO organizer
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_ilo_organizer())]
         pub fn add_whitelisted_ilo_organizer(
             origin: OriginFor<T>,
             ilo_organizer: AccountIdOf<T>,
@@ -1120,7 +1124,7 @@ pub mod pallet {
         }
 
         /// Remove whitelisted ILO organizer
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_ilo_organizer())]
         pub fn remove_whitelisted_ilo_organizer(
             origin: OriginFor<T>,
             ilo_organizer: AccountIdOf<T>,
