@@ -30,6 +30,111 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+    register_token {
+        let authority = pallet::AuthorityAccount::<T>::get();
+        let team_account = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&authority);
+        let reward_asset = XOR;
+        let token_per_block = balance!(1);
+        let farms_allocation = balance!(0.6);
+        let staking_allocation = balance!(0.2);
+        let team_allocation = balance!(0.2);
+    }: _(
+        RawOrigin::Signed(authority.clone()),
+        XOR.into(),
+        token_per_block,
+        farms_allocation,
+        staking_allocation,
+        team_allocation,
+        team_account
+    )
+    verify {
+        assert_last_event::<T>(Event::TokenRegistered(authority, XOR.into()).into());
+    }
+
+    add_pool {
+        let authority = pallet::AuthorityAccount::<T>::get();
+        let team_account = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&authority);
+        let pool_asset = XOR;
+        let reward_asset = CERES_ASSET_ID;
+        let is_farm = true;
+        let multiplier = 1;
+        let deposit_fee = balance!(0.4);
+        let is_core = true;
+        let token_per_block = balance!(1);
+        let farms_allocation = balance!(0.6);
+        let staking_allocation = balance!(0.2);
+        let team_allocation = balance!(0.2);
+
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(authority.clone()).into(),
+            XOR.into(),
+            token_per_block,
+            farms_allocation,
+            staking_allocation,
+            team_allocation,
+            team_account,
+        );
+    }: _(
+        RawOrigin::Signed(authority.clone()),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
+        is_farm,
+        multiplier,
+        deposit_fee,
+        is_core
+    )
+    verify {
+        assert_last_event::<T>(Event::PoolAdded(authority, pool_asset, reward_asset, is_farm).into());
+    }
+
+    deposit {
+        let authority = pallet::AuthorityAccount::<T>::get();
+        let team_account = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&authority);
+        let pool_asset = XOR;
+        let reward_asset = CERES_ASSET_ID;
+        let is_farm = false;
+        let multiplier = 1;
+        let deposit_fee = balance!(0.4);
+        let is_core = true;
+        let token_per_block = balance!(1);
+        let farms_allocation = balance!(0.6);
+        let staking_allocation = balance!(0.2);
+        let team_allocation = balance!(0.2);
+        let pooled_tokens = balance!(10);
+
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(authority.clone()).into(),
+            XOR.into(),
+            token_per_block,
+            farms_allocation,
+            staking_allocation,
+            team_allocation,
+            team_account,
+        );
+
+        let _ = DemeterFarmingPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            is_farm,
+            multiplier,
+            deposit_fee,
+            is_core,
+        );
+    }: _(
+        RawOrigin::Signed(authority.clone()),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
+        is_farm,
+        pooled_tokens
+    )
+    verify {
+        assert_last_event::<T>(Event::Deposited(authority, pool_asset, reward_asset, is_farm, pooled_tokens).into());
+    }
+
     get_rewards {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
@@ -65,7 +170,7 @@ benchmarks! {
             true,
             2,
             2,
-            true
+            true,
         );
 
         // Get rewards
@@ -106,7 +211,7 @@ benchmarks! {
             balance!(20000)
         );
 
-        //Add pool
+        // Add pool
         let _ = DemeterFarmingPlatform::<T>::add_pool(
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
@@ -139,7 +244,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), pooled_tokens, is_farm)
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, pooled_tokens, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-        }
+    }
 
     remove_pool{
         let caller = AuthorityAccount::<T>::get();
@@ -188,7 +293,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), XOR.into(), CERES_ASSET_ID.into(), is_farm)
     verify {
         assert_last_event::<T>(Event::PoolRemoved(caller, XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
-        }
+    }
 
     change_pool_multiplier {
         let caller = AuthorityAccount::<T>::get();
@@ -369,9 +474,11 @@ mod tests {
     use frame_support::assert_ok;
 
     #[test]
-    #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
+            assert_ok!(test_benchmark_register_token::<Runtime>());
+            assert_ok!(test_benchmark_add_pool::<Runtime>());
+            assert_ok!(test_benchmark_deposit::<Runtime>());
             assert_ok!(test_benchmark_get_rewards::<Runtime>());
             assert_ok!(test_benchmark_withdraw::<Runtime>());
             assert_ok!(test_benchmark_remove_pool::<Runtime>());
