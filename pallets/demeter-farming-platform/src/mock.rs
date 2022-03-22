@@ -4,7 +4,7 @@ pub use common::mock::*;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, XOR};
+use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -52,6 +52,7 @@ construct_runtime! {
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CHARLES: AccountId = 3;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {
@@ -95,8 +96,14 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
+parameter_types! {
+    pub const DemeterAssetId: AssetId = DEMETER_ASSET_ID;
+}
+
 impl crate::Config for Runtime {
     type Event = Event;
+    type DemeterAssetId = DemeterAssetId;
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
 }
 
 parameter_types! {
@@ -155,7 +162,7 @@ parameter_types! {
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14400;
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
@@ -295,5 +302,14 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        DemeterFarmingPlatform::on_initialize(System::block_number());
     }
 }

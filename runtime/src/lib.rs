@@ -1483,8 +1483,15 @@ impl ceres_governance_platform::Config for Runtime {
     type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const DemeterAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+}
+
 impl demeter_farming_platform::Config for Runtime {
     type Event = Event;
+    type DemeterAssetId = DemeterAssetId;
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

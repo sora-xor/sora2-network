@@ -26,13 +26,14 @@ pub struct PoolInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct TokenInfo {
+pub struct TokenInfo<AccountId> {
     farms_total_multiplier: u32,
     staking_total_multiplier: u32,
     token_per_block: Balance,
     farms_allocation: Balance,
     staking_allocation: Balance,
     team_allocation: Balance,
+    team_account: AccountId,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -55,8 +56,9 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use hex_literal::hex;
-    use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::traits::{AccountIdConversion, Zero};
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
@@ -67,6 +69,12 @@ pub mod pallet {
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        /// Demeter asset id
+        type DemeterAssetId: Get<Self::AssetId>;
+
+        /// One hour represented in block number
+        const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -80,7 +88,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn token_info)]
-    pub type TokenInfos<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, TokenInfo, ValueQuery>;
+    pub type TokenInfos<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo<AccountIdOf<T>>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn user_info)]
@@ -185,6 +194,7 @@ pub mod pallet {
             farms_allocation: Balance,
             staking_allocation: Balance,
             team_allocation: Balance,
+            team_account: AccountIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -217,6 +227,7 @@ pub mod pallet {
                 farms_allocation,
                 staking_allocation,
                 team_allocation,
+                team_account,
             };
 
             <TokenInfos<T>>::insert(&pool_asset, &token_info);
@@ -299,7 +310,7 @@ pub mod pallet {
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
-            pooled_tokens: Balance,
+            mut pooled_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -326,7 +337,10 @@ pub mod pallet {
             exist = false;
             let mut user_infos = <UserInfos<T>>::get(&user);
             for u_info in &user_infos {
-                if u_info.is_farm == is_farm {
+                if u_info.pool_asset == pool_asset
+                    && u_info.reward_asset == reward_asset
+                    && u_info.is_farm == is_farm
+                {
                     user_info.pooled_tokens = u_info.pooled_tokens;
                     user_info.rewards = u_info.rewards;
                     exist = true;
@@ -339,32 +353,45 @@ pub mod pallet {
                     pooled_tokens <= Assets::<T>::free_balance(&pool_asset, &user).unwrap_or(0),
                     Error::<T>::InsufficientFunds
                 );
-                let mut total_pooled_tokens = balance!(0);
+
                 if pool_info.deposit_fee != balance!(0) {
                     let fee = (FixedWrapper::from(pooled_tokens)
                         * FixedWrapper::from(pool_info.deposit_fee))
                     .try_into_balance()
                     .unwrap_or(0);
-                    total_pooled_tokens = pooled_tokens - fee;
+                    pooled_tokens -= fee;
 
                     Assets::<T>::transfer_from(&pool_asset, &user, &FeeAccount::<T>::get(), fee)?;
                 }
-                Assets::<T>::transfer_from(
-                    &pool_asset,
-                    &user,
-                    &Self::account_id(),
-                    total_pooled_tokens,
-                )?;
+                Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
             } else {
                 let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
                 let lp_tokens =
-                    PoolXYK::<T>::balance_of_pool_provider(pool_account, user.clone()).unwrap_or(0);
+                    PoolXYK::<T>::balance_of_pool_provider(pool_account.clone(), user.clone())
+                        .unwrap_or(0);
                 ensure!(
                     pooled_tokens <= lp_tokens - user_info.pooled_tokens,
                     Error::<T>::InsufficientLPTokens
-                )
+                );
+
+                if pool_info.deposit_fee != balance!(0) {
+                    let fee = (FixedWrapper::from(pooled_tokens)
+                        * FixedWrapper::from(pool_info.deposit_fee))
+                    .try_into_balance()
+                    .unwrap_or(0);
+                    pooled_tokens -= fee;
+
+                    PoolXYK::<T>::transfer_lp_tokens(
+                        pool_account.clone(),
+                        XOR.into(),
+                        pool_asset,
+                        user.clone(),
+                        FeeAccount::<T>::get(),
+                        fee,
+                    )?;
+                }
             }
 
             // Update user info
@@ -681,6 +708,7 @@ pub mod pallet {
             farms_allocation: Balance,
             staking_allocation: Balance,
             team_allocation: Balance,
+            team_account: AccountIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -710,6 +738,7 @@ pub mod pallet {
             token_info.farms_allocation = farms_allocation;
             token_info.staking_allocation = staking_allocation;
             token_info.team_allocation = team_allocation;
+            token_info.team_account = team_account;
 
             <TokenInfos<T>>::insert(&pool_asset, &token_info);
 
@@ -722,12 +751,200 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            let mut counter: u64 = 0;
+
+            if (now % T::BLOCKS_PER_HOUR_AND_A_HALF).is_zero() {
+                counter = Self::distribute_rewards_to_users();
+            }
+            if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                counter = Self::distribute_rewards_to_pools();
+            }
+
+            counter
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
             PALLET_ID.into_account()
+        }
+
+        fn mint_deo() {
+            let blocks = 14400_u32;
+            let deo_info = <TokenInfos<T>>::get(&T::DemeterAssetId::get());
+
+            let amount = (FixedWrapper::from(balance!(blocks))
+                * FixedWrapper::from(deo_info.token_per_block))
+            .try_into_balance()
+            .unwrap_or(0);
+            let amount_for_team = (FixedWrapper::from(amount)
+                * FixedWrapper::from(deo_info.team_allocation))
+            .try_into_balance()
+            .unwrap_or(0);
+            let amount_for_farming_and_staking = amount - amount_for_team;
+
+            let _ = Assets::<T>::mint(
+                RawOrigin::Signed(AuthorityAccount::<T>::get()).into(),
+                T::DemeterAssetId::get().into(),
+                Self::account_id(),
+                amount_for_farming_and_staking,
+            );
+        }
+
+        /// Distribute rewards to pools
+        fn distribute_rewards_to_pools() -> Weight {
+            let mut counter: u64 = 0;
+            let blocks = 14400_u32;
+
+            Self::mint_deo();
+
+            // Distribute rewards to pools
+            let zero = balance!(0);
+            for (token_asset_id, token_info) in TokenInfos::<T>::iter() {
+                let amount_per_day = (FixedWrapper::from(balance!(blocks))
+                    * FixedWrapper::from(token_info.token_per_block))
+                .try_into_balance()
+                .unwrap_or(zero);
+                let amount_for_farming = (FixedWrapper::from(amount_per_day)
+                    * FixedWrapper::from(token_info.farms_allocation))
+                .try_into_balance()
+                .unwrap_or(zero);
+                let amount_for_staking = (FixedWrapper::from(amount_per_day)
+                    * FixedWrapper::from(token_info.staking_allocation))
+                .try_into_balance()
+                .unwrap_or(zero);
+                let amount_for_team = (FixedWrapper::from(amount_per_day)
+                    * FixedWrapper::from(token_info.team_allocation))
+                .try_into_balance()
+                .unwrap_or(zero);
+
+                let _ = Assets::<T>::transfer_from(
+                    &token_asset_id,
+                    &Self::account_id(),
+                    &token_info.team_account,
+                    amount_for_team,
+                );
+
+                for (pool_asset, reward_asset, mut pool_infos) in Pools::<T>::iter() {
+                    if reward_asset == token_asset_id {
+                        for pool_info in pool_infos.iter_mut() {
+                            if !pool_info.is_removed {
+                                let total_multiplier;
+                                let amount;
+
+                                if !pool_info.is_farm {
+                                    total_multiplier = token_info.staking_total_multiplier;
+                                    amount = amount_for_staking;
+                                } else {
+                                    total_multiplier = token_info.farms_total_multiplier;
+                                    amount = amount_for_farming;
+                                }
+
+                                let reward = (FixedWrapper::from(amount)
+                                    * (FixedWrapper::from(balance!(pool_info.multiplier))
+                                        / FixedWrapper::from(balance!(total_multiplier))))
+                                .try_into_balance()
+                                .unwrap_or(zero);
+
+                                pool_info.rewards_to_be_distributed = reward;
+                            }
+                        }
+
+                        <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
+                        counter += 1;
+                    }
+                }
+            }
+
+            T::DbWeight::get()
+                .reads(counter + 1)
+                .saturating_add(T::DbWeight::get().writes(counter))
+        }
+
+        fn distribute_rewards_to_users() -> Weight {
+            let mut counter: u64 = 0;
+            let per_hour_and_half = balance!(0.0625);
+            let zero = balance!(0);
+
+            for (pool_asset, reward_asset, mut pool_infos) in Pools::<T>::iter() {
+                for pool_info in pool_infos.iter_mut() {
+                    if pool_info.rewards_to_be_distributed != zero && !pool_info.is_removed {
+                        let amount_per_hour =
+                            (FixedWrapper::from(pool_info.rewards_to_be_distributed)
+                                * FixedWrapper::from(per_hour_and_half))
+                            .try_into_balance()
+                            .unwrap_or(zero);
+
+                        for (user, mut user_infos) in UserInfos::<T>::iter() {
+                            let mut changed = false;
+                            for user_info in user_infos.iter_mut() {
+                                if user_info.pool_asset == pool_asset
+                                    && user_info.reward_asset == reward_asset
+                                    && user_info.is_farm == pool_info.is_farm
+                                {
+                                    let amount_per_user = (FixedWrapper::from(amount_per_hour)
+                                        * (FixedWrapper::from(user_info.pooled_tokens)
+                                            / FixedWrapper::from(pool_info.total_tokens_in_pool)))
+                                    .try_into_balance()
+                                    .unwrap_or(zero);
+                                    user_info.rewards += amount_per_user;
+                                    changed = true;
+                                }
+                            }
+                            if changed {
+                                <UserInfos<T>>::insert(user, user_infos);
+                                counter += 1;
+                            }
+                        }
+
+                        pool_info.rewards += amount_per_hour;
+                    }
+                }
+                <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
+                counter += 1;
+            }
+
+            T::DbWeight::get()
+                .reads(counter)
+                .saturating_add(T::DbWeight::get().writes(counter))
+        }
+
+        /// Check if user has enough free liquidity for withdrawing
+        pub fn check_if_has_enough_liquidity_out_of_farming(
+            user: &AccountIdOf<T>,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
+            withdrawing_amount: Balance,
+        ) -> bool {
+            // Get pool account
+            let pool_account: AccountIdOf<T> =
+                if let Some(account) = T::XYKPool::properties_of_pool(asset_a, asset_b) {
+                    account.0
+                } else {
+                    return false;
+                };
+
+            // Calculate number of pool tokens
+            let mut pool_tokens =
+                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                    .unwrap_or(0);
+            if pool_tokens == 0 {
+                return false;
+            }
+
+            let user_infos = <UserInfos<T>>::get(&user);
+            for user_info in user_infos {
+                if user_info.pool_asset == asset_b && user_info.is_farm {
+                    pool_tokens = pool_tokens
+                        .checked_sub(user_info.pooled_tokens)
+                        .unwrap_or(0);
+                }
+            }
+
+            return pool_tokens >= withdrawing_amount;
         }
     }
 }
