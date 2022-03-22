@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod weights;
+
 #[cfg(test)]
 mod mock;
 
@@ -10,6 +12,19 @@ mod benchmarking;
 
 use codec::{Decode, Encode};
 use common::Balance;
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn register_token() -> Weight;
+    fn add_pool() -> Weight;
+    fn deposit() -> Weight;
+    fn get_rewards() -> Weight;
+    fn withdraw() -> Weight;
+    fn remove_pool() -> Weight;
+    fn change_pool_multiplier() -> Weight;
+    fn change_pool_deposit_fee() -> Weight;
+    fn change_token_info() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -50,7 +65,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PoolInfo, TokenInfo, UserInfo};
+    use crate::{PoolInfo, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
@@ -75,6 +90,9 @@ pub mod pallet {
 
         /// One hour represented in block number
         const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -185,7 +203,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Register token for farming
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_token())]
         pub fn register_token(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -239,7 +257,7 @@ pub mod pallet {
         }
 
         /// Add pool
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_pool())]
         pub fn add_pool(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -303,7 +321,7 @@ pub mod pallet {
         }
 
         /// Deposit to pool
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -429,7 +447,7 @@ pub mod pallet {
         }
 
         /// Get rewards
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -504,7 +522,7 @@ pub mod pallet {
         }
 
         /// Withdraw
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -565,7 +583,7 @@ pub mod pallet {
         }
 
         /// Remove pool
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_pool())]
         pub fn remove_pool(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -601,7 +619,7 @@ pub mod pallet {
         }
 
         /// Change pool multiplier
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_pool_multiplier())]
         pub fn change_pool_multiplier(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -659,7 +677,7 @@ pub mod pallet {
         }
 
         /// Change pool deposit fee
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_pool_deposit_fee())]
         pub fn change_pool_deposit_fee(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,
@@ -699,7 +717,7 @@ pub mod pallet {
         }
 
         /// Change token info
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_token_info())]
         pub fn change_token_info(
             origin: OriginFor<T>,
             pool_asset: AssetIdOf<T>,

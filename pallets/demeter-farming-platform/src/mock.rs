@@ -103,6 +103,7 @@ impl demeter_farming_platform::Config for Runtime {
     type Event = Event;
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
 }
 
 parameter_types! {

@@ -1492,6 +1492,7 @@ impl demeter_farming_platform::Config for Runtime {
     type Event = Event;
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
+    type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
