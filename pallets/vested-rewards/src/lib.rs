@@ -44,7 +44,7 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
 use frame_support::{fail, transactional};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
@@ -101,32 +101,32 @@ pub struct MarketMakerInfo {
 }
 
 /// A vested reward for crowdloan.
-#[derive(Encode, Decode, Deserialize, Clone, Debug, Default, PartialEq)]
+#[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct CrowdloanReward {
     /// The user id
     #[serde(with = "serde_bytes", rename = "ID")]
-    id: Vec<u8>,
+    pub id: Vec<u8>,
     /// The user address
-    #[serde(with = "serde_bytes", rename = "Address")]
-    address: Vec<u8>,
+    #[serde(with = "hex", rename = "Address")]
+    pub address: Vec<u8>,
     /// Kusama contribution
     #[serde(rename = "Contribution")]
-    contribution: Fixed,
+    pub contribution: Fixed,
     /// Reward in XOR
     #[serde(rename = "XOR Reward")]
-    xor_reward: Fixed,
+    pub xor_reward: Fixed,
     /// Reward in VAL
     #[serde(rename = "Val Reward")]
-    val_reward: Fixed,
+    pub val_reward: Fixed,
     /// Reward in PSWAP
     #[serde(rename = "PSWAP Reward")]
-    pswap_reward: Fixed,
+    pub pswap_reward: Fixed,
     /// Reward in XSTUSD
     #[serde(rename = "XSTUSD Reward")]
-    xstusd_reward: Fixed,
+    pub xstusd_reward: Fixed,
     /// Reward in percents of the total contribution
     #[serde(rename = "Percent")]
-    percent: Fixed,
+    pub percent: Fixed,
 }
 
 pub trait WeightInfo {
@@ -583,4 +583,31 @@ pub mod pallet {
         T::BlockNumber,
         ValueQuery,
     >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig {
+        pub test_crowdloan_rewards: Vec<CrowdloanReward>,
+    }
+
+    #[cfg(feature = "std")]
+    impl Default for GenesisConfig {
+        fn default() -> Self {
+            Self {
+                test_crowdloan_rewards: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+        fn build(&self) {
+            self.test_crowdloan_rewards.iter().for_each(|reward| {
+                CrowdloanRewards::<T>::insert(
+                    T::AccountId::decode(&mut &reward.address[..])
+                        .expect("Can't decode contributor address."),
+                    reward.clone(),
+                )
+            });
+        }
+    }
 }

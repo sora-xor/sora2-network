@@ -118,6 +118,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
+pub use vested_rewards::CrowdloanReward;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
@@ -1563,7 +1564,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>, Config} = 40,
         Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,

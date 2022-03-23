@@ -48,7 +48,7 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
+    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig, GetBaseAssetId,
     GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
     ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
@@ -72,7 +72,7 @@ use std::str::FromStr;
 use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
-use framenode_runtime::{FaucetConfig, SudoConfig};
+use framenode_runtime::{FaucetConfig, SudoConfig, VestedRewardsConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -591,6 +591,7 @@ fn testnet_genesis(
     let val_rewards_for_erc20_xor_holders = balance!(33100000);
 
     // Initial accounts
+
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -1205,6 +1206,36 @@ fn testnet_genesis(
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
+        }),
+        vested_rewards: Some(VestedRewardsConfig {
+            test_crowdloan_rewards: vec![
+                CrowdloanReward {
+                    id: Vec::new(),
+                    address: hex!(
+                        "f88629a067c975e17f9675ee57f011b3b1273b20768b81b097242e8581777c72"
+                    )
+                    .to_vec(),
+                    contribution: fixed!(0.0),
+                    xor_reward: fixed!(1.2),
+                    pswap_reward: fixed!(2.3),
+                    val_reward: fixed!(3.4),
+                    xstusd_reward: fixed!(4.5),
+                    percent: fixed!(5.6),
+                },
+                CrowdloanReward {
+                    id: Vec::new(),
+                    address: hex!(
+                        "f230e5df6850af42da63b271202cad2afe5deee8de8791c91157b353c3c1900c"
+                    )
+                    .to_vec(),
+                    contribution: fixed!(0.0),
+                    xor_reward: fixed!(2.3),
+                    pswap_reward: fixed!(3.4),
+                    val_reward: fixed!(4.5),
+                    xstusd_reward: fixed!(5.6),
+                    percent: fixed!(6.7),
+                },
+            ],
         }),
     }
 }
