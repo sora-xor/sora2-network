@@ -36,7 +36,7 @@ use crate::{
 use codec::Decode;
 use common::{
     balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    ETH, PSWAP, XOR, XSTUSD,
+    ETH, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
@@ -558,6 +558,38 @@ fn storage_has_crowdloan_rewards() {
                 &mut &CrowdloanRewards::<Runtime>::get(&account_3).address[..]
             )
             .unwrap()
+        );
+    });
+}
+
+#[test]
+fn crowdloan_rewards_account_has_funds() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        crate::migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
+
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(
+                &VAL,
+                &<Runtime as crate::Config>::GetCrowdloanRewardsAccountId::get()
+            ),
+            Ok(crate::VAL_CROWDLOAN_REWARDS)
+        );
+
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(
+                &PSWAP,
+                &<Runtime as crate::Config>::GetCrowdloanRewardsAccountId::get()
+            ),
+            Ok(crate::PSWAP_CROWDLOAN_REWARDS)
+        );
+
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(
+                &XSTUSD,
+                &<Runtime as crate::Config>::GetCrowdloanRewardsAccountId::get()
+            ),
+            Ok(crate::XSTUSD_CROWDLOAN_REWARDS)
         );
     });
 }
