@@ -217,10 +217,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 27,
+    spec_version: 28,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 27,
+    transaction_version: 28,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
