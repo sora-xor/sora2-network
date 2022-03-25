@@ -569,26 +569,17 @@ fn crowdloan_rewards_account_has_funds() {
         crate::migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
 
         assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(
-                &VAL,
-                &GetCrowdloanRewardsAccountId::get()
-            ),
+            assets::Pallet::<Runtime>::total_balance(&VAL, &GetCrowdloanRewardsAccountId::get()),
             Ok(crate::VAL_CROWDLOAN_REWARDS)
         );
 
         assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(
-                &PSWAP,
-                &GetCrowdloanRewardsAccountId::get()
-            ),
+            assets::Pallet::<Runtime>::total_balance(&PSWAP, &GetCrowdloanRewardsAccountId::get()),
             Ok(crate::PSWAP_CROWDLOAN_REWARDS)
         );
 
         assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(
-                &XSTUSD,
-                &GetCrowdloanRewardsAccountId::get()
-            ),
+            assets::Pallet::<Runtime>::total_balance(&XSTUSD, &GetCrowdloanRewardsAccountId::get()),
             Ok(crate::XSTUSD_CROWDLOAN_REWARDS)
         );
     });
