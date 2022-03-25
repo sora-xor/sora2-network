@@ -417,7 +417,8 @@ pub mod pallet {
                 b"eth-bridge-ocw::lock",
                 sp_core::offchain::Duration::from_millis(100000),
             );
-            if let Ok(_guard) = lock.try_lock() {
+            let guard = lock.try_lock();
+            if let Ok(_guard) = guard {
                 Self::offchain();
             } else {
                 debug::debug!("Skip worker {:?}", block_number);
