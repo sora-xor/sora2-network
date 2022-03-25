@@ -691,7 +691,7 @@ fn ocw_should_import_incoming_request_raw_response() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let block_num = 8416395;
-        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1,true );
+        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1,true);
         let raw_response = r#"{
 "jsonrpc": "2.0",
   "id": 0,
@@ -715,7 +715,7 @@ fn ocw_should_import_incoming_request_raw_response() {
         // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
         state.run_next_offchain_with_params(
             block_num + CONFIRMATION_INTERVAL,
-            frame_system::Pallet::<Runtime>::block_number() + 1,true
+            frame_system::Pallet::<Runtime>::block_number() + 1,true,
         );
         let tx_hash = H256(hex!("fb5ad3cc57f66d9903e70d23fb878634d7119bcff17d25944d21466500ce7238"));
         assert_eq!(

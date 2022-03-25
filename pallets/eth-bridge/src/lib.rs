@@ -152,6 +152,7 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
+const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 3;
 #[cfg(not(test))]
 const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
 #[cfg(test)]
@@ -411,9 +412,16 @@ pub mod pallet {
                 return;
             }
 
-            let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
+            let mut lock = StorageLock::<'_, Time>::with_deadline(
+                b"eth-bridge-ocw::lock",
+                sp_core::offchain::Duration::from_millis(100000),
+            );
+            if let Ok(_guard) = lock.try_lock() {
+                Self::offchain();
+            } else {
+                debug::debug!("Skip worker {:?}", block_number);
+            }
             let _guard = lock.lock();
-            Self::offchain();
         }
     }
 
