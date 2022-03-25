@@ -356,6 +356,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
+    use traits::MultiCurrency;
 
     #[pallet::config]
     pub trait Config:
@@ -419,9 +420,9 @@ pub mod pallet {
             let current_block_number: u128 =
                 <frame_system::Pallet<T>>::block_number().unique_saturated_into();
             let claim_period = if last_claim_block.is_zero() {
-                current_block_number - LEASE_START_BLOCK
+                current_block_number.saturating_sub(LEASE_START_BLOCK)
             } else {
-                current_block_number - last_claim_block
+                current_block_number.saturating_sub(last_claim_block)
             };
             let claim_days = claim_period / BLOCKS_PER_DAY;
             let reward = if asset_id == VAL.into() {
@@ -611,6 +612,30 @@ pub mod pallet {
                     reward.clone(),
                 )
             });
+
+            if let Err(e) = T::Currency::deposit(
+                VAL.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                VAL_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
+            }
+
+            if let Err(e) = T::Currency::deposit(
+                PSWAP.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                PSWAP_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
+            }
+
+            if let Err(e) = T::Currency::deposit(
+                XSTUSD.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                XSTUSD_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
+            }
         }
     }
 }
