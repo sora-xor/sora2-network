@@ -70,6 +70,7 @@ pub mod pallet {
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
+    use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
@@ -182,6 +183,8 @@ pub mod pallet {
         InvalidAllocationParameters,
         /// Multiplier must be greater or equal to 1
         InvalidMultiplier,
+        /// Invalid deposit fee
+        InvalidDepositFee,
         /// Token is not registered
         RewardTokenIsNotRegistered,
         /// Pool already exists
@@ -276,6 +279,9 @@ pub mod pallet {
             // Check if multiplier is valid
             ensure!(multiplier >= 1, Error::<T>::InvalidMultiplier);
 
+            // Check if deposit fee is valid
+            ensure!(deposit_fee <= balance!(1), Error::<T>::InvalidDepositFee);
+
             // Get token info
             let mut token_info = <TokenInfos<T>>::get(&reward_asset);
 
@@ -321,6 +327,7 @@ pub mod pallet {
         }
 
         /// Deposit to pool
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
@@ -447,6 +454,7 @@ pub mod pallet {
         }
 
         /// Get rewards
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
@@ -522,6 +530,7 @@ pub mod pallet {
         }
 
         /// Withdraw
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
@@ -691,17 +700,21 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Get pool info and check if pool exists
-            let pool_infos: &mut Vec<PoolInfo> = &mut <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut pool_info = &mut Default::default();
+            // Check if deposit fee is valid
+            ensure!(deposit_fee <= balance!(1), Error::<T>::InvalidDepositFee);
+
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut exist = false;
+
             for p_info in pool_infos.iter_mut() {
                 if !p_info.is_removed && p_info.is_farm == is_farm {
-                    pool_info = p_info;
+                    exist = true;
+                    p_info.deposit_fee = deposit_fee;
                 }
             }
-            ensure!(pool_info.multiplier != 0, Error::<T>::PoolDoesNotExist);
+            ensure!(exist, Error::<T>::PoolDoesNotExist);
 
-            pool_info.deposit_fee = deposit_fee;
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
             // Emit an event
             Self::deposit_event(Event::<T>::DepositFeeChanged(
@@ -848,7 +861,7 @@ pub mod pallet {
                 for (pool_asset, reward_asset, mut pool_infos) in Pools::<T>::iter() {
                     if reward_asset == token_asset_id {
                         for pool_info in pool_infos.iter_mut() {
-                            if !pool_info.is_removed {
+                            if !pool_info.is_removed && pool_info.total_tokens_in_pool != zero {
                                 let total_multiplier;
                                 let amount;
 

@@ -376,6 +376,32 @@ mod tests {
     }
 
     #[test]
+    fn add_pool_invalid_deposit_fee() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(1.1);
+            let is_core = true;
+
+            assert_err!(
+                demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    multiplier,
+                    deposit_fee,
+                    is_core
+                ),
+                demeter_farming_platform::Error::<Runtime>::InvalidDepositFee
+            )
+        });
+    }
+
+    #[test]
     fn add_pool_reward_token_is_not_registered() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1481,13 +1507,13 @@ mod tests {
     }
 
     #[test]
-    fn change_pool_deposit_fee_ok() {
+    fn change_pool_deposit_fee_invalid_deposit_fee() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let pool_asset = XOR;
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
-            let deposit_fee = balance!(1);
+            let mut deposit_fee = balance!(0.8);
 
             let pool_info = PoolInfo {
                 multiplier: 1,
@@ -1506,6 +1532,48 @@ mod tests {
                 &pool_info,
             );
 
+            deposit_fee = balance!(1.2);
+
+            assert_err!(
+                demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    deposit_fee
+                ),
+                demeter_farming_platform::Error::<Runtime>::InvalidDepositFee
+            )
+        });
+    }
+
+    #[test]
+    fn change_pool_deposit_fee_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let mut deposit_fee = balance!(1);
+
+            let pool_info = PoolInfo {
+                multiplier: 1,
+                deposit_fee,
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 0,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            deposit_fee = balance!(0.8);
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
                     Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
@@ -1516,11 +1584,11 @@ mod tests {
                 )
             );
 
-            let mut pool_infos =
+            let pool_infos =
                 demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
-            for p_info in pool_infos.iter_mut() {
+            for p_info in pool_infos {
                 if !p_info.is_removed && p_info.is_farm == is_farm {
-                    assert_eq!(pool_info.deposit_fee, deposit_fee)
+                    assert_eq!(p_info.deposit_fee, deposit_fee)
                 }
             }
         });
