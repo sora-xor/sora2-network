@@ -571,11 +571,6 @@ impl State {
         if dispatch_txs {
             self.dispatch_offchain_transactions();
         }
-        frame_support::debug::warn!(
-            "run_next_offchain_with_params ended: {}, {:?}",
-            sidechain_height,
-            finalized_thischain_height
-        );
     }
 
     pub fn run_next_offchain_and_dispatch_txs(&mut self) {
