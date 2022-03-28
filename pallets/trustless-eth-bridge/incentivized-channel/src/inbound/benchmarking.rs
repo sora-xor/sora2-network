@@ -4,9 +4,7 @@
 
 use super::*;
 
-use frame_benchmarking::{
-    benchmarks, impl_benchmark_test_suite, whitelisted_caller, BenchmarkError,
-};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::{self, EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::convert::TryInto;
@@ -14,6 +12,8 @@ use sp_std::prelude::*;
 
 use bridge_types::types::{ChannelId, Message, MessageId, Proof};
 use bridge_types::{Header, Log};
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as IncentivizedInboundChannel;
@@ -42,18 +42,19 @@ benchmarks! {
         let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
-        <Nonce<T>>::put(envelope.nonce - 1);
-        <SourceChannel<T>>::put(envelope.channel);
+        <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
+        <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
 
         T::Verifier::initialize_storage(
+            BASE_NETWORK_ID,
             vec![header],
-            0.into(),
+            0,
             0, // forces all headers to be finalized
         )?;
 
-    }: _(RawOrigin::Signed(caller.clone()), message)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,message)
     verify {
-        assert_eq!(envelope.nonce, <Nonce<T>>::get());
+        assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
         let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
@@ -64,16 +65,11 @@ benchmarks! {
     // Benchmark `set_reward_fraction` under worst case conditions:
     // * The origin is authorized, i.e. equals UpdateOrigin
     set_reward_fraction {
-        let authorized_origin = match T::UpdateOrigin::successful_origin().into() {
-            Ok(raw) => raw,
-            Err(_) => return Err(BenchmarkError::Stop("Failed to get raw origin from origin")),
-        };
-
         // Pick a value that is different from the initial RewardFraction
         let fraction = Perbill::from_percent(50);
         assert!(<RewardFraction<T>>::get() != fraction);
 
-    }: _(authorized_origin, fraction)
+    }: _(RawOrigin::Root, fraction)
     verify {
         assert_eq!(<RewardFraction<T>>::get(), fraction);
     }
@@ -85,18 +81,19 @@ benchmarks! {
         let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
-        <Nonce<T>>::put(envelope.nonce - 1);
-        <SourceChannel<T>>::put(envelope.channel);
+        <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
+        <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
 
         T::Verifier::initialize_storage(
+            BASE_NETWORK_ID,
             vec![header],
-            0.into(),
+            0,
             0, // forces all headers to be finalized
         )?;
 
-    }: submit(RawOrigin::Signed(caller.clone()), message)
+    }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
-        assert_eq!(envelope.nonce, <Nonce<T>>::get());
+        assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
         let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
@@ -111,23 +108,31 @@ benchmarks! {
         let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
-        <Nonce<T>>::put(envelope.nonce - 1);
-        <SourceChannel<T>>::put(envelope.channel);
+        <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
+        <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
 
         T::Verifier::initialize_storage(
+            BASE_NETWORK_ID,
             vec![header],
-            0.into(),
+            0,
             0, // forces all headers to be finalized
         )?;
 
-    }: submit(RawOrigin::Signed(caller.clone()), message)
+    }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
-        assert_eq!(envelope.nonce, <Nonce<T>>::get());
+        assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
         let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
             assert_last_event::<T>(event);
         }
+    }
+
+    register_channel {
+
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, H160::repeat_byte(123))
+    verify {
+        assert_eq!(ChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(123)));
     }
 }
 

@@ -167,6 +167,12 @@ thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", br
 #orml-traits = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 #orml-tokens = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 
+[patch."https://github.com/open-web3-stack/open-runtime-module-library.git"]
+orml-tokens = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.16" }
+orml-traits = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.16" }
+orml-currencies = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.16" }
+orml-utilities = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.16" }
+
 #[patch."https://github.com/soramitsu/sora2-frame-pallets.git"]
 #pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
 #pallet-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
@@ -438,6 +444,7 @@ members = [
     "pallets/trustless-eth-bridge/incentivized-channel",
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/eth-app",
+    "pallets/trustless-eth-bridge/erc20-app",
     "pallets/trustless-eth-bridge/leaf-provider",
     "pallets/trustless-eth-bridge/types",
     "relayer",

@@ -40,7 +40,7 @@ module.exports = async ({
       autoMine: true,
     },
     "initialize",
-    deployer,
+    [channels.basic.inbound.address, channels.incentivized.inbound.address],
     principal,
     [ethApp.address],
   );
@@ -53,17 +53,8 @@ module.exports = async ({
       autoMine: true,
     },
     "initialize",
-    deployer,
-    deployer,
-    [ethApp.address]
-  );
-  await deployments.execute(
-    "IncentivizedOutboundChannel",
-    {
-      from: deployer,
-      autoMine: true,
-    },
-    "setFee",
+    [channels.basic.inbound.address, channels.incentivized.inbound.address],
+    [ethApp.address],
     fee
   );
 

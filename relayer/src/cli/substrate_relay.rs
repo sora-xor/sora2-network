@@ -5,7 +5,7 @@ use bridge_types::H160;
 use clap::*;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct SubstrateRelay {
+pub(super) struct Command {
     #[clap(flatten)]
     ethereum: EthereumUrl,
     #[clap(flatten)]
@@ -20,7 +20,7 @@ pub(super) struct SubstrateRelay {
     beefy: H160,
 }
 
-impl SubstrateRelay {
+impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone())
             .await?

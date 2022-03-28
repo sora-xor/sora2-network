@@ -1,22 +1,27 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
-use common::mock::{alice, ExistentialDeposits};
-use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use common::mock::ExistentialDeposits;
+use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_system::RawOrigin;
+use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 
 use crate::outbound as incentivized_outbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
+const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["4130819912a398f4eb84e7f16ed443232ba638b5"];
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -28,6 +33,7 @@ frame_support::construct_runtime!(
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         IncentivizedOutboundChannel: incentivized_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -114,7 +120,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = alice();
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -135,6 +141,20 @@ impl assets::Config for Test {
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 128;
     pub const MaxMessagesPerCommit: u64 = 5;
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl incentivized_outbound_channel::Config for Test {
@@ -144,8 +164,20 @@ impl incentivized_outbound_channel::Config for Test {
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type FeeCurrency = ();
-    type SetFeeOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
+}
+
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+
+impl technical::Config for Test {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -153,14 +185,24 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
+    technical::GenesisConfig::<Test> {
+        register_tech_accounts: vec![(
+            GetTrustlessBridgeFeesAccountId::get(),
+            GetTrustlessBridgeFeesTechAccountId::get(),
+        )],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
-            dest_account: Some(bob.clone()),
-            interval: 1u64,
+            networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
+            interval: 10u64,
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
+
+    let bob: AccountId = Keyring::Bob.into();
 
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), 1u32.into())],
@@ -200,18 +242,20 @@ fn test_submit() {
         Assets::mint_to(&XOR, &who, &who, 300u32.into()).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who.clone()),
+            BASE_NETWORK_ID,
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(<Nonce<Test>>::get(), 1);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who),
+            BASE_NETWORK_ID,
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(<Nonce<Test>>::get(), 2);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
     });
 }
 
@@ -227,7 +271,8 @@ fn test_submit_fees_burned() {
         let old_balance = Assets::total_balance(&XOR, &who).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
-            &who,
+            &RawOrigin::Signed(who.clone()),
+            BASE_NETWORK_ID,
             target,
             &vec![0, 1, 2]
         ));
@@ -248,7 +293,12 @@ fn test_submit_not_enough_funds() {
         Assets::mint_to(&XOR, &who, &who, 50u32.into()).unwrap();
 
         assert_noop!(
-            IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            IncentivizedOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
             pallet_balances::Error::<Test>::InsufficientBalance
         );
     })
@@ -265,11 +315,22 @@ fn test_submit_exceeds_queue_limit() {
 
         let max_messages = MaxMessagesPerCommit::get();
         (0..max_messages).for_each(|_| {
-            IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]).unwrap()
+            IncentivizedOutboundChannel::submit(
+                &RawOrigin::Signed(who.clone()),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2],
+            )
+            .unwrap()
         });
 
         assert_noop!(
-            IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            IncentivizedOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::QueueSizeLimitReached,
         );
     })
@@ -296,7 +357,12 @@ fn test_submit_exceeds_payload_limit() {
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
         assert_noop!(
-            IncentivizedOutboundChannel::submit(&who, target, payload.as_slice()),
+            IncentivizedOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                payload.as_slice()
+            ),
             Error::<Test>::PayloadTooLarge,
         );
     })
@@ -308,9 +374,14 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        <Nonce<Test>>::set(u64::MAX);
+        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
         assert_noop!(
-            IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            IncentivizedOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::Overflow,
         );
     });

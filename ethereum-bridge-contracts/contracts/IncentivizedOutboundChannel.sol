@@ -20,8 +20,7 @@ contract IncentivizedOutboundChannel is
     // Nonce for last submitted message
     uint64 public nonce;
 
-    uint256 private fee;
-    address private feeSource;
+    uint256 private _fee;
 
     event Message(address source, uint64 nonce, uint256 fee, bytes payload);
 
@@ -33,16 +32,18 @@ contract IncentivizedOutboundChannel is
 
     // Once-off post-construction call to set initial configuration.
     function initialize(
-        address _configUpdater,
-        address _feeSource,
-        address[] memory defaultOperators
+        address[] memory configUpdaters,
+        address[] memory defaultOperators,
+        uint256 fee
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Set initial configuration
-        feeSource = _feeSource;
-        grantRole(CONFIG_UPDATE_ROLE, _configUpdater);
+        for (uint256 i = 0; i < configUpdaters.length; i++) {
+            grantRole(CONFIG_UPDATE_ROLE, configUpdaters[i]);
+        }
         for (uint256 i = 0; i < defaultOperators.length; i++) {
             _authorizeDefaultOperator(defaultOperators[i]);
         }
+        _fee = fee;
 
         // drop admin privileges
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -50,8 +51,8 @@ contract IncentivizedOutboundChannel is
 
     // Update message submission fee.
     function setFee(uint256 _amount) external onlyRole(CONFIG_UPDATE_ROLE) {
-        emit FeeChanged(fee, _amount);
-        fee = _amount;
+        emit FeeChanged(_fee, _amount);
+        _fee = _amount;
     }
 
     // Authorize an operator/app to submit messages for *all* users.
@@ -77,12 +78,16 @@ contract IncentivizedOutboundChannel is
         external
         override
     {
-        require(
-            isOperatorFor(msg.sender, feePayer),
-            "Caller is not an operator for fee payer"
-        );
-        //feeSource.burnFee(feePayer, fee);
+        // require(
+        //     isOperatorFor(msg.sender, feePayer),
+        //     "Caller is not an operator for fee payer"
+        // );
+        // require(msg.value >= _fee, "Not enough fee");
         nonce = nonce + 1;
-        emit Message(msg.sender, nonce, fee, payload);
+        emit Message(msg.sender, nonce, _fee, payload);
+    }
+
+    function fee() external view override returns (uint256) {
+        return _fee;
     }
 }

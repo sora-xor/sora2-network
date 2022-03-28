@@ -6,7 +6,7 @@ import "./BeefyLightClient.sol";
 import "./SimplifiedMMRVerification.sol";
 
 contract BasicInboundChannel {
-    uint256 public constant MAX_GAS_PER_MESSAGE = 100000;
+    uint256 public constant MAX_GAS_PER_MESSAGE = 2000000;
     uint256 public constant GAS_BUFFER = 60000;
 
     uint64 public nonce;

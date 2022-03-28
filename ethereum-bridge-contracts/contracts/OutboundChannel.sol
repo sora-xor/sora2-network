@@ -4,4 +4,6 @@ pragma experimental ABIEncoderV2;
 
 interface OutboundChannel {
     function submit(address origin, bytes calldata payload) external;
+
+    function fee() external view returns (uint256);
 }

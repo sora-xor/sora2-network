@@ -44,7 +44,7 @@ use bridge_types::ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, Et
 use bridge_types::traits::Verifier;
 use bridge_types::types::{Message, Proof};
 pub use bridge_types::Header as EthereumHeader;
-use bridge_types::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
+use bridge_types::{EthNetworkId, HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 
@@ -120,7 +120,7 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T> {
-        Finalized(EthereumHeaderId),
+        Finalized(EthNetworkId, EthereumHeaderId),
     }
 
     #[pallet::error]
@@ -144,6 +144,10 @@ pub mod pallet {
         InvalidProof,
         /// Log could not be decoded
         DecodeFailed,
+        /// Unknown network id passed
+        NetworkNotFound,
+        /// Network with given id already registered
+        NetworkAlreadyExists,
         /// This should never be returned - indicates a bug
         Unknown,
     }
@@ -153,38 +157,46 @@ pub mod pallet {
 
     /// Best known block.
     #[pallet::storage]
-    pub(super) type BestBlock<T: Config> = StorageValue<_, (EthereumHeaderId, U256), ValueQuery>;
+    pub(super) type BestBlock<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, (EthereumHeaderId, U256), OptionQuery>;
 
     /// Range of blocks that we want to prune.
     #[pallet::storage]
-    pub(super) type BlocksToPrune<T: Config> = StorageValue<_, PruningRange, ValueQuery>;
+    pub(super) type BlocksToPrune<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, PruningRange, OptionQuery>;
 
     /// Best finalized block.
     #[pallet::storage]
-    pub(super) type FinalizedBlock<T: Config> = StorageValue<_, EthereumHeaderId, ValueQuery>;
+    pub(super) type FinalizedBlock<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, EthereumHeaderId, OptionQuery>;
 
     /// Map of imported headers by hash.
     #[pallet::storage]
-    pub(super) type Headers<T: Config> =
-        StorageMap<_, Identity, H256, StoredHeader<T::AccountId>, OptionQuery>;
+    pub(super) type Headers<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        EthNetworkId,
+        Identity,
+        H256,
+        StoredHeader<T::AccountId>,
+        OptionQuery,
+    >;
 
     /// Map of imported header hashes by number.
     #[pallet::storage]
     pub(super) type HeadersByNumber<T: Config> =
-        StorageMap<_, Twox64Concat, u64, Vec<H256>, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Twox64Concat, u64, Vec<H256>, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub initial_header: EthereumHeader,
-        pub initial_difficulty: U256,
+        pub initial_networks: Vec<(EthNetworkId, EthereumHeader, U256)>,
     }
 
     #[cfg(feature = "std")]
     impl Default for GenesisConfig {
         fn default() -> Self {
             Self {
-                initial_header: Default::default(),
-                initial_difficulty: Default::default(),
+                initial_networks: Default::default(),
             }
         }
     }
@@ -192,22 +204,58 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            Pallet::<T>::initialize_storage(
-                vec![self.initial_header.clone()],
-                self.initial_difficulty,
-                0, // descendants_until_final = 0 forces the initial header to be finalized
-            )
-            .unwrap();
+            for (network_id, header, difficulty) in &self.initial_networks {
+                Pallet::<T>::initialize_storage_inner(
+                    *network_id,
+                    vec![header.clone()],
+                    difficulty.clone(),
+                    0, // descendants_until_final = 0 forces the initial header to be finalized
+                )
+                .unwrap();
 
-            <BlocksToPrune<T>>::put(PruningRange {
-                oldest_unpruned_block: self.initial_header.number,
-                oldest_block_to_keep: self.initial_header.number,
-            });
+                <BlocksToPrune<T>>::insert(
+                    network_id,
+                    PruningRange {
+                        oldest_unpruned_block: header.number,
+                        oldest_block_to_keep: header.number,
+                    },
+                );
+            }
         }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::weight(T::WeightInfo::register_network())]
+        pub fn register_network(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            header: EthereumHeader,
+            initial_difficulty: U256,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                <BestBlock<T>>::contains_key(network_id) == false,
+                Error::<T>::NetworkAlreadyExists
+            );
+            Pallet::<T>::initialize_storage_inner(
+                network_id,
+                vec![header.clone()],
+                initial_difficulty,
+                0,
+            )
+            // should never fail with single header
+            .map_err(|_| Error::<T>::Unknown)?;
+
+            <BlocksToPrune<T>>::insert(
+                network_id,
+                PruningRange {
+                    oldest_unpruned_block: header.number,
+                    oldest_block_to_keep: header.number,
+                },
+            );
+            Ok(())
+        }
         /// Import a single Ethereum PoW header.
         ///
         /// Note that this extrinsic has a very high weight. The weight is affected by the
@@ -223,6 +271,7 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::import_header())]
         pub fn import_header(
             origin: OriginFor<T>,
+            network_id: EthNetworkId,
             header: EthereumHeader,
             proof: Vec<EthashProofData>,
         ) -> DispatchResult {
@@ -234,7 +283,7 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) = Self::validate_header_to_import(&header, &proof) {
+            if let Err(err) = Self::validate_header_to_import(network_id, &header, &proof) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Validation for header {} returned error. Skipping import",
@@ -249,7 +298,7 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) = Self::import_validated_header(&sender, &header) {
+            if let Err(err) = Self::import_validated_header(network_id, &sender, &header) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Import of header {} failed",
@@ -271,20 +320,23 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Validate an Ethereum header for import
         fn validate_header_to_import(
+            network_id: EthNetworkId,
             header: &EthereumHeader,
             proof: &[EthashProofData],
         ) -> DispatchResult {
             let hash = header.compute_hash();
             ensure!(
-                !<Headers<T>>::contains_key(hash),
+                !<Headers<T>>::contains_key(network_id, hash),
                 Error::<T>::DuplicateHeader,
             );
 
-            let parent = <Headers<T>>::get(header.parent_hash)
+            let finalized_header_id =
+                <FinalizedBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
+
+            let parent = <Headers<T>>::get(network_id, header.parent_hash)
                 .ok_or(Error::<T>::MissingParentHeader)?
                 .header;
 
-            let finalized_header_id = <FinalizedBlock<T>>::get();
             ensure!(
                 header.number > finalized_header_id.number,
                 Error::<T>::AncientHeader,
@@ -294,8 +346,9 @@ pub mod pallet {
             // average case. Since we know that the parent header was imported successfully,
             // we know that the newest finalized header is at most, and on average,
             // DescendantsUntilFinalized headers before the parent.
-            let ancestor_at_finalized_number = ancestry::<T>(header.parent_hash)
-                .find(|(_, ancestor)| ancestor.number == finalized_header_id.number);
+            let ancestor_at_finalized_number =
+                ancestry::<T>(network_id.clone(), header.parent_hash)
+                    .find(|(_, ancestor)| ancestor.number == finalized_header_id.number);
             // We must find a matching ancestor above since AncientHeader check ensures
             // that iteration starts at or after the latest finalized block.
             ensure!(ancestor_at_finalized_number.is_some(), Error::<T>::Unknown,);
@@ -313,7 +366,7 @@ pub mod pallet {
                 header.gas_used <= header.gas_limit
                     && header.gas_limit < parent.gas_limit * 1025 / 1024
                     && header.gas_limit > parent.gas_limit * 1023 / 1024
-                    && header.gas_limit >= 5000.into()
+                    && header.gas_limit >= 5000u64.into()
                     && header.timestamp > parent.timestamp
                     && header.number == parent.number + 1
                     && header.extra_data.len() <= 32,
@@ -367,12 +420,13 @@ pub mod pallet {
 
         // Import a new, validated Ethereum header
         fn import_validated_header(
+            network_id: EthNetworkId,
             sender: &T::AccountId,
             header: &EthereumHeader,
         ) -> DispatchResult {
             let hash = header.compute_hash();
-            let stored_parent_header =
-                <Headers<T>>::get(header.parent_hash).ok_or(Error::<T>::MissingParentHeader)?;
+            let stored_parent_header = <Headers<T>>::get(network_id, header.parent_hash)
+                .ok_or(Error::<T>::MissingParentHeader)?;
             let total_difficulty = stored_parent_header
                 .total_difficulty
                 .checked_add(header.difficulty)
@@ -384,22 +438,27 @@ pub mod pallet {
                 finalized: false,
             };
 
-            <Headers<T>>::insert(hash, header_to_store);
+            <Headers<T>>::insert(network_id, hash, header_to_store);
 
-            if <HeadersByNumber<T>>::contains_key(header.number) {
-                <HeadersByNumber<T>>::mutate(header.number, |option| -> DispatchResult {
-                    if let Some(hashes) = option {
-                        hashes.push(hash);
-                        return Ok(());
-                    }
-                    Err(Error::<T>::Unknown.into())
-                })?;
+            if <HeadersByNumber<T>>::contains_key(network_id, header.number) {
+                <HeadersByNumber<T>>::mutate(
+                    network_id,
+                    header.number,
+                    |option| -> DispatchResult {
+                        if let Some(hashes) = option {
+                            hashes.push(hash);
+                            return Ok(());
+                        }
+                        Err(Error::<T>::Unknown.into())
+                    },
+                )?;
             } else {
-                <HeadersByNumber<T>>::insert(header.number, vec![hash]);
+                <HeadersByNumber<T>>::insert(network_id, header.number, vec![hash]);
             }
 
             // Maybe track new highest difficulty chain
-            let (_, highest_difficulty) = <BestBlock<T>>::get();
+            let (_, highest_difficulty) =
+                <BestBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
             if total_difficulty > highest_difficulty
                 || (!T::VerifyPoW::get() && total_difficulty == U256::zero())
             {
@@ -407,16 +466,21 @@ pub mod pallet {
                     number: header.number,
                     hash,
                 };
-                <BestBlock<T>>::put((best_block_id, total_difficulty));
+                <BestBlock<T>>::insert(network_id, (best_block_id, total_difficulty));
 
                 // Finalize blocks if possible
-                let finalized_block_id = <FinalizedBlock<T>>::get();
-                let new_finalized_block_id =
-                    Self::get_best_finalized_header(&best_block_id, &finalized_block_id)?;
+                let finalized_block_id =
+                    <FinalizedBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
+                let new_finalized_block_id = Self::get_best_finalized_header(
+                    network_id,
+                    &best_block_id,
+                    &finalized_block_id,
+                )?;
                 if new_finalized_block_id != finalized_block_id {
-                    <FinalizedBlock<T>>::put(new_finalized_block_id);
-                    Self::deposit_event(Event::Finalized(new_finalized_block_id));
+                    <FinalizedBlock<T>>::insert(network_id, new_finalized_block_id);
+                    Self::deposit_event(Event::Finalized(network_id, new_finalized_block_id));
                     <Headers<T>>::mutate(
+                        network_id,
                         new_finalized_block_id.hash,
                         |option| -> DispatchResult {
                             if let Some(header) = option {
@@ -429,8 +493,10 @@ pub mod pallet {
                 }
 
                 // Clean up old headers
-                let pruning_range = <BlocksToPrune<T>>::get();
+                let pruning_range =
+                    <BlocksToPrune<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
                 let new_pruning_range = Self::prune_header_range(
+                    network_id,
                     &pruning_range,
                     HEADERS_TO_PRUNE_IN_SINGLE_IMPORT,
                     new_finalized_block_id
@@ -438,7 +504,7 @@ pub mod pallet {
                         .saturating_sub(FINALIZED_HEADERS_TO_KEEP),
                 );
                 if new_pruning_range != pruning_range {
-                    <BlocksToPrune<T>>::put(new_pruning_range);
+                    <BlocksToPrune<T>>::insert(network_id, new_pruning_range);
                 }
             }
 
@@ -448,19 +514,21 @@ pub mod pallet {
         // Return the latest block that can be finalized based on the given
         // highest difficulty chain and previously finalized block.
         fn get_best_finalized_header(
+            network_id: EthNetworkId,
             best_block_id: &EthereumHeaderId,
             finalized_block_id: &EthereumHeaderId,
         ) -> Result<EthereumHeaderId, DispatchError> {
             let required_descendants = T::DescendantsUntilFinalized::get() as usize;
-            let maybe_newly_finalized_ancestor = ancestry::<T>(best_block_id.hash)
-                .enumerate()
-                .find_map(|(i, pair)| {
-                    if i < required_descendants {
-                        None
-                    } else {
-                        Some(pair)
-                    }
-                });
+            let maybe_newly_finalized_ancestor =
+                ancestry::<T>(network_id.clone(), best_block_id.hash)
+                    .enumerate()
+                    .find_map(|(i, pair)| {
+                        if i < required_descendants {
+                            None
+                        } else {
+                            Some(pair)
+                        }
+                    });
 
             match maybe_newly_finalized_ancestor {
                 Some((hash, header)) => {
@@ -485,6 +553,7 @@ pub mod pallet {
         // (adjusted to `prune_end` if newer). Only up to `max_headers_to_prune`
         // will be removed.
         pub(super) fn prune_header_range(
+            network_id: EthNetworkId,
             pruning_range: &PruningRange,
             max_headers_to_prune: u64,
             prune_end: u64,
@@ -504,10 +573,10 @@ pub mod pallet {
                     break;
                 }
 
-                if let Some(hashes_at_number) = <HeadersByNumber<T>>::take(number) {
+                if let Some(hashes_at_number) = <HeadersByNumber<T>>::take(network_id, number) {
                     let mut remaining = hashes_at_number.len();
                     for hash in hashes_at_number.iter() {
-                        <Headers<T>>::remove(hash);
+                        <Headers<T>>::remove(network_id, hash);
                         blocks_pruned += 1;
                         remaining -= 1;
                         if blocks_pruned == max_headers_to_prune {
@@ -517,7 +586,7 @@ pub mod pallet {
 
                     if remaining > 0 {
                         let remainder = &hashes_at_number[hashes_at_number.len() - remaining..];
-                        <HeadersByNumber<T>>::insert(number, remainder);
+                        <HeadersByNumber<T>>::insert(network_id, number, remainder);
                     } else {
                         new_pruning_range.oldest_unpruned_block = number + 1;
                     }
@@ -532,9 +601,12 @@ pub mod pallet {
         // Verifies that the receipt encoded in proof.data is included
         // in the block given by proof.block_hash. Inclusion is only
         // recognized if the block has been finalized.
-        fn verify_receipt_inclusion(proof: &Proof) -> Result<Receipt, DispatchError> {
+        fn verify_receipt_inclusion(
+            network_id: EthNetworkId,
+            proof: &Proof,
+        ) -> Result<Receipt, DispatchError> {
             let stored_header =
-                <Headers<T>>::get(proof.block_hash).ok_or(Error::<T>::MissingHeader)?;
+                <Headers<T>>::get(network_id, proof.block_hash).ok_or(Error::<T>::MissingHeader)?;
 
             ensure!(stored_header.finalized, Error::<T>::HeaderNotFinalized);
 
@@ -555,12 +627,111 @@ pub mod pallet {
                 }
             }
         }
+
+        /// Import an ordered vec of Ethereum headers without performing
+        /// validation.
+        ///
+        /// NOTE: This should only be used to initialize empty storage.
+        pub(crate) fn initialize_storage_inner(
+            network_id: EthNetworkId,
+            headers: Vec<EthereumHeader>,
+            initial_difficulty: U256,
+            descendants_until_final: u8,
+        ) -> Result<(), &'static str> {
+            let insert_header_fn = |header: &EthereumHeader, total_difficulty: U256| {
+                let hash = header.compute_hash();
+                <Headers<T>>::insert(
+                    network_id,
+                    hash,
+                    StoredHeader {
+                        submitter: None,
+                        header: header.clone(),
+                        total_difficulty: total_difficulty,
+                        finalized: false,
+                    },
+                );
+                <HeadersByNumber<T>>::append(network_id, header.number, hash);
+
+                EthereumHeaderId {
+                    number: header.number,
+                    hash: hash,
+                }
+            };
+
+            let oldest_header = headers.get(0).ok_or("Need at least one header")?;
+            let mut best_block_difficulty = initial_difficulty;
+            let mut best_block_id = insert_header_fn(&oldest_header, best_block_difficulty);
+
+            for (i, header) in headers.iter().enumerate().skip(1) {
+                let prev_block_num = headers[i - 1].number;
+                ensure!(
+                    header.number == prev_block_num || header.number == prev_block_num + 1,
+                    "Headers must be in order",
+                );
+
+                let total_difficulty = {
+                    let parent = <Headers<T>>::get(network_id, header.parent_hash)
+                        .ok_or("Missing parent header")?;
+                    parent.total_difficulty + header.difficulty
+                };
+
+                let block_id = insert_header_fn(&header, total_difficulty);
+
+                if total_difficulty > best_block_difficulty {
+                    best_block_difficulty = total_difficulty;
+                    best_block_id = block_id;
+                }
+            }
+
+            <BestBlock<T>>::insert(network_id, (best_block_id, best_block_difficulty));
+
+            let maybe_finalized_ancestor = ancestry::<T>(network_id.clone(), best_block_id.hash)
+                .enumerate()
+                .find_map(|(i, pair)| {
+                    if i < descendants_until_final as usize {
+                        None
+                    } else {
+                        Some(pair)
+                    }
+                });
+            if let Some((hash, header)) = maybe_finalized_ancestor {
+                <FinalizedBlock<T>>::insert(
+                    network_id,
+                    EthereumHeaderId {
+                        hash: hash,
+                        number: header.number,
+                    },
+                );
+                let mut next_hash = Ok(hash);
+                loop {
+                    match next_hash {
+                        Ok(hash) => {
+                            next_hash = <Headers<T>>::mutate(network_id, hash, |option| {
+                                if let Some(header) = option {
+                                    header.finalized = true;
+                                    return Ok(header.header.parent_hash);
+                                }
+                                Err("No header at hash")
+                            })
+                        }
+                        _ => break,
+                    }
+                }
+            } else {
+                panic!("Network don't have finalized header");
+            }
+
+            Ok(())
+        }
     }
 
     /// Return iterator over header ancestors, starting at given hash
-    fn ancestry<T: Config>(mut hash: H256) -> impl Iterator<Item = (H256, EthereumHeader)> {
+    fn ancestry<T: Config>(
+        network_id: EthNetworkId,
+        mut hash: H256,
+    ) -> impl Iterator<Item = (H256, EthereumHeader)> {
         sp_std::iter::from_fn(move || {
-            let header = <Headers<T>>::get(&hash)?.header;
+            let header = <Headers<T>>::get(network_id, &hash)?.header;
             let current_hash = hash;
             hash = header.parent_hash;
             Some((current_hash, header))
@@ -570,8 +741,8 @@ pub mod pallet {
     impl<T: Config> Verifier for Pallet<T> {
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
-        fn verify(message: &Message) -> Result<Log, DispatchError> {
-            let receipt = Self::verify_receipt_inclusion(&message.proof)?;
+        fn verify(network_id: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
+            let receipt = Self::verify_receipt_inclusion(network_id, &message.proof)?;
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -593,94 +764,18 @@ pub mod pallet {
             Ok(log)
         }
 
-        /// Import an ordered vec of Ethereum headers without performing
-        /// validation.
-        ///
-        /// NOTE: This should only be used to initialize empty storage.
         fn initialize_storage(
-            headers: Vec<EthereumHeader>,
-            initial_difficulty: U256,
+            network_id: EthNetworkId,
+            headers: Vec<bridge_types::Header>,
+            difficulty: u128,
             descendants_until_final: u8,
         ) -> Result<(), &'static str> {
-            let insert_header_fn = |header: &EthereumHeader, total_difficulty: U256| {
-                let hash = header.compute_hash();
-                <Headers<T>>::insert(
-                    hash,
-                    StoredHeader {
-                        submitter: None,
-                        header: header.clone(),
-                        total_difficulty: total_difficulty,
-                        finalized: false,
-                    },
-                );
-                <HeadersByNumber<T>>::append(header.number, hash);
-
-                EthereumHeaderId {
-                    number: header.number,
-                    hash: hash,
-                }
-            };
-
-            let oldest_header = headers.get(0).ok_or("Need at least one header")?;
-            let mut best_block_difficulty = initial_difficulty;
-            let mut best_block_id = insert_header_fn(&oldest_header, best_block_difficulty);
-
-            for (i, header) in headers.iter().enumerate().skip(1) {
-                let prev_block_num = headers[i - 1].number;
-                ensure!(
-                    header.number == prev_block_num || header.number == prev_block_num + 1,
-                    "Headers must be in order",
-                );
-
-                let total_difficulty = {
-                    let parent =
-                        <Headers<T>>::get(header.parent_hash).ok_or("Missing parent header")?;
-                    parent.total_difficulty + header.difficulty
-                };
-
-                let block_id = insert_header_fn(&header, total_difficulty);
-
-                if total_difficulty > best_block_difficulty {
-                    best_block_difficulty = total_difficulty;
-                    best_block_id = block_id;
-                }
-            }
-
-            <BestBlock<T>>::put((best_block_id, best_block_difficulty));
-
-            let maybe_finalized_ancestor =
-                ancestry::<T>(best_block_id.hash)
-                    .enumerate()
-                    .find_map(|(i, pair)| {
-                        if i < descendants_until_final as usize {
-                            None
-                        } else {
-                            Some(pair)
-                        }
-                    });
-            if let Some((hash, header)) = maybe_finalized_ancestor {
-                <FinalizedBlock<T>>::put(EthereumHeaderId {
-                    hash: hash,
-                    number: header.number,
-                });
-                let mut next_hash = Ok(hash);
-                loop {
-                    match next_hash {
-                        Ok(hash) => {
-                            next_hash = <Headers<T>>::mutate(hash, |option| {
-                                if let Some(header) = option {
-                                    header.finalized = true;
-                                    return Ok(header.header.parent_hash);
-                                }
-                                Err("No header at hash")
-                            })
-                        }
-                        _ => break,
-                    }
-                }
-            }
-
-            Ok(())
+            Self::initialize_storage_inner(
+                network_id,
+                headers,
+                difficulty.into(),
+                descendants_until_final,
+            )
         }
     }
 }

@@ -81,13 +81,12 @@ impl ProofLoader {
     }
 
     pub async fn receipt_proof(&self, block: H256, tx_id: usize) -> AnyResult<Vec<Vec<u8>>> {
-        let mut lock = self.receipts.lock().await;
-        if let Some(cache) = lock.get_mut(&block) {
+        if let Some(cache) = self.receipts.lock().await.get_mut(&block) {
             return Ok(cache.prove(tx_id)?);
         }
         let mut cache = BlockWithReceipts::load(self.eth.inner(), block).await?;
         let proof = cache.prove(tx_id)?;
-        lock.put(block, cache);
+        self.receipts.lock().await.put(block, cache);
         Ok(proof)
     }
 }

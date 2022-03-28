@@ -40,3 +40,5 @@ impl From<ethabi::Error> for DecodeError {
         DecodeError::InvalidABI(err)
     }
 }
+
+pub type EthNetworkId = u32;

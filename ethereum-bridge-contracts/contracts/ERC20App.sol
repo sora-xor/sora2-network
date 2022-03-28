@@ -17,9 +17,11 @@ contract ERC20App is AccessControl {
 
     mapping(address => uint256) public balances;
 
+    mapping(address => bool) public tokens;
+
     mapping(ChannelId => Channel) public channels;
 
-    bytes2 constant MINT_CALL = 0x4201;
+    bytes2 constant MINT_CALL = 0x6500;
 
     event Locked(
         address token,
@@ -62,6 +64,7 @@ contract ERC20App is AccessControl {
         uint256 _amount,
         ChannelId _channelId
     ) public {
+        require(tokens[_token], "Token is not registered");
         require(
             _channelId == ChannelId.Basic ||
                 _channelId == ChannelId.Incentivized,
@@ -91,6 +94,7 @@ contract ERC20App is AccessControl {
         address _recipient,
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+        require(tokens[_token], "Token is not registered");
         require(_amount > 0, "Must unlock a positive amount");
         require(
             _amount <= balances[_token],
@@ -117,9 +121,20 @@ contract ERC20App is AccessControl {
                 MINT_CALL,
                 _token,
                 _sender,
-                bytes1(0x00), // Encode recipient as MultiAddress::Id
                 _recipient,
                 _amount.encode256()
             );
+    }
+
+    /**
+     * Add new token from sidechain to the bridge white list.
+     *
+     * @param token token address
+     */
+    function registerAsset(address token)
+        public
+        onlyRole(INBOUND_CHANNEL_ROLE)
+    {
+        tokens[token] = true;
     }
 }

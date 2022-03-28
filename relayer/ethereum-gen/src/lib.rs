@@ -20,8 +20,17 @@ ethers::contract::abigen!(
     ERC20App,
     "src/bytes/ERC20App.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
+    SidechainApp,
+    "src/bytes/SidechainApp.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
     ValidatorRegistry,
     "src/bytes/ValidatorRegistry.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
+    IERC20Metadata,
+    "src/bytes/IERC20Metadata.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
+    TestToken,
+    "src/bytes/TestToken.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
 );
 
@@ -53,6 +62,10 @@ pub mod erc20_app {
 
 pub mod eth_app {
     pub use crate::ethapp_mod::*;
+}
+
+pub mod sidechain_app {
+    pub use crate::sidechainapp_mod::*;
 }
 
 pub mod validator_registry {

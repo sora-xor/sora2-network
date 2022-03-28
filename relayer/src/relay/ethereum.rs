@@ -3,7 +3,7 @@ use crate::ethereum::receipt::LogEntry;
 use crate::ethereum::{make_header, UnsignedClientInner};
 use crate::prelude::*;
 use bridge_types::types::{ChannelId, Message, Proof};
-use bridge_types::HeaderId;
+use bridge_types::{EthNetworkId, HeaderId};
 use ethereum_gen::{
     basic_outbound_channel as basic, incentivized_outbound_channel as incentivized,
     BasicOutboundChannel, IncentivizedOutboundChannel,
@@ -48,6 +48,7 @@ pub struct Relay {
     proof_loader: ProofLoader,
     basic: BasicOutboundChannel<UnsignedClientInner>,
     incentivized: IncentivizedOutboundChannel<UnsignedClientInner>,
+    chain_id: EthNetworkId,
 }
 
 impl Relay {
@@ -57,9 +58,11 @@ impl Relay {
         eth: EthUnsignedClient,
     ) -> AnyResult<Self> {
         let (sender, _) = tokio::sync::broadcast::channel(32);
-        let basic_contract = super::utils::basic_outbound_channel(sub.api(), eth.inner()).await?;
+        let chain_id = eth.get_chainid().await?.as_u32();
+        let basic_contract =
+            super::utils::basic_outbound_channel(chain_id, sub.api(), eth.inner()).await?;
         let incentivized_contract =
-            super::utils::incentivized_outbound_channel(sub.api(), eth.inner()).await?;
+            super::utils::incentivized_outbound_channel(chain_id, sub.api(), eth.inner()).await?;
         Ok(Self {
             proof_loader: ProofLoader::new(eth.clone(), base_path),
             sub,
@@ -67,6 +70,7 @@ impl Relay {
             finalized_sender: sender,
             basic: basic_contract,
             incentivized: incentivized_contract,
+            chain_id,
         })
     }
 
@@ -136,7 +140,7 @@ impl Relay {
                         .api()
                         .tx()
                         .basic_inbound_channel()
-                        .submit(message.message)
+                        .submit(self.chain_id, message.message)
                         .sign_and_submit_then_watch(&self.sub)
                         .await?
                 }
@@ -145,7 +149,7 @@ impl Relay {
                         .api()
                         .tx()
                         .incentivized_inbound_channel()
-                        .submit(message.message)
+                        .submit(self.chain_id, message.message)
                         .sign_and_submit_then_watch(&self.sub)
                         .await?
                 }
@@ -193,23 +197,41 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(None)
-            .await?;
+            .finalized_block(self.chain_id, None)
+            .await?
+            .ok_or(anyhow::anyhow!("Network is not registered"))?;
 
-        let mut watch = self.eth.watch_blocks().await?;
-        let latest_block = self.eth.get_block_number().await?.as_u64();
+        let mut watch = self.eth.watch_blocks().await.context("watch blocks")?;
+        let latest_block = self
+            .eth
+            .get_block_number()
+            .await
+            .context("get block number")?
+            .as_u64();
 
         let mut futures = FuturesOrdered::new();
 
         debug!("Preimport blocks to {}", latest_block);
         for number in (finalized_block.number + 1)..=latest_block {
-            if let Some(block) = self.eth.get_block(number).await? {
+            if let Some(block) = self
+                .eth
+                .get_block(number)
+                .await
+                .context("get eth block by number")?
+            {
                 debug!("Preimport block {}", number);
                 while futures.len() > 10 {
-                    futures.next().await.expect("futures len checked")?;
+                    if let Some(result) = futures.next().await {
+                        // Rust can't infer type here for some reason
+                        let result: Result<(), _> = result;
+                        result.context("finalize import header transaction")?;
+                    }
                 }
                 let number = block.number.unwrap_or_default().as_u64();
-                let progress = self.process_block(block).await?;
+                let progress = self
+                    .process_block(block)
+                    .await
+                    .context("send import header transaction")?;
                 if let Some(progress) = progress {
                     futures.push(self.finalize_transaction(progress, number));
                 }
@@ -217,13 +239,24 @@ impl Relay {
         }
 
         while let Some(block) = watch.next().await {
-            if let Some(block) = self.eth.get_block(block).await? {
+            if let Some(block) = self
+                .eth
+                .get_block(block)
+                .await
+                .context("get block by hash")?
+            {
                 debug!("Import block {}", block.number.unwrap_or_default().as_u64());
                 while futures.len() > 10 {
-                    futures.next().await.expect("futures len checked")?;
+                    if let Some(result) = futures.next().await {
+                        let result: Result<(), _> = result;
+                        result.context("finalize import header transaction")?;
+                    }
                 }
                 let number = block.number.unwrap_or_default().as_u64();
-                let progress = self.process_block(block).await?;
+                let progress = self
+                    .process_block(block)
+                    .await
+                    .context("send import header transaction")?;
                 if let Some(progress) = progress {
                     futures.push(self.finalize_transaction(progress, number));
                 }
@@ -239,11 +272,14 @@ impl Relay {
         block_number: u64,
     ) -> AnyResult<()> {
         let events = match progress.wait_for_finalized_success().await {
-            Err(subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module {
-                index,
-                error,
-            }))) if index == 94 && error == 3 => {
+            Err(subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module(
+                runtime::runtime_types::sp_runtime::ModuleError { index, error, .. },
+            )))) if index == 94 && error == 3 => {
                 warn!("DublicateHeader {}", block_number);
+                return Ok(());
+            }
+            Err(subxt::Error::Rpc(subxt::rpc::RpcError::RequestTimeout)) => {
+                warn!("Request timeout {}", block_number);
                 return Ok(());
             }
             Err(err) => {
@@ -252,12 +288,17 @@ impl Relay {
             }
             Ok(x) => x,
         };
-        if let Some(event) =
-            events.find_first_event::<sub_runtime::ethereum_light_client::events::Finalized>()?
+        if let Some(event) = events
+            .find_first_event::<sub_runtime::ethereum_light_client::events::Finalized>()
+            .context("find Finalized event")?
         {
-            let header_id = event.0;
-            debug!("Finalized ethereum header: {:?}", header_id);
-            self.finalized_sender.send(header_id)?;
+            if event.0 == self.chain_id {
+                let header_id = event.1;
+                debug!("Finalized ethereum header: {:?}", header_id);
+                self.finalized_sender
+                    .send(header_id)
+                    .context("send finalized header id to channel")?;
+            }
         }
         Ok(())
     }
@@ -276,7 +317,7 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .headers(header.compute_hash(), None)
+            .headers(self.chain_id, header.compute_hash(), None)
             .await;
         if let Ok(Some(_)) = has_block {
             return Ok(None);
@@ -291,7 +332,7 @@ impl Relay {
             .api()
             .tx()
             .ethereum_light_client()
-            .import_header(header, proof)
+            .import_header(self.chain_id, header, proof)
             .sign_and_submit_then_watch(&self.sub)
             .await
             .context("submit import header extrinsic")?;

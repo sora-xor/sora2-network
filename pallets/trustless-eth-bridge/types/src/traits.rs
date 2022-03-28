@@ -2,9 +2,9 @@
 //!
 //! Common traits and types
 
-use crate::{Header, Log, U256};
+use crate::{EthNetworkId, Log};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_system::Config;
+use frame_system::{Config, RawOrigin};
 use sp_core::H160;
 use sp_std::prelude::*;
 
@@ -14,10 +14,11 @@ use crate::types::{ChannelId, Message};
 ///
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
 pub trait Verifier {
-    fn verify(message: &Message) -> Result<Log, DispatchError>;
+    fn verify(network_id: EthNetworkId, message: &Message) -> Result<Log, DispatchError>;
     fn initialize_storage(
-        headers: Vec<Header>,
-        initial_difficulty: U256,
+        network_id: EthNetworkId,
+        headers: Vec<crate::Header>,
+        difficulty: u128,
         descendants_until_final: u8,
     ) -> Result<(), &'static str>;
 }
@@ -25,8 +26,9 @@ pub trait Verifier {
 /// Outbound submission for applications
 pub trait OutboundRouter<AccountId> {
     fn submit(
+        network_id: EthNetworkId,
         channel_id: ChannelId,
-        who: &AccountId,
+        who: &RawOrigin<AccountId>,
         target: H160,
         payload: &[u8],
     ) -> DispatchResult;
@@ -39,7 +41,22 @@ pub trait MessageCommitment {
 
 /// Dispatch a message
 pub trait MessageDispatch<T: Config, MessageId> {
-    fn dispatch(source: H160, id: MessageId, payload: &[u8]);
+    fn dispatch(network_id: EthNetworkId, source: H160, id: MessageId, payload: &[u8]);
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::Event>;
+}
+
+pub trait AppRegistry {
+    fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult;
+    fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult;
+}
+
+impl AppRegistry for () {
+    fn register_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
+        Ok(())
+    }
+
+    fn deregister_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
+        Ok(())
+    }
 }

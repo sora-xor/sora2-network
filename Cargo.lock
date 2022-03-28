@@ -831,6 +831,7 @@ name = "bridge-types"
 version = "0.1.0"
 dependencies = [
  "beefy-primitives",
+ "common",
  "enum-iterator",
  "ethabi-decode",
  "ethash 0.5.0 (git+https://github.com/snowfork/ethash.git?branch=master)",
@@ -945,19 +946,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbdb825da8a5df079a43676dbe042702f1707b1109f713a01420fbb4cc71fa27"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7714a157da7991e23d90686b9524b9e12e0407a108647f52e9328f4b3d51ac7f"
-dependencies = [
- "cargo-platform",
- "semver 0.11.0",
- "semver-parser 0.10.2",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -2296,6 +2284,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68b91989ae21441195d7d9b9993a2f9295c7e1a8c96255d8b729accddc124797"
 
 [[package]]
+name = "erc20-app"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "basic-channel",
+ "bridge-types",
+ "common",
+ "dispatch",
+ "ethabi-decode",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "incentivized-channel",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.1",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core 5.0.0",
+ "sp-io 5.0.0",
+ "sp-keyring",
+ "sp-runtime 5.0.0",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "errno"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2356,6 +2377,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime 5.0.0",
  "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -2750,7 +2772,7 @@ source = "git+https://github.com/gakonst/ethers-rs?rev=4c677933#4c677933ce4407fb
 dependencies = [
  "arrayvec 0.7.2",
  "bytes 1.1.0",
- "cargo_metadata 0.14.2",
+ "cargo_metadata",
  "convert_case",
  "ecdsa 0.12.4",
  "elliptic-curve 0.11.12",
@@ -3461,6 +3483,7 @@ dependencies = [
  "dex-runtime-api",
  "dispatch",
  "env_logger 0.9.0",
+ "erc20-app",
  "eth-app",
  "eth-bridge",
  "eth-bridge-runtime-api",
@@ -4280,6 +4303,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime 5.0.0",
  "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -6372,7 +6396,7 @@ dependencies = [
 [[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#4a66b299037cc3997689538f82847785f9afa65d"
+source = "git+https://github.com/open-web3-stack//open-runtime-module-library.git?branch=polkadot-v0.9.16#bb4e2742f70eddb7f79d5ceb4984297579189f26"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6389,7 +6413,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#4a66b299037cc3997689538f82847785f9afa65d"
+source = "git+https://github.com/open-web3-stack//open-runtime-module-library.git?branch=polkadot-v0.9.16#bb4e2742f70eddb7f79d5ceb4984297579189f26"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6404,7 +6428,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#4a66b299037cc3997689538f82847785f9afa65d"
+source = "git+https://github.com/open-web3-stack//open-runtime-module-library.git?branch=polkadot-v0.9.16#bb4e2742f70eddb7f79d5ceb4984297579189f26"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -6422,7 +6446,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#4a66b299037cc3997689538f82847785f9afa65d"
+source = "git+https://github.com/open-web3-stack//open-runtime-module-library.git?branch=polkadot-v0.9.16#bb4e2742f70eddb7f79d5ceb4984297579189f26"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -8228,6 +8252,7 @@ name = "relayer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assets-runtime-api",
  "async-trait",
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -9005,7 +9030,7 @@ dependencies = [
  "parity-scale-codec",
  "sc-allocator",
  "sp-core 5.0.0",
- "sp-maybe-compressed-blob",
+ "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.17)",
  "sp-serializer",
  "sp-wasm-interface 5.0.0",
  "thiserror",
@@ -9666,7 +9691,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
  "semver-parser 0.10.2",
- "serde",
 ]
 
 [[package]]
@@ -10525,6 +10549,14 @@ dependencies = [
 [[package]]
 name = "sp-maybe-compressed-blob"
 version = "4.1.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.16#19162e43be45817b44c7d48e50d03f074f60fbf4"
+dependencies = [
+ "zstd",
+]
+
+[[package]]
+name = "sp-maybe-compressed-blob"
+version = "4.1.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
 dependencies = [
  "thiserror",
@@ -11151,6 +11183,8 @@ dependencies = [
  "beefy-primitives",
  "bridge-types",
  "common",
+ "framenode-runtime",
+ "hex",
  "parity-scale-codec",
  "scale-info",
  "subxt",
@@ -11172,14 +11206,13 @@ dependencies = [
 
 [[package]]
 name = "substrate-wasm-builder"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93a3d51ad6abbc408b03ea962062bfcc959b438a318d7d4bedd181e1effd0610"
+version = "5.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.16#19162e43be45817b44c7d48e50d03f074f60fbf4"
 dependencies = [
  "ansi_term",
- "atty",
  "build-helper",
- "cargo_metadata 0.12.3",
+ "cargo_metadata",
+ "sp-maybe-compressed-blob 4.1.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.16)",
  "tempfile",
  "toml",
  "walkdir",

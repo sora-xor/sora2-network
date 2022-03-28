@@ -195,6 +195,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "fee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -258,9 +271,9 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_configUpdater",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "configUpdaters",
+        "type": "address[]"
       },
       {
         "internalType": "address",

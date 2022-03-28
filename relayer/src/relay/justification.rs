@@ -1,13 +1,15 @@
 use crate::prelude::*;
-use crate::substrate::{BeefyCommitment, EncodedBeefyCommitment};
+use crate::substrate::{BeefyCommitment, EncodedBeefyCommitment, LeafProof};
 use beefy_merkle_tree::Hash;
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
 use codec::Encode;
-use ethereum_gen::ValidatorProof;
+use ethereum_gen::{beefy_light_client, ValidatorProof};
 use ethers::prelude::*;
 use ethers::utils::keccak256;
 use subxt::sp_runtime::traits::Convert;
+
+use super::simplified_proof::convert_to_simplified_mmr_proof;
 
 pub struct BeefyHasher;
 
@@ -26,12 +28,14 @@ pub struct BeefyJustification {
     pub signed_validators: Vec<U256>,
     pub validators: Vec<H160>,
     pub block_hash: H256,
+    pub leaf_proof: LeafProof,
 }
 
 impl BeefyJustification {
     pub async fn create(
         sub: SubUnsignedClient,
         encoded_commitment: EncodedBeefyCommitment,
+        beefy_start_block: u32,
     ) -> AnyResult<Self> {
         let SignedCommitment {
             commitment,
@@ -61,6 +65,12 @@ impl BeefyJustification {
             .block_hash(Some(commitment.block_number.into()))
             .await?
             .unwrap();
+
+        let leaf_index = commitment.block_number - beefy_start_block - 2;
+        let leaf_proof = sub
+            .mmr_generate_proof(leaf_index as u64, Some(block_hash))
+            .await?;
+
         Ok(Self {
             commitment,
             commitment_hash,
@@ -69,6 +79,7 @@ impl BeefyJustification {
             signatures,
             validators,
             block_hash,
+            leaf_proof,
         })
     }
 
@@ -123,5 +134,33 @@ impl BeefyJustification {
             public_key_merkle_proofs,
         };
         validator_proof
+    }
+
+    pub fn simplified_mmr_proof(
+        &self,
+    ) -> AnyResult<(
+        beefy_light_client::BeefyMMRLeaf,
+        beefy_light_client::SimplifiedMMRProof,
+    )> {
+        let LeafProof { leaf, proof, .. } = self.leaf_proof.clone();
+        let (major, minor) = leaf.version.split();
+        let leaf_version = (major << 5) + minor;
+        let mmr_leaf = beefy_light_client::BeefyMMRLeaf {
+            version: leaf_version,
+            parent_number: leaf.parent_number_and_hash.0,
+            parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
+            next_authority_set_id: leaf.beefy_next_authority_set.id,
+            next_authority_set_len: leaf.beefy_next_authority_set.len,
+            next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
+            digest_hash: leaf.digest_hash,
+        };
+
+        let proof =
+            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, proof.items);
+        let proof = beefy_light_client::SimplifiedMMRProof {
+            merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_order_bit_field: proof.order,
+        };
+        Ok((mmr_leaf, proof))
     }
 }

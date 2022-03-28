@@ -1,0 +1,90 @@
+[package]
+name = "erc20-app"
+version = "0.1.1"
+authors = ["Snowfork <contact@snowfork.com>"]
+edition = "2018"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.130", optional = true }
+codec = { version = "2.2.0", package = "parity-scale-codec", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "1.0", default-features = false, features = [
+    "derive",
+] }
+hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
+rlp = { version = "0.5", default-features = false }
+hex-literal = { version = "0.3.1", default-features = false }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+
+assets = { path = "../../assets", default-features = false }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+permissions = { path = "../../permissions", default-features = false }
+common = { path = "../../../common", default-features = false }
+technical = { path = "../../technical", default-features = false }
+
+ethabi = { git = "https://github.com/Snowfork/ethabi-decode.git", package = "ethabi-decode", branch = "master", default-features = false }
+
+bridge-types = { path = "../types", default-features = false }
+
+dispatch = { path = "../dispatch", default-features = false, optional = true }
+basic-channel = { path = "../basic-channel", default-features = false, optional = true }
+incentivized-channel = { path = "../incentivized-channel", default-features = false, optional = true }
+
+[dev-dependencies]
+basic-channel = { path = "../basic-channel", default-features = false }
+incentivized-channel = { path = "../incentivized-channel", default-features = false }
+dispatch = { path = "../dispatch" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits" }
+common = { path = "../../../common", features = ["test"] }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+hex-literal = { version = "0.3.1" }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "hex/std",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "bridge-types/std",
+
+    "frame-benchmarking/std",
+    "dispatch/std",
+    "basic-channel/std",
+    "incentivized-channel/std",
+    "assets/std",
+    "technical/std",
+    "permissions/std",
+    "common/std",
+
+    "ethabi/std",
+    "rlp/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "dispatch/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "incentivized-channel/runtime-benchmarks",
+    "basic-channel/runtime-benchmarks",
+]
