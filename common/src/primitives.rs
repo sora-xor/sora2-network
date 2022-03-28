@@ -757,6 +757,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+    None,
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
@@ -779,9 +780,9 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
     }
 }
 
-impl<AccountId: Default, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
+impl<AccountId, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
     fn default() -> Self {
-        TechAccountId::Wrapped(AccountId::default())
+        TechAccountId::None
     }
 }
 
