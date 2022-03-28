@@ -165,7 +165,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultCeresForContributionInILO<T: Config>() -> Balance {
-        balance!(0.5)
+        balance!(1)
     }
 
     /// Amount of CERES for contribution in ILO
