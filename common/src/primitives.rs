@@ -146,7 +146,7 @@ pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(h
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
 pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "0091bd8d8295b25cab5a7b8b0e44498e678cfc15d872ede3215f7d4c7635ba36"
+    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
 ));
 
 impl IsRepresentation for PredefinedAssetId {

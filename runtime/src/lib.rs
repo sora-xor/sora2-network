@@ -1500,8 +1500,7 @@ impl ceres_governance_platform::Config for Runtime {
 }
 
 parameter_types! {
-    pub const DemeterAssetId: AssetId = common::AssetId32::from_bytes
-        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+    pub const DemeterAssetId: AssetId = common::DEMETER_ASSET_ID;
 }
 
 impl demeter_farming_platform::Config for Runtime {

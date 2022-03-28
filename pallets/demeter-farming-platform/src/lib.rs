@@ -28,7 +28,7 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PoolInfo {
+pub struct PoolData {
     pub multiplier: u32,
     pub deposit_fee: Balance,
     pub is_core: bool,
@@ -65,7 +65,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PoolInfo, TokenInfo, UserInfo, WeightInfo};
+    use crate::{PoolData, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
@@ -122,13 +122,13 @@ pub mod pallet {
         AssetIdOf<T>,
         Identity,
         AssetIdOf<T>,
-        Vec<PoolInfo>,
+        Vec<PoolData>,
         ValueQuery,
     >;
 
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
@@ -139,7 +139,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultFeeAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
@@ -299,7 +299,7 @@ pub mod pallet {
                 }
             }
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier,
                 deposit_fee,
                 is_core,

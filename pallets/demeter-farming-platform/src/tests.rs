@@ -6,7 +6,7 @@ mod tests {
         PredefinedAssetId, ToFeeAccount, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION,
         DEMETER_ASSET_ID, XOR,
     };
-    use demeter_farming_platform::{PoolInfo, TokenInfo, UserInfo};
+    use demeter_farming_platform::{PoolData, TokenInfo, UserInfo};
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
@@ -452,7 +452,7 @@ mod tests {
                 BOB
             ));
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier,
                 deposit_fee,
                 is_core,
@@ -916,7 +916,7 @@ mod tests {
             let pooled_tokens = 10;
             let rewards = 0;
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -965,7 +965,7 @@ mod tests {
             let pooled_tokens = 10;
             let rewards = 2;
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1011,7 +1011,7 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1111,7 +1111,7 @@ mod tests {
             let pooled_tokens = balance!(30);
             let is_farm = false;
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1200,7 +1200,7 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1278,7 +1278,7 @@ mod tests {
 
             demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1363,7 +1363,7 @@ mod tests {
 
             demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1423,7 +1423,7 @@ mod tests {
 
             demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee: balance!(0),
                 is_core: true,
@@ -1515,7 +1515,7 @@ mod tests {
             let is_farm = true;
             let mut deposit_fee = balance!(0.8);
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee,
                 is_core: true,
@@ -1556,7 +1556,7 @@ mod tests {
             let is_farm = true;
             let mut deposit_fee = balance!(1);
 
-            let pool_info = PoolInfo {
+            let pool_info = PoolData {
                 multiplier: 1,
                 deposit_fee,
                 is_core: true,
