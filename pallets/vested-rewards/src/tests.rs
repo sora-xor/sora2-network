@@ -566,21 +566,24 @@ fn storage_has_crowdloan_rewards() {
 fn crowdloan_rewards_account_has_funds() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
+        use crate::migration::add_funds_to_crowdloan_rewards_account;
+        use crate::{PSWAP_CROWDLOAN_REWARDS, VAL_CROWDLOAN_REWARDS, XSTUSD_CROWDLOAN_REWARDS};
+
+        add_funds_to_crowdloan_rewards_account::<Runtime>();
 
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&VAL, &GetCrowdloanRewardsAccountId::get()),
-            Ok(crate::VAL_CROWDLOAN_REWARDS)
+            Ok(VAL_CROWDLOAN_REWARDS)
         );
 
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &GetCrowdloanRewardsAccountId::get()),
-            Ok(crate::PSWAP_CROWDLOAN_REWARDS)
+            Ok(PSWAP_CROWDLOAN_REWARDS)
         );
 
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&XSTUSD, &GetCrowdloanRewardsAccountId::get()),
-            Ok(crate::XSTUSD_CROWDLOAN_REWARDS)
+            Ok(XSTUSD_CROWDLOAN_REWARDS)
         );
     });
 }

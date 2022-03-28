@@ -66,11 +66,15 @@ pub fn migrate<T: Config>() -> Weight {
         }) => {
             weight = add_funds_to_farming_rewards_account::<T>();
         }
+        Some(PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
         _ => (),
     }
 
     weight
-        .saturating_add(add_funds_to_crowdloan_rewards_account::<T>())
         .saturating_add(allow_market_making_pairs::<T>())
         .saturating_add(add_crowdloan_rewards::<T>())
 }
