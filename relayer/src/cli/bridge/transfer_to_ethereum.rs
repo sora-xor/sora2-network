@@ -1,13 +1,11 @@
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use bridge_types::types::ChannelId;
 use bridge_types::H160;
-use clap::*;
 use common::{AssetId32, PredefinedAssetId};
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
+pub struct Command {
     #[clap(flatten)]
     eth: EthereumUrl,
     #[clap(flatten)]
@@ -24,8 +22,8 @@ pub(super) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.sub.substrate_url.clone())
+        let eth = EthUnsignedClient::new(self.eth.get()).await?;
+        let sub = SubUnsignedClient::new(self.sub.get())
             .await?
             .try_sign_with(&self.key.get_key_string()?)
             .await?;

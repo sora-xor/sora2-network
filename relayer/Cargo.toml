@@ -14,15 +14,14 @@ common = { path = "../common" }
 subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
 tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
+http = "0.2.6"
 anyhow = "1.0.51"
-jsonrpsee = { version = "0.5.1", features = [
+jsonrpsee = { version = "0.8.0", features = [
     "macros",
     "ws-client",
     "http-client",
 ] }
-clap = { git = "https://github.com/clap-rs/clap", rev = "56ed9981", features = [
-    "derive",
-] }
+clap = { version = "3.1", features = ["derive"] }
 async-trait = "0.1.49"
 rlp = "0.5.1"
 triehash = "0.8.4"
@@ -54,3 +53,4 @@ thiserror = "1.0.30"
 lru = "0.7.2"
 k256 = "0.10.1"
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
+eth-bridge = { path = "../pallets/eth-bridge" }

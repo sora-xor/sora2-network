@@ -46,6 +46,11 @@ pub fn prepare_message(msg: &[u8]) -> Message {
     let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
     prefix.extend(&msg);
     let hash = keccak_256(&prefix);
+    frame_support::log::error!(
+        "Prepare message: {}, {}",
+        hex::encode(&msg),
+        hex::encode(&hash)
+    );
     Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
 }
 

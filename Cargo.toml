@@ -445,6 +445,7 @@ members = [
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/eth-app",
     "pallets/trustless-eth-bridge/erc20-app",
+    "pallets/trustless-eth-bridge/migration-app",
     "pallets/trustless-eth-bridge/leaf-provider",
     "pallets/trustless-eth-bridge/types",
     "relayer",

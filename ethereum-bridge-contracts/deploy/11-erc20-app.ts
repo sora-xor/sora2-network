@@ -20,6 +20,8 @@ module.exports = async ({
     }
   }
 
+  let migrationApp = await deployments.get("MigrationApp")
+
   let scaleCodecLibrary = await deployments.get("ScaleCodec")
 
   await deployments.deploy("ERC20App", {
@@ -32,7 +34,8 @@ module.exports = async ({
       {
         inbound: channels.incentivized.inbound.address,
         outbound: channels.incentivized.outbound.address,
-      }
+      },
+      migrationApp.address
     ],
     libraries: {
       ScaleCodec: scaleCodecLibrary.address
@@ -51,7 +54,8 @@ module.exports = async ({
       {
         inbound: channels.incentivized.inbound.address,
         outbound: channels.incentivized.outbound.address,
-      }
+      },
+      migrationApp.address
     ],
     libraries: {
       ScaleCodec: scaleCodecLibrary.address

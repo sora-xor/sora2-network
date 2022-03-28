@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate codec;
 
+#[macro_use]
+extern crate serde;
+
 /// Separated components of a secp256k1 signature.
 #[derive(
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, scale_info::TypeInfo, Default, Debug,
@@ -12,11 +15,22 @@ pub struct SignatureParams {
     pub v: u8,
 }
 
+#[derive(
+    Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
+pub enum AssetKind {
+    Thischain,
+    Sidechain,
+    SidechainOwned,
+}
+
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
     generated_type_derives = "Clone"
 )]
 pub mod runtime {
+    #[subxt(substitute_type = "eth_bridge::requests::AssetKind")]
+    use crate::AssetKind;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]

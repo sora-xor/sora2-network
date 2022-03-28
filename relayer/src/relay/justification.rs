@@ -49,15 +49,6 @@ impl BeefyJustification {
                 signed_validators.push(U256::from(i))
             }
         }
-        let validators: Vec<H160> = sub
-            .api()
-            .storage()
-            .beefy()
-            .authorities(None)
-            .await?
-            .into_iter()
-            .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
-            .collect();
         let block_hash = sub
             .api()
             .client
@@ -65,6 +56,15 @@ impl BeefyJustification {
             .block_hash(Some(commitment.block_number.into()))
             .await?
             .unwrap();
+        let validators: Vec<H160> = sub
+            .api()
+            .storage()
+            .beefy()
+            .authorities(Some(block_hash))
+            .await?
+            .into_iter()
+            .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
+            .collect();
 
         let leaf_index = commitment.block_number - beefy_start_block - 2;
         let leaf_proof = sub

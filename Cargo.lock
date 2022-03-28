@@ -1162,47 +1162,19 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.0-rc.4"
-source = "git+https://github.com/clap-rs/clap?rev=56ed9981#56ed9981da3a28205efa03a0e4f162359bab1dfe"
-dependencies = [
- "atty",
- "bitflags",
- "clap_derive 3.0.0-rc.4",
- "indexmap",
- "lazy_static",
- "os_str_bytes",
- "strsim",
- "termcolor",
- "textwrap",
-]
-
-[[package]]
-name = "clap"
 version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d76c22c9b9b215eeb8d016ad3a90417bd13cb24cf8142756e6472445876cab7"
 dependencies = [
  "atty",
  "bitflags",
- "clap_derive 3.1.0",
+ "clap_derive",
  "indexmap",
  "lazy_static",
  "os_str_bytes",
  "strsim",
  "termcolor",
  "textwrap",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.0.0-rc.4"
-source = "git+https://github.com/clap-rs/clap?rev=56ed9981#56ed9981da3a28205efa03a0e4f162359bab1dfe"
-dependencies = [
- "heck 0.3.3",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1302,6 +1274,7 @@ dependencies = [
  "fixnum",
  "frame-support",
  "frame-system",
+ "hex",
  "libsecp256k1",
  "num-traits",
  "orml-currencies",
@@ -3198,7 +3171,7 @@ source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.
 dependencies = [
  "Inflector",
  "chrono",
- "clap 3.1.1",
+ "clap",
  "frame-benchmarking",
  "frame-support",
  "handlebars",
@@ -3360,7 +3333,7 @@ dependencies = [
  "beefy-gadget",
  "beefy-gadget-rpc",
  "beefy-primitives",
- "clap 3.1.1",
+ "clap",
  "common",
  "derive_more",
  "dex-api-rpc",
@@ -3507,6 +3480,7 @@ dependencies = [
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
  "log",
+ "migration-app",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
@@ -4618,25 +4592,16 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5b02d34b7d70caa454dcf79914d70d9ef6edecef84b9261f499a9f3521b7935"
-dependencies = [
- "jsonrpsee-http-client",
- "jsonrpsee-proc-macros",
- "jsonrpsee-types 0.5.1",
- "jsonrpsee-utils",
- "jsonrpsee-ws-client",
-]
-
-[[package]]
-name = "jsonrpsee"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05fd8cd6c6b1bbd06881d2cf88f1fc83cc36c98f2219090f839115fb4a956cb9"
 dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core",
+ "jsonrpsee-http-client",
+ "jsonrpsee-proc-macros",
+ "jsonrpsee-types",
+ "jsonrpsee-ws-client",
 ]
 
 [[package]]
@@ -4648,7 +4613,7 @@ dependencies = [
  "futures 0.3.21",
  "http",
  "jsonrpsee-core",
- "jsonrpsee-types 0.8.0",
+ "jsonrpsee-types",
  "pin-project 1.0.10",
  "rustls-native-certs 0.6.1",
  "soketto",
@@ -4673,7 +4638,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "hyper",
- "jsonrpsee-types 0.8.0",
+ "jsonrpsee-types",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -4685,53 +4650,33 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-http-client"
-version = "0.5.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea17b6d6da182fc4b293e0bebea5cc72e194d9392f485fb4051488af3edd1cd"
+checksum = "9dce69e96aa236cc2e3a20467420b31cbc8464703aa95bc33a163d25b0f56023"
 dependencies = [
  "async-trait",
- "fnv",
  "hyper",
  "hyper-rustls 0.23.0",
- "jsonrpsee-types 0.5.1",
- "jsonrpsee-utils",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
+ "rustc-hash",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tracing",
- "url 2.2.2",
 ]
 
 [[package]]
 name = "jsonrpsee-proc-macros"
-version = "0.5.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dfdf283c6c3403ce9969700177bbcf35a695576fc2d993f38ab32a690631a96"
+checksum = "4299ebf790ea9de1cb72e73ff2ae44c723ef264299e5e2d5ef46a371eb3ac3d8"
 dependencies = [
  "proc-macro-crate 1.1.2",
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "jsonrpsee-types"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d822e0fc7be95e5085da5d61508bf5e3d5c1614dd235402086ec5c1cb15bdfa"
-dependencies = [
- "anyhow",
- "async-trait",
- "beef",
- "futures-channel",
- "futures-util",
- "hyper",
- "serde",
- "serde_json",
- "soketto",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -4749,40 +4694,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonrpsee-utils"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e722316d556c5228624fb1cc7ea672f6ed163e60183e93f11d3ee979417331cb"
-dependencies = [
- "arrayvec 0.7.2",
- "beef",
- "futures-util",
- "hyper",
- "jsonrpsee-types 0.5.1",
-]
-
-[[package]]
 name = "jsonrpsee-ws-client"
-version = "0.5.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "664d2c9443cb1171e2414c66e0f0b44040eb2cff073455a0d168984eee178159"
+checksum = "aff425cee7c779e33920913bc695447416078ee6d119f443f3060feffa4e86b5"
 dependencies = [
- "async-trait",
- "fnv",
- "futures 0.3.21",
- "http",
- "jsonrpsee-types 0.5.1",
- "pin-project 1.0.10",
- "rustls-native-certs 0.6.1",
- "serde",
- "serde_json",
- "soketto",
- "thiserror",
- "tokio",
- "tokio-rustls 0.23.2",
- "tokio-util",
- "tracing",
- "webpki-roots 0.22.2",
+ "jsonrpsee-client-transport",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
 ]
 
 [[package]]
@@ -5875,6 +5794,39 @@ dependencies = [
  "keccak",
  "rand_core 0.5.1",
  "zeroize",
+]
+
+[[package]]
+name = "migration-app"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-types",
+ "common",
+ "dispatch",
+ "erc20-app",
+ "eth-app",
+ "ethabi-decode",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.1",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core 5.0.0",
+ "sp-io 5.0.0",
+ "sp-keyring",
+ "sp-runtime 5.0.0",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -8257,9 +8209,10 @@ dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
  "bridge-types",
- "clap 3.0.0-rc.4",
+ "clap",
  "common",
  "env_logger 0.9.0",
+ "eth-bridge",
  "eth_trie",
  "ethash 0.5.0 (git+https://github.com/vovac12/ethash)",
  "ethereum-gen",
@@ -8268,7 +8221,8 @@ dependencies = [
  "futures 0.3.21",
  "hex",
  "hex-literal",
- "jsonrpsee 0.5.1",
+ "http",
+ "jsonrpsee",
  "k256 0.10.2",
  "keccak-hasher",
  "log",
@@ -8774,7 +8728,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
 dependencies = [
  "chrono",
- "clap 3.1.1",
+ "clap",
  "fdlimit",
  "futures 0.3.21",
  "hex",
@@ -11187,6 +11141,7 @@ dependencies = [
  "hex",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "subxt",
 ]
 
@@ -11237,7 +11192,7 @@ dependencies = [
  "frame-metadata",
  "futures 0.3.21",
  "hex",
- "jsonrpsee 0.8.0",
+ "jsonrpsee",
  "log",
  "num-traits",
  "parity-scale-codec",

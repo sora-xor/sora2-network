@@ -7,7 +7,7 @@ use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
+pub struct Command {
     #[clap(flatten)]
     eth: EthereumUrl,
     #[clap(flatten)]
@@ -17,17 +17,19 @@ pub(super) struct Command {
     #[clap(long, short)]
     descendants_until_final: u64,
     #[clap(long)]
-    basic_channel_inbound: H160,
+    basic_channel_outbound: H160,
     #[clap(long)]
-    incentivized_channel_inbound: H160,
+    incentivized_channel_outbound: H160,
+    #[clap(long)]
+    migration_app: H160,
     #[clap(long)]
     eth_app: H160,
 }
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.sub.substrate_url.clone())
+        let eth = EthUnsignedClient::new(self.eth.get()).await?;
+        let sub = SubUnsignedClient::new(self.sub.get())
             .await?
             .try_sign_with(&self.key.get_key_string()?)
             .await?;
@@ -63,7 +65,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::BasicInboundChannel(
                     runtime::runtime_types::basic_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.basic_channel_inbound
+                        channel: self.basic_channel_outbound
                     },
                 ),
             )
@@ -82,7 +84,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::IncentivizedInboundChannel(
                     runtime::runtime_types::incentivized_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.incentivized_channel_inbound
+                        channel: self.incentivized_channel_outbound
                     },
                 ),
             )
@@ -104,6 +106,25 @@ impl Command {
                     asset_id: common::ETH,
                 },
             ))
+            .sign_and_submit_then_watch(&sub)
+            .await?
+            .wait_for_in_block()
+            .await?
+            .wait_for_success()
+            .await?;
+        info!("Result: {:?}", result);
+        let result = sub
+            .api()
+            .tx()
+            .sudo()
+            .sudo(
+                runtime::runtime_types::framenode_runtime::Call::MigrationApp(
+                    runtime::runtime_types::migration_app::pallet::Call::register_network {
+                        network_id,
+                        contract: self.migration_app,
+                    },
+                ),
+            )
             .sign_and_submit_then_watch(&sub)
             .await?
             .wait_for_in_block()

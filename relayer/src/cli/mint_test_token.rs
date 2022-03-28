@@ -1,7 +1,5 @@
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use bridge_types::H160;
-use clap::*;
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
@@ -20,7 +18,7 @@ pub(super) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.url.ethereum_url.clone()).await?;
+        let eth = EthUnsignedClient::new(self.url.get()).await?;
         let key = self.key.get_key_string()?;
         let eth = eth.sign_with_string(&key).await?;
         let token = ethereum_gen::TestToken::new(self.token, eth.inner());
@@ -39,6 +37,7 @@ impl Command {
             .await?;
         debug!("Check {:?}", call);
         call.call().await?;
+        eth.save_gas_price(&call, "mint-test-token").await?;
         if !self.dry_run {
             debug!("Send");
             let tx = call.send().await?.confirmations(3).await?.unwrap();

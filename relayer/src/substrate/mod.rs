@@ -77,9 +77,16 @@ impl Clone for UnsignedClient {
 }
 
 impl UnsignedClient {
-    pub async fn new(url: impl Into<Url>) -> AnyResult<Self> {
+    pub async fn new(url: impl Into<Uri>) -> AnyResult<Self> {
+        let url = url.into();
+        let (sender, receiver) = subxt::rpc::WsTransportClientBuilder::default()
+            .certificate_store(jsonrpsee::core::client::CertificateStore::WebPki)
+            .build(url)
+            .await
+            .context("connect ws")?;
+        let client = subxt::rpc::RpcClientBuilder::default().build(sender, receiver);
         let api = ClientBuilder::new()
-            .set_url(url.into())
+            .set_client(client)
             .build()
             .await
             .context("Substrate client api build")?

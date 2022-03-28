@@ -1,10 +1,9 @@
-use super::*;
+use crate::cli::prelude::*;
 use crate::relay::ethereum::Relay;
-use clap::*;
 use std::path::PathBuf;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
+pub struct Command {
     #[clap(flatten)]
     ethereum: EthereumUrl,
     #[clap(flatten)]
@@ -17,8 +16,8 @@ pub(super) struct Command {
 
 impl Command {
     pub async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone())
+        let eth = EthUnsignedClient::new(self.ethereum.get()).await?;
+        let sub = SubUnsignedClient::new(self.substrate.get())
             .await?
             .try_sign_with(&self.key.get_key_string()?)
             .await?;

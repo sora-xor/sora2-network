@@ -9,7 +9,8 @@ module.exports = async ({
 }: HardhatRuntimeEnvironment) => {
   let [deployer] = await getUnnamedAccounts();
 
-  await deployments.deploy("TestToken", {
+  await deployments.deploy("DAI", {
+    contract: "TestToken",
     from: deployer,
     args: [
       "DAI", "DAI"
@@ -18,7 +19,8 @@ module.exports = async ({
     autoMine: true,
   });
 
-  await deployments.deploy("TestToken", {
+  await deployments.deploy("USDT", {
+    contract: "TestToken",
     from: deployer,
     args: [
       "USDT", "USDT"

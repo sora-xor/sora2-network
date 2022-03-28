@@ -391,7 +391,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        fn register_asset_inner(
+        pub fn register_asset_inner(
             network_id: EthNetworkId,
             asset_id: AssetIdOf<T>,
             contract: H160,

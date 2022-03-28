@@ -1799,6 +1799,12 @@ impl erc20_app::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl migration_app::Config for Runtime {
+    type Event = Event;
+    type OutboundRouter = OutboundRouter<Runtime>;
+    type WeightInfo = ();
+}
+
 #[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
@@ -1876,6 +1882,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
+        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 
@@ -1953,6 +1960,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
+        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 

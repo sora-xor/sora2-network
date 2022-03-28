@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::*;
 use crate::prelude::*;
 use bridge_types::{H160, H256};
@@ -5,7 +7,7 @@ use clap::*;
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
+pub struct Command {
     #[clap(flatten)]
     url: EthereumUrl,
     #[clap(flatten)]
@@ -24,11 +26,13 @@ pub(super) struct Command {
     amount: u128,
     #[clap(long)]
     dry_run: bool,
+    #[clap(long)]
+    metrics: Option<PathBuf>,
 }
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.url.ethereum_url.clone()).await?;
+        let eth = EthUnsignedClient::new(self.url.get()).await?;
         let key = self.key.get_key_string()?;
         let eth = eth.sign_with_string(&key).await?;
         let balance = eth.get_balance(eth.address(), None).await?;
@@ -51,6 +55,7 @@ impl Command {
                     .await?;
                 debug!("Check {:?}", call);
                 call.call().await?;
+                eth.save_gas_price(&call, "transfer-to-sora::mint").await?;
                 debug!("Send");
                 let tx = call.send().await?.confirmations(3).await?.unwrap();
                 debug!("Tx: {:?}", tx);
@@ -96,6 +101,8 @@ impl Command {
             .await?;
         debug!("Check {:?}", call);
         call.call().await?;
+        eth.save_gas_price(&call, "transfer-to-sora::transfer")
+            .await?;
         if !self.dry_run {
             debug!("Send");
             let tx = call.send().await?.confirmations(3).await?.unwrap();

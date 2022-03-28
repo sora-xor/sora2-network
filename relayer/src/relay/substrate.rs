@@ -176,6 +176,7 @@ impl Relay {
     ) -> AnyResult<E> {
         debug!("Call '{}' check", name);
         call.call().await?;
+        self.eth.save_gas_price(&call, "relay").await?;
         debug!("Call '{}' send", name);
         let tx = call
             .send()
@@ -352,6 +353,7 @@ impl Relay {
                     call.tx.set_gas(self.submit_message_gas(id, messages_count));
                     debug!("Check submit messages from {:?}", id);
                     call.call().await?;
+                    self.eth.save_gas_price(&call, "submit-messages").await?;
                     debug!("Send submit messages from {:?}", id);
                     let tx = call.send().await?;
                     debug!(

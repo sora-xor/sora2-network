@@ -37,6 +37,7 @@ pub mod prelude {
     pub use anyhow::{Context, Result as AnyResult};
     pub use codec::{Decode, Encode};
     pub use hex_literal::hex;
+    pub use http::Uri;
     pub use serde::{Deserialize, Serialize};
     pub use url::Url;
 }
