@@ -8,8 +8,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod benchmarking;
-
 use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::weights::Weight;

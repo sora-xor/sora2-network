@@ -2206,6 +2206,7 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
@@ -2213,7 +2214,6 @@ impl_runtime_apis! {
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
-
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -2255,7 +2255,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
-            add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatform);
+            add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
