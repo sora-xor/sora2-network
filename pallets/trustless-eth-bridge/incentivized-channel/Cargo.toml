@@ -32,8 +32,7 @@ common = { path = "../../../common", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 
-snowbridge-core = { path = "../../../primitives/core", default-features = false }
-snowbridge-ethereum = { path = "../../../primitives/ethereum", default-features = false }
+bridge-types = { path = "../types", default-features = false }
 ethabi = { git = "https://github.com/Snowfork/ethabi-decode.git", package = "ethabi-decode", branch = "master", default-features = false }
 
 [dev-dependencies]
@@ -59,14 +58,13 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
-    "snowbridge-core/std",
-    "snowbridge-ethereum/std",
+    "bridge-types/std",
     "ethabi/std",
     "common/std",
     "traits/std",
 ]
 runtime-benchmarks = [
-    "snowbridge-core/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",

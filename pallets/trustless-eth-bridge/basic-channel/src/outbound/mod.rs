@@ -17,8 +17,7 @@ use sp_runtime::traits::{Hash, StaticLookup, Zero};
 
 use sp_std::prelude::*;
 
-use snowbridge_core::types::AuxiliaryDigestItem;
-use snowbridge_core::{ChannelId, MessageNonce};
+use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 
@@ -50,6 +49,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
@@ -91,6 +91,8 @@ pub mod pallet {
         Overflow,
         /// Not authorized to send message
         NotAuthorized,
+        /// Principal account is not set
+        PrincipalAccountNotSet,
     }
 
     /// Interval between commitments
@@ -105,7 +107,7 @@ pub mod pallet {
     /// Fee for accepting a message
     #[pallet::storage]
     #[pallet::getter(fn principal)]
-    pub(super) type Principal<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type Principal<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
@@ -113,7 +115,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub interval: T::BlockNumber,
-        pub principal: T::AccountId,
+        pub principal: Option<T::AccountId>,
     }
 
     #[cfg(feature = "std")]
@@ -130,7 +132,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             <Interval<T>>::put(self.interval);
-            <Principal<T>>::put(self.principal.clone());
+            <Principal<T>>::put(self.principal.clone().unwrap());
         }
     }
 
@@ -166,7 +168,10 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
         pub fn submit(who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
-            ensure!(*who == Self::principal(), Error::<T>::NotAuthorized,);
+            ensure!(
+                *who == Self::principal().ok_or(Error::<T>::PrincipalAccountNotSet)?,
+                Error::<T>::NotAuthorized,
+            );
             ensure!(
                 <MessageQueue<T>>::decode_len().unwrap_or(0)
                     < T::MaxMessagesPerCommit::get() as usize,

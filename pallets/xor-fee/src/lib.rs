@@ -71,6 +71,8 @@ pub enum LiquidityInfo<T: Config> {
     Paid((T::AccountId, Option<NegativeImbalanceOf<T>>)),
     /// The fee payment has been postponed to after the transaction
     Postponed(BalanceOf<T>),
+    /// Default value
+    NotPaid,
 }
 
 impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
@@ -81,6 +83,9 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
             }
             LiquidityInfo::Postponed(b) => {
                 write!(f, "Postponed({:?})", b)
+            }
+            LiquidityInfo::NotPaid => {
+                write!(f, "NotPaid")
             }
         }
     }
@@ -100,7 +105,7 @@ impl<T: Config> PartialEq for LiquidityInfo<T> {
 
 impl<T: Config> Default for LiquidityInfo<T> {
     fn default() -> Self {
-        LiquidityInfo::Paid((T::AccountId::default(), None))
+        LiquidityInfo::NotPaid
     }
 }
 
@@ -240,6 +245,7 @@ where
                     .ok(),
                 )
             }
+            LiquidityInfo::NotPaid => (who.clone(), None),
         };
 
         if let Some(paid) = withdrawn {
@@ -573,6 +579,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]

@@ -63,7 +63,7 @@ pub trait Config: pswap_distribution::Config + pool_xyk::Config {}
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {

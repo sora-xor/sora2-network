@@ -2,18 +2,19 @@ use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
+use bridge_types::traits::OutboundRouter;
+use bridge_types::types::ChannelId;
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use snowbridge_core::{ChannelId, OutboundRouter};
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{AccountId32, MultiSignature};
 
 use crate as eth_app;
 
@@ -70,6 +71,7 @@ impl system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl common::Config for Test {
@@ -118,7 +120,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 impl assets::Config for Test {
@@ -166,16 +168,16 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    let bob: AccountId = Keyring::Bob.into();
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
             address: H160::repeat_byte(1),
-            dest_account: Default::default(),
+            dest_account: Some(bob.clone()),
         },
         &mut storage,
     )
     .unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), balance!(1))],
     }

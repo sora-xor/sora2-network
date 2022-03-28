@@ -10,8 +10,9 @@ use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
-use snowbridge_core::{Message, MessageDispatch, Proof};
-use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
+use bridge_types::traits::MessageDispatch;
+use bridge_types::types::{Message, Proof};
+use bridge_types::{Header as EthereumHeader, Log, U256};
 
 use hex_literal::hex;
 
@@ -63,6 +64,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 // Mock verifier
 pub struct MockVerifier;

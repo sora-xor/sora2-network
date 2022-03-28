@@ -4,7 +4,7 @@ use crate::mock::{
     message_with_receipt_proof, new_tester, new_tester_with_config, receipt_root_and_proof,
     ropsten_london_header, ropsten_london_message, AccountId,
 };
-use snowbridge_core::Verifier as VerifierConfig;
+use bridge_types::traits::Verifier as VerifierConfig;
 
 use crate::mock::mock_verifier_with_pow;
 

@@ -33,6 +33,7 @@ use codec::Codec;
 use common::InvokeRPCError;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
+use leaf_provider_runtime_api::AuxiliaryDigest;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -48,7 +49,7 @@ where
     BlockHash: Codec,
 {
     #[rpc(name = "leafProvider_latestDigest")]
-    fn latest_digest(&self, at: Option<BlockHash>) -> Result<sp_runtime::generic::Digest>;
+    fn latest_digest(&self, at: Option<BlockHash>) -> Result<AuxiliaryDigest>;
 }
 
 pub struct LeafProviderClient<C, B> {
@@ -73,7 +74,7 @@ where
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: LeafProviderRuntimeAPI<Block>,
 {
-    fn latest_digest(&self, at: Option<<Block as BlockT>::Hash>) -> Result<sp_runtime::Digest> {
+    fn latest_digest(&self, at: Option<<Block as BlockT>::Hash>) -> Result<AuxiliaryDigest> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

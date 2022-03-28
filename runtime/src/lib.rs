@@ -46,12 +46,12 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
+use bridge_types::types::ChannelId;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, PredefinedAssetId, ETH};
 use constants::time::*;
 use dispatch::EnsureEthereumAccount;
-use snowbridge_core::ChannelId;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -59,13 +59,14 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
 use beefy_primitives::mmr::MmrLeafVersion;
+use bridge_types::types::AuxiliaryDigest;
 use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-use frame_support::traits::{Currency, OnRuntimeUpgrade};
+use frame_support::traits::{Currency, EnsureOneOf, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::{EnsureOneOf, EnsureRoot};
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -177,23 +178,19 @@ type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
 type MoreThanHalfCouncil = EnsureOneOf<
-    AccountId,
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
 type AtLeastHalfCouncil = EnsureOneOf<
-    AccountId,
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
     EnsureRoot<AccountId>,
 >;
 type AtLeastTwoThirdsCouncil = EnsureOneOf<
-    AccountId,
     pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>,
     EnsureRoot<AccountId>,
 >;
 
 type SlashCancelOrigin = EnsureOneOf<
-    AccountId,
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
 >;
@@ -233,6 +230,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 21,
+    state_version: 0,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -316,6 +314,7 @@ parameter_types! {
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
+    pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl frame_system::Config for Runtime {
@@ -357,6 +356,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl pallet_babe::Config for Runtime {
@@ -419,12 +419,10 @@ impl pallet_democracy::Config for Runtime {
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
     type FastTrackOrigin = EnsureOneOf<
-        AccountId,
         pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, TechnicalCollective>,
         EnsureRoot<AccountId>,
     >;
     type InstantOrigin = EnsureOneOf<
-        AccountId,
         pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>,
         EnsureRoot<AccountId>,
     >;
@@ -597,6 +595,8 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = NoPreimagePostponement;
 }
 
 parameter_types! {
@@ -1608,7 +1608,7 @@ impl Contains<Call> for CallFilter {
 impl dispatch::Config for Runtime {
     type Origin = Origin;
     type Event = Event;
-    type MessageId = snowbridge_core::MessageId;
+    type MessageId = bridge_types::types::MessageId;
     type Call = Call;
     type CallFilter = CallFilter;
 }
@@ -1621,7 +1621,7 @@ const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 pub struct OutboundRouter<T>(PhantomData<T>);
 
-impl<T> snowbridge_core::OutboundRouter<T::AccountId> for OutboundRouter<T>
+impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for OutboundRouter<T>
 where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
@@ -1793,7 +1793,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 100,
     }
 }
 
@@ -2391,13 +2391,13 @@ impl_runtime_apis! {
     }
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
-        fn validator_set() -> beefy_primitives::ValidatorSet<BeefyId> {
+        fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
             Beefy::validator_set()
         }
     }
 
     impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
-        fn latest_digest() -> sp_runtime::generic::Digest {
+        fn latest_digest() -> AuxiliaryDigest {
             LeafProvider::latest_digest()
         }
     }

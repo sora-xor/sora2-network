@@ -12,10 +12,11 @@ use sp_runtime::{MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
-use snowbridge_core::{Message, MessageDispatch, Proof};
-use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
+use bridge_types::traits::MessageDispatch;
+use bridge_types::types::{Message, Proof};
+use bridge_types::{Header as EthereumHeader, Log, U256};
 
-use common::mock::ExistentialDeposits;
+use common::mock::{alice, ExistentialDeposits};
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};
 use hex_literal::hex;
 
@@ -74,6 +75,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
@@ -126,7 +128,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = alice();
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;

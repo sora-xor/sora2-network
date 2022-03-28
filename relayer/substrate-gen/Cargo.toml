@@ -1,0 +1,12 @@
+[package]
+name = "substrate-gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../../common" }
+subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
+codec = { package = "parity-scale-codec", version = "2", features = ["derive"] }
+scale-info = { version = "1.0.0", features = ["derive"] }
+bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }

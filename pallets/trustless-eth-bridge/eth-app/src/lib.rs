@@ -25,7 +25,8 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use snowbridge_core::{ChannelId, OutboundRouter};
+use bridge_types::traits::OutboundRouter;
+use bridge_types::types::ChannelId;
 
 mod payload;
 use payload::OutboundPayload;
@@ -87,7 +88,7 @@ pub mod pallet {
 
     /// Destination account for bridge funds
     #[pallet::storage]
-    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -95,6 +96,7 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -112,6 +114,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// The submitted payload could not be decoded.
         InvalidPayload,
+        /// Destination account is not set.
+        DestAccountIsNotSet,
     }
 
     #[pallet::call]
@@ -130,7 +134,7 @@ pub mod pallet {
             T::Currency::transfer(
                 T::FeeCurrency::get(),
                 &who,
-                &DestAccount::<T>::get(),
+                &DestAccount::<T>::get().ok_or(Error::<T>::DestAccountIsNotSet)?,
                 amount,
             )?;
 
@@ -170,7 +174,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub address: H160,
-        pub dest_account: T::AccountId,
+        pub dest_account: Option<T::AccountId>,
     }
 
     #[cfg(feature = "std")]

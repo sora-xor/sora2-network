@@ -2,8 +2,8 @@ use codec::Encode;
 use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 
+use bridge_types::{H160, U256};
 use ethabi::{self, Token};
-use snowbridge_ethereum::{H160, U256};
 
 // Message to Ethereum (ABI-encoded)
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]

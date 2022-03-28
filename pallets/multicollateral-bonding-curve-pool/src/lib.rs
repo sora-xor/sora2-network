@@ -227,13 +227,14 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                let elems = Pallet::<T>::free_reserves_distribution_routine();
+                let elems = Pallet::<T>::free_reserves_distribution_routine().unwrap_or_default();
                 <T as Config>::WeightInfo::on_initialize(elems)
             } else {
                 <T as Config>::WeightInfo::on_initialize(0)
@@ -392,6 +393,8 @@ pub mod pallet {
         IncRefError,
         /// An error occured during balance type conversion.
         ArithmeticError,
+        /// Free reserves account is not set
+        FreeReservesAccountNotSet,
     }
 
     /// Technical account used to store collateral tokens.
@@ -401,7 +404,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn free_reserves_account_id)]
-    pub type FreeReservesAccountId<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type FreeReservesAccountId<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn pending_free_reserves)]
@@ -513,7 +516,7 @@ pub mod pallet {
     /// Account which stores actual PSWAP intended for rewards.
     #[pallet::storage]
     #[pallet::getter(fn incentives_account_id)]
-    pub type IncentivesAccountId<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type IncentivesAccountId<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// Reward multipliers for special assets. Asset Id => Reward Multiplier
     #[pallet::storage]
@@ -547,11 +550,11 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// Account which stores actual PSWAP intended for rewards.
-        pub incentives_account_id: T::AccountId,
+        pub incentives_account_id: Option<T::AccountId>,
         /// List of tokens enabled as collaterals initially.
         pub initial_collateral_assets: Vec<T::AssetId>,
         /// Account that is used to store undistributed free reserves.
-        pub free_reserves_account_id: T::AccountId,
+        pub free_reserves_account_id: Option<T::AccountId>,
     }
 
     #[cfg(feature = "std")]
@@ -571,12 +574,13 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id).unwrap();
+            frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id.as_ref().unwrap())
+                .unwrap();
             ReservesAcc::<T>::put(&self.reserves_account_id);
             DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
-            IncentivesAccountId::<T>::put(&self.incentives_account_id);
-            FreeReservesAccountId::<T>::put(&self.free_reserves_account_id);
+            IncentivesAccountId::<T>::put(&self.incentives_account_id.as_ref().unwrap());
+            FreeReservesAccountId::<T>::put(&self.free_reserves_account_id.as_ref().unwrap());
             self.initial_collateral_assets
                 .iter()
                 .cloned()
@@ -747,8 +751,9 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
-    fn free_reserves_distribution_routine() -> u32 {
-        let free_reserves_acc = FreeReservesAccountId::<T>::get();
+    fn free_reserves_distribution_routine() -> Result<u32, DispatchError> {
+        let free_reserves_acc =
+            FreeReservesAccountId::<T>::get().ok_or(Error::<T>::FreeReservesAccountNotSet)?;
         PendingFreeReserves::<T>::mutate(|vec| {
             let len = vec.len();
             vec.retain(|(collateral_asset_id, free_amount)| {
@@ -759,7 +764,7 @@ impl<T: Config> Pallet<T> {
                 )
                 .is_ok()
             });
-            len.try_into().unwrap_or(u32::max_value())
+            Ok(len.try_into().unwrap_or(u32::max_value()))
         })
     }
 
@@ -768,7 +773,8 @@ impl<T: Config> Pallet<T> {
         collateral_asset_id: T::AssetId,
         amount: Balance,
     ) -> DispatchResult {
-        let free_reserves_acc = FreeReservesAccountId::<T>::get();
+        let free_reserves_acc =
+            FreeReservesAccountId::<T>::get().ok_or(Error::<T>::FreeReservesAccountNotSet)?;
         Assets::<T>::transfer_from(&collateral_asset_id, holder, &free_reserves_acc, amount)?;
         PendingFreeReserves::<T>::mutate(|vec| vec.push((collateral_asset_id, amount)));
         Ok(())

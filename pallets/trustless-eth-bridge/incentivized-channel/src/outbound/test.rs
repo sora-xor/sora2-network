@@ -1,7 +1,7 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
-use common::mock::ExistentialDeposits;
+use common::mock::{alice, ExistentialDeposits};
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -65,6 +65,7 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl common::Config for Test {
@@ -113,7 +114,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = Default::default();
+    pub GetTeamReservesAccountId: AccountId = alice();
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -152,15 +153,15 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    let bob: AccountId = Keyring::Bob.into();
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
-            dest_account: Default::default(),
+            dest_account: Some(bob.clone()),
             interval: 1u64,
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), 1u32.into())],
     }

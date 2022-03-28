@@ -1,0 +1,464 @@
+use super::justification::*;
+use crate::ethereum::SignedClientInner;
+use crate::prelude::*;
+use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
+use crate::substrate::LeafProof;
+use beefy_merkle_tree::Keccak256;
+use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, ChannelId};
+use ethereum_gen::{
+    basic_inbound_channel as basic, beefy_light_client,
+    incentivized_inbound_channel as incentivized, BasicInboundChannel, BeefyLightClient,
+    IncentivizedInboundChannel,
+};
+use ethers::abi::RawLog;
+use ethers::prelude::builders::ContractCall;
+use ethers::prelude::*;
+use futures::TryFutureExt;
+
+#[derive(Default)]
+pub struct RelayBuilder {
+    sub: Option<SubUnsignedClient>,
+    eth: Option<EthSignedClient>,
+    beefy: Option<Address>,
+    basic: Option<Address>,
+    incentivized: Option<Address>,
+}
+
+impl RelayBuilder {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_substrate_client(mut self, sub: SubUnsignedClient) -> Self {
+        self.sub = Some(sub);
+        self
+    }
+
+    pub fn with_ethereum_client(mut self, eth: EthSignedClient) -> Self {
+        self.eth = Some(eth);
+        self
+    }
+
+    pub fn with_beefy_contract(mut self, address: Address) -> Self {
+        self.beefy = Some(address);
+        self
+    }
+
+    pub fn with_basic_contract(mut self, address: Address) -> Self {
+        self.basic = Some(address);
+        self
+    }
+
+    pub fn with_incentivized_contract(mut self, address: Address) -> Self {
+        self.incentivized = Some(address);
+        self
+    }
+
+    pub async fn build(self) -> AnyResult<Relay> {
+        let sub = self.sub.expect("substrate client is needed");
+        let eth = self.eth.expect("ethereum client is needed");
+        let contract = BeefyLightClient::new(
+            self.beefy.expect("beefy contract address is needed"),
+            eth.inner(),
+        );
+        let basic = BasicInboundChannel::new(
+            self.basic.expect("basic channel address is needed"),
+            eth.inner(),
+        );
+        let incentivized = IncentivizedInboundChannel::new(
+            self.incentivized
+                .expect("incentivized channel address is needed"),
+            eth.inner(),
+        );
+        let blocks_until_finalized = contract.block_wait_period().call().await?;
+        let beefy_start_block = sub.beefy_start_block().await?;
+        Ok(Relay {
+            sub,
+            eth,
+            contract,
+            beefy_start_block,
+            blocks_until_finalized,
+            basic,
+            incentivized,
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct Relay {
+    sub: SubUnsignedClient,
+    eth: EthSignedClient,
+    contract: BeefyLightClient<SignedClientInner>,
+    basic: BasicInboundChannel<SignedClientInner>,
+    incentivized: IncentivizedInboundChannel<SignedClientInner>,
+    beefy_start_block: u64,
+    blocks_until_finalized: u64,
+}
+
+impl Relay {
+    async fn new_signature_commitment(
+        &self,
+        justification: &BeefyJustification,
+    ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
+        let initial_bit_field = self
+            .contract
+            .create_initial_bitfield(
+                justification.signed_validators.clone(),
+                justification.num_validators,
+            )
+            .legacy()
+            .call()
+            .await?;
+        let pos = justification.signed_validators[0];
+        let pos_usize = pos.as_usize();
+        let pubkey = justification.validator_pubkey(pos_usize);
+        let proof = justification.validator_pubkey_proof(pos_usize);
+        let validator_signature = justification.validator_eth_signature(pos_usize);
+
+        let mut call = self.contract.new_signature_commitment(
+            justification.commitment_hash,
+            initial_bit_field,
+            validator_signature.into(),
+            pos,
+            pubkey,
+            proof,
+        );
+        call.tx.set_from(self.eth.address());
+        Ok(call)
+    }
+
+    async fn create_random_bitfield(&self, id: U256) -> AnyResult<Vec<U256>> {
+        let call = self.contract.create_random_bitfield(id).legacy();
+        let random_bitfield = call.call().await?;
+        debug!("Random bitfield {}: {:?}", id, random_bitfield);
+        Ok(random_bitfield)
+    }
+
+    async fn complete_signature_commitment(
+        &self,
+        id: U256,
+        justification: &BeefyJustification,
+    ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
+        let eth_commitment = beefy_light_client::Commitment {
+            payload: justification.get_raw_payload().expect("should be checked"),
+            block_number: justification.commitment.block_number as u64,
+            validator_set_id: justification.commitment.validator_set_id as u32,
+        };
+
+        let random_bitfield = self.create_random_bitfield(id).await?;
+        let validator_proof = justification.validators_proof(random_bitfield);
+        let (latest_mmr_leaf, proof) = self
+            .simplified_mmr_proof(
+                justification.commitment.block_number as u64 - 2,
+                Some(justification.block_hash),
+            )
+            .await?;
+
+        let mut call = self.contract.complete_signature_commitment(
+            id,
+            eth_commitment,
+            validator_proof,
+            latest_mmr_leaf,
+            proof,
+        );
+        call.tx.set_from(self.eth.address());
+        Ok(call)
+    }
+
+    pub async fn simplified_mmr_proof(
+        &self,
+        block_number: u64,
+        block_hash: Option<H256>,
+    ) -> AnyResult<(
+        beefy_light_client::BeefyMMRLeaf,
+        beefy_light_client::SimplifiedMMRProof,
+    )> {
+        let leaf_index = block_number - self.beefy_start_block;
+        let LeafProof { leaf, proof, .. } =
+            self.sub.mmr_generate_proof(leaf_index, block_hash).await?;
+
+        let (major, minor) = leaf.version.split();
+        let leaf_version = (major << 5) + minor;
+        let mmr_leaf = beefy_light_client::BeefyMMRLeaf {
+            version: leaf_version,
+            parent_number: leaf.parent_number_and_hash.0,
+            parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
+            next_authority_set_id: leaf.beefy_next_authority_set.id,
+            next_authority_set_len: leaf.beefy_next_authority_set.len,
+            next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
+            digest_hash: leaf.digest_hash,
+        };
+
+        let proof =
+            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, proof.items);
+        let proof = beefy_light_client::SimplifiedMMRProof {
+            merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_order_bit_field: proof.order,
+        };
+        Ok((mmr_leaf, proof))
+    }
+
+    pub async fn call_with_event<E: EthEvent>(
+        &self,
+        name: &str,
+        call: ContractCall<SignedClientInner, ()>,
+    ) -> AnyResult<E> {
+        debug!("Call '{}' check", name);
+        call.call().await?;
+        debug!("Call '{}' send", name);
+        let tx = call
+            .send()
+            .await?
+            .confirmations(self.blocks_until_finalized as usize + 1)
+            .await?
+            .expect("failed");
+        debug!("Call '{}' finalized: {:?}", name, tx);
+        let success_event = tx
+            .logs
+            .iter()
+            .find_map(|log| {
+                let raw_log = RawLog {
+                    topics: log.topics.clone(),
+                    data: log.data.to_vec(),
+                };
+                E::decode_log(&raw_log).ok()
+            })
+            .expect("should have");
+        Ok(success_event)
+    }
+
+    pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
+        debug!("New justification: {:?}", justification);
+        let call = self.new_signature_commitment(&justification).await?;
+        let event = self
+            .call_with_event::<beefy_light_client::InitialVerificationSuccessfulFilter>(
+                "New signature commitment",
+                call,
+            )
+            .await?;
+        let call = self
+            .complete_signature_commitment(event.id, &justification)
+            .await?;
+        let _event = self
+            .call_with_event::<beefy_light_client::FinalVerificationSuccessfulFilter>(
+                "New signature commitment",
+                call,
+            )
+            .await?;
+        self.handle_complete_commitment_success().await?;
+        Ok(())
+    }
+
+    pub async fn handle_complete_commitment_success(self) -> AnyResult<()> {
+        const INDEXING_PREFIX: &'static [u8] = b"commitment";
+        let latest_block = self.contract.latest_beefy_block().call().await? as u32;
+        let latest_hash = self
+            .sub
+            .api()
+            .client
+            .rpc()
+            .block_hash(Some(latest_block.into()))
+            .await?
+            .unwrap();
+        if self.check_new_messages(latest_block as u32 - 1).await? {
+            let latest_block = latest_block - 1;
+            let start_messages_block = self.find_start_block(latest_block).await?;
+            for block_number in start_messages_block..=latest_block {
+                let block_hash = self
+                    .sub
+                    .api()
+                    .client
+                    .rpc()
+                    .block_hash(Some(block_number.into()))
+                    .await?
+                    .expect("should exist");
+                let header = self
+                    .sub
+                    .api()
+                    .client
+                    .rpc()
+                    .header(Some(block_hash))
+                    .await?
+                    .expect("should exist");
+                let digest = AuxiliaryDigest::from(header.digest.clone());
+                if digest.logs.is_empty() {
+                    continue;
+                }
+                let digest_encoded = digest.encode();
+                let digest_hash = hex::encode(&Keccak256::hash(&digest_encoded));
+                debug!("Digest hash: {}", digest_hash);
+                let LeafProof { leaf, proof, .. } = self
+                    .sub
+                    .mmr_generate_proof(
+                        block_number as u64 - self.beefy_start_block,
+                        Some(latest_hash),
+                    )
+                    .await?;
+                let leaf_encoded = hex::encode(&leaf.encode());
+                debug!("Leaf: {}", leaf_encoded);
+                let leaf_prefix: Bytes =
+                    hex::decode(leaf_encoded.strip_suffix(&digest_hash).unwrap())?.into();
+                let digest_hex = hex::encode(&digest_encoded);
+                debug!("Digest: {}", digest_hex);
+
+                let proof = convert_to_simplified_mmr_proof(
+                    proof.leaf_index,
+                    proof.leaf_count,
+                    proof.items,
+                );
+                let proof = beefy_light_client::SimplifiedMMRProof {
+                    merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
+                    merkle_proof_order_bit_field: proof.order,
+                };
+
+                for log in digest.logs {
+                    if let Ok(AuxiliaryDigestItem::Commitment(id, messages_hash)) =
+                        AuxiliaryDigestItem::try_from(log)
+                    {
+                        let (digest_prefix, digest_suffix) = digest_hex
+                            .split_once(&hex::encode(messages_hash.as_bytes()))
+                            .unwrap();
+                        let digest_prefix = hex::decode(digest_prefix)?.into();
+                        let digest_suffix = hex::decode(digest_suffix)?.into();
+
+                        let key = (INDEXING_PREFIX, id, messages_hash).encode();
+                        if let Some(data) = self
+                            .sub
+                            .offchain_local_get(crate::substrate::StorageKind::Persistent, key)
+                            .await?
+                        {
+                            let call = match id {
+                                ChannelId::Basic => {
+                                    let messages_sub = Vec::<substrate_gen::runtime::runtime_types::basic_channel::outbound::Message>::decode(&mut &*data)?;
+                                    let mut messages = vec![];
+                                    for message in messages_sub {
+                                        messages.push(basic::Message {
+                                            target: message.target,
+                                            nonce: message.nonce,
+                                            payload: message.payload.into(),
+                                        });
+                                    }
+
+                                    let leaf_bytes = basic::LeafBytes {
+                                        digest_prefix,
+                                        digest_suffix,
+                                        leaf_prefix: leaf_prefix.clone(),
+                                    };
+                                    let call =
+                                        self.basic.submit(messages, leaf_bytes, proof.clone());
+                                    call
+                                }
+                                ChannelId::Incentivized => {
+                                    let messages_sub = Vec::<substrate_gen::runtime::runtime_types::incentivized_channel::outbound::Message>::decode(&mut &*data)?;
+                                    let mut messages = vec![];
+                                    for message in messages_sub {
+                                        messages.push(incentivized::Message {
+                                            target: message.target,
+                                            nonce: message.nonce,
+                                            payload: message.payload.into(),
+                                            fee: message.fee,
+                                        });
+                                    }
+                                    let leaf_bytes = incentivized::LeafBytes {
+                                        digest_prefix,
+                                        digest_suffix,
+                                        leaf_prefix: leaf_prefix.clone(),
+                                    };
+                                    let call = self.incentivized.submit(
+                                        messages,
+                                        leaf_bytes,
+                                        proof.clone(),
+                                    );
+                                    call
+                                }
+                            };
+                            debug!("Check submit messages from {:?}", id);
+                            call.call().await?;
+                            debug!("Send submit messages from {:?}", id);
+                            let tx = call.send().await?;
+                            debug!("Submit messages from {:?}: {:?}", id, tx);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn find_start_block(&self, mut block_number: u32) -> AnyResult<u32> {
+        let basic_interval = self
+            .sub
+            .api()
+            .storage()
+            .basic_outbound_channel()
+            .interval(None)
+            .await?;
+        let incentivized_interval = self
+            .sub
+            .api()
+            .storage()
+            .incentivized_outbound_channel()
+            .interval(None)
+            .await?;
+        while block_number > 0 {
+            if block_number % basic_interval == 0
+                && block_number % incentivized_interval == 0
+                && !self.check_new_messages(block_number).await?
+            {
+                break;
+            }
+            block_number -= 1;
+        }
+        Ok(block_number)
+    }
+
+    pub async fn check_new_messages(&self, block_number: u32) -> AnyResult<bool> {
+        let basic_nonce = self.basic.nonce().call().await?;
+        let incentivized_nonce = self.incentivized.nonce().call().await?;
+        let block_hash = self
+            .sub
+            .api()
+            .client
+            .rpc()
+            .block_hash(Some(block_number.into()))
+            .await?;
+        let sub_basic_nonce = self
+            .sub
+            .api()
+            .storage()
+            .basic_outbound_channel()
+            .nonce(block_hash)
+            .await?;
+        let sub_incentivized_nonce = self
+            .sub
+            .api()
+            .storage()
+            .incentivized_outbound_channel()
+            .nonce(block_hash)
+            .await?;
+        Ok(basic_nonce < sub_basic_nonce || incentivized_nonce < sub_incentivized_nonce)
+    }
+
+    pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
+        let beefy_block_gap = self.contract.maximum_block_gap().call().await?;
+        let mut beefy_sub = self.sub.subscribe_beefy().await?;
+        while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
+            let justification =
+                BeefyJustification::create(self.sub.clone(), encoded_commitment).await?;
+            if !justification.is_supported() {
+                continue;
+            }
+            let latest_block = self.contract.latest_beefy_block().call().await?;
+            let should_send = !ignore_unneeded_commitments
+                || (justification.commitment.block_number as u64
+                    > latest_block + beefy_block_gap - 10);
+            if should_send {
+                tokio::spawn(self.clone().send_commitment(justification).map_err(|e| {
+                    warn!("Send commitment error: {}", e);
+                }));
+            }
+        }
+
+        Ok(())
+    }
+}
