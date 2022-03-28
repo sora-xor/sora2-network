@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as faucet, Config};
+use crate::{self as faucet, max_amount, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, FixedWrapper};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
     DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR,
@@ -217,7 +217,13 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(9000)), (alice(), balance!(0))],
+            balances: vec![
+                (
+                    account_id.clone(),
+                    (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+                ),
+                (alice(), balance!(0)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -262,7 +268,11 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(9000))],
+            endowed_accounts: vec![(
+                account_id.clone(),
+                VAL.into(),
+                (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();

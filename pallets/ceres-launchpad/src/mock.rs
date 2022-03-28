@@ -71,6 +71,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = 102;
     pub GetBondingCurveRewardsAccountId: AccountId = 103;
     pub GetFarmingRewardsAccountId: AccountId = 104;
+    pub GetCrowdloanRewardsAccountId: AccountId = 105;
 }
 
 impl frame_system::Config for Runtime {
@@ -176,6 +177,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 

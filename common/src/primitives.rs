@@ -903,6 +903,8 @@ pub enum RewardReason {
     LiquidityProvisionFarming,
     /// High volume trading is rewarded.
     MarketMakerVolume,
+    /// Crowdloan reward.
+    Crowdloan,
 }
 
 impl Default for RewardReason {
