@@ -96,6 +96,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -286,6 +287,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 

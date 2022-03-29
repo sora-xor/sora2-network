@@ -36,14 +36,19 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP};
+use common::{
+    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
+    XSTUSD,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
 use frame_support::{fail, transactional};
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
+use sp_std::str;
 use sp_std::vec::Vec;
 
 mod migration;
@@ -59,11 +64,15 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
 pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
+const BLOCKS_PER_DAY: u128 = 14400;
+const LEASE_START_BLOCK: u128 = 4_397_212;
+const LEASE_TOTAL_DAYS: u128 = 318;
 
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -80,8 +89,9 @@ pub struct RewardInfo {
     pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
-/// Denotes information about users who make transactions counted for market makers strategic rewards
-/// programme. To participate in rewards distribution account needs to get 500+ tx's over 1 XOR in volume each.
+/// Denotes information about users who make transactions counted for market makers strategic
+/// rewards programme. To participate in rewards distribution account needs to get 500+ tx's over 1
+/// XOR in volume each.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct MarketMakerInfo {
     /// Number of eligible transactions - namely those with individual volume over 1 XOR.
@@ -90,10 +100,40 @@ pub struct MarketMakerInfo {
     volume: Balance,
 }
 
+/// A vested reward for crowdloan.
+#[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
+pub struct CrowdloanReward {
+    /// The user id
+    #[serde(with = "serde_bytes", rename = "ID")]
+    pub id: Vec<u8>,
+    /// The user address
+    #[serde(with = "hex", rename = "Address")]
+    pub address: Vec<u8>,
+    /// Kusama contribution
+    #[serde(rename = "Contribution")]
+    pub contribution: Fixed,
+    /// Reward in XOR
+    #[serde(rename = "XOR Reward")]
+    pub xor_reward: Fixed,
+    /// Reward in VAL
+    #[serde(rename = "Val Reward")]
+    pub val_reward: Fixed,
+    /// Reward in PSWAP
+    #[serde(rename = "PSWAP Reward")]
+    pub pswap_reward: Fixed,
+    /// Reward in XSTUSD
+    #[serde(rename = "XSTUSD Reward")]
+    pub xstusd_reward: Fixed,
+    /// Reward in percents of the total contribution
+    #[serde(rename = "Percent")]
+    pub percent: Fixed,
+}
+
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
     fn set_asset_pair() -> Weight;
+    fn claim_crowdloan_rewards() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -129,9 +169,13 @@ impl<T: Config> Pallet<T> {
                 let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
                     let claimable = (*amount).min(info.limit);
-                    let actual_claimed =
-                        Self::claim_reward_by_reason(account_id, reward_reason, claimable)
-                            .unwrap_or(balance!(0));
+                    let actual_claimed = Self::claim_reward_by_reason(
+                        account_id,
+                        reward_reason,
+                        &PSWAP.into(),
+                        claimable,
+                    )
+                    .unwrap_or(balance!(0));
                     info.limit = info.limit.saturating_sub(actual_claimed);
                     total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
                     if claimable > actual_claimed {
@@ -169,20 +213,22 @@ impl<T: Config> Pallet<T> {
     pub fn claim_reward_by_reason(
         account_id: &T::AccountId,
         reason: RewardReason,
+        asset_id: &T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
+            RewardReason::Crowdloan => T::GetCrowdloanRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
-        let available_rewards = Assets::<T>::free_balance(&PSWAP.into(), &source_account)?;
+        let available_rewards = Assets::<T>::free_balance(asset_id, &source_account)?;
         if available_rewards.is_zero() {
             fail!(Error::<T>::RewardsSupplyShortage);
         }
         let amount = amount.min(available_rewards);
-        Assets::<T>::transfer_from(&PSWAP.into(), &source_account, account_id, amount)?;
+        Assets::<T>::transfer_from(asset_id, &source_account, account_id, amount)?;
         Ok(amount)
     }
 
@@ -253,7 +299,8 @@ impl<T: Config> OnPswapBurned for Module<T> {
 
 impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Module<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
-    /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
+    /// `count` is used as a multiplier if multiple times same volume is transferred inside
+    /// transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
         xor_volume: Balance,
@@ -302,8 +349,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
 
     #[pallet::config]
     pub trait Config:
@@ -317,6 +366,7 @@ pub mod pallet {
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
         type GetFarmingRewardsAccountId: Get<Self::AccountId>;
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
+        type GetCrowdloanRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -349,6 +399,51 @@ pub mod pallet {
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
+        #[transactional]
+        pub fn claim_crowdloan_rewards(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let rewards = CrowdloanRewards::<T>::try_get(who.clone())
+                .map_err(|_| Error::<T>::NothingToClaim)?;
+            let last_claim_block: u128 =
+                CrowdloanClaimHistory::<T>::get(who.clone(), asset_id).unique_saturated_into();
+            let current_block_number: u128 =
+                <frame_system::Pallet<T>>::block_number().unique_saturated_into();
+            let claim_period = if last_claim_block.is_zero() {
+                current_block_number - LEASE_START_BLOCK
+            } else {
+                current_block_number - last_claim_block
+            };
+            let claim_days = claim_period / BLOCKS_PER_DAY;
+            let reward = if asset_id == VAL.into() {
+                rewards.val_reward
+            } else if asset_id == PSWAP.into() {
+                rewards.pswap_reward
+            } else if asset_id == XSTUSD.into() {
+                rewards.xstusd_reward
+            } else {
+                return Err(Error::<T>::NoRewardsForAsset.into());
+            };
+            let reward = reward / LEASE_TOTAL_DAYS.into();
+            let reward = reward * claim_days;
+
+            Pallet::<T>::claim_reward_by_reason(
+                &who,
+                RewardReason::Crowdloan,
+                &asset_id,
+                reward.into_balance(),
+            )?;
+
+            CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
+                *value = T::BlockNumber::unique_saturated_from(current_block_number)
+            });
+
             Ok(().into())
         }
 
@@ -404,7 +499,8 @@ pub mod pallet {
         ClaimLimitExceeded,
         /// Attempt to claim rewards of type, which is not handled.
         UnhandledRewardType,
-        /// Account holding dedicated reward reserves is empty. This likely means that some of reward programmes have finished.
+        /// Account holding dedicated reward reserves is empty. This likely means that some of
+        /// reward programmes have finished.
         RewardsSupplyShortage,
         /// Increment account reference error.
         IncRefError,
@@ -416,6 +512,8 @@ pub mod pallet {
         MarketMakingPairAlreadyAllowed,
         /// The market making pair is disallowed.
         MarketMakingPairAlreadyDisallowed,
+        /// There are no rewards for the asset ID.
+        NoRewardsForAsset,
     }
 
     #[pallet::event]
@@ -465,4 +563,51 @@ pub mod pallet {
         (),
         ValueQuery,
     >;
+
+    /// Crowdloan vested rewards storage.
+    #[pallet::storage]
+    #[pallet::getter(fn crowdloan_rewards)]
+    pub type CrowdloanRewards<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
+
+    /// This storage keeps the last block number, when the user (the first) claimed a reward for
+    /// asset (the second key).
+    #[pallet::storage]
+    #[pallet::getter(fn crowdloan_claim_history)]
+    pub type CrowdloanClaimHistory<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        T::AssetId,
+        T::BlockNumber,
+        ValueQuery,
+    >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig {
+        pub test_crowdloan_rewards: Vec<CrowdloanReward>,
+    }
+
+    #[cfg(feature = "std")]
+    impl Default for GenesisConfig {
+        fn default() -> Self {
+            Self {
+                test_crowdloan_rewards: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+        fn build(&self) {
+            self.test_crowdloan_rewards.iter().for_each(|reward| {
+                CrowdloanRewards::<T>::insert(
+                    T::AccountId::decode(&mut &reward.address[..])
+                        .expect("Can't decode contributor address."),
+                    reward.clone(),
+                )
+            });
+        }
+    }
 }

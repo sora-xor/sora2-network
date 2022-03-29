@@ -284,6 +284,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = ();
     type GetBondingCurveRewardsAccountId = ();
     type GetFarmingRewardsAccountId = ();
+    type GetCrowdloanRewardsAccountId = ();
     type WeightInfo = ();
 }
 
