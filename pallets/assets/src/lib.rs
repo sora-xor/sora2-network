@@ -822,20 +822,52 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
-    pub fn list_registered_asset_infos(
-    ) -> Vec<(T::AssetId, AssetSymbol, AssetName, BalancePrecision, bool)> {
+    pub fn list_registered_asset_infos() -> Vec<(
+        T::AssetId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    )> {
         AssetInfos::<T>::iter()
-            .map(|(key, (symbol, name, precision, is_mintable, ..))| {
-                (key, symbol, name, precision, is_mintable)
-            })
+            .map(
+                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
+                    (
+                        key,
+                        symbol,
+                        name,
+                        precision,
+                        is_mintable,
+                        content_source,
+                        description,
+                    )
+                },
+            )
             .collect()
     }
 
     pub fn get_asset_info(
         asset_id: &T::AssetId,
-    ) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
-        let (symbol, name, precision, is_mintable, ..) = AssetInfos::<T>::get(asset_id);
-        (symbol, name, precision, is_mintable)
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    ) {
+        let (symbol, name, precision, is_mintable, content_source, description) =
+            AssetInfos::<T>::get(asset_id);
+        (
+            symbol,
+            name,
+            precision,
+            is_mintable,
+            content_source,
+            description,
+        )
     }
 
     pub fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {

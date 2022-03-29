@@ -252,7 +252,7 @@ pub struct OutgoingAddAsset<T: Config> {
 impl<T: Config> OutgoingAddAsset<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddAssetEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let (symbol, name, precision, _) = Assets::<T>::get_asset_info(&self.asset_id);
+        let (symbol, name, precision, ..) = Assets::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name: String = String::from_utf8_lossy(&name.0).into();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);

@@ -114,10 +114,10 @@ macro_rules! vec_push {
 #[macro_export]
 macro_rules! our_include {
     ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
+        #[cfg(all(feature = "include-real-files", not(feature = "test")))]
         let output = include!($x);
 
-        #[cfg(not(feature = "include-real-files"))]
+        #[cfg(any(not(feature = "include-real-files"), feature = "test"))]
         let output = Default::default();
 
         output
@@ -127,10 +127,10 @@ macro_rules! our_include {
 #[macro_export]
 macro_rules! our_include_bytes {
     ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
+        #[cfg(all(feature = "include-real-files", not(feature = "test")))]
         static OUTPUT: &'static [u8] = include_bytes!($x);
 
-        #[cfg(not(feature = "include-real-files"))]
+        #[cfg(any(not(feature = "include-real-files"), feature = "test"))]
         static OUTPUT: &'static [u8] = &[];
 
         OUTPUT

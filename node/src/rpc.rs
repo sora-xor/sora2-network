@@ -30,7 +30,7 @@
 
 #![warn(missing_docs)]
 
-use common::TradingPair;
+use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
@@ -88,6 +88,8 @@ where
         AssetSymbol,
         AssetName,
         BalancePrecision,
+        ContentSource,
+        Description,
     >,
     C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<
         Block,
