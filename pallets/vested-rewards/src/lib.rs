@@ -69,6 +69,9 @@ pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
 pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
+pub const VAL_CROWDLOAN_REWARDS: Balance = balance!(676393);
+pub const PSWAP_CROWDLOAN_REWARDS: Balance = balance!(9363480);
+pub const XSTUSD_CROWDLOAN_REWARDS: Balance = balance!(77050);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 const BLOCKS_PER_DAY: u128 = 14400;
 const LEASE_START_BLOCK: u128 = 4_397_212;
@@ -353,6 +356,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
+    use traits::MultiCurrency;
 
     #[pallet::config]
     pub trait Config:
@@ -416,9 +420,9 @@ pub mod pallet {
             let current_block_number: u128 =
                 <frame_system::Pallet<T>>::block_number().unique_saturated_into();
             let claim_period = if last_claim_block.is_zero() {
-                current_block_number - LEASE_START_BLOCK
+                current_block_number.saturating_sub(LEASE_START_BLOCK)
             } else {
-                current_block_number - last_claim_block
+                current_block_number.saturating_sub(last_claim_block)
             };
             let claim_days = claim_period / BLOCKS_PER_DAY;
             let reward = if asset_id == VAL.into() {
@@ -608,6 +612,30 @@ pub mod pallet {
                     reward.clone(),
                 )
             });
+
+            if let Err(e) = T::Currency::deposit(
+                VAL.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                VAL_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
+            }
+
+            if let Err(e) = T::Currency::deposit(
+                PSWAP.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                PSWAP_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
+            }
+
+            if let Err(e) = T::Currency::deposit(
+                XSTUSD.into(),
+                &T::GetCrowdloanRewardsAccountId::get(),
+                XSTUSD_CROWDLOAN_REWARDS,
+            ) {
+                debug::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
+            }
         }
     }
 }

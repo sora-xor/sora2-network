@@ -30,12 +30,13 @@
 
 use crate::{
     Config, CrowdloanReward, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
-    FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+    FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, PSWAP_CROWDLOAN_REWARDS,
+    SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT, VAL_CROWDLOAN_REWARDS, XSTUSD_CROWDLOAN_REWARDS,
 };
 use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
@@ -65,6 +66,11 @@ pub fn migrate<T: Config>() -> Weight {
         }) => {
             weight = add_funds_to_farming_rewards_account::<T>();
         }
+        Some(PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
         _ => (),
     }
 
@@ -282,4 +288,32 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
     });
 
     EXTRINSIC_FIXED_WEIGHT
+}
+
+pub fn add_funds_to_crowdloan_rewards_account<T: Config>() -> Weight {
+    if let Err(e) = T::Currency::deposit(
+        VAL.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        VAL_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
+    }
+
+    if let Err(e) = T::Currency::deposit(
+        PSWAP.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        PSWAP_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
+    }
+
+    if let Err(e) = T::Currency::deposit(
+        XSTUSD.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        XSTUSD_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
+    }
+
+    T::DbWeight::get().writes(3)
 }
