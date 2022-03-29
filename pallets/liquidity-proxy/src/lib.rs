@@ -202,6 +202,55 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
+    pub fn inner_swap(
+        sender: T::AccountId,
+        receiver: T::AccountId,
+        dex_id: T::DEXId,
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+        swap_amount: SwapAmount<Balance>,
+        selected_source_types: Vec<LiquiditySourceType>,
+        filter_mode: FilterMode,
+    ) -> Result<(), DispatchError> {
+        if Self::is_forbidden_filter(
+            &input_asset_id,
+            &output_asset_id,
+            &selected_source_types,
+            &filter_mode,
+        ) {
+            fail!(Error::<T>::ForbiddenFilter);
+        }
+
+        let outcome = Self::exchange(
+            &sender,
+            &receiver,
+            &input_asset_id,
+            &output_asset_id,
+            swap_amount,
+            LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
+        )?;
+
+        let (input_amount, output_amount, fee_amount) = match swap_amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => (desired_amount_in, outcome.amount, outcome.fee),
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => (outcome.amount, desired_amount_out, outcome.fee),
+        };
+        Self::deposit_event(Event::<T>::Exchange(
+            sender,
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            input_amount,
+            output_amount,
+            fee_amount,
+        ));
+
+        Ok(().into())
+    }
+
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
@@ -1393,43 +1442,51 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-
-            if Self::is_forbidden_filter(
-                &input_asset_id,
-                &output_asset_id,
-                &selected_source_types,
-                &filter_mode,
-            ) {
-                fail!(Error::<T>::ForbiddenFilter);
-            }
-
-            let outcome = Self::exchange(
-                &who,
-                &who,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            )?;
-
-            let (input_amount, output_amount, fee_amount) = match swap_amount {
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in, ..
-                } => (desired_amount_in, outcome.amount, outcome.fee),
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out, ..
-                } => (outcome.amount, desired_amount_out, outcome.fee),
-            };
-            Self::deposit_event(Event::<T>::Exchange(
+            Self::inner_swap(
+                who.clone(),
                 who,
                 dex_id,
                 input_asset_id,
                 output_asset_id,
-                input_amount,
-                output_amount,
-                fee_amount,
-            ));
+                swap_amount,
+                selected_source_types,
+                filter_mode,
+            )?;
+            Ok(().into())
+        }
 
+        /// Perform swap of tokens (input/output defined via SwapAmount direction).
+        ///
+        /// - `origin`: the account on whose behalf the transaction is being executed,
+        /// - `receiver`: the account that receives the output,
+        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
+        /// - `input_asset_id`: ID of the asset being sold,
+        /// - `output_asset_id`: ID of the asset being bought,
+        /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        pub fn swap_transfer(
+            origin: OriginFor<T>,
+            receiver: T::AccountId,
+            dex_id: T::DEXId,
+            input_asset_id: T::AssetId,
+            output_asset_id: T::AssetId,
+            swap_amount: SwapAmount<Balance>,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            Self::inner_swap(
+                who,
+                receiver,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount,
+                selected_source_types,
+                filter_mode,
+            )?;
             Ok(().into())
         }
     }
