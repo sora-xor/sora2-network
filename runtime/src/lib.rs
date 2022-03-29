@@ -119,6 +119,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
+pub use vested_rewards::CrowdloanReward;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
@@ -1377,6 +1378,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetCrowdloanRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+            vested_rewards::TECH_ACCOUNT_CROWDLOAN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetCrowdloanRewardsAccountId: AccountId = {
+        let tech_account_id = GetFarmingRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub GetFarmingRewardsTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -1434,6 +1449,7 @@ impl vested_rewards::Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -1549,7 +1565,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>, Config} = 40,
         Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,

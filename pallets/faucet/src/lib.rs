@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::prelude::FixedWrapper;
 use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
@@ -59,8 +60,8 @@ type WeightInfoOf<T> = <T as Config>::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-pub fn balance_limit() -> Balance {
-    balance!(6000)
+pub fn max_amount() -> FixedWrapper {
+    From::from(0.1)
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
@@ -245,7 +246,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
         current_block_number: BlockNumberOf<T>,
     ) -> Result<(BlockNumberOf<T>, Balance), Error<T>> {
-        let balance_limit = balance_limit();
+        let balance_limit = max_amount().into_balance();
         ensure!(amount <= balance_limit, Error::AmountAboveLimit);
         if let Some((initial_block_number, taken_amount)) = Transfers::<T>::get(target, asset_id) {
             let transfer_limit_block_count = transfer_limit_block_count::<T>();
