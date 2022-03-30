@@ -947,6 +947,39 @@ pub mod pallet {
             };
             Ok(Some(weight).into())
         }
+
+        /// Temporary disallow asset.
+        /// Ethereum Deposit log with this asset will be ignored.
+        /// But user still can send funds to bridge
+        /// Transfer to sidechain calls will be failed.
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
+        pub fn disallow_asset(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called disallow_asset. asset_id: {:?}", asset_id);
+            ensure_root(origin)?;
+            DisallowedAsset::<T>::insert(network_id, asset_id, true);
+            Ok(().into())
+        }
+
+        /// Allow disallowed asset.
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
+        pub fn allow_asset(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called allow_asset. asset_id: {:?}", asset_id);
+            ensure_root(origin)?;
+            DisallowedAsset::<T>::insert(network_id, asset_id, false);
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1138,6 +1171,8 @@ pub mod pallet {
         RemovedAndRefunded,
         /// Not enough peers provided, need at least 1
         NotEnoughPeers,
+        /// Asset is disallowed.
+        AssetDisallowed,
     }
 
     impl<T: Config> Error<T> {
@@ -1257,6 +1292,19 @@ pub mod pallet {
         Blake2_128Concat,
         T::AssetId,
         Address,
+    >;
+
+    /// Temporary disallowed assets
+    #[pallet::storage]
+    #[pallet::getter(fn disallowed_asset)]
+    pub(super) type DisallowedAsset<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        T::AssetId,
+        bool,
+        ValueQuery,
     >;
 
     /// Network peers set.

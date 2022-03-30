@@ -138,6 +138,9 @@ impl<T: Config> OutgoingTransfer<T> {
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
         if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
+            if crate::DisallowedAsset::<T>::get(self.network_id, &self.asset_id) {
+                frame_support::fail!(Error::<T>::AssetDisallowed)
+            }
             if !kind.is_owned() {
                 let dust = self.sidechain_amount().map(|x| x.1)?;
                 ensure!(dust == 0, Error::<T>::NonZeroDust);
