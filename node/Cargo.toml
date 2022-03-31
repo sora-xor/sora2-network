@@ -88,10 +88,10 @@ substrate-build-script-utils = "3"
 [dev-dependencies]
 assert_cmd = "0.12"
 nix = "0.20"
+pallet-sudo = "3"
 tokio = { version = "0.2.13", features = ["macros"] }
 
-# Substrate dependencies
-pallet-sudo = "3"
+framenode-chain-spec = { path = "chain_spec", features = ["test"] }
 
 [features]
 include-real-files = []

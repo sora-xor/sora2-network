@@ -144,6 +144,35 @@ pub mod string_serialization {
     }
 }
 
+#[cfg(feature = "std")]
+pub mod string_serialization_opt {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer, T: std::fmt::Display>(
+        t: &Option<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match t {
+            Some(t) => serializer.serialize_str(&t.to_string()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+        deserializer: D,
+    ) -> Result<Option<T>, D::Error> {
+        match Option::<String>::deserialize(deserializer)? {
+            Some(s) => {
+                let value = s
+                    .parse::<T>()
+                    .map_err(|_| serde::de::Error::custom("Parse from string failed"))?;
+                Ok(Some(value))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
 /// Generalized filtration mechanism for listing liquidity sources.
 #[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
