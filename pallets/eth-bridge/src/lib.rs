@@ -128,6 +128,8 @@ pub trait WeightInfo {
             };
         weight
     }
+    fn remove_sidechain_asset() -> Weight;
+    fn register_existing_sidechain_asset() -> Weight;
 }
 
 type Address = H160;
@@ -948,36 +950,49 @@ pub mod pallet {
             Ok(Some(weight).into())
         }
 
-        /// Temporary disallow asset.
-        /// Ethereum Deposit log with this asset will be ignored.
-        /// But user still can send funds to bridge
-        /// Transfer to sidechain calls will be failed.
+        /// Remove asset
         ///
         /// Can only be called by root.
-        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
-        pub fn disallow_asset(
+        #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
+        pub fn remove_sidechain_asset(
             origin: OriginFor<T>,
-            network_id: BridgeNetworkId<T>,
+            network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called disallow_asset. asset_id: {:?}", asset_id);
+            debug::debug!("called remove_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
-            DisallowedAsset::<T>::insert(network_id, asset_id, true);
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::UnknownAssetId)?;
+            RegisteredAsset::<T>::remove(network_id, &asset_id);
+            RegisteredSidechainAsset::<T>::remove(network_id, &token_address);
+            RegisteredSidechainToken::<T>::remove(network_id, &asset_id);
+            SidechainAssetPrecision::<T>::remove(network_id, &asset_id);
             Ok(().into())
         }
 
-        /// Allow disallowed asset.
+        /// Register existing asset
         ///
         /// Can only be called by root.
-        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
-        pub fn allow_asset(
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
-            network_id: BridgeNetworkId<T>,
+            network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
+            token_address: Address,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called allow_asset. asset_id: {:?}", asset_id);
+            debug::debug!("called register_existing_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
-            DisallowedAsset::<T>::insert(network_id, asset_id, false);
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsAlreadyAdded
+            );
+            let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
+            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
             Ok(().into())
         }
     }
@@ -1171,8 +1186,8 @@ pub mod pallet {
         RemovedAndRefunded,
         /// Not enough peers provided, need at least 1
         NotEnoughPeers,
-        /// Asset is disallowed.
-        AssetDisallowed,
+        /// Asset is not owned by bridge.
+        AssetNotOwned,
     }
 
     impl<T: Config> Error<T> {
@@ -1292,19 +1307,6 @@ pub mod pallet {
         Blake2_128Concat,
         T::AssetId,
         Address,
-    >;
-
-    /// Temporary disallowed assets
-    #[pallet::storage]
-    #[pallet::getter(fn disallowed_asset)]
-    pub(super) type DisallowedAsset<T: Config> = StorageDoubleMap<
-        _,
-        Twox64Concat,
-        BridgeNetworkId<T>,
-        Blake2_128Concat,
-        T::AssetId,
-        bool,
-        ValueQuery,
     >;
 
     /// Network peers set.

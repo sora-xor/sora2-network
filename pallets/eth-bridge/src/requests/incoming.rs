@@ -269,9 +269,6 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
-        if crate::DisallowedAsset::<T>::get(self.network_id, &self.asset_id) {
-            frame_support::fail!(Error::<T>::AssetDisallowed)
-        }
         if self.should_take_fee {
             let transfer_fee = Self::fee_amount();
             ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);

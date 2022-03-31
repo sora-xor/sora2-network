@@ -34,7 +34,7 @@ use crate::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer};
 use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
-use crate::{Address, AssetConfig, DisallowedAsset};
+use crate::{Address, AssetConfig};
 use common::{DEFAULT_BALANCE_PRECISION, KSM, USDT, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
@@ -266,76 +266,5 @@ fn ocw_should_not_handle_outgoing_request_twice() {
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
-    });
-}
-
-#[test]
-fn should_not_approve_disallowed_asset() {
-    let (mut ext, _state) = ExtBuilder::default().build();
-
-    ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
-        assert_ok!(EthBridge::disallow_asset(
-            Origin::root(),
-            net_id,
-            XOR.into()
-        ));
-        assert!(DisallowedAsset::<Runtime>::get(net_id, XOR));
-        assert_err!(
-            EthBridge::transfer_to_sidechain(
-                Origin::signed(alice.clone()),
-                XOR.into(),
-                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-                100_u32.into(),
-                net_id,
-            ),
-            crate::Error::<Runtime>::AssetDisallowed
-        );
-    });
-}
-
-#[test]
-fn should_be_possible_to_allow_disallowed_asset() {
-    let (mut ext, state) = ExtBuilder::default().build();
-
-    ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
-        assert_ok!(EthBridge::disallow_asset(
-            Origin::root(),
-            net_id,
-            XOR.into()
-        ));
-        assert!(DisallowedAsset::<Runtime>::get(net_id, XOR));
-        assert_err!(
-            EthBridge::transfer_to_sidechain(
-                Origin::signed(alice.clone()),
-                XOR.into(),
-                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-                100_u32.into(),
-                net_id,
-            ),
-            crate::Error::<Runtime>::AssetDisallowed
-        );
-        assert_ok!(EthBridge::allow_asset(Origin::root(), net_id, XOR.into()));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100000u32.into()
-        );
-        assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
-            XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            100_u32.into(),
-            net_id,
-        ));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            99900u32.into()
-        );
-        approve_last_request(&state, net_id).expect("request wasn't approved");
     });
 }
