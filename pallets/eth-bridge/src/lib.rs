@@ -959,7 +959,7 @@ pub mod pallet {
             network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called remove_asset. asset_id: {:?}", asset_id);
+            debug::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
             assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
             let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
@@ -981,7 +981,10 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             token_address: Address,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called register_existing_asset. asset_id: {:?}", asset_id);
+            debug::debug!(
+                "called register_existing_sidechain_asset. asset_id: {:?}",
+                asset_id
+            );
             ensure_root(origin)?;
             assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
             ensure!(
@@ -1186,8 +1189,6 @@ pub mod pallet {
         RemovedAndRefunded,
         /// Not enough peers provided, need at least 1
         NotEnoughPeers,
-        /// Asset is not owned by bridge.
-        AssetNotOwned,
     }
 
     impl<T: Config> Error<T> {
