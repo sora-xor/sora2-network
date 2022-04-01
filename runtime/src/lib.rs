@@ -2247,4 +2247,17 @@ impl_runtime_apis! {
             Ok(batches)
         }
     }
+
+    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance> for Runtime {
+        fn crowdloan_claimable(account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
+            use sp_runtime::traits::UniqueSaturatedInto;
+
+            let current_block_num = <frame_system::Pallet<Runtime>>::block_number().unique_saturated_into();
+            VestedRewards::crowdloan_reward_for_asset(&account_id, asset_id, current_block_num).ok().map(|balance|
+                vested_rewards_runtime_api::BalanceInfo::<Balance> {
+                    balance
+                }
+            )
+        }
+    }
 }

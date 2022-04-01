@@ -45,7 +45,7 @@ use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
 use frame_support::{fail, transactional};
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
 use sp_std::str;
@@ -290,6 +290,35 @@ impl<T: Config> Pallet<T> {
         }
         eligible_accounts_count.try_into().unwrap_or(u32::MAX)
     }
+
+    pub fn crowdloan_reward_for_asset(
+        address: &T::AccountId,
+        asset_id: T::AssetId,
+        current_block_number: u128,
+    ) -> Result<Balance, DispatchError> {
+        let rewards =
+            CrowdloanRewards::<T>::try_get(address).map_err(|_| Error::<T>::NothingToClaim)?;
+        let last_claim_block: u128 =
+            CrowdloanClaimHistory::<T>::get(address, asset_id).unique_saturated_into();
+        let claim_period = if last_claim_block.is_zero() {
+            current_block_number.saturating_sub(LEASE_START_BLOCK)
+        } else {
+            current_block_number.saturating_sub(last_claim_block)
+        };
+        let claim_days = claim_period / BLOCKS_PER_DAY;
+        let reward = if asset_id == VAL.into() {
+            rewards.val_reward
+        } else if asset_id == PSWAP.into() {
+            rewards.pswap_reward
+        } else if asset_id == XSTUSD.into() {
+            rewards.xstusd_reward
+        } else {
+            return Err(Error::<T>::NoRewardsForAsset.into());
+        };
+        let reward = reward / LEASE_TOTAL_DAYS.into();
+
+        Ok((reward * claim_days).into_balance())
+    }
 }
 
 impl<T: Config> OnPswapBurned for Module<T> {
@@ -355,7 +384,7 @@ pub mod pallet {
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
+    use sp_runtime::traits::UniqueSaturatedFrom;
     use traits::MultiCurrency;
 
     #[pallet::config]
@@ -413,36 +442,12 @@ pub mod pallet {
             asset_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            let rewards = CrowdloanRewards::<T>::try_get(who.clone())
-                .map_err(|_| Error::<T>::NothingToClaim)?;
-            let last_claim_block: u128 =
-                CrowdloanClaimHistory::<T>::get(who.clone(), asset_id).unique_saturated_into();
             let current_block_number: u128 =
                 <frame_system::Pallet<T>>::block_number().unique_saturated_into();
-            let claim_period = if last_claim_block.is_zero() {
-                current_block_number.saturating_sub(LEASE_START_BLOCK)
-            } else {
-                current_block_number.saturating_sub(last_claim_block)
-            };
-            let claim_days = claim_period / BLOCKS_PER_DAY;
-            let reward = if asset_id == VAL.into() {
-                rewards.val_reward
-            } else if asset_id == PSWAP.into() {
-                rewards.pswap_reward
-            } else if asset_id == XSTUSD.into() {
-                rewards.xstusd_reward
-            } else {
-                return Err(Error::<T>::NoRewardsForAsset.into());
-            };
-            let reward = reward / LEASE_TOTAL_DAYS.into();
-            let reward = reward * claim_days;
+            let reward =
+                Pallet::<T>::crowdloan_reward_for_asset(&who, asset_id, current_block_number)?;
 
-            Pallet::<T>::claim_reward_by_reason(
-                &who,
-                RewardReason::Crowdloan,
-                &asset_id,
-                reward.into_balance(),
-            )?;
+            Pallet::<T>::claim_reward_by_reason(&who, RewardReason::Crowdloan, &asset_id, reward)?;
 
             CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
                 *value = T::BlockNumber::unique_saturated_from(current_block_number)

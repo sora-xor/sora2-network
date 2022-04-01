@@ -2501,6 +2501,7 @@ dependencies = [
  "tokio 0.2.25",
  "trading-pair-rpc",
  "trie-root",
+ "vested-rewards-rpc",
  "xor-fee",
 ]
 
@@ -2626,6 +2627,7 @@ dependencies = [
  "trading-pair",
  "trading-pair-runtime-api",
  "vested-rewards",
+ "vested-rewards-runtime-api",
  "xor-fee",
  "xor-fee-benchmarking",
  "xst",
@@ -9735,6 +9737,37 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "vested-rewards-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core 15.1.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+ "vested-rewards-runtime-api",
+]
+
+[[package]]
+name = "vested-rewards-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

@@ -60,6 +60,7 @@ technical = { path = "../pallets/technical", default-features = false}
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
+vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false}
 xor-fee = { path = "../pallets/xor-fee", default-features = false}
 xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
 xst = { path = "../pallets/xst", default-features = false }
@@ -198,6 +199,7 @@ std = [
     "trading-pair-runtime-api/std",
     "trading-pair/std",
     "vested-rewards/std",
+    "vested-rewards-runtime-api/std",
     "xor-fee/std",
     "xst/std",
 ]
