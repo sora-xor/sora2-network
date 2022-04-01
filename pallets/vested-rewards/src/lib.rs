@@ -293,7 +293,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn crowdloan_reward_for_asset(
         address: &T::AccountId,
-        asset_id: T::AssetId,
+        asset_id: &T::AssetId,
         current_block_number: u128,
     ) -> Result<Balance, DispatchError> {
         let rewards =
@@ -306,11 +306,11 @@ impl<T: Config> Pallet<T> {
             current_block_number.saturating_sub(last_claim_block)
         };
         let claim_days = claim_period / BLOCKS_PER_DAY;
-        let reward = if asset_id == VAL.into() {
+        let reward = if asset_id == &VAL.into() {
             rewards.val_reward
-        } else if asset_id == PSWAP.into() {
+        } else if asset_id == &PSWAP.into() {
             rewards.pswap_reward
-        } else if asset_id == XSTUSD.into() {
+        } else if asset_id == &XSTUSD.into() {
             rewards.xstusd_reward
         } else {
             return Err(Error::<T>::NoRewardsForAsset.into());
@@ -445,7 +445,7 @@ pub mod pallet {
             let current_block_number: u128 =
                 <frame_system::Pallet<T>>::block_number().unique_saturated_into();
             let reward =
-                Pallet::<T>::crowdloan_reward_for_asset(&who, asset_id, current_block_number)?;
+                Pallet::<T>::crowdloan_reward_for_asset(&who, &asset_id, current_block_number)?;
 
             Pallet::<T>::claim_reward_by_reason(&who, RewardReason::Crowdloan, &asset_id, reward)?;
 

@@ -2266,7 +2266,7 @@ impl_runtime_apis! {
             use sp_runtime::traits::UniqueSaturatedInto;
 
             let current_block_num = <frame_system::Pallet<Runtime>>::block_number().unique_saturated_into();
-            VestedRewards::crowdloan_reward_for_asset(&account_id, asset_id, current_block_num).ok().map(|balance|
+            VestedRewards::crowdloan_reward_for_asset(&account_id, &asset_id, current_block_num).ok().map(|balance|
                 vested_rewards_runtime_api::BalanceInfo::<Balance> {
                     balance
                 }
