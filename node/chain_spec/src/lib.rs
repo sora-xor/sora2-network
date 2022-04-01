@@ -155,17 +155,8 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-#[cfg(any(not(feature = "private-net"), feature = "test"))]
 pub fn main_net() -> Result<ChainSpec, String> {
-    #[cfg(feature = "test")]
-    {
-        ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_main.json")[..])
-    }
-
-    #[cfg(not(feature = "test"))]
-    {
-        ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
-    }
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
 }
 
 #[cfg(feature = "private-net")]
@@ -805,9 +796,9 @@ fn testnet_genesis(
     #[cfg(feature = "include-real-files")]
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
-        val_owners: include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+        val_owners: our_include!("bytes/rewards_val_owners.in"),
+        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
+        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
     let rewards_pswap_reserves =
@@ -1512,9 +1503,9 @@ fn mainnet_genesis(
     }
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
-        val_owners: our_include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
+        val_owners: Vec::new(),
+        pswap_farm_owners: Vec::new(),
+        pswap_waifu_owners: Vec::new(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
@@ -1609,8 +1600,7 @@ fn mainnet_genesis(
             None,
         ),
     ];
-    let bridge_assets_data: Vec<BridgeAssetData<Runtime>> =
-        include!("bytes/eth_bridge_assets_main.in");
+    let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
         AssetConfig::sidechain(
             x.asset_id,
@@ -1881,7 +1871,7 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
+            iroha_accounts: Vec::new(),
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),
