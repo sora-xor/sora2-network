@@ -36,6 +36,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 hex-literal = { version = '0.3.1' }
 sp-runtime = { version = "3" }
 

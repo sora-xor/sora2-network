@@ -14,6 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 getrandom = { version = "0.2", default-features = false, features = ["js"] }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "3", default-features = false }
 frame-support = { version = "3", default-features = false }

@@ -45,8 +45,10 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>}
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -54,6 +56,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
 pub const DAN: AccountId = 4;
+pub const EMILY: AccountId = 5;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {
@@ -138,6 +141,13 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
@@ -175,6 +185,12 @@ impl vested_rewards::Config for Runtime {
 
 parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
+}
+
+impl ceres_token_locker::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ();
 }
 
 impl ceres_liquidity_locker::Config for Runtime {

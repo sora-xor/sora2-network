@@ -524,7 +524,7 @@ fn fee_payment_regular_swap() {
 
 /// Fee should be postponed until after the transaction
 #[test]
-fn fee_payment_postponed() {
+fn fee_payment_postponed_swap() {
     ext().execute_with(|| {
         increase_balance(alice(), VAL.into(), balance!(1000));
 
@@ -564,7 +564,54 @@ fn fee_payment_postponed() {
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0)
                 .unwrap();
 
-        assert!(matches!(quoted_fee, LiquidityInfo::Postponed(SMALL_FEE)));
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(alice(), SMALL_FEE));
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postponed_swap_transfer() {
+    ext().execute_with(|| {
+        increase_balance(alice(), VAL.into(), balance!(1000));
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+        increase_balance(bob(), VAL.into(), balance!(1000));
+
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        PoolXYK::deposit_liquidity(
+            Origin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            balance!(500),
+            balance!(500),
+            balance!(450),
+            balance!(450),
+        )
+        .unwrap();
+
+        fill_spot_price();
+
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer(
+            bob(),
+            0,
+            VAL,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(50),
+            },
+            vec![],
+            FilterMode::Disabled,
+        ));
+
+        let quoted_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0)
+                .unwrap();
+
+        assert_eq!(quoted_fee, LiquidityInfo::Postponed(bob(), SMALL_FEE));
     });
 }
 
