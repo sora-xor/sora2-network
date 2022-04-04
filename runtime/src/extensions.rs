@@ -112,10 +112,13 @@ impl crate::Call {
         if let Self::Utility(UtilityCall::batch(calls))
         | Self::Utility(UtilityCall::batch_all(calls)) = self
         {
-            if calls
-                .iter()
-                .any(|call| matches!(call, Self::LiquidityProxy(liquidity_proxy::Call::swap(..))))
-            {
+            if calls.iter().any(|call| {
+                matches!(
+                    call,
+                    Self::LiquidityProxy(liquidity_proxy::Call::swap(..))
+                        | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer(..))
+                )
+            }) {
                 return Err(TransactionValidityError::Invalid(InvalidTransaction::Call));
             }
         }
@@ -218,22 +221,10 @@ mod tests {
         assert!(call_batch_all.check_for_swap_in_batch().is_ok());
     }
 
-    #[test]
-    fn swap_in_batch_should_fail() {
+    fn test_swap_in_batch(call: Call) {
         let batch_calls = vec![
             pallet_balances::Call::transfer(From::from([1; 32]), balance!(100)).into(),
-            liquidity_proxy::Call::swap(
-                0,
-                VAL,
-                XOR,
-                common::prelude::SwapAmount::WithDesiredInput {
-                    desired_amount_in: crate::balance!(100),
-                    min_amount_out: crate::balance!(100),
-                },
-                vec![],
-                common::FilterMode::Disabled,
-            )
-            .into(),
+            call,
         ];
 
         let call_batch = Call::Utility(UtilityCall::batch(batch_calls.clone()));
@@ -275,5 +266,42 @@ mod tests {
         assert!(pre_batch_all.is_err());
         assert!(val_batch.is_err());
         assert!(val_batch_all.is_err());
+    }
+
+    #[test]
+    fn swap_in_batch_should_fail() {
+        test_swap_in_batch(
+            liquidity_proxy::Call::swap(
+                0,
+                VAL,
+                XOR,
+                common::prelude::SwapAmount::WithDesiredInput {
+                    desired_amount_in: crate::balance!(100),
+                    min_amount_out: crate::balance!(100),
+                },
+                vec![],
+                common::FilterMode::Disabled,
+            )
+            .into(),
+        );
+    }
+
+    #[test]
+    fn swap_transfer_in_batch_should_fail() {
+        test_swap_in_batch(
+            liquidity_proxy::Call::swap_transfer(
+                From::from([1; 32]),
+                0,
+                VAL,
+                XOR,
+                common::prelude::SwapAmount::WithDesiredInput {
+                    desired_amount_in: crate::balance!(100),
+                    min_amount_out: crate::balance!(100),
+                },
+                vec![],
+                common::FilterMode::Disabled,
+            )
+            .into(),
+        );
     }
 }

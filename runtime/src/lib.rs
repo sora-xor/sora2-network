@@ -919,29 +919,48 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
 }
 
 impl xor_fee::ExtractProxySwap for Call {
+    type AccountId = AccountId;
     type DexId = DEXId;
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
-    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            selected_source_types,
-            filter_mode,
-        )) = self
-        {
-            Some(xor_fee::SwapInfo {
+    fn extract(
+        &self,
+    ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
+        match self {
+            Call::LiquidityProxy(liquidity_proxy::Call::swap(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+            )) => Some(xor_fee::SwapInfo {
+                fee_source: None,
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
                 amount: *amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
-            })
-        } else {
-            None
+            }),
+            Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer(
+                target,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+            )) => Some(xor_fee::SwapInfo {
+                fee_source: Some(target.clone()),
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            }),
+            _ => None,
         }
     }
 }
