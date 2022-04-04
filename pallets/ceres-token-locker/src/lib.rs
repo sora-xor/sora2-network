@@ -23,11 +23,11 @@ pub trait WeightInfo {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TokenLockInfo<Balance, BlockNumber, AssetId> {
     /// Amount of locked tokens
-    tokens: Balance,
+    pub tokens: Balance,
     /// The time (block height) at which the tokens will be unlocked
-    unlocking_block: BlockNumber,
+    pub unlocking_block: BlockNumber,
     /// Locked asset id
-    asset_id: AssetId,
+    pub asset_id: AssetId,
 }
 
 pub use pallet::*;

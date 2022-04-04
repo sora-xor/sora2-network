@@ -86,6 +86,13 @@ mod tests {
             ));
 
             assert_ok!(assets::Module::<Runtime>::mint_to(
+                &ceres,
+                &ALICE,
+                &DAN,
+                balance!(11000)
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
                 &PSWAP,
                 &ALICE,
                 &GetPswapDistributionAccountId::get(),
@@ -110,14 +117,23 @@ mod tests {
                 balance!(5000)
             );
 
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(ALICE);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(BOB);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(CHARLES);
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(DAN);
+
+            pallet::WhitelistedContributors::<Runtime>::append(ALICE);
+            pallet::WhitelistedContributors::<Runtime>::append(BOB);
+            pallet::WhitelistedContributors::<Runtime>::append(CHARLES);
+            pallet::WhitelistedContributors::<Runtime>::append(DAN);
+
             tests();
         });
     }
 
     #[test]
     fn create_ilo_ilo_price_zero() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -136,6 +152,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -147,8 +167,7 @@ mod tests {
 
     #[test]
     fn create_ilo_hard_cap_zero() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -167,6 +186,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -178,8 +201,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_soft_cap() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -198,6 +220,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -209,8 +235,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_minimum_contribution() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -229,6 +254,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -240,8 +269,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_maximum_contribution() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -260,6 +288,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -271,8 +303,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_liquidity_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -291,6 +322,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -302,8 +337,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_lockup_days() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -322,6 +356,10 @@ mod tests {
                     29,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -333,8 +371,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_start_block() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -353,6 +390,10 @@ mod tests {
                     31,
                     current_block,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -364,8 +405,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_end_block() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -384,6 +424,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 2,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -395,8 +439,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_price() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -415,6 +458,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -426,8 +473,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_ilo() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -446,6 +492,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -457,8 +507,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_liquidity() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -477,6 +526,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.1),
                     current_block + 3,
                     balance!(20)
@@ -487,9 +540,8 @@ mod tests {
     }
 
     #[test]
-    fn create_ilo_invalid_first_release_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+    fn create_ilo_invalid_team_first_release_percent() {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -508,6 +560,180 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0),
+                    current_block + 3,
+                    balance!(0.2),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                ),
+                Error::<Runtime>::InvalidTeamFirstReleasePercent
+            );
+        });
+    }
+
+    #[test]
+    fn create_ilo_invalid_team_vesting_percent() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                ),
+                Error::<Runtime>::InvalidTeamVestingPercent
+            );
+        });
+    }
+
+    #[test]
+    fn create_ilo_invalid_team_vesting_percent_overflow() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.9),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                ),
+                Error::<Runtime>::InvalidTeamVestingPercent
+            );
+        });
+    }
+
+    #[test]
+    fn create_ilo_invalid_team_vesting_percent_remainder() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.3),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                ),
+                Error::<Runtime>::InvalidTeamVestingPercent
+            );
+        });
+    }
+
+    #[test]
+    fn create_ilo_invalid_team_vesting_period() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    0u32.into(),
+                    balance!(0.2),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                ),
+                Error::<Runtime>::InvalidTeamVestingPeriod
+            );
+        });
+    }
+
+    #[test]
+    fn create_ilo_invalid_first_release_percent() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0),
                     current_block + 3,
                     balance!(20)
@@ -519,8 +745,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -539,6 +764,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0)
@@ -550,8 +779,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent_overflow() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -570,6 +798,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0.9)
@@ -581,8 +813,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_percent_remainder() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -601,6 +832,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0.3)
@@ -612,8 +847,7 @@ mod tests {
 
     #[test]
     fn create_ilo_invalid_vesting_period() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -632,6 +866,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     0u32.into(),
                     balance!(0.2)
@@ -643,8 +881,7 @@ mod tests {
 
     #[test]
     fn create_ilo_not_enough_ceres() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -663,6 +900,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0.2)
@@ -674,8 +915,7 @@ mod tests {
 
     #[test]
     fn create_ilo_not_enough_tokens() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -694,6 +934,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0.2)
@@ -704,9 +948,45 @@ mod tests {
     }
 
     #[test]
+    fn create_ilo_account_is_not_whitelisted() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
     fn create_ilo_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            pallet::WhitelistedIloOrganizers::<Runtime>::append(ALICE);
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -724,6 +1004,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -750,8 +1034,7 @@ mod tests {
 
     #[test]
     fn create_ilo_ilo_already_exists() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -769,6 +1052,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -791,6 +1078,10 @@ mod tests {
                     31,
                     current_block + 5,
                     current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
                     balance!(0.2),
                     current_block + 3,
                     balance!(0.2)
@@ -802,8 +1093,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
                     Origin::signed(ALICE),
@@ -835,12 +1125,23 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
             ));
 
             run_to_block(6);
+
+            assert_ok!(Assets::transfer_from(
+                &CERES_ASSET_ID.into(),
+                &DAN,
+                &BOB,
+                balance!(11000)
+            ));
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
@@ -855,8 +1156,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_not_started() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -874,6 +1174,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -891,8 +1195,7 @@ mod tests {
 
     #[test]
     fn contribute_ilo_is_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -910,6 +1213,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -930,8 +1237,7 @@ mod tests {
 
     #[test]
     fn contribute_contribution_is_lower_then_min() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let asset_id = CERES_ASSET_ID;
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -950,6 +1256,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -988,6 +1298,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1032,6 +1346,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1057,6 +1375,48 @@ mod tests {
     }
 
     #[test]
+    fn contribute_account_is_not_whitelisted() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.5),
+                balance!(10),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::contribute(
+                    Origin::signed(EMILY),
+                    CERES_ASSET_ID.into(),
+                    balance!(0.6)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
     fn contribute_ok() {
         preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1077,6 +1437,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1114,8 +1478,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
                     Origin::signed(ALICE),
@@ -1128,8 +1491,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_not_started() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1147,6 +1509,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1164,8 +1530,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ilo_is_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1183,6 +1548,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1202,8 +1571,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_not_enough_funds() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1221,6 +1589,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1258,6 +1630,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1311,8 +1687,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::finish_ilo(
                     Origin::signed(ALICE),
@@ -1325,8 +1700,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_ilo_is_not_finished() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1344,6 +1718,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1361,8 +1739,7 @@ mod tests {
 
     #[test]
     fn finish_ilo_unauthorized() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1380,6 +1757,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1417,6 +1798,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1467,6 +1852,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1517,6 +1906,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1559,6 +1952,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1628,6 +2025,57 @@ mod tests {
     }
 
     #[test]
+    fn finish_ilo_not_enough_team_tokens_to_lock() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(DAN),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                false,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                    Origin::signed(DAN),
+                    CERES_ASSET_ID.into()
+                ),
+                Error::<Runtime>::NotEnoughTeamTokensToLock
+            );
+        });
+    }
+
+    #[test]
     fn finish_ilo_filled_hard_cap_ok() {
         preset_initial(|| {
             let mut current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -1647,6 +2095,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1661,8 +2113,6 @@ mod tests {
                 CERES_ASSET_ID.into(),
                 funds_to_contribute
             ));
-
-            run_to_block(11);
 
             current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
@@ -1711,6 +2161,16 @@ mod tests {
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );
 
+            let token_locker_data = ceres_token_locker::TokenLockerData::<Runtime>::get(ALICE);
+            assert_eq!(token_locker_data.len(), 4 as usize);
+            let mut unlocking_block = current_block + ilo_info.team_vesting.team_vesting_period;
+            for token_lock_info in token_locker_data {
+                assert_eq!(token_lock_info.asset_id, CERES_ASSET_ID.into());
+                assert_eq!(token_lock_info.tokens, balance!(200));
+                assert_eq!(token_lock_info.unlocking_block, unlocking_block);
+                unlocking_block += ilo_info.team_vesting.team_vesting_period;
+            }
+
             assert_eq!(ilo_info.finish_block, current_block);
         });
     }
@@ -1748,6 +2208,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1783,6 +2247,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1842,6 +2310,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1899,6 +2371,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -1931,7 +2407,7 @@ mod tests {
                 pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
 
             let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+                * FixedWrapper::from(ilo_info.contributors_vesting.first_release_percent))
             .try_into_balance()
             .unwrap_or(0);
 
@@ -1965,6 +2441,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 50,
                 balance!(0.2)
@@ -2024,6 +2504,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.1),
                 30u32.into(),
                 balance!(0.18)
@@ -2051,12 +2535,12 @@ mod tests {
                 pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
 
             let first_release = (FixedWrapper::from(contribution_info.tokens_bought)
-                * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+                * FixedWrapper::from(ilo_info.contributors_vesting.first_release_percent))
             .try_into_balance()
             .unwrap_or(0);
 
             let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
+                * FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent))
             .try_into_balance()
             .unwrap_or(0);
 
@@ -2133,8 +2617,7 @@ mod tests {
 
     #[test]
     fn claim_lp_tokens_ilo_does_not_exist() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
                     Origin::signed(ALICE),
@@ -2147,8 +2630,7 @@ mod tests {
 
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -2166,6 +2648,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2201,6 +2687,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2258,6 +2748,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2335,6 +2829,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2410,6 +2908,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2479,6 +2981,10 @@ mod tests {
                 31,
                 current_block + 5,
                 current_block + 10,
+                balance!(1000),
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2),
                 balance!(0.2),
                 current_block + 3,
                 balance!(0.2)
@@ -2540,6 +3046,164 @@ mod tests {
             assert_eq!(
                 pallet::CeresForContributionInILO::<Runtime>::get(),
                 balance!(100)
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_contributor_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_contributor(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_contributor_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_contributor(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    EMILY
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedContributors::<Runtime>::get().contains(&EMILY),
+                true
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_contributor_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_contributor(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_contributor_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_contributor(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    ALICE
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedContributors::<Runtime>::get().contains(&BOB),
+                true
+            );
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::contribute(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(0.21)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_ilo_organizer_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_ilo_organizer(
+                    Origin::signed(ALICE),
+                    DAN
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn add_whitelisted_ilo_organizer_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::add_whitelisted_ilo_organizer(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    DAN
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedIloOrganizers::<Runtime>::get().contains(&DAN),
+                true
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_ilo_organizer_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_ilo_organizer(
+                    Origin::signed(ALICE),
+                    EMILY
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn remove_whitelisted_ilo_organizer_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::remove_whitelisted_ilo_organizer(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    ALICE
+                )
+            );
+
+            assert_eq!(
+                pallet::WhitelistedIloOrganizers::<Runtime>::get().contains(&BOB),
+                true
+            );
+
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::create_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into(),
+                    balance!(7693),
+                    balance!(3000),
+                    balance!(0.13),
+                    balance!(600),
+                    balance!(1000),
+                    balance!(0.2),
+                    balance!(0.25),
+                    true,
+                    balance!(0.75),
+                    balance!(0.25),
+                    31,
+                    current_block + 5,
+                    current_block + 10,
+                    balance!(1000),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2),
+                    balance!(0.2),
+                    current_block + 3,
+                    balance!(0.2)
+                ),
+                Error::<Runtime>::AccountIsNotWhitelisted
             );
         });
     }

@@ -835,6 +835,7 @@ version = "1.0.0"
 dependencies = [
  "assets",
  "ceres-liquidity-locker",
+ "ceres-token-locker",
  "common",
  "demeter-farming-platform",
  "dex-manager",
