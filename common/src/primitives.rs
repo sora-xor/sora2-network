@@ -145,6 +145,9 @@ pub const XSTUSD: AssetId32<PredefinedAssetId> =
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
+pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {

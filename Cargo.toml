@@ -89,6 +89,7 @@ members = [
     "pallets/assets",
     "pallets/ceres-governance-platform",
     "pallets/ceres-liquidity-locker",
+    "pallets/demeter-farming-platform",
     "pallets/permissions",
     "pallets/trading-pair",
     "pallets/dex-manager",

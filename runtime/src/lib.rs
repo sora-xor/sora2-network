@@ -1519,6 +1519,17 @@ impl ceres_governance_platform::Config for Runtime {
     type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const DemeterAssetId: AssetId = common::DEMETER_ASSET_ID;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = DemeterAssetId;
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
+    type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1594,6 +1605,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1662,6 +1674,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
     }
 }
 
@@ -2225,6 +2238,7 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
@@ -2232,7 +2246,6 @@ impl_runtime_apis! {
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
-
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -2274,6 +2287,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
+            add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

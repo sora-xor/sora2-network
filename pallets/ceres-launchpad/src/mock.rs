@@ -47,7 +47,8 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>}
+        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -137,6 +138,13 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 

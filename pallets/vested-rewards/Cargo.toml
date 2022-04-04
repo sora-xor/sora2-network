@@ -38,6 +38,7 @@ pallet-balances = { version = "3"}
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager" }
 permissions = { path = "../permissions" }
 trading-pair = { path = "../trading-pair" }

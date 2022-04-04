@@ -628,6 +628,7 @@ pub mod pallet {
         + dex_manager::Config
         + trading_pair::Config
         + ceres_liquidity_locker::Config
+        + demeter_farming_platform::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;
@@ -899,6 +900,8 @@ pub mod pallet {
         NotEnoughUnlockedLiquidity,
         /// Cannot create a pool with indivisible assets
         UnableToCreatePoolWithIndivisibleAssets,
+        /// Not enough liquidity out of farming to withdraw
+        NotEnoughLiquidityOutOfFarming,
     }
 
     /// Updated after last liquidity change operation.
