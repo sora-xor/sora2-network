@@ -79,6 +79,10 @@ benchmarks! {
         31,
         current_block + 5u32.into(),
         current_block + 10u32.into(),
+        balance!(1000),
+        balance!(0.2),
+        current_block + 3u32.into(),
+        balance!(0.2),
         balance!(0.2),
         current_block + 3u32.into(),
         balance!(0.2)
@@ -130,6 +134,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.2),
             current_block + 3u32.into(),
             balance!(0.2)
@@ -184,6 +192,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.2),
             current_block + 3u32.into(),
             balance!(0.2)
@@ -244,6 +256,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.2),
             current_block + 3u32.into(),
             balance!(0.2)
@@ -308,6 +324,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.2),
             current_block + 3u32.into(),
             balance!(0.2)
@@ -374,6 +394,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.1),
             30u32.into(),
             balance!(0.18)
@@ -472,6 +496,10 @@ benchmarks! {
             31,
             current_block + 5u32.into(),
             current_block + 10u32.into(),
+            balance!(1000),
+            balance!(0.2),
+            current_block + 3u32.into(),
+            balance!(0.2),
             balance!(0.2),
             current_block + 3u32.into(),
             balance!(0.2)
@@ -506,6 +534,38 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::ClaimedPSWAP().into());
     }
+
+    add_whitelisted_contributor {
+        let caller = AuthorityAccount::<T>::get();
+        let contributor = alice::<T>();
+    }: _(RawOrigin::Signed(caller.clone()), contributor.clone())
+    verify {
+        assert_last_event::<T>(Event::WhitelistedContributor(contributor).into());
+    }
+
+    remove_whitelisted_contributor {
+        let caller = AuthorityAccount::<T>::get();
+        let contributor = alice::<T>();
+    }: _(RawOrigin::Signed(caller.clone()), contributor.clone())
+    verify {
+        assert_last_event::<T>(Event::RemovedWhitelistedContributor(contributor).into());
+    }
+
+    add_whitelisted_ilo_organizer {
+        let caller = AuthorityAccount::<T>::get();
+        let ilo_organizer = alice::<T>();
+    }: _(RawOrigin::Signed(caller.clone()), ilo_organizer.clone())
+    verify {
+        assert_last_event::<T>(Event::WhitelistedIloOrganizer(ilo_organizer).into());
+    }
+
+    remove_whitelisted_ilo_organizer {
+        let caller = AuthorityAccount::<T>::get();
+        let ilo_organizer = alice::<T>();
+    }: _(RawOrigin::Signed(caller.clone()), ilo_organizer.clone())
+    verify {
+        assert_last_event::<T>(Event::RemovedWhitelistedIloOrganizer(ilo_organizer).into());
+    }
 }
 
 #[cfg(test)]
@@ -527,6 +587,10 @@ mod tests {
             assert_ok!(test_benchmark_change_ceres_burn_fee::<Runtime>());
             assert_ok!(test_benchmark_change_ceres_contribution_fee::<Runtime>());
             assert_ok!(test_benchmark_claim_pswap_rewards::<Runtime>());
+            assert_ok!(test_benchmark_add_whitelisted_contributor::<Runtime>());
+            assert_ok!(test_benchmark_remove_whitelisted_contributor::<Runtime>());
+            assert_ok!(test_benchmark_add_whitelisted_ilo_organizer::<Runtime>());
+            assert_ok!(test_benchmark_remove_whitelisted_ilo_organizer::<Runtime>());
         });
     }
 }

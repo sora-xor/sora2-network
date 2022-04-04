@@ -79,6 +79,26 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(8 as Weight))
             .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
+    fn add_whitelisted_contributor() -> Weight {
+        (26_400_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn remove_whitelisted_contributor() -> Weight {
+        (26_800_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn add_whitelisted_ilo_organizer() -> Weight {
+        (25_900_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn remove_whitelisted_ilo_organizer() -> Weight {
+        (26_600_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 impl crate::WeightInfo for () {
     fn create_ilo() -> Weight {
@@ -106,6 +126,18 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn claim_pswap_rewards() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn add_whitelisted_contributor() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn remove_whitelisted_contributor() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn add_whitelisted_ilo_organizer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn remove_whitelisted_ilo_organizer() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
