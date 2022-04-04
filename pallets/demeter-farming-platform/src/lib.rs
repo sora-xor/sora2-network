@@ -105,7 +105,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn token_info)]
     pub type TokenInfos<T: Config> =
-        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo<AccountIdOf<T>>, ValueQuery>;
+        StorageMap<_, Identity, AssetIdOf<T>, TokenInfo<AccountIdOf<T>>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn user_info)]
@@ -221,7 +221,7 @@ pub mod pallet {
             }
 
             // Get token info
-            let mut token_info = <TokenInfos<T>>::get(&pool_asset);
+            let mut token_info = <TokenInfos<T>>::get(&pool_asset).unwrap_or_default();
 
             // Check if token is already registered
             ensure!(
@@ -281,13 +281,8 @@ pub mod pallet {
             ensure!(deposit_fee <= balance!(1), Error::<T>::InvalidDepositFee);
 
             // Get token info
-            let mut token_info = <TokenInfos<T>>::get(&reward_asset);
-
-            // Check if token is registered
-            ensure!(
-                token_info.token_per_block != 0,
-                Error::<T>::RewardTokenIsNotRegistered
-            );
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset)
+                .ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
 
             // Check if pool already exists
             let pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
@@ -657,7 +652,8 @@ pub mod pallet {
             }
             ensure!(exist, Error::<T>::PoolDoesNotExist);
 
-            let mut token_info = <TokenInfos<T>>::get(&reward_asset);
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset)
+                .ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
 
             if is_farm {
                 token_info.farms_total_multiplier =
@@ -745,13 +741,8 @@ pub mod pallet {
             }
 
             // Get token info
-            let mut token_info = <TokenInfos<T>>::get(&pool_asset);
-
-            // Check if token is already registered
-            ensure!(
-                token_info.token_per_block != 0,
-                Error::<T>::RewardTokenIsNotRegistered
-            );
+            let mut token_info =
+                <TokenInfos<T>>::get(&pool_asset).ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
 
             // Check if token_per_block is zero
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
@@ -802,7 +793,7 @@ pub mod pallet {
 
         fn mint_deo() {
             let blocks = 14400_u32;
-            let deo_info = <TokenInfos<T>>::get(&T::DemeterAssetId::get());
+            let deo_info = <TokenInfos<T>>::get(&T::DemeterAssetId::get()).unwrap_or_default();
 
             let amount = (FixedWrapper::from(balance!(blocks))
                 * FixedWrapper::from(deo_info.token_per_block))
