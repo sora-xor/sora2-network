@@ -956,8 +956,8 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
         pub fn remove_sidechain_asset(
             origin: OriginFor<T>,
-            network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
+            network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
@@ -977,9 +977,9 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
-            network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
-            token_address: Address,
+            token_address: EthereumAddress,
+            network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!(
                 "called register_existing_sidechain_asset. asset_id: {:?}",
