@@ -772,8 +772,8 @@ fn should_remove_asset() {
         let net_id = ETH_NETWORK_ID;
         assert_ok!(EthBridge::remove_sidechain_asset(
             Origin::root(),
+            XOR,
             net_id,
-            XOR
         ));
         assert!(EthBridge::registered_asset(net_id, XOR).is_none());
     });
@@ -788,15 +788,15 @@ fn should_register_removed_asset() {
         let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, XOR).unwrap();
         assert_ok!(EthBridge::remove_sidechain_asset(
             Origin::root(),
+            XOR,
             net_id,
-            XOR
         ));
         assert!(EthBridge::registered_asset(net_id, XOR).is_none());
         assert_ok!(EthBridge::register_existing_sidechain_asset(
             Origin::root(),
-            net_id,
             XOR,
-            token_address
+            token_address,
+            net_id,
         ));
         assert!(EthBridge::registered_asset(net_id, XOR).is_some());
     });
@@ -812,9 +812,9 @@ fn should_not_register_existing_asset() {
         assert_err!(
             EthBridge::register_existing_sidechain_asset(
                 Origin::root(),
-                net_id,
                 XOR,
-                token_address
+                token_address,
+                net_id,
             ),
             Error::TokenIsAlreadyAdded
         );
