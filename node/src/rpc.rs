@@ -117,6 +117,7 @@ where
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
+    C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
@@ -132,6 +133,7 @@ where
     use rewards_rpc::{RewardsAPI, RewardsClient};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
+    use vested_rewards_rpc::{VestedRewardsApi, VestedRewardsClient};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
@@ -165,5 +167,8 @@ where
         PswapDistributionClient::new(client.clone()),
     ));
     io.extend_with(RewardsAPI::to_delegate(RewardsClient::new(client.clone())));
+    io.extend_with(VestedRewardsApi::to_delegate(VestedRewardsClient::new(
+        client,
+    )));
     io
 }
