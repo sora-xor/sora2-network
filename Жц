@@ -70,7 +70,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type EthAddress = H160;
+type EthereumAddress = H160;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
@@ -107,7 +107,7 @@ pub trait WeightInfo {
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn claimables(eth_address: &EthAddress) -> Vec<Balance> {
+    pub fn claimables(eth_address: &EthereumAddress) -> Vec<Balance> {
         let mut res = vec![
             ValOwners::<T>::get(eth_address).claimable,
             PswapFarmOwners::<T>::get(eth_address),
@@ -131,8 +131,8 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn claim_reward<M: StorageMapTrait<EthAddress, Balance>>(
-        eth_address: &EthAddress,
+    fn claim_reward<M: StorageMapTrait<EthereumAddress, Balance>>(
+        eth_address: &EthereumAddress,
         account_id: &AccountIdOf<T>,
         asset_id: &AssetIdOf<T>,
         reserves_acc: &T::TechAccountId,
@@ -151,7 +151,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn claim_val_reward(
-        eth_address: &EthAddress,
+        eth_address: &EthereumAddress,
         account_id: &AccountIdOf<T>,
         asset_id: &AssetIdOf<T>,
         reserves_acc: &T::TechAccountId,
@@ -173,38 +173,6 @@ impl<T: Config> Pallet<T> {
                 TotalClaimableVal::<T>::mutate(|v| *v = v.saturating_sub(amount));
                 *claimed = true;
             }
-        }
-        Ok(())
-    }
-
-    fn claim_umi_nfts(
-        eth_address: &EthAddress,
-        account_id: &AccountIdOf<T>,
-        reserves_acc: &T::TechAccountId,
-        claimed: &mut bool,
-        is_eligible: &mut bool,
-    ) -> Result<(), DispatchErrorWithPostInfo> {
-        if let Ok(rewards) = UmiNftOwners::<T>::try_get(eth_address) {
-            *is_eligible = true;
-            let mut updated_balances = rewards.clone();
-
-            for (n, balance) in rewards.iter().enumerate() {
-                if *balance > 0 {
-                    let asset_id = UmiNfts::<T>::get()[n];
-                    technical::Pallet::<T>::transfer_out(
-                        &asset_id,
-                        reserves_acc,
-                        account_id,
-                        *balance,
-                    )?;
-                    updated_balances[n] = 0;
-                    *claimed = true;
-                } else {
-                    *claimed = false;
-                }
-            }
-
-            UmiNftOwners::<T>::insert(eth_address, updated_balances);
         }
         Ok(())
     }
@@ -396,7 +364,7 @@ pub mod pallet {
         #[transactional]
         pub fn finalize_storage_migration(
             origin: OriginFor<T>,
-            amounts: Vec<(EthAddress, Balance)>,
+            amounts: Vec<(EthereumAddress, Balance)>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             // Ensure this call is allowed
@@ -439,17 +407,20 @@ pub mod pallet {
 
     /// A map EthAddresses -> RewardInfo, that is claimable and remaining vested amounts per address
     #[pallet::storage]
-    pub type ValOwners<T: Config> = StorageMap<_, Identity, EthAddress, RewardInfo, ValueQuery>;
+    pub type ValOwners<T: Config> =
+        StorageMap<_, Identity, EthereumAddress, RewardInfo, ValueQuery>;
 
     #[pallet::storage]
-    pub type PswapFarmOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
+    pub type PswapFarmOwners<T: Config> =
+        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
-    pub type PswapWaifuOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
+    pub type PswapWaifuOwners<T: Config> =
+        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
     pub type UmiNftOwners<T: Config> =
-        StorageMap<_, Identity, EthAddress, Vec<Balance>, ValueQuery>;
+        StorageMap<_, Identity, EthereumAddress, Vec<Balance>, ValueQuery>;
 
     /// Amount of VAL burned since last vesting
     #[pallet::storage]
@@ -461,7 +432,8 @@ pub mod pallet {
 
     /// All addresses are split in batches, `AddressBatches` maps batch number to a set of addresses
     #[pallet::storage]
-    pub type EthAddresses<T: Config> = StorageMap<_, Identity, u32, Vec<EthAddress>, ValueQuery>;
+    pub type EthAddresses<T: Config> =
+        StorageMap<_, Identity, u32, Vec<EthereumAddress>, ValueQuery>;
 
     /// Total amount of VAL rewards either claimable now or some time in the future
     #[pallet::storage]
@@ -476,14 +448,14 @@ pub mod pallet {
     pub type MigrationPending<T: Config> = StorageValue<_, bool, ValueQuery>;
 
     #[pallet::storage]
-    pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AssetId>, ValueQuery>;
+    pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
-        pub val_owners: Vec<(EthAddress, RewardInfo)>,
-        pub pswap_farm_owners: Vec<(EthAddress, Balance)>,
-        pub pswap_waifu_owners: Vec<(EthAddress, Balance)>,
+        pub val_owners: Vec<(EthereumAddress, RewardInfo)>,
+        pub pswap_farm_owners: Vec<(EthereumAddress, Balance)>,
+        pub pswap_waifu_owners: Vec<(EthereumAddress, Balance)>,
     }
 
     #[cfg(feature = "std")]
