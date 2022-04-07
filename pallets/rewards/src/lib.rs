@@ -319,6 +319,9 @@ pub mod pallet {
                 Some(PalletVersion {
                     major: 1, minor: 1, ..
                 }) => migrations::v1_2::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1, minor: 2, ..
+                }) => migrations::v1_3::migrate::<T>(),
                 _ => T::DbWeight::get().reads(1),
             }
         }

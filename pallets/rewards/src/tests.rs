@@ -46,6 +46,7 @@ type Error = crate::Error<Runtime>;
 type Assets = assets::Pallet<Runtime>;
 
 type ValOwners = crate::ValOwners<Runtime>;
+type UmiNftOwners = crate::UmiNftOwners<Runtime>;
 type EthAddresses = crate::EthAddresses<Runtime>;
 type TotalValRewards = crate::TotalValRewards<Runtime>;
 type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
@@ -292,6 +293,53 @@ fn storage_migration_to_v1_2_0_works_2() {
         assert_noop!(
             Pallet::finalize_storage_migration(RawOrigin::Root.into(), unclaimed_val_data()),
             Error::IllegalCall
+        );
+    });
+}
+
+#[test]
+fn storage_migration_to_v1_3_0_works() {
+    TestExternalities::new_empty().execute_with(|| {
+        PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
+
+        // we don't have the first and the last addresses from the list before migration
+        assert_eq!(
+            UmiNftOwners::get(EthereumAddress::from_slice(&hex!(
+                "04a84b8da7e85cdb206727514f3bf8d0521dfa01"
+            ))),
+            Vec::new()
+        );
+
+        assert_eq!(
+            UmiNftOwners::get(EthereumAddress::from_slice(&hex!(
+                "7a8acdc43548e321fd627bfc3d405859b7970aaa"
+            ))),
+            Vec::new()
+        );
+
+        assert_eq!(MigrationPending::get(), false);
+
+        // Import data for storage migration
+        let w = Pallet::on_runtime_upgrade();
+        assert_eq!(w, 67771000);
+
+        assert_eq!(
+            UmiNftOwners::get(EthereumAddress::from_slice(&hex!(
+                "04a84b8da7e85cdb206727514f3bf8d0521dfa01"
+            ))),
+            vec![1, 1, 1]
+        );
+
+        assert_eq!(
+            UmiNftOwners::get(EthereumAddress::from_slice(&hex!(
+                "7a8acdc43548e321fd627bfc3d405859b7970aaa"
+            ))),
+            vec![1, 1, 1]
         );
     });
 }
