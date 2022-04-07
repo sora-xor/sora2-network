@@ -53,6 +53,7 @@ type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
 type CurrentClaimableVal = crate::CurrentClaimableVal<Runtime>;
 type TotalClaimableVal = crate::TotalClaimableVal<Runtime>;
 type MigrationPending = crate::MigrationPending<Runtime>;
+type UmiNfts = crate::UmiNfts<Runtime>;
 
 type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
@@ -322,11 +323,14 @@ fn storage_migration_to_v1_3_0_works() {
             Vec::new()
         );
 
+        // we don't have nfts as well
+        assert_eq!(UmiNfts::get(), Vec::new());
+
         assert_eq!(MigrationPending::get(), false);
 
         // Import data for storage migration
         let w = Pallet::on_runtime_upgrade();
-        assert_eq!(w, 67771000);
+        assert_eq!(w, 67772000);
 
         assert_eq!(
             UmiNftOwners::get(EthereumAddress::from_slice(&hex!(
