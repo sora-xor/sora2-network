@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod v1_2 {
-    use crate::{Config, EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo, Weight};
+    use crate::{Config, EthAddress, PswapFarmOwners, ReservesAcc, RewardInfo, Weight};
     use common::{balance, Balance, PSWAP};
     use frame_support::debug;
     use frame_support::dispatch::DispatchError;
@@ -52,7 +52,7 @@ pub mod v1_2 {
     // https://etherscan.io/tx/0x5605564eadc8b912de930fb9e3405b0aa1010cf3decc0eace176b6cf5aeee166
     pub fn add_lost_pswap<T: Config>() -> Weight {
         let user_account =
-            EthereumAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
+            EthAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
         let compensation_amount = balance!(74339.224845900297630556);
         PswapFarmOwners::<T>::insert(user_account, compensation_amount);
         let reserves_tech_acc = ReservesAcc::<T>::get();
@@ -153,11 +153,11 @@ pub mod v1_2 {
     // Therefore only existing entires of `ValOwners` storage map are allowed to be updated.
     // No new entries should be created in the `ValOwners` map should there be
     // a pair in the `amounts` whose key is not already in the storage map.
-    pub fn update_val_owners<T: Config>(amounts: Vec<(EthereumAddress, Balance)>) {
+    pub fn update_val_owners<T: Config>(amounts: Vec<(EthAddress, Balance)>) {
         let amounts = amounts
             .iter()
             .cloned()
-            .collect::<BTreeMap<EthereumAddress, Balance>>();
+            .collect::<BTreeMap<EthAddress, Balance>>();
 
         let mut total = balance!(0);
         crate::ValOwners::<T>::translate::<RewardInfo, _>(|addr, info| {

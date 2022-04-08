@@ -9,7 +9,7 @@ use crate::tests::{
     approve_next_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
 use crate::types::{Bytes, Transaction};
-use crate::{types, Address};
+use crate::{types, EthAddress};
 use common::eth;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -391,7 +391,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
             EthBridge::add_peer(
                 Origin::signed(bob.clone()),
                 peer_id.clone(),
-                Address::from(&hex!("2222222222222222222222222222222222222222")),
+                EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
             ),
             Error::Forbidden

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use common::eth::EthereumAddress;
+use common::eth::EthAddress;
 use common::{balance, Balance, PSWAP, VAL};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
@@ -47,21 +47,20 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-fn eth_address(prefix: Vec<u8>, index: u128) -> EthereumAddress {
+fn eth_address(prefix: Vec<u8>, index: u128) -> EthAddress {
     let hash: [u8; 32] = (prefix, index).using_encoded(blake2_256);
-    EthereumAddress::from_slice(&hash[12..])
+    EthAddress::from_slice(&hash[12..])
 }
 
 // Adds `n` of unaccessible rewards and after adds 1 reward that will be claimed
 fn add_rewards<T: Config>(n: u32) {
-    let unaccessible_eth_addr: EthereumAddress =
-        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
+    let unaccessible_eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
     for _i in 0..n {
         ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
         PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
         PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
     }
-    let eth_addr: EthereumAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into();
+    let eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into();
     ValOwners::<T>::insert(&eth_addr, RewardInfo::from(300));
     PswapFarmOwners::<T>::insert(&eth_addr, 300);
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
@@ -69,8 +68,8 @@ fn add_rewards<T: Config>(n: u32) {
 
 // Populates `ValOwners` storage map and returns a vector of pairs `Vec<(addr, balance)>`
 // as remaining (unclaimed) VAL rewards
-fn populate_val_owners<T: Config>(n: u32) -> Vec<(EthereumAddress, Balance)> {
-    let mut unclaimed: Vec<(EthereumAddress, Balance)> = vec![];
+fn populate_val_owners<T: Config>(n: u32) -> Vec<(EthAddress, Balance)> {
+    let mut unclaimed: Vec<(EthAddress, Balance)> = vec![];
     for i in 0..n {
         let addr = eth_address(b"eth_address".to_vec(), i as u128);
         ValOwners::<T>::insert(&addr, RewardInfo::from(Balance::from(i)));

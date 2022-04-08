@@ -5,7 +5,7 @@ use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{last_outgoing_request, last_request, Assets, ETH_NETWORK_ID};
 use crate::types::Log;
 use crate::{
-    types, Address, AssetConfig, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
+    types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
     MAX_PENDING_TX_BLOCKS_PERIOD, RE_HANDLE_TXS_PERIOD, STORAGE_PENDING_TRANSACTIONS_KEY,
     SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
@@ -27,7 +27,7 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));
@@ -50,7 +50,7 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));
@@ -91,7 +91,7 @@ fn ocw_should_remove_pending_transaction_on_max_retries() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));
@@ -137,7 +137,7 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));
@@ -228,7 +228,7 @@ fn should_reapprove_on_long_pending() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             10,
             net_id,
         ));
@@ -285,7 +285,7 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
-            ethabi::Token::Address(types::Address::from(
+            ethabi::Token::Address(types::EthAddress::from(
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
                     .unwrap()
                     .0,

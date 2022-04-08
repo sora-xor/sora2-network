@@ -56,13 +56,13 @@ pub struct BalanceInfo<Balance> {
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait VestedRewardsApi<Address, AssetId, Balance> where
-        Address: Codec,
+    pub trait VestedRewardsApi<EthAddress, AssetId, Balance> where
+        EthAddress: Codec,
         AssetId: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay
     {
         fn crowdloan_claimable(
-            address: Address,
+            address: EthAddress,
             asset_id: AssetId,
         ) -> Option<BalanceInfo<Balance>>;
     }

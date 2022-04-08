@@ -337,7 +337,7 @@ pub fn run_to_block(n: u64) {
     }
 }
 
-pub fn unclaimed_val_data() -> Vec<(crate::EthereumAddress, Balance)> {
+pub fn unclaimed_val_data() -> Vec<(crate::EthAddress, Balance)> {
     vec![
         (
             hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),

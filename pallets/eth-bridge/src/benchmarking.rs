@@ -71,7 +71,7 @@ benchmarks! {
     }: transfer_to_sidechain(
         RawOrigin::Signed(caller.clone()),
         asset_id,
-        Address::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+        EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
         balance!(100),
         net_id
     )
@@ -108,7 +108,7 @@ benchmarks! {
         let asset_id: T::AssetId = XOR.into();
         let alice = alice::<T>();
         let inc_req = IncomingRequest::Transfer(IncomingTransfer::<T> {
-            from: Address::from([10u8; 20]),
+            from: EthAddress::from([10u8; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::SidechainOwned,
@@ -137,7 +137,7 @@ benchmarks! {
         let req_hash = H256([1u8; 32]);
         let alice = alice::<T>();
         let inc_req = IncomingRequest::Transfer(IncomingTransfer::<T> {
-            from: Address::from([10u8; 20]),
+            from: EthAddress::from([10u8; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::SidechainOwned,
@@ -174,7 +174,7 @@ benchmarks! {
         frame_support::assert_ok!(crate::Pallet::<T>::transfer_to_sidechain(
             RawOrigin::Signed(caller.clone()).into(),
             asset_id,
-            Address::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+            EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
             balance!(100),
             net_id
         ));
@@ -210,7 +210,7 @@ benchmarks! {
         frame_support::assert_ok!(crate::Pallet::<T>::transfer_to_sidechain(
             RawOrigin::Signed(caller.clone()).into(),
             asset_id,
-            Address::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+            EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
             balance!(100),
             net_id
         ));
@@ -254,7 +254,7 @@ benchmarks! {
         frame_support::assert_ok!(crate::Pallet::<T>::transfer_to_sidechain(
             RawOrigin::Signed(caller.clone()).into(),
             asset_id,
-            Address::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
+            EthAddress::from(hex!("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A")),
             balance!(100),
             net_id
         ));

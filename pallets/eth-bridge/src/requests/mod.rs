@@ -31,7 +31,7 @@
 use crate::contract::{ContractEvent, DepositEvent};
 use crate::offchain::SignatureParams;
 use crate::{
-    Address, BridgeNetworkId, BridgeTimepoint, Config, Error, Pallet, PeerAccountId,
+    BridgeNetworkId, BridgeTimepoint, Config, Error, EthAddress, Pallet, PeerAccountId,
     RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
 use codec::{Decode, Encode};
@@ -291,7 +291,7 @@ pub enum IncomingRequest<T: Config> {
 
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
-        event: ContractEvent<Address, T::AccountId, Balance>,
+        event: ContractEvent<EthAddress, T::AccountId, Balance>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
     ) -> Result<Self, Error<T>> {

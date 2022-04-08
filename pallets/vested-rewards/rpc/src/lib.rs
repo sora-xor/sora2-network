@@ -45,11 +45,11 @@ use std::sync::Arc;
 pub use vested_rewards_runtime_api::{BalanceInfo, VestedRewardsApi as VestedRewardsRuntimeApi};
 
 #[rpc]
-pub trait VestedRewardsApi<BlockHash, Address, AssetId, OptionBalanceInfo> {
+pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
     #[rpc(name = "vestedRewards_crowdloanClaimable")]
     fn crowdloan_claimable(
         &self,
-        address: Address,
+        address: EthAddress,
         asset_id: AssetId,
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
@@ -70,21 +70,21 @@ impl<C, B> VestedRewardsClient<C, B> {
     }
 }
 
-impl<C, Block, Address, AssetId, Balance>
-    VestedRewardsApi<<Block as BlockT>::Hash, Address, AssetId, Option<BalanceInfo<Balance>>>
+impl<C, Block, EthAddress, AssetId, Balance>
+    VestedRewardsApi<<Block as BlockT>::Hash, EthAddress, AssetId, Option<BalanceInfo<Balance>>>
     for VestedRewardsClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: VestedRewardsRuntimeApi<Block, Address, AssetId, Balance>,
-    Address: Codec,
+    C::Api: VestedRewardsRuntimeApi<Block, EthAddress, AssetId, Balance>,
+    EthAddress: Codec,
     AssetId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
 {
     fn crowdloan_claimable(
         &self,
-        address: Address,
+        address: EthAddress,
         asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {

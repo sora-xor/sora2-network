@@ -1911,12 +1911,12 @@ pub fn ext() -> sp_io::TestExternalities {
 mod tests {
     use hex_literal::hex;
 
-    use common::eth::EthereumAddress;
+    use common::eth::EthAddress;
     use common::{balance, Balance};
 
     #[test]
     fn calculate_reserves() {
-        let accounts: Vec<(EthereumAddress, Balance)> = vec![
+        let accounts: Vec<(EthAddress, Balance)> = vec![
             (
                 hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
                 balance!(100),
