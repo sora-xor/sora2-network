@@ -9,7 +9,7 @@ use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
     approve_last_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
-use crate::Address;
+use crate::{Address, RegisteredSidechainToken};
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
@@ -275,7 +275,7 @@ fn should_not_add_token_if_not_bridge_account() {
 fn should_reserve_owned_asset_on_different_networks() {
     let mut builder = ExtBuilder::default();
     let net_id_0 = ETH_NETWORK_ID;
-    let net_id_1 = builder.add_network(vec![], None, None);
+    let net_id_1 = builder.add_network(vec![], None, None, Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -367,7 +367,7 @@ fn should_reserve_owned_asset_on_different_networks() {
 fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
     let mut builder = ExtBuilder::default();
     let net_id_0 = ETH_NETWORK_ID;
-    let net_id_1 = builder.add_network(vec![], None, None);
+    let net_id_1 = builder.add_network(vec![], None, None, Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -566,7 +566,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
 }
 
 #[test]
-fn should_convert_amount_for_nft_token() {
+fn should_convert_amount_for_indivisible_token() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -760,6 +760,63 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
                 net_id,
             ),
             Error::UnsupportedAssetPrecision
+        );
+    });
+}
+
+#[test]
+fn should_remove_asset() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        assert_ok!(EthBridge::remove_sidechain_asset(
+            Origin::root(),
+            XOR,
+            net_id,
+        ));
+        assert!(EthBridge::registered_asset(net_id, XOR).is_none());
+    });
+}
+
+#[test]
+fn should_register_removed_asset() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, XOR).unwrap();
+        assert_ok!(EthBridge::remove_sidechain_asset(
+            Origin::root(),
+            XOR,
+            net_id,
+        ));
+        assert!(EthBridge::registered_asset(net_id, XOR).is_none());
+        assert_ok!(EthBridge::register_existing_sidechain_asset(
+            Origin::root(),
+            XOR,
+            token_address,
+            net_id,
+        ));
+        assert!(EthBridge::registered_asset(net_id, XOR).is_some());
+    });
+}
+
+#[test]
+fn should_not_register_existing_asset() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, XOR).unwrap();
+        assert_err!(
+            EthBridge::register_existing_sidechain_asset(
+                Origin::root(),
+                XOR,
+                token_address,
+                net_id,
+            ),
+            Error::TokenIsAlreadyAdded
         );
     });
 }

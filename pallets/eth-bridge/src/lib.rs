@@ -128,6 +128,8 @@ pub trait WeightInfo {
             };
         weight
     }
+    fn remove_sidechain_asset() -> Weight;
+    fn register_existing_sidechain_asset() -> Weight;
 }
 
 type Address = H160;
@@ -152,6 +154,8 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
+/// Maximum substrate blocks can be handled during single offchain procedure.
+const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 3;
 #[cfg(not(test))]
 const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
 #[cfg(test)]
@@ -411,9 +415,16 @@ pub mod pallet {
                 return;
             }
 
-            let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
-            let _guard = lock.lock();
-            Self::offchain();
+            let mut lock = StorageLock::<'_, Time>::with_deadline(
+                b"eth-bridge-ocw::lock",
+                sp_core::offchain::Duration::from_millis(100000),
+            );
+            let guard = lock.try_lock();
+            if let Ok(_guard) = guard {
+                Self::offchain();
+            } else {
+                debug::debug!("Skip worker {:?}", block_number);
+            }
         }
     }
 
@@ -432,10 +443,11 @@ pub mod pallet {
             bridge_contract_address: EthereumAddress,
             initial_peers: Vec<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
-            let author = ensure_signed(origin)?;
+            ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
+            ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
-                author,
+                initial_peers[0].clone(),
                 initial_peers.clone(),
             )?;
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
@@ -937,6 +949,55 @@ pub mod pallet {
             };
             Ok(Some(weight).into())
         }
+
+        /// Remove asset
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
+        pub fn remove_sidechain_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
+            ensure_root(origin)?;
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::UnknownAssetId)?;
+            RegisteredAsset::<T>::remove(network_id, &asset_id);
+            RegisteredSidechainAsset::<T>::remove(network_id, &token_address);
+            RegisteredSidechainToken::<T>::remove(network_id, &asset_id);
+            SidechainAssetPrecision::<T>::remove(network_id, &asset_id);
+            Ok(().into())
+        }
+
+        /// Register existing asset
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        pub fn register_existing_sidechain_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            token_address: EthereumAddress,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!(
+                "called register_existing_sidechain_asset. asset_id: {:?}",
+                asset_id
+            );
+            ensure_root(origin)?;
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsAlreadyAdded
+            );
+            let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
+            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1126,6 +1187,8 @@ pub mod pallet {
         ExpectedEthNetwork,
         /// Request was removed and refunded.
         RemovedAndRefunded,
+        /// Not enough peers provided, need at least 1
+        NotEnoughPeers,
     }
 
     impl<T: Config> Error<T> {
@@ -1569,7 +1632,7 @@ impl<T: Config> Pallet<T> {
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
         RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
         SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
-        let scope = Scope::Unlimited;
+        let scope = Scope::Limited(common::hash(&asset_id));
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
             let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)

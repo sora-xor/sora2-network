@@ -596,7 +596,7 @@ mod tests {
     }
 
     #[test]
-    fn should_register_nft() {
+    fn should_register_indivisible() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let next_asset_id = Assets::gen_asset_id(&ALICE);

@@ -7,7 +7,7 @@ use crate::types::Log;
 use crate::{
     types, Address, AssetConfig, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
     MAX_PENDING_TX_BLOCKS_PERIOD, RE_HANDLE_TXS_PERIOD, STORAGE_PENDING_TRANSACTIONS_KEY,
-    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
@@ -65,13 +65,13 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
             .iter()
             .all(|(hash, x)| hash == &x.extrinsic_hash));
         assert_eq!(state.pool_state.read().transactions.len(), 1);
-        state.run_next_offchain_with_params(
-            0,
-            frame_system::Pallet::<Runtime>::block_number()
-                + 1
-                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
-            false,
-        );
+        for _ in 0..SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION + 1 {
+            state.run_next_offchain_with_params(
+                0,
+                frame_system::Pallet::<Runtime>::block_number() + 1,
+                false,
+            );
+        }
         assert_eq!(state.pending_txs().len(), 1);
         assert!(state
             .pending_txs()
@@ -127,6 +127,7 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(2),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -157,7 +158,10 @@ fn ocw_should_load_substrate_blocks_sequentially() {
         assert_eq!(state.substrate_to_handle_from_height(), 0);
         let finalized_height = 10;
         state.run_next_offchain_with_params(0, finalized_height, false);
-        assert_eq!(state.substrate_to_handle_from_height(), finalized_height);
+        assert_eq!(
+            state.substrate_to_handle_from_height(),
+            finalized_height + 1
+        );
         let blocks_passed = 10;
         for i in 1..=blocks_passed {
             // Assume the new finalized height doesn't change.
@@ -165,7 +169,9 @@ fn ocw_should_load_substrate_blocks_sequentially() {
             // Then off-chain workers should load each block sequentially up to the finalized one.
             assert_eq!(
                 state.substrate_to_handle_from_height(),
-                finalized_height + i
+                (finalized_height + i * SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK as BlockNumber)
+                    .min(finalized_height + blocks_passed)
+                    + 1
             );
         }
     });
@@ -184,6 +190,7 @@ fn ocw_should_abort_missing_transaction() {
         }],
         Some(vec![(VAL.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -237,11 +244,13 @@ fn should_reapprove_on_long_pending() {
         state.storage_remove(STORAGE_PENDING_TRANSACTIONS_KEY);
         frame_system::Pallet::<Runtime>::set_block_number(MAX_PENDING_TX_BLOCKS_PERIOD as u64);
         drop(guard);
-        state.run_next_offchain_with_params(
-            CONFIRMATION_INTERVAL,
-            frame_system::Pallet::<Runtime>::block_number() + 1,
-            false,
-        );
+        for _ in 0..MAX_PENDING_TX_BLOCKS_PERIOD - 1 {
+            state.run_next_offchain_with_params(
+                CONFIRMATION_INTERVAL,
+                frame_system::Pallet::<Runtime>::block_number() + 1,
+                false,
+            );
+        }
         let guard = state.pool_state.read();
         assert!(!guard.transactions.is_empty());
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 1);
@@ -261,6 +270,7 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -321,8 +331,9 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         assert_eq!(state.pool_state.read().transactions.len(), 0);
 
         // Wait for the re-handle stage.
-        frame_system::Pallet::<Runtime>::set_block_number(RE_HANDLE_TXS_PERIOD as u64 - 1);
-        state.run_next_offchain_and_dispatch_txs();
+        for _ in 0..RE_HANDLE_TXS_PERIOD - 5 {
+            state.run_next_offchain_and_dispatch_txs();
+        }
 
         assert_eq!(state.pending_txs().len(), 1);
         assert_eq!(state.failed_pending_txs().len(), 1);
@@ -332,8 +343,9 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
 
         state.run_next_offchain_and_dispatch_txs();
         // Re-handle again and check that the transactions was removed from the secondary qeueue.
-        frame_system::Pallet::<Runtime>::set_block_number(RE_HANDLE_TXS_PERIOD as u64 * 2 - 1);
-        state.run_next_offchain_and_dispatch_txs();
+        for _ in 0..RE_HANDLE_TXS_PERIOD {
+            state.run_next_offchain_and_dispatch_txs();
+        }
 
         assert_eq!(state.pending_txs().len(), 1);
         assert_eq!(state.failed_pending_txs().len(), 0);
