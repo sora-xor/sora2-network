@@ -70,7 +70,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type EthereumAddress = H160;
+type EthAddress = H160;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
@@ -107,7 +107,7 @@ pub trait WeightInfo {
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn claimables(eth_address: &EthereumAddress) -> Vec<Balance> {
+    pub fn claimables(eth_address: &EthAddress) -> Vec<Balance> {
         vec![
             ValOwners::<T>::get(eth_address).claimable,
             PswapFarmOwners::<T>::get(eth_address),
@@ -129,8 +129,8 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn claim_reward<M: StorageMapTrait<EthereumAddress, Balance>>(
-        eth_address: &EthereumAddress,
+    fn claim_reward<M: StorageMapTrait<EthAddress, Balance>>(
+        eth_address: &EthAddress,
         account_id: &AccountIdOf<T>,
         asset_id: &AssetIdOf<T>,
         reserves_acc: &T::TechAccountId,
@@ -149,7 +149,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn claim_val_reward(
-        eth_address: &EthereumAddress,
+        eth_address: &EthAddress,
         account_id: &AccountIdOf<T>,
         asset_id: &AssetIdOf<T>,
         reserves_acc: &T::TechAccountId,
@@ -355,7 +355,7 @@ pub mod pallet {
         #[transactional]
         pub fn finalize_storage_migration(
             origin: OriginFor<T>,
-            amounts: Vec<(EthereumAddress, Balance)>,
+            amounts: Vec<(EthAddress, Balance)>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             // Ensure this call is allowed
@@ -398,16 +398,13 @@ pub mod pallet {
 
     /// A map EthAddresses -> RewardInfo, that is claimable and remaining vested amounts per address
     #[pallet::storage]
-    pub type ValOwners<T: Config> =
-        StorageMap<_, Identity, EthereumAddress, RewardInfo, ValueQuery>;
+    pub type ValOwners<T: Config> = StorageMap<_, Identity, EthAddress, RewardInfo, ValueQuery>;
 
     #[pallet::storage]
-    pub type PswapFarmOwners<T: Config> =
-        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
+    pub type PswapFarmOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
-    pub type PswapWaifuOwners<T: Config> =
-        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
+    pub type PswapWaifuOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
 
     /// Amount of VAL burned since last vesting
     #[pallet::storage]
@@ -419,8 +416,7 @@ pub mod pallet {
 
     /// All addresses are split in batches, `AddressBatches` maps batch number to a set of addresses
     #[pallet::storage]
-    pub type EthAddresses<T: Config> =
-        StorageMap<_, Identity, u32, Vec<EthereumAddress>, ValueQuery>;
+    pub type EthAddresses<T: Config> = StorageMap<_, Identity, u32, Vec<EthAddress>, ValueQuery>;
 
     /// Total amount of VAL rewards either claimable now or some time in the future
     #[pallet::storage]
@@ -437,9 +433,9 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
-        pub val_owners: Vec<(EthereumAddress, RewardInfo)>,
-        pub pswap_farm_owners: Vec<(EthereumAddress, Balance)>,
-        pub pswap_waifu_owners: Vec<(EthereumAddress, Balance)>,
+        pub val_owners: Vec<(EthAddress, RewardInfo)>,
+        pub pswap_farm_owners: Vec<(EthAddress, Balance)>,
+        pub pswap_waifu_owners: Vec<(EthAddress, Balance)>,
     }
 
     #[cfg(feature = "std")]

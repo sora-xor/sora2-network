@@ -9,7 +9,7 @@ use crate::tests::{
     approve_next_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
 use crate::types::{Bytes, Transaction};
-use crate::{types, Address};
+use crate::{types, EthAddress};
 use common::eth;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -136,7 +136,7 @@ fn should_add_peer_in_eth_network() {
 #[test]
 fn should_add_peer_in_simple_networks() {
     let mut builder = ExtBuilder::default();
-    let net_id = builder.add_network(vec![], None, Some(4));
+    let net_id = builder.add_network(vec![], None, Some(4), Default::default());
     assert_ne!(net_id, ETH_NETWORK_ID);
     let (mut ext, state) = builder.build();
 
@@ -205,7 +205,7 @@ fn should_add_peer_in_simple_networks() {
 #[test]
 fn should_remove_peer_in_simple_network() {
     let mut builder = ExtBuilder::default();
-    let net_id = builder.add_network(vec![], None, Some(5));
+    let net_id = builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -267,7 +267,7 @@ fn should_remove_peer_in_simple_network() {
 #[test]
 fn should_remove_peer_in_eth_network() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -376,7 +376,7 @@ fn should_remove_peer_in_eth_network() {
 #[ignore]
 fn should_not_allow_add_and_remove_peer_only_to_authority() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -391,7 +391,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
             EthBridge::add_peer(
                 Origin::signed(bob.clone()),
                 peer_id.clone(),
-                Address::from(&hex!("2222222222222222222222222222222222222222")),
+                EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
             ),
             Error::Forbidden
@@ -402,7 +402,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
 #[test]
 fn should_not_allow_changing_peers_simultaneously() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {

@@ -1,4 +1,4 @@
-use crate::{Address, Call, Config, Error, RequestStatus};
+use crate::{Call, Config, Error, EthAddress, RequestStatus};
 use bridge_multisig::MultiChainHeight;
 use frame_support::debug;
 use frame_support::sp_runtime::offchain::storage_lock::BlockNumberProvider;
@@ -44,7 +44,7 @@ pub fn migrate_broken_pending_outgoing_transfers<T: Config>(to_height: T::BlockN
         .reads_writes((queue_len * 2 + 1) as Weight, (count * 2) as Weight)
 }
 
-pub fn remove_peers<T: Config>(peer_ids: &[(T::AccountId, Address)]) {
+pub fn remove_peers<T: Config>(peer_ids: &[(T::AccountId, EthAddress)]) {
     let eth_network_id = T::GetEthNetworkId::get();
     let mut peers = crate::Peers::<T>::get(eth_network_id);
     for (account_id, address) in peer_ids {

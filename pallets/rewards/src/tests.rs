@@ -39,7 +39,7 @@ use hex_literal::hex;
 use sp_io::TestExternalities;
 
 use crate::mock::*;
-use crate::{EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo};
+use crate::{EthAddress, PswapFarmOwners, ReservesAcc, RewardInfo};
 
 type Pallet = crate::Pallet<Runtime>;
 type Error = crate::Error<Runtime>;
@@ -58,7 +58,7 @@ type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 generate_storage_instance!(Rewards, ValOwners);
 
 type DeprecatedValOwners =
-    StorageMap<ValOwnersOldInstance, Identity, EthereumAddress, Balance, ValueQuery>;
+    StorageMap<ValOwnersOldInstance, Identity, EthAddress, Balance, ValueQuery>;
 
 fn account() -> AccountId {
     hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43").into()
@@ -147,7 +147,7 @@ fn storage_migration_to_v1_2_0_works() {
         .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
         let expected_pswap = balance!(74339.224845900297630556);
         let expected_eth_address =
-            EthereumAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
+            EthAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
 
         let reserves_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &ReservesAcc::<Runtime>::get(),
@@ -171,7 +171,7 @@ fn storage_migration_to_v1_2_0_works() {
 #[test]
 fn storage_migration_to_v1_2_0_works_2() {
     TestExternalities::new_empty().execute_with(|| {
-        let old_val_owners: Vec<(EthereumAddress, Balance)> = vec![
+        let old_val_owners: Vec<(EthAddress, Balance)> = vec![
             (
                 hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
                 balance!(100),
@@ -304,9 +304,9 @@ fn val_strategic_bonus_vesting_works() {
 
         assert_eq!(TotalValRewards::get(), balance!(21000.1));
         assert_eq!(TotalClaimableVal::get(), balance!(3000));
-        assert_eq!(EthAddresses::get(0), vec![EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))]);
-        assert_eq!(EthAddresses::get(1), vec![EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))]);
-        assert_eq!(EthAddresses::get(2), vec![EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))]);
+        assert_eq!(EthAddresses::get(0), vec![EthAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))]);
+        assert_eq!(EthAddresses::get(1), vec![EthAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))]);
+        assert_eq!(EthAddresses::get(2), vec![EthAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))]);
 
         let blocks_per_day = <Runtime as crate::Config>::BLOCKS_PER_DAY;
 
@@ -322,15 +322,15 @@ fn val_strategic_bonus_vesting_works() {
         // There can be some loss of precision though due to pro rata distribution
         assert_approx_eq!(TotalClaimableVal::get(), balance!(3020.2729999999999), balance!(0.000000001));
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
+            ValOwners::get(EthAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
             RewardInfo::new(balance!(111.965376355350688000), balance!(1000))
         );
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
+            ValOwners::get(EthAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
             RewardInfo::new(balance!(2908.29752710701376000), balance!(20000))
         );
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
+            ValOwners::get(EthAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
             RewardInfo::new(balance!(0.010096537635535068), balance!(0.1))
         );
 
@@ -361,15 +361,15 @@ fn val_strategic_bonus_vesting_works() {
         run_to_block(167 * blocks_per_day);
         // In this block all the rewards should have been vested
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
+            ValOwners::get(EthAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
             RewardInfo::new(balance!(868.491901448558237327), balance!(888.034623644649312000))
         );
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
+            ValOwners::get(EthAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
             RewardInfo::new(balance!(16614.140867795317401998), balance!(17091.702472892986240000))
         );
         assert_eq!(
-            ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
+            ValOwners::get(EthAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
             RewardInfo::new(balance!(0.1), balance!(0.1))
         );
     });

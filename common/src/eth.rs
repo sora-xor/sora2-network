@@ -32,11 +32,11 @@ use secp256k1::{Message, PublicKey};
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
 
-pub type EthereumAddress = H160;
+pub type EthAddress = H160;
 
-pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthereumAddress {
+pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
     let hash = keccak_256(&pub_key.serialize()[1..]);
-    EthereumAddress::from_slice(&hash[12..])
+    EthAddress::from_slice(&hash[12..])
 }
 
 pub fn prepare_message(msg: &[u8]) -> Message {

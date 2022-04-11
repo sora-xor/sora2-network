@@ -11,7 +11,7 @@ use crate::tests::{
     Assets, ETH_NETWORK_ID,
 };
 use crate::types::{Log, TransactionReceipt};
-use crate::{types, Address, AssetConfig, CONFIRMATION_INTERVAL};
+use crate::{types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL};
 use codec::Encode;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::dispatch::DispatchErrorWithPostInfo;
@@ -61,7 +61,7 @@ fn should_not_accept_approved_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
@@ -100,7 +100,7 @@ fn should_success_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
@@ -134,6 +134,7 @@ fn should_cancel_incoming_transfer() {
         }],
         Some(vec![(XOR.into(), Balance::from(100u32))]),
         None,
+        Default::default(),
     );
     let (mut ext, state) = builder.build();
     ext.execute_with(|| {
@@ -149,7 +150,7 @@ fn should_cancel_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
@@ -210,7 +211,7 @@ fn should_fail_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
@@ -272,7 +273,7 @@ fn should_take_fee_in_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
@@ -312,7 +313,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
@@ -350,7 +351,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: PSWAP.into(),
             asset_kind: AssetKind::Thischain,
@@ -479,6 +480,7 @@ fn ocw_should_handle_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -498,7 +500,7 @@ fn ocw_should_handle_incoming_request() {
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
-            ethabi::Token::Address(types::Address::from(
+            ethabi::Token::Address(types::EthAddress::from(
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
                     .unwrap()
                     .0,
@@ -550,6 +552,7 @@ fn ocw_should_not_register_pending_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -569,7 +572,7 @@ fn ocw_should_not_register_pending_incoming_request() {
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
-            ethabi::Token::Address(types::Address::from(
+            ethabi::Token::Address(types::EthAddress::from(
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
                     .unwrap()
                     .0,
@@ -619,6 +622,7 @@ fn ocw_should_import_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(1),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -631,7 +635,7 @@ fn ocw_should_import_incoming_request() {
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
-            ethabi::Token::Address(types::Address::from(
+            ethabi::Token::Address(types::EthAddress::from(
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
                     .unwrap()
                     .0,
@@ -681,12 +685,13 @@ fn ocw_should_import_incoming_request_raw_response() {
         }],
         Some(vec![(VAL.into(), common::balance!(350000))]),
         Some(1),
+        hex!("077c2ec37d28709ce01ae740209bfbe185bd1eaa").into(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let block_num = 8416395;
-        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1,true );
+        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1,true);
         let raw_response = r#"{
 "jsonrpc": "2.0",
   "id": 0,
@@ -710,7 +715,7 @@ fn ocw_should_import_incoming_request_raw_response() {
         // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
         state.run_next_offchain_with_params(
             block_num + CONFIRMATION_INTERVAL,
-            frame_system::Pallet::<Runtime>::block_number() + 1,true
+            frame_system::Pallet::<Runtime>::block_number() + 1,true,
         );
         let tx_hash = H256(hex!("fb5ad3cc57f66d9903e70d23fb878634d7119bcff17d25944d21466500ce7238"));
         assert_eq!(
@@ -738,6 +743,7 @@ fn ocw_should_not_import_pending_incoming_request() {
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
         Some(2),
+        Default::default(),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -750,7 +756,7 @@ fn ocw_should_not_import_pending_incoming_request() {
         let data = ethabi::encode(&[
             ethabi::Token::FixedBytes(alice.encode()),
             ethabi::Token::Uint(types::U256::from(100)),
-            ethabi::Token::Address(types::Address::from(
+            ethabi::Token::Address(types::EthAddress::from(
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
                     .unwrap()
                     .0,
@@ -794,7 +800,7 @@ fn should_not_register_and_finalize_incoming_request_twice() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
