@@ -176,12 +176,13 @@ pub mod v1_2 {
 }
 
 pub mod v1_3 {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use crate::{Config, Weight};
     use frame_support::debug;
     use frame_support::traits::Get;
     use sp_core::H256;
+    use sp_std::vec;
 
     // Migrate to version 1.3.0
     pub fn migrate<T: Config>() -> Weight {
