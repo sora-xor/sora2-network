@@ -43,12 +43,12 @@ use frame_support::storage::StorageMap as StorageMapTrait;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::H160;
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
 use assets::AssetIdOf;
+use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
@@ -70,7 +70,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type EthAddress = H160;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
