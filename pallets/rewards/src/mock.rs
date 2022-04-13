@@ -319,6 +319,7 @@ impl ExtBuilder {
             val_owners,
             pswap_farm_owners,
             pswap_waifu_owners,
+            umi_nfts: vec![PSWAP.into()],
         }
         .assimilate_storage(&mut t)
         .unwrap();

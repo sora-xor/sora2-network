@@ -36,6 +36,7 @@ use frame_support::traits::PalletVersion;
 use frame_support::{assert_noop, assert_ok};
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use orml_traits::MultiCurrency;
 use sp_io::TestExternalities;
 
 use crate::mock::*;
@@ -46,12 +47,14 @@ type Error = crate::Error<Runtime>;
 type Assets = assets::Pallet<Runtime>;
 
 type ValOwners = crate::ValOwners<Runtime>;
+type UmiNftReceivers = crate::UmiNftReceivers<Runtime>;
 type EthAddresses = crate::EthAddresses<Runtime>;
 type TotalValRewards = crate::TotalValRewards<Runtime>;
 type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
 type CurrentClaimableVal = crate::CurrentClaimableVal<Runtime>;
 type TotalClaimableVal = crate::TotalClaimableVal<Runtime>;
 type MigrationPending = crate::MigrationPending<Runtime>;
+type UmiNfts = crate::UmiNfts<Runtime>;
 
 type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
@@ -293,6 +296,60 @@ fn storage_migration_to_v1_2_0_works_2() {
             Pallet::finalize_storage_migration(RawOrigin::Root.into(), unclaimed_val_data()),
             Error::IllegalCall
         );
+    });
+}
+
+#[test]
+fn storage_migration_to_v1_3_0_works() {
+    TestExternalities::new_empty().execute_with(|| {
+        PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
+
+        // we don't have nfts
+        assert!(UmiNfts::get().is_empty());
+
+        // Import data for storage migration
+        Pallet::on_runtime_upgrade();
+
+        assert!(!UmiNfts::get().is_empty());
+    });
+}
+
+#[test]
+fn can_add_umi_nft_receiver() {
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let addresses = vec![EthAddress::from(hex!(
+            "baf5777f2250ec5e294b6f3dee28fcefad607975"
+        ))];
+        assert!(UmiNftReceivers::get(addresses[0]).is_empty());
+
+        assert_ok!(Pallet::add_umi_nft_receivers(
+            Origin::root(),
+            addresses.clone()
+        ));
+
+        assert!(!UmiNftReceivers::get(addresses[0]).is_empty());
+    });
+}
+
+#[test]
+fn can_claim_umi_nft_rewards() {
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let address = EthAddress::from(hex!("3c52e573fd320153013f40b817dda4f9d648613c"));
+
+        assert_ok!(Pallet::add_umi_nft_receivers(Origin::root(), vec![address]));
+
+        let signature = hex!("5615253e3998c99cd9008baf9c471d7a8f5690bb35a40f872b7cbbf19bad616d4490fc78a84d4568673cf397243ac79eb1684a7e54440f862aecebb54c10474f1c");
+
+        assert_eq!(currencies::Pallet::<Runtime>::free_balance(PSWAP.into(), &account()), 0);
+
+        assert_ok!(Pallet::claim(origin(), signature.into()));
+
+        assert_eq!(currencies::Pallet::<Runtime>::free_balance(PSWAP.into(), &account()), 1);
     });
 }
 

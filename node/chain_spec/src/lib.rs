@@ -791,6 +791,7 @@ fn testnet_genesis(
             hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
             balance!(333),
         )],
+        umi_nfts: vec![PSWAP.into(), VAL.into()],
     };
 
     #[cfg(feature = "include-real-files")]
@@ -799,6 +800,7 @@ fn testnet_genesis(
         val_owners: our_include!("bytes/rewards_val_owners.in"),
         pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
         pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
+        umi_nfts: vec![PSWAP.into(), VAL.into()],
     };
 
     let rewards_pswap_reserves =
@@ -1506,6 +1508,7 @@ fn mainnet_genesis(
         val_owners: Vec::new(),
         pswap_farm_owners: Vec::new(),
         pswap_waifu_owners: Vec::new(),
+        umi_nfts: Vec::new(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];

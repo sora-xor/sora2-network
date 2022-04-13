@@ -174,3 +174,39 @@ pub mod v1_2 {
         crate::MigrationPending::<T>::put(false);
     }
 }
+
+pub mod v1_3 {
+    use core::str::FromStr;
+
+    use crate::{Config, Weight};
+    use frame_support::debug;
+    use frame_support::traits::Get;
+    use sp_core::H256;
+    use sp_std::vec;
+
+    // Migrate to version 1.3.0
+    pub fn migrate<T: Config>() -> Weight {
+        debug::RuntimeLogger::init();
+        prepare_umi_nfts::<T>()
+    }
+
+    fn prepare_umi_nfts<T: Config>() -> Weight {
+        let nfts = vec![
+            asset_id_from_str::<T>(
+                "000bb9c116dd751d610a30d71162e8ef1c5cb42f0b4021b5c6244b36d4674ad4",
+            ),
+            asset_id_from_str::<T>(
+                "00fae716558035bd3b433c6e548f37a3d034b0d6842d1fd97ef409b78d119fac",
+            ),
+        ];
+        let writes_num = nfts.len() as u64;
+        crate::UmiNfts::<T>::put(nfts);
+        T::DbWeight::get().writes(writes_num)
+    }
+
+    fn asset_id_from_str<T: Config>(value: &str) -> T::AssetId {
+        H256::from_str(value)
+            .expect("Can't initialize H256 from string")
+            .into()
+    }
+}

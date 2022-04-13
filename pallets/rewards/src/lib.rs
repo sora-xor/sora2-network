@@ -43,12 +43,12 @@ use frame_support::storage::StorageMap as StorageMapTrait;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::H160;
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
 use assets::AssetIdOf;
+use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
@@ -70,7 +70,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type EthAddress = H160;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
@@ -104,15 +103,23 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub trait WeightInfo {
     fn claim() -> Weight;
     fn finalize_storage_migration(n: u32) -> Weight;
+    fn add_umi_nfts_receivers(n: u64) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
+    /// Get available rewards:
+    /// - VAL
+    /// - PSWAP Farming
+    /// - PSWAP Waifu
+    /// The rest are UMI NFTS.
     pub fn claimables(eth_address: &EthAddress) -> Vec<Balance> {
-        vec![
+        let mut res = vec![
             ValOwners::<T>::get(eth_address).claimable,
             PswapFarmOwners::<T>::get(eth_address),
             PswapWaifuOwners::<T>::get(eth_address),
-        ]
+        ];
+        res.append(&mut UmiNftReceivers::<T>::get(eth_address));
+        res
     }
 
     fn current_vesting_ratio(elapsed: T::BlockNumber) -> Perbill {
@@ -171,6 +178,47 @@ impl<T: Config> Pallet<T> {
                 TotalClaimableVal::<T>::mutate(|v| *v = v.saturating_sub(amount));
                 *claimed = true;
             }
+        }
+        Ok(())
+    }
+
+    fn claim_umi_nfts(
+        eth_address: &EthAddress,
+        account_id: &AccountIdOf<T>,
+        reserves_acc: &T::TechAccountId,
+        claimed: &mut bool,
+        is_eligible: &mut bool,
+    ) -> Result<(), DispatchErrorWithPostInfo> {
+        if let Ok(rewards) = UmiNftReceivers::<T>::try_get(eth_address) {
+            *is_eligible = true;
+            let mut updated_balances = rewards.clone();
+            let nfts = UmiNfts::<T>::get();
+
+            for (n, balance) in rewards.iter().enumerate() {
+                if *balance > 0 {
+                    let asset_id = nfts[n];
+                    technical::Pallet::<T>::transfer_out(
+                        &asset_id,
+                        reserves_acc,
+                        account_id,
+                        *balance,
+                    )?;
+                    updated_balances[n] = 0;
+                    *claimed = true;
+                } else {
+                    *claimed = false;
+                }
+            }
+
+            UmiNftReceivers::<T>::insert(eth_address, updated_balances);
+            UmiNftClaimed::<T>::insert(eth_address, claimed);
+        }
+        Ok(())
+    }
+
+    fn add_umi_nft_receiver(receiver: &EthAddress) -> Result<(), DispatchErrorWithPostInfo> {
+        if !UmiNftClaimed::<T>::get(receiver) {
+            UmiNftReceivers::<T>::insert(receiver, vec![1; UmiNfts::<T>::get().len()]);
         }
         Ok(())
     }
@@ -285,6 +333,9 @@ pub mod pallet {
                 Some(PalletVersion {
                     major: 1, minor: 1, ..
                 }) => migrations::v1_2::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1, minor: 2, ..
+                }) => migrations::v1_3::migrate::<T>(),
                 _ => T::DbWeight::get().reads(1),
             }
         }
@@ -292,6 +343,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Claim the reward with signature.
         #[pallet::weight(WeightInfoOf::<T>::claim())]
         #[transactional]
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
@@ -340,6 +392,13 @@ pub mod pallet {
                 &mut claimed,
                 &mut is_eligible,
             )?;
+            Self::claim_umi_nfts(
+                &eth_address,
+                &account_id,
+                &reserves_acc,
+                &mut claimed,
+                &mut is_eligible,
+            )?;
             if claimed {
                 Self::deposit_event(Event::<T>::Claimed(account_id));
                 Ok(().into())
@@ -366,6 +425,20 @@ pub mod pallet {
             } else {
                 Err(Error::<T>::IllegalCall.into())
             }
+        }
+
+        /// Add addresses, who will receive UMI NFT rewards.
+        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
+        #[transactional]
+        pub fn add_umi_nft_receivers(
+            origin: OriginFor<T>,
+            receivers: Vec<EthAddress>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            for address in receivers {
+                Self::add_umi_nft_receiver(&address)?;
+            }
+            Ok(().into())
         }
     }
 
@@ -406,6 +479,11 @@ pub mod pallet {
     #[pallet::storage]
     pub type PswapWaifuOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
 
+    /// UMI NFT receivers storage
+    #[pallet::storage]
+    pub type UmiNftReceivers<T: Config> =
+        StorageMap<_, Identity, EthAddress, Vec<Balance>, ValueQuery>;
+
     /// Amount of VAL burned since last vesting
     #[pallet::storage]
     pub type ValBurnedSinceLastVesting<T: Config> = StorageValue<_, Balance, ValueQuery>;
@@ -430,12 +508,21 @@ pub mod pallet {
     #[pallet::storage]
     pub type MigrationPending<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+    /// The storage of available UMI NFTs.
+    #[pallet::storage]
+    pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AssetId>, ValueQuery>;
+
+    /// Stores whether address already claimed UMI NFT rewards.
+    #[pallet::storage]
+    pub type UmiNftClaimed<T: Config> = StorageMap<_, Identity, EthAddress, bool, ValueQuery>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
         pub val_owners: Vec<(EthAddress, RewardInfo)>,
         pub pswap_farm_owners: Vec<(EthAddress, Balance)>,
         pub pswap_waifu_owners: Vec<(EthAddress, Balance)>,
+        pub umi_nfts: Vec<T::AssetId>,
     }
 
     #[cfg(feature = "std")]
@@ -446,6 +533,7 @@ pub mod pallet {
                 val_owners: Default::default(),
                 pswap_farm_owners: Default::default(),
                 pswap_waifu_owners: Default::default(),
+                umi_nfts: Default::default(),
             }
         }
     }
@@ -488,6 +576,7 @@ pub mod pallet {
             self.pswap_waifu_owners.iter().for_each(|(owner, balance)| {
                 PswapWaifuOwners::<T>::insert(owner, balance);
             });
+            self.umi_nfts.iter().for_each(UmiNfts::<T>::append);
         }
     }
 }
