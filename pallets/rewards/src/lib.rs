@@ -421,7 +421,7 @@ pub mod pallet {
             }
         }
 
-        /// Finalize the update of unclaimed VAL data in storage
+        /// Add addresses, who will receive UMI NFT rewards.
         #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
         #[transactional]
         pub fn add_umi_nft_receivers(
@@ -429,8 +429,8 @@ pub mod pallet {
             receivers: Vec<EthAddress>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            for address in receivers.iter() {
-                Self::add_umi_nft_receiver(address)?;
+            for address in receivers {
+                Self::add_umi_nft_receiver(&address)?;
             }
             Ok(().into())
         }
@@ -473,6 +473,7 @@ pub mod pallet {
     #[pallet::storage]
     pub type PswapWaifuOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
 
+    /// UMI NFT receivers storage
     #[pallet::storage]
     pub type UmiNftReceivers<T: Config> =
         StorageMap<_, Identity, EthAddress, Vec<Balance>, ValueQuery>;
@@ -501,6 +502,7 @@ pub mod pallet {
     #[pallet::storage]
     pub type MigrationPending<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+    /// The storage of available UMI NFTs.
     #[pallet::storage]
     pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AssetId>, ValueQuery>;
 
