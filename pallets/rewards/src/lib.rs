@@ -107,6 +107,11 @@ pub trait WeightInfo {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Get available rewards:
+    /// - VAL
+    /// - PSWAP Farming
+    /// - PSWAP Waifu
+    /// The rest are UMI NFTS.
     pub fn claimables(eth_address: &EthAddress) -> Vec<Balance> {
         let mut res = vec![
             ValOwners::<T>::get(eth_address).claimable,
@@ -338,6 +343,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Claim the reward with signature.
         #[pallet::weight(WeightInfoOf::<T>::claim())]
         #[transactional]
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
