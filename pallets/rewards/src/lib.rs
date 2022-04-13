@@ -104,6 +104,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub trait WeightInfo {
     fn claim() -> Weight;
     fn finalize_storage_migration(n: u32) -> Weight;
+    fn add_umi_nfts_receivers(n: u64) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -113,7 +114,7 @@ impl<T: Config> Pallet<T> {
             PswapFarmOwners::<T>::get(eth_address),
             PswapWaifuOwners::<T>::get(eth_address),
         ];
-        res.append(&mut UmiNftOwners::<T>::get(eth_address));
+        res.append(&mut UmiNftReceivers::<T>::get(eth_address));
         res
     }
 
@@ -184,13 +185,14 @@ impl<T: Config> Pallet<T> {
         claimed: &mut bool,
         is_eligible: &mut bool,
     ) -> Result<(), DispatchErrorWithPostInfo> {
-        if let Ok(rewards) = UmiNftOwners::<T>::try_get(eth_address) {
+        if let Ok(rewards) = UmiNftReceivers::<T>::try_get(eth_address) {
             *is_eligible = true;
             let mut updated_balances = rewards.clone();
+            let nfts = UmiNfts::<T>::get();
 
             for (n, balance) in rewards.iter().enumerate() {
                 if *balance > 0 {
-                    let asset_id = UmiNfts::<T>::get()[n];
+                    let asset_id = nfts[n];
                     technical::Pallet::<T>::transfer_out(
                         &asset_id,
                         reserves_acc,
@@ -204,7 +206,15 @@ impl<T: Config> Pallet<T> {
                 }
             }
 
-            UmiNftOwners::<T>::insert(eth_address, updated_balances);
+            UmiNftReceivers::<T>::insert(eth_address, updated_balances);
+            UmiNftClaimed::<T>::insert(eth_address, claimed);
+        }
+        Ok(())
+    }
+
+    fn add_umi_nft_receiver(receiver: &EthAddress) -> Result<(), DispatchErrorWithPostInfo> {
+        if !UmiNftClaimed::<T>::get(receiver) {
+            UmiNftReceivers::<T>::insert(receiver, vec![1; UmiNfts::<T>::get().len()]);
         }
         Ok(())
     }
@@ -411,6 +421,20 @@ pub mod pallet {
                 Err(Error::<T>::IllegalCall.into())
             }
         }
+
+        /// Finalize the update of unclaimed VAL data in storage
+        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
+        #[transactional]
+        pub fn add_umi_nft_receivers(
+            origin: OriginFor<T>,
+            receivers: Vec<EthAddress>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            for address in receivers.iter() {
+                Self::add_umi_nft_receiver(address)?;
+            }
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -451,7 +475,7 @@ pub mod pallet {
     pub type PswapWaifuOwners<T: Config> = StorageMap<_, Identity, EthAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
-    pub type UmiNftOwners<T: Config> =
+    pub type UmiNftReceivers<T: Config> =
         StorageMap<_, Identity, EthAddress, Vec<Balance>, ValueQuery>;
 
     /// Amount of VAL burned since last vesting
@@ -481,12 +505,17 @@ pub mod pallet {
     #[pallet::storage]
     pub type UmiNfts<T: Config> = StorageValue<_, Vec<T::AssetId>, ValueQuery>;
 
+    /// Stores whether address already claimed UMI NFT rewards.
+    #[pallet::storage]
+    pub type UmiNftClaimed<T: Config> = StorageMap<_, Identity, EthAddress, bool, ValueQuery>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
         pub val_owners: Vec<(EthAddress, RewardInfo)>,
         pub pswap_farm_owners: Vec<(EthAddress, Balance)>,
         pub pswap_waifu_owners: Vec<(EthAddress, Balance)>,
+        pub umi_nfts: Vec<T::AssetId>,
     }
 
     #[cfg(feature = "std")]
@@ -497,6 +526,7 @@ pub mod pallet {
                 val_owners: Default::default(),
                 pswap_farm_owners: Default::default(),
                 pswap_waifu_owners: Default::default(),
+                umi_nfts: Default::default(),
             }
         }
     }
@@ -539,6 +569,7 @@ pub mod pallet {
             self.pswap_waifu_owners.iter().for_each(|(owner, balance)| {
                 PswapWaifuOwners::<T>::insert(owner, balance);
             });
+            self.umi_nfts.iter().for_each(UmiNfts::<T>::append);
         }
     }
 }

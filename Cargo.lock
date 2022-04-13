@@ -6680,7 +6680,6 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "serde",
- "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",

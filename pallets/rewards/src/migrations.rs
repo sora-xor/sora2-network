@@ -178,58 +178,34 @@ pub mod v1_2 {
 pub mod v1_3 {
     use std::str::FromStr;
 
-    use crate::{Config, EthereumAddress, Weight};
+    use crate::{Config, Weight};
     use frame_support::debug;
     use frame_support::traits::Get;
-    use serde::Deserialize;
-    use serde_json;
     use sp_core::H256;
-    use sp_std::vec::Vec;
-
-    // we don't use include! with rust code, because it takes ages to compile. It's a lot faster
-    // with on-runtime serde.
-    const NFTS_RECEIVERS: &'static str = include_str!("bytes/ETH-ERC20-Ukraine.json");
 
     // Migrate to version 1.3.0
     pub fn migrate<T: Config>() -> Weight {
         debug::RuntimeLogger::init();
-        prepare_umi_nft_rewards::<T>().saturating_add(prepare_umi_nfts::<T>())
-    }
-
-    fn prepare_umi_nft_rewards<T: Config>() -> Weight {
-        let receivers = serde_json::from_str::<Vec<NftReceiver>>(NFTS_RECEIVERS)
-            .expect("Can't deserialize UMI NFT receivers.");
-
-        let writes_num = receivers.len() as u64;
-        receivers.into_iter().for_each(|receiver| {
-            crate::UmiNftOwners::<T>::insert(
-                EthereumAddress::from_slice(
-                    &hex::decode(&receiver.address[2..])
-                        .expect("Can't decode EthereumAddress from String"),
-                ),
-                vec![1, 1, 1],
-            )
-        });
-
-        T::DbWeight::get().writes(writes_num)
+        prepare_umi_nfts::<T>()
     }
 
     fn prepare_umi_nfts<T: Config>() -> Weight {
-        let nfts = vec![asset_id_from_str::<T>(
-            "000bb9c116dd751d610a30d71162e8ef1c5cb42f0b4021b5c6244b36d4674ad4",
-        )];
+        let nfts = vec![
+            asset_id_from_str::<T>(
+                "000bb9c116dd751d610a30d71162e8ef1c5cb42f0b4021b5c6244b36d4674ad4",
+            ),
+            asset_id_from_str::<T>(
+                "00fae716558035bd3b433c6e548f37a3d034b0d6842d1fd97ef409b78d119fac",
+            ),
+        ];
         let writes_num = nfts.len() as u64;
         crate::UmiNfts::<T>::put(nfts);
         T::DbWeight::get().writes(writes_num)
     }
 
     fn asset_id_from_str<T: Config>(value: &str) -> T::AssetId {
-        T::AssetId::from(H256::from_str(value).expect("Can't initialize H256 from string"))
-    }
-
-    #[derive(Deserialize, Debug)]
-    struct NftReceiver {
-        #[serde(rename = "Address")]
-        address: String,
+        H256::from_str(value)
+            .expect("Can't initialize H256 from string")
+            .into()
     }
 }
