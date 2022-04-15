@@ -115,7 +115,7 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
@@ -250,7 +250,6 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();

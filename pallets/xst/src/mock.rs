@@ -121,7 +121,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         XSTPool: xstpool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Module, Storage, Event<T>},
+        DEXApi: dex_api::{Module, Storage},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
@@ -212,7 +212,6 @@ impl assets::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();

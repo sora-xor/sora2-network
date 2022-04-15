@@ -135,7 +135,7 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Config<T>, Storage},
         Technical: technical::{Module, Call, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
@@ -269,7 +269,6 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
