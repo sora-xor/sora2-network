@@ -33,7 +33,6 @@ ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
 demeter-farming-platform = { path = "../pallets/demeter-farming-platform", default-features = false }
 demeter-farming-platform-benchmarking = { path = "../pallets/demeter-farming-platform/benchmarking", default-features = false, optional = true }
 dex-api = { path = "../pallets/dex-api", default-features = false }
-dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
 dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
 dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
@@ -218,7 +217,6 @@ runtime-benchmarks = [
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
     "demeter-farming-platform-benchmarking",
-    "dex-api-benchmarking",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",

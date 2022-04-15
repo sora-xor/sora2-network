@@ -760,7 +760,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -1585,7 +1584,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
@@ -1654,7 +1653,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
@@ -2232,7 +2231,6 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            use dex_api_benchmarking::Module as DEXAPIBench;
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
@@ -2240,7 +2238,6 @@ impl_runtime_apis! {
             use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
 
-            impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
@@ -2265,7 +2262,7 @@ impl_runtime_apis! {
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);
 
-            add_benchmark!(params, batches, assets, Assets);add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, assets, Assets);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);

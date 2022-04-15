@@ -1586,39 +1586,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dex-api-benchmarking"
-version = "0.1.0"
-dependencies = [
- "assets",
- "ceres-liquidity-locker",
- "common",
- "demeter-farming-platform",
- "dex-api",
- "dex-manager",
- "frame-benchmarking 3.1.0",
- "frame-support",
- "frame-system",
- "hex-literal",
- "multicollateral-bonding-curve-pool",
- "orml-currencies",
- "orml-tokens",
- "pallet-balances",
- "parity-scale-codec",
- "permissions",
- "pool-xyk",
- "pswap-distribution",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical",
- "trading-pair",
- "vested-rewards",
-]
-
-[[package]]
 name = "dex-api-rpc"
 version = "0.1.0"
 dependencies = [
@@ -2618,7 +2585,6 @@ dependencies = [
  "demeter-farming-platform",
  "demeter-farming-platform-benchmarking",
  "dex-api",
- "dex-api-benchmarking",
  "dex-manager",
  "dex-manager-runtime-api",
  "dex-runtime-api",
