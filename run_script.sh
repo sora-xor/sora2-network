@@ -1,6 +1,6 @@
 #!/bin/sh
 
-binary="./target/release/framenode"
+binary="./target/debug/framenode"
 
 chain="local"
 
@@ -78,7 +78,7 @@ do
 		sh -c "$binary --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	        sleep 40
 	else
-		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/10000/p2p/`cat $localid` 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	port="$newport"
