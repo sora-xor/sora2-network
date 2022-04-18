@@ -699,39 +699,57 @@ pub mod pallet {
         pub fn remove_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
+            peer_address: Option<EthereumAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account();
-            let peer_address = Self::peer_address(network_id, &account_id);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            let peer_address = if PeerAddress::<T>::contains_key(network_id, &account_id) {
+                if let Some(peer_address) = peer_address {
+                    ensure!(
+                        peer_address == Self::peer_address(network_id, &account_id),
+                        Error::<T>::UnknownPeerId
+                    );
+                    peer_address
+                } else {
+                    Self::peer_address(network_id, &account_id)
+                }
+            } else {
+                peer_address.ok_or(Error::<T>::UnknownPeerId)?
+            };
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
-            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
-                OutgoingRemovePeer {
-                    author: from.clone(),
-                    peer_account_id: account_id.clone(),
-                    peer_address,
-                    nonce,
-                    network_id,
-                    timepoint,
-                },
-            )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-            if network_id == T::GetEthNetworkId::get() {
+            let compat_hash = if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(&OffchainRequest::outgoing(
-                    OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
+                let request = OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(
+                    OutgoingRemovePeerCompat {
                         author: from.clone(),
-                        peer_account_id: account_id,
+                        peer_account_id: account_id.clone(),
                         peer_address,
                         nonce,
                         network_id,
                         timepoint,
-                    }),
-                ))?;
+                    },
+                ));
+                Self::add_request(&request)?;
                 frame_system::Module::<T>::inc_account_nonce(&from);
-            }
+                Some(request.hash())
+            } else {
+                None
+            };
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+                OutgoingRemovePeer {
+                    author: from.clone(),
+                    peer_account_id: account_id,
+                    peer_address,
+                    nonce,
+                    network_id,
+                    timepoint,
+                    compat_hash,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -1664,7 +1682,7 @@ impl<T: Config> Pallet<T> {
         }
         debug::info!("Verified request approve {:?}", request_encoded);
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-        let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
+        let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
             1
         } else {
             0
@@ -1690,5 +1708,14 @@ impl<T: Config> Pallet<T> {
             return Ok(Some(weight_info));
         }
         Ok(None)
+    }
+
+    fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {
+        PendingPeer::<T>::get(net_id).is_some()
+            && !matches!(
+                &request,
+                OutgoingRequest::AddPeer(..) | OutgoingRequest::AddPeerCompat(..) // | OutgoingRequest::RemovePeer(..)
+                                                                                  // | OutgoingRequest::RemovePeerCompat(..)
+            )
     }
 }

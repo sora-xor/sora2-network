@@ -62,7 +62,7 @@ pub fn approve_request(
         let signature = sig_pair.into();
         let signature_params = get_signature_params(&signature);
         approvals.insert(signature_params.clone());
-        let additional_sigs = if crate::PendingPeer::<Runtime>::get(net_id).is_some() {
+        let additional_sigs = if EthBridge::is_additional_signature_needed(net_id, &request) {
             1
         } else {
             0

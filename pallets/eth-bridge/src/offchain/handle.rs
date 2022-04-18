@@ -559,6 +559,17 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    fn is_peer_for_network(network_id: T::NetworkId) -> bool {
+        let keystore_accounts = Self::get_keystore_accounts();
+        let peers = Self::peers(network_id);
+        for account in keystore_accounts {
+            if peers.contains(&account) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Retrieves latest needed information about networks and handles corresponding
     /// requests queues.
     ///
@@ -572,6 +583,10 @@ impl<T: Config> Pallet<T> {
     ) where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
+        if !Self::is_peer_for_network(network_id) {
+            debug::debug!("Don't peer for network {:?}, skipping", network_id);
+            return;
+        }
         let current_eth_height = match Self::handle_ethereum(network_id) {
             Ok(v) => v,
             Err(_e) => {
@@ -588,6 +603,10 @@ impl<T: Config> Pallet<T> {
                 Some(v) => v,
                 _ => continue, // TODO: remove from queue
             };
+            if request.should_be_skipped() {
+                debug::debug!("Temporary skip request: {:?}", request_hash);
+                continue;
+            }
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(network_id, &request_hash);
             let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);
