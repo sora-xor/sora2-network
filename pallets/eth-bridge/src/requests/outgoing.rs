@@ -732,6 +732,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
 
     pub fn should_be_skipped(&self) -> bool {
         if let Some(compat_hash) = self.compat_hash {
+            // RemovePeerCompat request need to be processed first
             matches!(
                 RequestStatuses::<T>::get(self.network_id, &compat_hash),
                 Some(RequestStatus::Pending)

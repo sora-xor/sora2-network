@@ -584,7 +584,7 @@ impl<T: Config> Pallet<T> {
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
         if !Self::is_peer_for_network(network_id) {
-            debug::debug!("Don't peer for network {:?}, skipping", network_id);
+            debug::debug!("Node is not peer for network {:?}, skipping", network_id);
             return;
         }
         let current_eth_height = match Self::handle_ethereum(network_id) {

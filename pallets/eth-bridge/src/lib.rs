@@ -1714,8 +1714,7 @@ impl<T: Config> Pallet<T> {
         PendingPeer::<T>::get(net_id).is_some()
             && !matches!(
                 &request,
-                OutgoingRequest::AddPeer(..) | OutgoingRequest::AddPeerCompat(..) // | OutgoingRequest::RemovePeer(..)
-                                                                                  // | OutgoingRequest::RemovePeerCompat(..)
+                OutgoingRequest::AddPeer(..) | OutgoingRequest::AddPeerCompat(..)
             )
     }
 }
