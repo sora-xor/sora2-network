@@ -43,6 +43,7 @@ use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend, ExecutorProvider};
+use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
@@ -110,7 +111,7 @@ pub fn new_partial(
                 ),
             ),
             sc_finality_grandpa::SharedVoterState,
-            std::time::Duration, // slot-duration
+            SlotDuration, // slot-duration
             Option<Telemetry>,
         ),
     >,
@@ -272,7 +273,7 @@ pub fn new_partial(
             let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
             let slot =
-                sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+                sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
                     *timestamp,
                     slot_duration,
                 );
@@ -488,7 +489,7 @@ pub fn new_full(
                     let time = sp_timestamp::InherentDataProvider::from_system_time();
 
                     let slot =
-                        sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+                        sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
                             *time,
                             slot_duration //slot_duration.slot_duration(),
                         );

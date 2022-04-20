@@ -56,7 +56,7 @@ use traits::MultiCurrency;
 use xor_fee::{LiquidityInfo, XorToVal};
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
-type TransactionByteFee = <Runtime as pallet_transaction_payment::Config>::TransactionByteFee;
+type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
 
 const MOCK_WEIGHT: Weight = 600_000_000;
 
@@ -276,7 +276,7 @@ fn custom_fees_work() {
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
         let base_fee =
             WeightToFixedFee::calc(&BlockWeights::get().get(dispatch_info.class).base_extrinsic);
-        let len_fee = len as u128 * TransactionByteFee::get();
+        let len_fee = LengthToFee::calc(&(len as Weight));
         let weight_fee = WeightToFixedFee::calc(&MOCK_WEIGHT);
 
         // A ten-fold extrinsic; fee is 0.007 XOR

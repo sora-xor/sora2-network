@@ -1,4 +1,5 @@
 use codec::{Decode, Encode};
+use ethabi::RawLog;
 use ethereum_types::{H160, H256};
 use sp_std::prelude::*;
 
@@ -35,6 +36,12 @@ impl rlp::Decodable for Log {
             topics,
             data,
         })
+    }
+}
+
+impl Into<RawLog> for Log {
+    fn into(self) -> RawLog {
+        RawLog::from((self.topics, self.data))
     }
 }
 
