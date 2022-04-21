@@ -4,7 +4,8 @@ String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
-String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
+String cargoAuditImage        = registry + '/build-tools/cargo_audit'
+String envImageName           = registry + '/sora2/env'
 String rustcVersion           = 'nightly-2021-03-11'
 String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
@@ -29,6 +30,20 @@ pipeline {
                     gitNotify('main-CI', 'PENDING', 'This commit is being built')
                     docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion)
+                    }
+                }
+            }
+        }
+        stage('Audit') {
+            steps {
+                script {
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
+                        docker.image(cargoAuditImage + ':latest').inside(){
+                            sh '''
+                               cargo audit  > cargoAuditReport.txt || exit 0
+                            '''
+                            archiveArtifacts artifacts: "cargoAuditReport.txt"
+                        }
                     }
                 }
             }
