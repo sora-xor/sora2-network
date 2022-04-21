@@ -198,6 +198,9 @@ pub mod v1_3 {
             asset_id_from_str::<T>(
                 "00fae716558035bd3b433c6e548f37a3d034b0d6842d1fd97ef409b78d119fac",
             ),
+            asset_id_from_str::<T>(
+                "0068ae01f7799cac8bac2365c0d02ca0913ba8cdd9d097a0aa0e13ccde2c60bc",
+            ),
         ];
         let writes_num = nfts.len() as u64;
         crate::UmiNfts::<T>::put(nfts);
