@@ -1404,7 +1404,7 @@ parameter_types! {
         tech_account_id
     };
     pub GetCrowdloanRewardsAccountId: AccountId = {
-        let tech_account_id = GetCrowdloanRewardsAccountId::get();
+        let tech_account_id = GetCrowdloanRewardsTechAccountId::get();
         let account_id =
             technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
