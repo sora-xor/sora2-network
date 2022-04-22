@@ -365,7 +365,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     IncomingChangePeers {
                         peer_account_id: test_acc.clone(),
                         peer_address: Address::from([10u8; 20]),
-                        added: true,
+                        removed: false,
                         author: alice.clone(),
                         tx_hash: H256([11; 32]),
                         at_height: 0,
@@ -381,6 +381,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     network_id: net_id + 1,
                     peer_account_id: test_acc.clone(),
                     timepoint: Default::default(),
+                    compat_hash: None,
                 }
                 .into(),
             ),
@@ -392,6 +393,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     network_id: net_id,
                     peer_account_id: ocw0_account_id.clone(),
                     timepoint: Default::default(),
+                    compat_hash: None,
                 }
                 .into()],
                 OutgoingRemovePeerCompat {

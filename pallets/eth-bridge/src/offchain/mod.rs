@@ -156,9 +156,9 @@ impl<T: Config> Pallet<T> {
                     let decoded = ethabi::decode(&types, &log.data.0)
                         .map_err(|_| Error::<T>::EthAbiDecodingError)?;
                     let mut decoder = Decoder::<T>::new(decoded);
-                    let added = decoder.next_bool()?;
+                    let removed = decoder.next_bool()?;
                     let peer_address = decoder.next_address()?;
-                    return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
+                    return Ok(ContractEvent::ChangePeers(H160(peer_address.0), removed));
                 }
                 hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
                     if kind == IncomingTransactionRequestKind::PrepareForMigration =>

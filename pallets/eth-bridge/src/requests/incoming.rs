@@ -104,7 +104,7 @@ impl<T: Config> IncomingAddToken<T> {
 pub struct IncomingChangePeers<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
-    pub added: bool,
+    pub removed: bool,
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
@@ -121,7 +121,7 @@ impl<T: Config> IncomingChangePeers<T> {
         let pending_peer =
             crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
         ensure!(
-            pending_peer == self.peer_account_id,
+            self.removed || pending_peer == self.peer_account_id,
             Error::<T>::WrongPendingPeer
         );
         let is_eth_network = self.network_id == T::GetEthNetworkId::get();
@@ -137,7 +137,9 @@ impl<T: Config> IncomingChangePeers<T> {
             .map(|x| x.is_ready())
             .unwrap_or(true);
         if is_ready {
-            if self.added {
+            if self.removed {
+                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
+            } else {
                 let account_id = self.peer_account_id.clone();
                 bridge_multisig::Module::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
@@ -145,8 +147,6 @@ impl<T: Config> IncomingChangePeers<T> {
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
-            } else {
-                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }

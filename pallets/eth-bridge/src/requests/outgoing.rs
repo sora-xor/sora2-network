@@ -29,11 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::offchain::SignatureParams;
-use crate::requests::Assets;
+use crate::requests::{Assets, RequestStatus};
 use crate::util::{get_bridge_account, Decoder};
 use crate::{
     types, Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config,
-    Error, OffchainRequest, OutgoingRequest, Pallet, MAX_PEERS, MIN_PEERS,
+    Error, OffchainRequest, OutgoingRequest, Pallet, RequestStatuses, MAX_PEERS, MIN_PEERS,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -656,6 +656,7 @@ pub struct OutgoingRemovePeer<T: Config> {
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
+    pub compat_hash: Option<H256>,
 }
 
 impl<T: Config> OutgoingRemovePeer<T> {
@@ -728,6 +729,18 @@ impl<T: Config> OutgoingRemovePeer<T> {
         }
         Ok(())
     }
+
+    pub fn should_be_skipped(&self) -> bool {
+        if let Some(compat_hash) = self.compat_hash {
+            // RemovePeerCompat request need to be processed first
+            matches!(
+                RequestStatuses::<T>::get(self.network_id, &compat_hash),
+                Some(RequestStatus::Pending)
+            )
+        } else {
+            false
+        }
+    }
 }
 
 // TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
@@ -772,12 +785,6 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
         ensure!(
             peers.contains(&self.peer_account_id),
             Error::<T>::UnknownPeerId
-        );
-        let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
-        // Previous `OutgoingRemovePeer` should set the pending peer.
-        ensure!(
-            pending_peer.as_ref() == Some(&self.peer_account_id),
-            Error::<T>::NoPendingPeer
         );
         Ok(peers)
     }
