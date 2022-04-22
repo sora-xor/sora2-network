@@ -98,7 +98,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
@@ -114,6 +114,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>}
     }
 }
 
@@ -143,7 +144,6 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -246,6 +246,13 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 

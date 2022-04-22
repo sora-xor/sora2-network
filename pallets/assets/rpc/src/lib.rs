@@ -108,28 +108,51 @@ impl<C, B> AssetsClient<C, B> {
     }
 }
 
-impl<C, Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision>
+impl<
+        C,
+        Block,
+        AccountId,
+        AssetId,
+        Balance,
+        AssetSymbol,
+        AssetName,
+        Precision,
+        ContentSource,
+        Description,
+    >
     AssetsAPI<
         <Block as BlockT>::Hash,
         AccountId,
         AssetId,
         Balance,
         Option<BalanceInfo<Balance>>,
-        Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>,
-        Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>,
+        Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
+        Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
         Vec<AssetId>,
     > for AssetsClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: AssetsRuntimeAPI<Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision>,
+    C::Api: AssetsRuntimeAPI<
+        Block,
+        AccountId,
+        AssetId,
+        Balance,
+        AssetSymbol,
+        AssetName,
+        Precision,
+        ContentSource,
+        Description,
+    >,
     AccountId: Codec,
     AssetId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
     AssetSymbol: Codec + MaybeFromStr + MaybeDisplay,
     AssetName: Codec + MaybeFromStr + MaybeDisplay,
     Precision: Codec + MaybeFromStr + MaybeDisplay,
+    ContentSource: Codec + MaybeFromStr + MaybeDisplay,
+    Description: Codec + MaybeFromStr + MaybeDisplay,
 {
     fn free_balance(
         &self,
@@ -221,7 +244,9 @@ where
     fn list_asset_infos(
         &self,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>> {
+    ) -> Result<
+        Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
+    > {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
@@ -238,7 +263,9 @@ where
         &self,
         asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>> {
+    ) -> Result<
+        Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>,
+    > {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

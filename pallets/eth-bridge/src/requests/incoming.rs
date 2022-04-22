@@ -33,8 +33,9 @@ use crate::offchain::SignatureParams;
 use crate::requests::Assets;
 use crate::util::get_bridge_account;
 use crate::{
-    Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
-    EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint, WeightInfo,
+    AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
+    EthAddress, EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint,
+    WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use codec::{Decode, Encode};
@@ -62,7 +63,7 @@ pub const MAX_PEERS: usize = 100;
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingAddToken<T: Config> {
-    pub token_address: Address,
+    pub token_address: EthAddress,
     pub asset_id: T::AssetId,
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
@@ -103,7 +104,7 @@ impl<T: Config> IncomingAddToken<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingChangePeers<T: Config> {
     pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub removed: bool,
     pub author: T::AccountId,
     pub tx_hash: H256,
@@ -179,7 +180,7 @@ pub enum ChangePeersContract {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub added: bool,
     pub contract: ChangePeersContract,
     pub author: T::AccountId,
@@ -248,7 +249,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingTransfer<T: Config> {
-    pub from: Address,
+    pub from: EthAddress,
     pub to: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
@@ -546,7 +547,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingMigrate<T: Config> {
-    pub new_contract_address: Address,
+    pub new_contract_address: EthAddress,
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,

@@ -23,6 +23,10 @@ pub trait WeightInfo {
     fn change_ceres_burn_fee() -> Weight;
     fn change_ceres_contribution_fee() -> Weight;
     fn claim_pswap_rewards() -> Weight;
+    fn add_whitelisted_contributor() -> Weight;
+    fn remove_whitelisted_contributor() -> Weight;
+    fn add_whitelisted_ilo_organizer() -> Weight;
+    fn remove_whitelisted_ilo_organizer() -> Weight;
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -42,7 +46,8 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     lockup_days: u32,
     start_block: BlockNumber,
     end_block: BlockNumber,
-    token_vesting: VestingInfo<Balance, BlockNumber>,
+    contributors_vesting: ContributorsVesting<Balance, BlockNumber>,
+    team_vesting: TeamVesting<Balance, BlockNumber>,
     sold_tokens: Balance,
     funds_raised: Balance,
     succeeded: bool,
@@ -54,7 +59,16 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct VestingInfo<Balance, BlockNumber> {
+pub struct TeamVesting<Balance, BlockNumber> {
+    team_vesting_total_tokens: Balance,
+    team_vesting_first_release_percent: Balance,
+    team_vesting_period: BlockNumber,
+    team_vesting_percent: Balance,
+}
+
+#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct ContributorsVesting<Balance, BlockNumber> {
     first_release_percent: Balance,
     vesting_period: BlockNumber,
     vesting_percent: Balance,
@@ -75,11 +89,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::{ContributionInfo, ILOInfo, VestingInfo};
+    use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Vec;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
@@ -100,6 +115,7 @@ pub mod pallet {
         + ceres_liquidity_locker::Config
         + pswap_distribution::Config
         + vested_rewards::Config
+        + ceres_token_locker::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -112,11 +128,13 @@ pub mod pallet {
     type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
+    type TokenLocker<T> = ceres_token_locker::Pallet<T>;
     type PSWAPDistribution<T> = pswap_distribution::Pallet<T>;
     type VestedRewards<T> = vested_rewards::Pallet<T>;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -147,7 +165,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultCeresForContributionInILO<T: Config>() -> Balance {
-        balance!(0.5)
+        balance!(1)
     }
 
     /// Amount of CERES for contribution in ILO
@@ -190,6 +208,14 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_contributors)]
+    pub type WhitelistedContributors<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn whitelisted_ilo_organizers)]
+    pub type WhitelistedIloOrganizers<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
+
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -210,6 +236,14 @@ pub mod pallet {
         FeeChanged(Balance),
         /// PSWAP claimed
         ClaimedPSWAP(),
+        /// Contributor whitelisted [who]
+        WhitelistedContributor(AccountIdOf<T>),
+        /// ILO organizer whitelisted [who]
+        WhitelistedIloOrganizer(AccountIdOf<T>),
+        /// Contributor removed [who]
+        RemovedWhitelistedContributor(AccountIdOf<T>),
+        /// ILO organizer removed [who]
+        RemovedWhitelistedIloOrganizer(AccountIdOf<T>),
     }
 
     #[pallet::error]
@@ -284,6 +318,16 @@ pub mod pallet {
         ILOIsSucceeded,
         /// Can't create ILO for listed token
         CantCreateILOForListedToken,
+        /// Account is not whitelisted
+        AccountIsNotWhitelisted,
+        /// Team first release percent can't be zero
+        InvalidTeamFirstReleasePercent,
+        /// Team invalid vesting percent
+        InvalidTeamVestingPercent,
+        /// Team vesting period can't be zero
+        InvalidTeamVestingPeriod,
+        /// Not enough team tokens to lock
+        NotEnoughTeamTokensToLock,
     }
 
     #[pallet::call]
@@ -306,11 +350,19 @@ pub mod pallet {
             lockup_days: u32,
             start_block: T::BlockNumber,
             end_block: T::BlockNumber,
+            team_vesting_total_tokens: Balance,
+            team_vesting_first_release_percent: Balance,
+            team_vesting_period: T::BlockNumber,
+            team_vesting_percent: Balance,
             first_release_percent: Balance,
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin.clone())?;
+
+            if !WhitelistedIloOrganizers::<T>::get().contains(&user) {
+                return Err(Error::<T>::AccountIsNotWhitelisted.into());
+            }
 
             // Get ILO info of token
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
@@ -350,6 +402,10 @@ pub mod pallet {
                 start_block,
                 end_block,
                 current_block,
+                team_vesting_total_tokens,
+                team_vesting_first_release_percent,
+                team_vesting_period,
+                team_vesting_percent,
                 first_release_percent,
                 vesting_period,
                 vesting_percent,
@@ -357,7 +413,7 @@ pub mod pallet {
 
             ensure!(
                 CeresBurnFeeAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
@@ -371,7 +427,7 @@ pub mod pallet {
             // Burn CERES as fee
             Assets::<T>::burn(
                 origin,
-                T::CeresAssetId::get().into(),
+                CeresAssetIdOf::<T>::get().into(),
                 CeresBurnFeeAmount::<T>::get(),
             )?;
 
@@ -393,10 +449,16 @@ pub mod pallet {
                 lockup_days,
                 start_block,
                 end_block,
-                token_vesting: VestingInfo {
+                contributors_vesting: ContributorsVesting {
                     first_release_percent,
                     vesting_period,
                     vesting_percent,
+                },
+                team_vesting: TeamVesting {
+                    team_vesting_total_tokens,
+                    team_vesting_first_release_percent,
+                    team_vesting_period,
+                    team_vesting_percent,
                 },
                 sold_tokens: balance!(0),
                 funds_raised: balance!(0),
@@ -424,11 +486,16 @@ pub mod pallet {
             funds_to_contribute: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            if !WhitelistedContributors::<T>::get().contains(&user) {
+                return Err(Error::<T>::AccountIsNotWhitelisted.into());
+            }
+
             let current_block = frame_system::Pallet::<T>::block_number();
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&CeresAssetIdOf::<T>::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
             );
@@ -576,17 +643,18 @@ pub mod pallet {
             // Check if ILO for token already exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
             ensure!(
-                current_block > ilo_info.end_block,
+                current_block > ilo_info.end_block || ilo_info.funds_raised == ilo_info.hard_cap,
                 Error::<T>::ILOIsNotFinished
             );
             ensure!(!ilo_info.failed, Error::<T>::ILOIsFailed);
             ensure!(!ilo_info.succeeded, Error::<T>::ILOIsSucceeded);
-            if user != ilo_info.ilo_organizer {
-                return Err(Error::<T>::Unauthorized.into());
-            }
 
             let pallet_account = Self::account_id();
             if ilo_info.funds_raised < ilo_info.soft_cap {
@@ -699,6 +767,45 @@ pub mod pallet {
             ilo_info.finish_block = current_block;
             <ILOs<T>>::insert(&asset_id, &ilo_info);
 
+            // Lock team tokens
+            if ilo_info.team_vesting.team_vesting_total_tokens != balance!(0) {
+                let mut vesting_amount =
+                    balance!(1) - ilo_info.team_vesting.team_vesting_first_release_percent;
+                let tokens_to_lock =
+                    (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
+                        * FixedWrapper::from(vesting_amount))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                ensure!(
+                    tokens_to_lock
+                        <= Assets::<T>::free_balance(&asset_id.into(), &user).unwrap_or(0),
+                    Error::<T>::NotEnoughTeamTokensToLock
+                );
+
+                let mut unlocking_block =
+                    current_block + ilo_info.team_vesting.team_vesting_period.into();
+                let tokens_to_lock_per_period =
+                    (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
+                        * FixedWrapper::from(ilo_info.team_vesting.team_vesting_percent))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                while vesting_amount > balance!(0) {
+                    TokenLocker::<T>::lock_tokens(
+                        origin.clone(),
+                        asset_id.clone(),
+                        unlocking_block,
+                        tokens_to_lock_per_period,
+                    )?;
+
+                    unlocking_block += ilo_info.team_vesting.team_vesting_period.into();
+                    vesting_amount = vesting_amount
+                        .checked_sub(ilo_info.team_vesting.team_vesting_percent)
+                        .unwrap_or(balance!(0));
+                }
+            }
+
             // Emit an event
             Self::deposit_event(Event::ILOFinished(user.clone(), asset_id));
 
@@ -721,6 +828,10 @@ pub mod pallet {
             // Check if ILO for token exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
             ensure!(!ilo_info.claimed_lp_tokens, Error::<T>::CantClaimLPTokens);
 
             let unlocking_block = ilo_info
@@ -730,10 +841,6 @@ pub mod pallet {
                 current_block >= unlocking_block,
                 Error::<T>::CantClaimLPTokens
             );
-
-            if user != ilo_info.ilo_organizer {
-                return Err(Error::<T>::Unauthorized.into());
-            }
 
             let pallet_account = Self::account_id();
 
@@ -802,7 +909,7 @@ pub mod pallet {
                 // First claim
                 if contribution_info.tokens_claimed == balance!(0) {
                     let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+                        * FixedWrapper::from(ilo_info.contributors_vesting.first_release_percent))
                     .try_into_balance()
                     .unwrap_or(0);
                     // Claim first time
@@ -813,7 +920,7 @@ pub mod pallet {
                         tokens_to_claim,
                     )?;
                     contribution_info.tokens_claimed += tokens_to_claim;
-                    if ilo_info.token_vesting.first_release_percent == balance!(1) {
+                    if ilo_info.contributors_vesting.first_release_percent == balance!(1) {
                         contribution_info.claiming_finished = true;
                     }
                 } else {
@@ -822,7 +929,7 @@ pub mod pallet {
                     let blocks_passed = current_block.saturating_sub(ilo_info.finish_block);
 
                     let potential_claims: u32 = blocks_passed
-                        .checked_div(&ilo_info.token_vesting.vesting_period)
+                        .checked_div(&ilo_info.contributors_vesting.vesting_period)
                         .unwrap_or(0u32.into())
                         .unique_saturated_into();
                     if potential_claims == 0 {
@@ -834,7 +941,7 @@ pub mod pallet {
                     }
 
                     let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
+                        * FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent))
                     .try_into_balance()
                     .unwrap_or(0);
                     let mut claimable = (FixedWrapper::from(tokens_per_claim)
@@ -859,11 +966,11 @@ pub mod pallet {
                     contribution_info.number_of_claims += (claimable / tokens_per_claim) as u32;
 
                     let claimed_percent =
-                        (FixedWrapper::from(ilo_info.token_vesting.vesting_percent)
+                        (FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent)
                             * FixedWrapper::from(balance!(contribution_info.number_of_claims)))
                         .try_into_balance()
                         .unwrap_or(0)
-                            + ilo_info.token_vesting.first_release_percent;
+                            + ilo_info.contributors_vesting.first_release_percent;
 
                     if claimed_percent >= balance!(1) {
                         contribution_info.claiming_finished = true;
@@ -953,6 +1060,90 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        /// Add whitelisted contributor
+        #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_contributor())]
+        pub fn add_whitelisted_contributor(
+            origin: OriginFor<T>,
+            contributor: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            WhitelistedContributors::<T>::append(&contributor);
+
+            // Emit an event
+            Self::deposit_event(Event::WhitelistedContributor(contributor));
+
+            Ok(().into())
+        }
+
+        /// Remove whitelisted contributor
+        #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_contributor())]
+        pub fn remove_whitelisted_contributor(
+            origin: OriginFor<T>,
+            contributor: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let mut temp = WhitelistedContributors::<T>::get();
+            temp.retain(|x| *x != contributor);
+            WhitelistedContributors::<T>::set(temp);
+
+            // Emit an event
+            Self::deposit_event(Event::RemovedWhitelistedContributor(contributor));
+
+            Ok(().into())
+        }
+
+        /// Add whitelisted ILO organizer
+        #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_ilo_organizer())]
+        pub fn add_whitelisted_ilo_organizer(
+            origin: OriginFor<T>,
+            ilo_organizer: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            WhitelistedIloOrganizers::<T>::append(&ilo_organizer);
+
+            // Emit an event
+            Self::deposit_event(Event::WhitelistedIloOrganizer(ilo_organizer));
+
+            Ok(().into())
+        }
+
+        /// Remove whitelisted ILO organizer
+        #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_ilo_organizer())]
+        pub fn remove_whitelisted_ilo_organizer(
+            origin: OriginFor<T>,
+            ilo_organizer: AccountIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let mut temp = WhitelistedIloOrganizers::<T>::get();
+            temp.retain(|x| *x != ilo_organizer);
+            WhitelistedIloOrganizers::<T>::set(temp);
+
+            // Emit an event
+            Self::deposit_event(Event::RemovedWhitelistedIloOrganizer(ilo_organizer));
+
+            Ok(().into())
+        }
     }
 
     #[pallet::hooks]
@@ -1024,6 +1215,10 @@ pub mod pallet {
             start_block: T::BlockNumber,
             end_block: T::BlockNumber,
             current_block: T::BlockNumber,
+            team_vesting_total_tokens: Balance,
+            team_vesting_first_release_percent: Balance,
+            team_vesting_period: T::BlockNumber,
+            team_vesting_percent: Balance,
             first_release_percent: Balance,
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
@@ -1087,6 +1282,33 @@ pub mod pallet {
             .integral(RoundMode::Ceil);
             if tokens_for_liquidity != balance!(tfl) {
                 return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
+            }
+
+            // If team vesting is selected
+            if team_vesting_total_tokens != zero {
+                if team_vesting_first_release_percent == zero {
+                    return Err(Error::<T>::InvalidTeamFirstReleasePercent.into());
+                }
+
+                let one = balance!(1);
+                if team_vesting_first_release_percent != one && team_vesting_percent == zero {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                if team_vesting_first_release_percent + team_vesting_percent > one {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                let team_vesting_amount = one - team_vesting_first_release_percent;
+                if team_vesting_first_release_percent != one
+                    && team_vesting_amount % team_vesting_percent != 0
+                {
+                    return Err(Error::<T>::InvalidTeamVestingPercent.into());
+                }
+
+                if team_vesting_first_release_percent != one && team_vesting_period == 0u32.into() {
+                    return Err(Error::<T>::InvalidTeamVestingPeriod.into());
+                }
             }
 
             if first_release_percent == zero {

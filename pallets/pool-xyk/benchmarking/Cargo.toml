@@ -28,6 +28,7 @@ hex-literal = "0.3.1"
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }

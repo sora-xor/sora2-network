@@ -87,6 +87,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 
         max_dispatch_weight.min(weight)
     }
+
+    fn add_umi_nfts_receivers(n: u64) -> Weight {
+        T::DbWeight::get()
+            .reads(n)
+            .saturating_add(T::DbWeight::get().writes(n))
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -95,6 +101,10 @@ impl crate::WeightInfo for () {
     }
 
     fn finalize_storage_migration(_n: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn add_umi_nfts_receivers(_: u64) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

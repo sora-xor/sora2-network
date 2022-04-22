@@ -9,7 +9,7 @@ use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
     approve_last_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
-use crate::{Address, RegisteredSidechainToken};
+use crate::{EthAddress, RegisteredSidechainToken};
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
@@ -32,7 +32,7 @@ fn should_mint_and_burn_sidechain_asset() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
+        let token_address = EthAddress::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
         EthBridge::register_sidechain_asset(
             token_address,
             DEFAULT_BALANCE_PRECISION,
@@ -55,7 +55,7 @@ fn should_mint_and_burn_sidechain_asset() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind,
@@ -72,7 +72,7 @@ fn should_mint_and_burn_sidechain_asset() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id,
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
@@ -109,7 +109,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id: XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
@@ -126,7 +126,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
@@ -143,14 +143,14 @@ fn should_register_and_find_asset_ids() {
         // gets a known asset
         let (asset_id, asset_kind) = EthBridge::get_asset_by_raw_asset_id(
             H256(AssetId32::<PredefinedAssetId>::from_asset_id(PredefinedAssetId::XOR).code),
-            &Address::zero(),
+            &EthAddress::zero(),
             net_id,
         )
         .unwrap()
         .unwrap();
         assert_eq!(asset_id, XOR.into());
         assert_eq!(asset_kind, AssetKind::Thischain);
-        let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
+        let token_address = EthAddress::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
         // registers unknown token
         assert!(
             EthBridge::get_asset_by_raw_asset_id(H256::zero(), &token_address, net_id)
@@ -222,7 +222,7 @@ fn should_add_token() {
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let symbol = "TEST".into();
         let name = "Runtime Token".into();
         let decimals = 18;
@@ -253,7 +253,7 @@ fn should_not_add_token_if_not_bridge_account() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let symbol = "TEST".into();
         let name = "Runtime Token".into();
         let decimals = 18;
@@ -300,7 +300,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id,
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
             net_id_0,
         ));
@@ -310,7 +310,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id,
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
             net_id_1,
         ));
@@ -325,7 +325,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::Thischain,
@@ -346,7 +346,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::Thischain,
@@ -373,7 +373,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         // Register token on the first network.
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         assert_ok!(EthBridge::add_sidechain_token(
             Origin::root(),
             token_address,
@@ -413,7 +413,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::Sidechain,
@@ -430,7 +430,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id,
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
             net_id_1,
         ));
@@ -444,7 +444,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
-            from: Address::from([1; 20]),
+            from: EthAddress::from([1; 20]),
             to: alice.clone(),
             asset_id,
             asset_kind: AssetKind::Thischain,
@@ -461,7 +461,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id,
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
             net_id_0,
         ));
@@ -477,7 +477,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let ticker = "USDT".into();
         let name = "Tether USD".into();
         let decimals = 6;
@@ -544,7 +544,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id.clone(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             balance!(1),
             net_id,
         ));
@@ -572,7 +572,7 @@ fn should_convert_amount_for_indivisible_token() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let ticker = AssetSymbol::from_str("NFT").unwrap();
         let name = AssetName::from_str("NonFungTok").unwrap();
         let decimals = 0;
@@ -591,7 +591,7 @@ fn should_convert_amount_for_indivisible_token() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             asset_id.clone(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             1,
             net_id,
         ));
@@ -642,7 +642,7 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let ticker = "USDT".into();
         let name = "Tether USD".into();
         let decimals = 6;
@@ -700,7 +700,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let ticker = "USDT".into();
         let name = "Tether USD".into();
         let decimals = 6;
@@ -731,7 +731,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
             EthBridge::transfer_to_sidechain(
                 Origin::signed(alice.clone()),
                 asset_id.clone(),
-                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 balance!(0.1000009),
                 net_id,
             ),
@@ -746,7 +746,7 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
-        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         let ticker = "USDT".into();
         let name = "Tether USD".into();
         let decimals = DEFAULT_BALANCE_PRECISION + 1;

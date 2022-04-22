@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::offchain::SignatureParams;
-use crate::{Address, Config, Error, Pallet};
+use crate::{Config, Error, EthAddress, Pallet};
 use alloc::string::String;
 use codec::{Decode, FullCodec};
 use common::prelude::Balance;
@@ -97,7 +97,7 @@ impl<T: Config> Decoder<T> {
             .ok_or_else(|| Error::<T>::InvalidByte.into())
     }
 
-    pub fn next_address(&mut self) -> Result<Address, Error<T>> {
+    pub fn next_address(&mut self) -> Result<EthAddress, Error<T>> {
         Ok(H160(
             self.tokens
                 .pop()

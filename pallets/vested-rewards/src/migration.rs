@@ -29,20 +29,25 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight, FARMING_REWARDS,
-    MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+    Config, CrowdloanReward, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
+    FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, PSWAP_CROWDLOAN_REWARDS,
+    SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT, VAL_CROWDLOAN_REWARDS, XSTUSD_CROWDLOAN_REWARDS,
 };
+use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_wrapper, RewardReason, PSWAP, XOR};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
+use serde_json;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use traits::MultiCurrency;
+
+const CROWDLOAN_REWARDS: &'static str = include_str!("../crowdloan_rewards.json");
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
@@ -61,10 +66,17 @@ pub fn migrate<T: Config>() -> Weight {
         }) => {
             weight = add_funds_to_farming_rewards_account::<T>();
         }
+        Some(PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
         _ => (),
     }
 
-    weight.saturating_add(allow_market_making_pairs::<T>())
+    weight
+        .saturating_add(allow_market_making_pairs::<T>())
+        .saturating_add(add_crowdloan_rewards::<T>())
 }
 
 pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
@@ -261,4 +273,47 @@ fn allowed_market_making_assets<T: Config>() -> Vec<T::AssetId> {
     .iter()
     .map(|h| T::AssetId::from(H256::from(h)))
     .collect()
+}
+
+pub fn add_crowdloan_rewards<T: Config>() -> Weight {
+    let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS)
+        .expect("Can't deserialize crowdloan contributors.");
+
+    rewards.into_iter().for_each(|reward| {
+        crate::CrowdloanRewards::<T>::insert(
+            T::AccountId::decode(&mut &reward.address[..])
+                .expect("Can't decode contributor address."),
+            reward,
+        )
+    });
+
+    EXTRINSIC_FIXED_WEIGHT
+}
+
+pub fn add_funds_to_crowdloan_rewards_account<T: Config>() -> Weight {
+    if let Err(e) = T::Currency::deposit(
+        VAL.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        VAL_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
+    }
+
+    if let Err(e) = T::Currency::deposit(
+        PSWAP.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        PSWAP_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
+    }
+
+    if let Err(e) = T::Currency::deposit(
+        XSTUSD.into(),
+        &T::GetCrowdloanRewardsAccountId::get(),
+        XSTUSD_CROWDLOAN_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
+    }
+
+    T::DbWeight::get().writes(3)
 }

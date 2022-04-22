@@ -43,7 +43,7 @@ use crate::requests::{
 use crate::types::{Log, Transaction, TransactionReceipt};
 use crate::util::Decoder;
 use crate::{
-    Address, BridgeContractAddress, Config, Error, Pallet, Requests, DEPOSIT_TOPIC,
+    BridgeContractAddress, Config, Error, EthAddress, Pallet, Requests, DEPOSIT_TOPIC,
     STORAGE_NETWORK_IDS_KEY,
 };
 use alloc::string::String;
@@ -95,7 +95,7 @@ pub mod crypto {
 impl<T: Config> Pallet<T> {
     fn parse_deposit_event(
         log: &Log,
-    ) -> Result<DepositEvent<Address, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<DepositEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
         if log.removed.unwrap_or(true) {
             return Err(Error::<T>::EthLogWasRemoved);
         }
@@ -126,7 +126,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
-    ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<ContractEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
@@ -290,7 +290,7 @@ impl<T: Config> Pallet<T> {
     /// a Sidechain(Owned) asset, otherwise, Thischain.
     pub(crate) fn get_asset_by_raw_asset_id(
         raw_asset_id: H256,
-        token_address: &Address,
+        token_address: &EthAddress,
         network_id: T::NetworkId,
     ) -> Result<Option<(T::AssetId, AssetKind)>, Error<T>> {
         let is_sidechain_token = raw_asset_id == H256::zero();
@@ -437,7 +437,7 @@ impl<T: Config> Pallet<T> {
     /// Checks that the given contract address is known to the bridge network.
     ///
     /// There are special cases for XOR and VAL contracts.
-    pub fn ensure_known_contract(to: Address, network_id: T::NetworkId) -> Result<(), Error<T>> {
+    pub fn ensure_known_contract(to: EthAddress, network_id: T::NetworkId) -> Result<(), Error<T>> {
         if network_id == T::GetEthNetworkId::get() {
             ensure!(
                 to == BridgeContractAddress::<T>::get(network_id)

@@ -48,6 +48,7 @@ pub mod tests;
 
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
+use common::Description;
 use constants::rewards::*;
 use constants::time::*;
 
@@ -118,6 +119,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
+pub use vested_rewards::CrowdloanReward;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
@@ -217,10 +219,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 32,
+    spec_version: 33,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 32,
+    transaction_version: 33,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -758,7 +760,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -917,29 +918,48 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
 }
 
 impl xor_fee::ExtractProxySwap for Call {
+    type AccountId = AccountId;
     type DexId = DEXId;
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
-    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            selected_source_types,
-            filter_mode,
-        )) = self
-        {
-            Some(xor_fee::SwapInfo {
+    fn extract(
+        &self,
+    ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
+        match self {
+            Call::LiquidityProxy(liquidity_proxy::Call::swap(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+            )) => Some(xor_fee::SwapInfo {
+                fee_source: None,
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
                 amount: *amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
-            })
-        } else {
-            None
+            }),
+            Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer(
+                target,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                selected_source_types,
+                filter_mode,
+            )) => Some(xor_fee::SwapInfo {
+                fee_source: Some(target.clone()),
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            }),
+            _ => None,
         }
     }
 }
@@ -1376,6 +1396,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetCrowdloanRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+            vested_rewards::TECH_ACCOUNT_CROWDLOAN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetCrowdloanRewardsAccountId: AccountId = {
+        let tech_account_id = GetFarmingRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub GetFarmingRewardsTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -1433,6 +1467,7 @@ impl vested_rewards::Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -1481,6 +1516,17 @@ impl ceres_governance_platform::Config for Runtime {
     type Event = Event;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+    pub const DemeterAssetId: AssetId = common::DEMETER_ASSET_ID;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = DemeterAssetId;
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
+    type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1538,7 +1584,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
@@ -1548,7 +1594,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>, Config} = 40,
         Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
@@ -1558,6 +1604,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1606,7 +1653,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
@@ -1626,6 +1673,7 @@ construct_runtime! {
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
         CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
     }
 }
 
@@ -1863,7 +1911,7 @@ impl_runtime_apis! {
         }
     }
 
-    impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, BalancePrecision> for Runtime {
+    impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> for Runtime {
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
             Assets::free_balance(&asset_id, &account_id).ok().map(|balance|
                 assets_runtime_api::BalanceInfo::<Balance> {
@@ -1902,18 +1950,30 @@ impl_runtime_apis! {
             Assets::list_registered_asset_ids()
         }
 
-        fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, u8>> {
-            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, name, precision, is_mintable)|
-                assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
-                    asset_id, symbol, name, precision, is_mintable
+        fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, u8, ContentSource, Description>> {
+            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, name, precision, is_mintable, content_source, description)|
+                assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> {
+                    asset_id,
+                    symbol,
+                    name,
+                    precision,
+                    is_mintable,
+                    content_source,
+                    description
                 }
             ).collect()
         }
 
-        fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, BalancePrecision>> {
-            let (symbol, name, precision, is_mintable) = Assets::get_asset_info(&asset_id);
-            Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
-                asset_id, symbol, name, precision, is_mintable,
+        fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>> {
+            let (symbol, name, precision, is_mintable, content_source, description) = Assets::get_asset_info(&asset_id);
+            Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description> {
+                asset_id,
+                symbol,
+                name,
+                precision,
+                is_mintable,
+                content_source,
+                description
             })
         }
 
@@ -2171,20 +2231,18 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            use dex_api_benchmarking::Module as DEXAPIBench;
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
 
-            impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
-
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -2204,7 +2262,7 @@ impl_runtime_apis! {
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);
 
-            add_benchmark!(params, batches, assets, Assets);add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, assets, Assets);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
@@ -2226,9 +2284,23 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
+            add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
+        }
+    }
+
+    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance> for Runtime {
+        fn crowdloan_claimable(account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
+            use sp_runtime::traits::UniqueSaturatedInto;
+
+            let current_block_num = <frame_system::Pallet<Runtime>>::block_number().unique_saturated_into();
+            VestedRewards::crowdloan_reward_for_asset(&account_id, &asset_id, current_block_num).ok().map(|balance|
+                vested_rewards_runtime_api::BalanceInfo::<Balance> {
+                    balance
+                }
+            )
         }
     }
 }

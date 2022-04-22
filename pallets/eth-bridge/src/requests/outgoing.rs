@@ -32,8 +32,8 @@ use crate::offchain::SignatureParams;
 use crate::requests::{Assets, RequestStatus};
 use crate::util::{get_bridge_account, Decoder};
 use crate::{
-    types, Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config,
-    Error, OffchainRequest, OutgoingRequest, Pallet, RequestStatuses, MAX_PEERS, MIN_PEERS,
+    types, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
+    EthAddress, OffchainRequest, OutgoingRequest, Pallet, RequestStatuses, MAX_PEERS, MIN_PEERS,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -62,7 +62,7 @@ use sp_std::prelude::*;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransfer<T: Config> {
     pub from: T::AccountId,
-    pub to: Address,
+    pub to: EthAddress,
     pub asset_id: AssetIdOf<T>,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
@@ -81,7 +81,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEncoded, Error<T>> {
         // TODO: Incorrect type (Address != AccountId).
-        let from = Address::from_slice(&self.from.encode()[..20]);
+        let from = EthAddress::from_slice(&self.from.encode()[..20]);
         let to = self.to;
         let currency_id;
         let amount;
@@ -193,7 +193,7 @@ impl<T: Config> OutgoingTransfer<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyIdEncoded {
     AssetId(H256),
-    TokenAddress(Address),
+    TokenAddress(EthAddress),
 }
 
 impl CurrencyIdEncoded {
@@ -211,8 +211,8 @@ impl CurrencyIdEncoded {
 pub struct OutgoingTransferEncoded {
     pub currency_id: CurrencyIdEncoded,
     pub amount: U256,
-    pub to: Address,
-    pub from: Address,
+    pub to: EthAddress,
+    pub from: EthAddress,
     pub tx_hash: H256,
     pub network_id: H256,
     /// EABI-encoded data to be signed.
@@ -252,7 +252,7 @@ pub struct OutgoingAddAsset<T: Config> {
 impl<T: Config> OutgoingAddAsset<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddAssetEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let (symbol, name, precision, _) = Assets::<T>::get_asset_info(&self.asset_id);
+        let (symbol, name, precision, ..) = Assets::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name: String = String::from_utf8_lossy(&name.0).into();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
@@ -345,7 +345,7 @@ impl OutgoingAddAssetEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddToken<T: Config> {
     pub author: T::AccountId,
-    pub token_address: Address,
+    pub token_address: EthAddress,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
@@ -364,7 +364,7 @@ impl Encoder {
         Encoder::default()
     }
 
-    pub fn write_address(&mut self, val: &Address) {
+    pub fn write_address(&mut self, val: &EthAddress) {
         self.tokens.push(Token::Address(types::H160(val.0)));
     }
 
@@ -475,7 +475,7 @@ impl<T: Config> OutgoingAddToken<T> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddTokenEncoded {
-    pub token_address: Address,
+    pub token_address: EthAddress,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
@@ -506,7 +506,7 @@ impl OutgoingAddTokenEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeer<T: Config> {
     pub author: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
@@ -587,7 +587,7 @@ impl<T: Config> OutgoingAddPeer<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeerCompat<T: Config> {
     pub author: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
@@ -652,7 +652,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 pub struct OutgoingRemovePeer<T: Config> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
@@ -750,7 +750,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
 pub struct OutgoingRemovePeerCompat<T: Config> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
@@ -806,7 +806,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeerEncoded {
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub tx_hash: H256,
     pub network_id: H256,
     /// EABI-encoded data to be signed.
@@ -831,7 +831,7 @@ impl OutgoingAddPeerEncoded {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeerEncoded {
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub tx_hash: H256,
     pub network_id: H256,
     /// EABI-encoded data to be signed.
@@ -883,9 +883,9 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let contract_address: Address = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
         let raw = ethabi::encode_packed(&[
-            Token::Address(types::Address::from(contract_address.0)),
+            Token::Address(types::EthAddress::from(contract_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
         ]);
@@ -918,7 +918,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingPrepareForMigrationEncoded {
-    pub this_contract_address: Address,
+    pub this_contract_address: EthAddress,
     pub tx_hash: H256,
     pub network_id: H256,
     /// EABI-encoded data to be signed.
@@ -928,7 +928,7 @@ pub struct OutgoingPrepareForMigrationEncoded {
 impl OutgoingPrepareForMigrationEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
-            Token::Address(types::Address::from(self.this_contract_address.0)),
+            Token::Address(types::EthAddress::from(self.this_contract_address.0)),
             Token::FixedBytes(self.tx_hash.0.to_vec()),
         ];
         if let Some(sigs) = signatures {
@@ -945,8 +945,8 @@ impl OutgoingPrepareForMigrationEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrate<T: Config> {
     pub author: T::AccountId,
-    pub new_contract_address: Address,
-    pub erc20_native_tokens: Vec<Address>,
+    pub new_contract_address: EthAddress,
+    pub erc20_native_tokens: Vec<EthAddress>,
     pub nonce: T::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
@@ -962,15 +962,15 @@ impl<T: Config> OutgoingMigrate<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let contract_address: Address = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
         let raw = ethabi::encode_packed(&[
-            Token::Address(types::Address::from(contract_address.0)),
-            Token::Address(types::Address::from(self.new_contract_address.0)),
+            Token::Address(types::EthAddress::from(contract_address.0)),
+            Token::Address(types::EthAddress::from(self.new_contract_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::Array(
                 self.erc20_native_tokens
                     .iter()
-                    .map(|addr| Token::Address(types::Address::from(addr.0)))
+                    .map(|addr| Token::Address(types::EthAddress::from(addr.0)))
                     .collect(),
             ),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -1012,10 +1012,10 @@ impl<T: Config> OutgoingMigrate<T> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrateEncoded {
-    pub this_contract_address: Address,
+    pub this_contract_address: EthAddress,
     pub tx_hash: H256,
-    pub new_contract_address: Address,
-    pub erc20_native_tokens: Vec<Address>,
+    pub new_contract_address: EthAddress,
+    pub erc20_native_tokens: Vec<EthAddress>,
     pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,

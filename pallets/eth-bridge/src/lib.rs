@@ -132,8 +132,7 @@ pub trait WeightInfo {
     fn register_existing_sidechain_asset() -> Weight;
 }
 
-type Address = H160;
-type EthereumAddress = Address;
+type EthAddress = H160;
 
 pub mod weights;
 
@@ -215,7 +214,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct NetworkParams<AccountId: Ord> {
-    pub bridge_contract_address: Address,
+    pub bridge_contract_address: EthAddress,
     pub initial_peers: BTreeSet<AccountId>,
 }
 
@@ -226,7 +225,7 @@ pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
     pub assets: Vec<AssetConfig<T::AssetId>>,
-    pub bridge_contract_address: Address,
+    pub bridge_contract_address: EthAddress,
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
 
@@ -440,7 +439,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
-            bridge_contract_address: EthereumAddress,
+            bridge_contract_address: EthAddress,
             initial_peers: Vec<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -501,7 +500,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
-            token_address: EthereumAddress,
+            token_address: EthAddress,
             symbol: String,
             name: String,
             decimals: u8,
@@ -547,7 +546,7 @@ pub mod pallet {
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            to: EthereumAddress,
+            to: EthAddress,
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
@@ -655,7 +654,7 @@ pub mod pallet {
         pub fn add_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
-            address: EthereumAddress,
+            address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
@@ -701,7 +700,7 @@ pub mod pallet {
         pub fn remove_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
-            peer_address: Option<EthereumAddress>,
+            peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
@@ -796,8 +795,8 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
-            new_contract_address: EthereumAddress,
-            erc20_native_tokens: Vec<EthereumAddress>,
+            new_contract_address: EthAddress,
+            erc20_native_tokens: Vec<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
@@ -918,7 +917,7 @@ pub mod pallet {
         pub fn force_add_peer(
             origin: OriginFor<T>,
             who: T::AccountId,
-            address: EthereumAddress,
+            address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
@@ -996,7 +995,7 @@ pub mod pallet {
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            token_address: EthereumAddress,
+            token_address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!(
@@ -1312,7 +1311,7 @@ pub mod pallet {
         Twox64Concat,
         BridgeNetworkId<T>,
         Blake2_128Concat,
-        Address,
+        EthAddress,
         T::AssetId,
     >;
 
@@ -1325,7 +1324,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AssetId,
-        Address,
+        EthAddress,
     >;
 
     /// Network peers set.
@@ -1352,7 +1351,7 @@ pub mod pallet {
         Twox64Concat,
         BridgeNetworkId<T>,
         Blake2_128Concat,
-        Address,
+        EthAddress,
         T::AccountId,
         ValueQuery,
     >;
@@ -1366,7 +1365,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AccountId,
-        Address,
+        EthAddress,
         ValueQuery,
     >;
 
@@ -1391,17 +1390,17 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_address)]
     pub(super) type BridgeContractAddress<T: Config> =
-        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Address, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, EthAddress, ValueQuery>;
 
     /// Sora XOR master contract address.
     #[pallet::storage]
     #[pallet::getter(fn xor_master_contract_address)]
-    pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+    pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, EthAddress, ValueQuery>;
 
     /// Sora VAL master contract address.
     #[pallet::storage]
     #[pallet::getter(fn val_master_contract_address)]
-    pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+    pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, EthAddress, ValueQuery>;
 
     /// Next Network ID counter.
     #[pallet::storage]
@@ -1415,8 +1414,8 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub authority_account: T::AccountId,
-        pub xor_master_contract_address: Address,
-        pub val_master_contract_address: Address,
+        pub xor_master_contract_address: EthAddress,
+        pub val_master_contract_address: EthAddress,
         pub networks: Vec<NetworkConfig<T>>,
     }
 
@@ -1455,7 +1454,7 @@ pub mod pallet {
                         ..
                     } = &asset_config
                     {
-                        let token_address = Address::from(sidechain_id.0);
+                        let token_address = EthAddress::from(sidechain_id.0);
                         RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
                         RegisteredSidechainToken::<T>::insert(net_id, asset_id, token_address);
                         SidechainAssetPrecision::<T>::insert(net_id, asset_id, precision);
@@ -1620,7 +1619,7 @@ impl<T: Config> Pallet<T> {
 
     /// Registers new sidechain asset and grants mint permission to the bridge account.
     fn register_sidechain_asset(
-        token_address: Address,
+        token_address: EthAddress,
         precision: BalancePrecision,
         symbol: AssetSymbol,
         name: AssetName,

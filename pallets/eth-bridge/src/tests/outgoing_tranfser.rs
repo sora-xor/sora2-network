@@ -34,7 +34,7 @@ use crate::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer};
 use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
-use crate::{Address, AssetConfig};
+use crate::{AssetConfig, EthAddress};
 use common::{DEFAULT_BALANCE_PRECISION, KSM, USDT, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
@@ -58,7 +58,7 @@ fn should_approve_outgoing_transfer() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
@@ -94,7 +94,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             USDT.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
@@ -133,7 +133,7 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             PSWAP.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
@@ -167,7 +167,7 @@ fn should_not_transfer() {
             EthBridge::transfer_to_sidechain(
                 Origin::signed(alice.clone()),
                 KSM.into(),
-                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 100_u32.into(),
                 net_id,
             ),
@@ -176,7 +176,7 @@ fn should_not_transfer() {
         assert!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_000_000_u32.into(),
             net_id,
         )
@@ -195,13 +195,13 @@ fn should_register_outgoing_transfer() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from([1; 20]),
+            EthAddress::from([1; 20]),
             100u32.into(),
             net_id,
         ));
         let outgoing_transfer = OutgoingTransfer::<Runtime> {
             from: alice.clone(),
-            to: Address::from([1; 20]),
+            to: EthAddress::from([1; 20]),
             asset_id: XOR.into(),
             amount: 100_u32.into(),
             nonce: 3,
@@ -228,7 +228,7 @@ fn ocw_should_handle_outgoing_request() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));
@@ -251,7 +251,7 @@ fn ocw_should_not_handle_outgoing_request_twice() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
             XOR.into(),
-            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
         ));

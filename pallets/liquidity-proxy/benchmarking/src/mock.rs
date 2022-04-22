@@ -96,6 +96,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -114,7 +115,7 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
@@ -122,6 +123,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -248,7 +250,6 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
@@ -262,6 +263,13 @@ impl dex_api::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
@@ -286,6 +294,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 
