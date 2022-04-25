@@ -2302,5 +2302,15 @@ impl_runtime_apis! {
                 }
             )
         }
+
+        fn crowdloan_lease() -> vested_rewards_runtime_api::CrowdloanLease {
+            use vested_rewards::{LEASE_START_BLOCK, LEASE_TOTAL_DAYS, BLOCKS_PER_DAY};
+
+            vested_rewards_runtime_api::CrowdloanLease {
+                start_block: LEASE_START_BLOCK,
+                total_days: LEASE_TOTAL_DAYS,
+                blocks_per_day: BLOCKS_PER_DAY,
+            }
+        }
     }
 }

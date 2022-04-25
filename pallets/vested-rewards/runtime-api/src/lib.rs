@@ -55,6 +55,17 @@ pub struct BalanceInfo<Balance> {
     pub balance: Balance,
 }
 
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct CrowdloanLease {
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
+    pub start_block: u128,
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
+    pub total_days: u128,
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
+    pub blocks_per_day: u128,
+}
+
 sp_api::decl_runtime_apis! {
     pub trait VestedRewardsApi<EthAddress, AssetId, Balance> where
         EthAddress: Codec,
@@ -65,5 +76,7 @@ sp_api::decl_runtime_apis! {
             address: EthAddress,
             asset_id: AssetId,
         ) -> Option<BalanceInfo<Balance>>;
+
+        fn crowdloan_lease() -> CrowdloanLease;
     }
 }
