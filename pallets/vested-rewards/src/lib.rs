@@ -453,7 +453,10 @@ pub mod pallet {
             Pallet::<T>::claim_reward_by_reason(&who, RewardReason::Crowdloan, &asset_id, reward)?;
 
             CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
-                *value = T::BlockNumber::unique_saturated_from(current_block_number)
+                let offset = current_block_number % BLOCKS_PER_DAY;
+                *value = T::BlockNumber::unique_saturated_from(
+                    current_block_number.saturating_sub(offset),
+                )
             });
 
             Ok(().into())
@@ -583,7 +586,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
 
     /// This storage keeps the last block number, when the user (the first) claimed a reward for
-    /// asset (the second key).
+    /// asset (the second key). The block is rounded to days.
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_claim_history)]
     pub type CrowdloanClaimHistory<T: Config> = StorageDoubleMap<
