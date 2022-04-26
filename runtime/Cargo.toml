@@ -208,7 +208,8 @@ std = [
 
 private-net = [
     "faucet",
-    "farming/private-net"
+    "farming/private-net",
+    "vested-rewards/private-net"
 ]
 
 runtime-benchmarks = [

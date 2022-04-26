@@ -73,9 +73,12 @@ pub const VAL_CROWDLOAN_REWARDS: Balance = balance!(676393);
 pub const PSWAP_CROWDLOAN_REWARDS: Balance = balance!(9363480);
 pub const XSTUSD_CROWDLOAN_REWARDS: Balance = balance!(77050);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
-const BLOCKS_PER_DAY: u128 = 14400;
-const LEASE_START_BLOCK: u128 = 4_397_212;
-const LEASE_TOTAL_DAYS: u128 = 318;
+pub const BLOCKS_PER_DAY: u128 = 14400;
+#[cfg(not(feature = "private-net"))]
+pub const LEASE_START_BLOCK: u128 = 4_397_212;
+#[cfg(feature = "private-net")]
+pub const LEASE_START_BLOCK: u128 = 0;
+pub const LEASE_TOTAL_DAYS: u128 = 318;
 
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

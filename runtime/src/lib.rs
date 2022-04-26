@@ -1404,7 +1404,7 @@ parameter_types! {
         tech_account_id
     };
     pub GetCrowdloanRewardsAccountId: AccountId = {
-        let tech_account_id = GetFarmingRewardsTechAccountId::get();
+        let tech_account_id = GetCrowdloanRewardsTechAccountId::get();
         let account_id =
             technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
@@ -2301,6 +2301,16 @@ impl_runtime_apis! {
                     balance
                 }
             )
+        }
+
+        fn crowdloan_lease() -> vested_rewards_runtime_api::CrowdloanLease {
+            use vested_rewards::{LEASE_START_BLOCK, LEASE_TOTAL_DAYS, BLOCKS_PER_DAY};
+
+            vested_rewards_runtime_api::CrowdloanLease {
+                start_block: LEASE_START_BLOCK,
+                total_days: LEASE_TOTAL_DAYS,
+                blocks_per_day: BLOCKS_PER_DAY,
+            }
         }
     }
 }
