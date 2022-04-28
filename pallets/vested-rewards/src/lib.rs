@@ -73,9 +73,12 @@ pub const VAL_CROWDLOAN_REWARDS: Balance = balance!(676393);
 pub const PSWAP_CROWDLOAN_REWARDS: Balance = balance!(9363480);
 pub const XSTUSD_CROWDLOAN_REWARDS: Balance = balance!(77050);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
-const BLOCKS_PER_DAY: u128 = 14400;
-const LEASE_START_BLOCK: u128 = 4_397_212;
-const LEASE_TOTAL_DAYS: u128 = 318;
+pub const BLOCKS_PER_DAY: u128 = 14400;
+#[cfg(not(feature = "private-net"))]
+pub const LEASE_START_BLOCK: u128 = 4_397_212;
+#[cfg(feature = "private-net")]
+pub const LEASE_START_BLOCK: u128 = 0;
+pub const LEASE_TOTAL_DAYS: u128 = 318;
 
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -450,7 +453,10 @@ pub mod pallet {
             Pallet::<T>::claim_reward_by_reason(&who, RewardReason::Crowdloan, &asset_id, reward)?;
 
             CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
-                *value = T::BlockNumber::unique_saturated_from(current_block_number)
+                let offset = current_block_number % BLOCKS_PER_DAY;
+                *value = T::BlockNumber::unique_saturated_from(
+                    current_block_number.saturating_sub(offset),
+                )
             });
 
             Ok(().into())
@@ -580,7 +586,7 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
 
     /// This storage keeps the last block number, when the user (the first) claimed a reward for
-    /// asset (the second key).
+    /// asset (the second key). The block is rounded to days.
     #[pallet::storage]
     #[pallet::getter(fn crowdloan_claim_history)]
     pub type CrowdloanClaimHistory<T: Config> = StorageDoubleMap<

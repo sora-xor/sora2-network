@@ -42,7 +42,9 @@ use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 use std::sync::Arc;
 
 // Runtime API imports.
-pub use vested_rewards_runtime_api::{BalanceInfo, VestedRewardsApi as VestedRewardsRuntimeApi};
+pub use vested_rewards_runtime_api::{
+    BalanceInfo, CrowdloanLease, VestedRewardsApi as VestedRewardsRuntimeApi,
+};
 
 #[rpc]
 pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
@@ -53,6 +55,9 @@ pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
         asset_id: AssetId,
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
+
+    #[rpc(name = "vestedRewards_crowdloanLease")]
+    fn crowdloan_lease(&self, at: Option<BlockHash>) -> Result<CrowdloanLease>;
 }
 
 pub struct VestedRewardsClient<C, B> {
@@ -99,5 +104,18 @@ where
                 message: "Unable to get crowdloan claimables.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
+    }
+
+    fn crowdloan_lease(&self, at: Option<<Block as BlockT>::Hash>) -> Result<CrowdloanLease> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.crowdloan_lease(&at).map_err(|e| RpcError {
+            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+            message: "Unable to get crowdloan lease info.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
     }
 }
