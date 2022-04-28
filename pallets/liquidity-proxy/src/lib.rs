@@ -52,6 +52,12 @@ use sp_std::prelude::*;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
+// Tuple of options to determine Liquidity Source Id's
+type LiquiditySourcesList<T> = (
+    Option<LiquiditySourceIdOf<T>>,
+    Option<LiquiditySourceIdOf<T>>,
+);
+
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
@@ -174,12 +180,6 @@ pub trait WeightInfo {
     fn swap(variant: SwapVariant) -> Weight;
 }
 
-// #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub enum LiquiditySourcesList<T: Config> {
-    Single(LiquiditySourceIdOf<T>),
-    Double(LiquiditySourceIdOf<T>, LiquiditySourceIdOf<T>),
-}
-
 impl<T: Config> Pallet<T> {
     /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
     pub fn is_forbidden_filter(
@@ -220,11 +220,8 @@ impl<T: Config> Pallet<T> {
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
 
         match sources.len() {
-            1 => Ok(LiquiditySourcesList::Single(sources[0].clone())),
-            2 => Ok(LiquiditySourcesList::Double(
-                sources[0].clone(),
-                sources[1].clone(),
-            )),
+            1 => Ok((Some(sources[0].clone()), None)),
+            2 => Ok((Some(sources[0].clone()), Some(sources[1].clone()))),
             _ => fail!(Error::<T>::UnavailableExchangePath),
         }
     }
@@ -281,7 +278,7 @@ impl<T: Config> Pallet<T> {
             input_amount,
             output_amount,
             fee_amount,
-            // sources_for_event,
+            sources_for_event,
         ));
 
         Ok(().into())
@@ -1541,7 +1538,7 @@ pub mod pallet {
             Balance,
             Balance,
             Balance,
-            // LiquiditySourcesList<T>,
+            LiquiditySourcesList<T>,
         ),
     }
 
