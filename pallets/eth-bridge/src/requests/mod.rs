@@ -219,6 +219,13 @@ impl<T: Config> OutgoingRequest<T> {
     pub fn is_allowed_during_migration(&self) -> bool {
         matches!(self, OutgoingRequest::Migrate(_))
     }
+
+    pub fn should_be_skipped(&self) -> bool {
+        match self {
+            OutgoingRequest::RemovePeer(req) => req.should_be_skipped(),
+            _ => false,
+        }
+    }
 }
 
 /// Types of transaction-requests that can be made from a sidechain.
@@ -340,16 +347,16 @@ impl<T: Config> IncomingRequest<T> {
                     should_take_fee: false,
                 })
             }
-            ContractEvent::ChangePeers(peer_address, added) => {
+            ContractEvent::ChangePeers(peer_address, removed) => {
                 let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address);
                 ensure!(
-                    peer_account_id != T::AccountId::default(),
+                    removed || peer_account_id != T::AccountId::default(),
                     Error::<T>::UnknownPeerAddress
                 );
                 IncomingRequest::ChangePeers(IncomingChangePeers {
                     peer_account_id,
                     peer_address,
-                    added,
+                    removed,
                     author,
                     tx_hash,
                     at_height,
@@ -812,6 +819,13 @@ impl<T: Config> OffchainRequest<T> {
     pub fn is_incoming(&self) -> bool {
         match self {
             OffchainRequest::Incoming(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn should_be_skipped(&self) -> bool {
+        match self {
+            OffchainRequest::Outgoing(req, _) => req.should_be_skipped(),
             _ => false,
         }
     }
