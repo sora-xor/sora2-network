@@ -52,12 +52,6 @@ use sp_std::prelude::*;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
-// Tuple of options to determine Liquidity Source Id's
-type LiquiditySourcesList<T> = (
-    Option<LiquiditySourceIdOf<T>>,
-    Option<LiquiditySourceIdOf<T>>,
-);
-
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
@@ -214,14 +208,13 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
-    ) -> Result<LiquiditySourcesList<T>, DispatchError> {
+    ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
         let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
         let sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
 
         match sources.len() {
-            1 => Ok((Some(sources[0].clone()), None)),
-            2 => Ok((Some(sources[0].clone()), Some(sources[1].clone()))),
+            1 | 2 => Ok(sources),
             _ => fail!(Error::<T>::UnavailableExchangePath),
         }
     }
@@ -374,7 +367,7 @@ impl<T: Config> Pallet<T> {
                         desired_amount_out,
                         max_amount_in,
                     } => {
-                        let (second_quote, _) = Self::quote_single(
+                        let (second_quote, _, liquidity_sources) = Self::quote_single(
                             &intermediate_asset_id,
                             &to_asset_id,
                             QuoteAmount::with_desired_output(desired_amount_out),
@@ -382,7 +375,7 @@ impl<T: Config> Pallet<T> {
                             true,
                             true,
                         )?;
-                        let (first_quote, _) = Self::quote_single(
+                        let (first_quote, _, liquidity_sources) = Self::quote_single(
                             &from_asset_id,
                             &intermediate_asset_id,
                             QuoteAmount::with_desired_output(second_quote.amount),
@@ -510,7 +503,7 @@ impl<T: Config> Pallet<T> {
                 from_asset_id,
                 to_asset_id,
             } => {
-                let (aso, rewards) = Self::quote_single(
+                let (aso, rewards, liquidity_sources) = Self::quote_single(
                     &from_asset_id,
                     &to_asset_id,
                     amount,
@@ -540,7 +533,7 @@ impl<T: Config> Pallet<T> {
                 to_asset_id,
             } => match amount {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    let (first_quote, rewards_a) = Self::quote_single(
+                    let (first_quote, rewards_a, liquidity_sources) = Self::quote_single(
                         &from_asset_id,
                         &intermediate_asset_id,
                         QuoteAmount::with_desired_input(desired_amount_in),
@@ -548,7 +541,7 @@ impl<T: Config> Pallet<T> {
                         skip_info,
                         deduce_fee,
                     )?;
-                    let (second_quote, mut rewards_b) = Self::quote_single(
+                    let (second_quote, mut rewards_b, liquidity_sources) = Self::quote_single(
                         &intermediate_asset_id,
                         &to_asset_id,
                         QuoteAmount::with_desired_input(first_quote.amount),
@@ -603,7 +596,7 @@ impl<T: Config> Pallet<T> {
                     ))
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    let (second_quote, mut rewards_b) = Self::quote_single(
+                    let (second_quote, mut rewards_b, liquidity_sources) = Self::quote_single(
                         &intermediate_asset_id,
                         &to_asset_id,
                         QuoteAmount::with_desired_output(desired_amount_out),
@@ -611,7 +604,7 @@ impl<T: Config> Pallet<T> {
                         skip_info,
                         deduce_fee,
                     )?;
-                    let (first_quote, rewards_a) = Self::quote_single(
+                    let (first_quote, rewards_a, liquidity_sources) = Self::quote_single(
                         &from_asset_id,
                         &intermediate_asset_id,
                         QuoteAmount::with_desired_output(second_quote.amount),
@@ -689,6 +682,7 @@ impl<T: Config> Pallet<T> {
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
+            Vec<LiquiditySourceIdOf<T>>,
         ),
         DispatchError,
     > {
@@ -727,6 +721,7 @@ impl<T: Config> Pallet<T> {
                     outcome.fee,
                 ),
                 rewards,
+                sources,
             ));
         }
 
@@ -761,7 +756,7 @@ impl<T: Config> Pallet<T> {
                     deduce_fee,
                 )?;
 
-                return Ok(outcome);
+                return Ok((outcome.0, outcome.1, sources));
             }
         }
 
@@ -1538,7 +1533,8 @@ pub mod pallet {
             Balance,
             Balance,
             Balance,
-            LiquiditySourcesList<T>,
+            Vec<LiquiditySourceIdOf<T>>,
+            // LiquiditySourcesList<T>,
         ),
     }
 
