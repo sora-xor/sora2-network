@@ -124,7 +124,7 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
 }
 
 /// Indicates that particular object can be used to perform exchanges with aggregation capability.
-pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId, LiquiditySourceIdOf> {
+pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
     /// Get spot price of tokens based on desired amount, None returned if liquidity source
     /// does not have available exchange methods for indicated path.
     fn quote(
@@ -143,11 +143,11 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId, Liqui
         output_asset_id: &AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf>), DispatchError>;
+    ) -> Result<SwapOutcome<Balance>, DispatchError>;
 }
 
-impl<DEXId: PartialEq + Copy, AccountId, AssetId, LiquiditySourceIdOf>
-    LiquidityProxyTrait<DEXId, AccountId, AssetId, LiquiditySourceIdOf> for ()
+impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
+    for ()
 {
     fn quote(
         _input_asset_id: &AssetId,
@@ -166,7 +166,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId, LiquiditySourceIdOf>
         _output_asset_id: &AssetId,
         _amount: SwapAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf>), DispatchError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
     }
 }
@@ -203,22 +203,22 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
-    fn get_liqidity_sources_for_event(
-        dex_id: T::DEXId,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
-        selected_source_types: Vec<LiquiditySourceType>,
-        filter_mode: FilterMode,
-    ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
-        let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-        let sources =
-            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
+    // fn get_liqidity_sources_for_event(
+    //     dex_id: T::DEXId,
+    //     input_asset_id: &T::AssetId,
+    //     output_asset_id: &T::AssetId,
+    //     selected_source_types: Vec<LiquiditySourceType>,
+    //     filter_mode: FilterMode,
+    // ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
+    //     let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
+    //     let sources =
+    //         T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
 
-        match sources.len() {
-            1 | 2 => Ok(sources),
-            _ => fail!(Error::<T>::UnavailableExchangePath),
-        }
-    }
+    //     match sources.len() {
+    //         1 | 2 => Ok(sources),
+    //         _ => fail!(Error::<T>::UnavailableExchangePath),
+    //     }
+    // }
 
     pub fn inner_swap(
         sender: T::AccountId,
@@ -239,13 +239,13 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::ForbiddenFilter);
         }
 
-        let sources_for_event = Self::get_liqidity_sources_for_event(
-            dex_id,
-            &input_asset_id,
-            &output_asset_id,
-            selected_source_types.clone(),
-            filter_mode.clone(),
-        )?;
+        // let sources_for_event = Self::get_liqidity_sources_for_event(
+        //     dex_id,
+        //     &input_asset_id,
+        //     &output_asset_id,
+        //     selected_source_types.clone(),
+        //     filter_mode.clone(),
+        // )?;
 
         let (outcome, sources) = Self::inner_exchange(
             &sender,
@@ -272,7 +272,7 @@ impl<T: Config> Pallet<T> {
             input_amount,
             output_amount,
             fee_amount,
-            sources_for_event,
+            sources,
         ));
 
         Ok(().into())
@@ -1389,9 +1389,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId, LiquiditySourceIdOf<T>>
-    for Pallet<T>
-{
+impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pallet<T> {
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
@@ -1425,15 +1423,16 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId, Liquidit
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
-        Pallet::<T>::inner_exchange(
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let (outcome, _) = Pallet::<T>::inner_exchange(
             sender,
             receiver,
             input_asset_id,
             output_asset_id,
             amount,
             filter,
-        )
+        )?;
+        Ok(outcome)
     }
 }
 
