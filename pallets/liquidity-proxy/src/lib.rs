@@ -146,6 +146,14 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
     ) -> Result<SwapOutcome<Balance>, DispatchError>;
 }
 
+fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
+    for el in vec_2 {
+        if !vec_1.contains(&el) {
+            vec_1.push(el);
+        }
+    }
+}
+
 impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
     for ()
 {
@@ -362,7 +370,7 @@ impl<T: Config> Pallet<T> {
                             .fee
                             .checked_add(second_swap.fee)
                             .ok_or(Error::<T>::CalculationError)?;
-                        first_sources.extend(second_sources);
+                        merge_two_vectors_unique(&mut first_sources, second_sources);
                         Ok((
                             SwapOutcome::new(second_swap.amount, cumulative_fee),
                             first_sources,
@@ -421,7 +429,7 @@ impl<T: Config> Pallet<T> {
                             .fee
                             .checked_add(second_swap.fee)
                             .ok_or(Error::<T>::CalculationError)?;
-                        first_sources.extend(second_sources);
+                        merge_two_vectors_unique(&mut first_sources, second_sources);
                         Ok((
                             SwapOutcome::new(first_quote.amount, cumulative_fee),
                             first_sources,
@@ -611,7 +619,10 @@ impl<T: Config> Pallet<T> {
                         .ok_or(Error::<T>::CalculationError)?;
                     let mut rewards = rewards_a;
                     rewards.append(&mut rewards_b);
-                    first_liquidity_sources.extend(second_liquidity_sources);
+                    merge_two_vectors_unique(
+                        &mut first_liquidity_sources,
+                        second_liquidity_sources,
+                    );
                     Ok((
                         SwapOutcome::new(second_quote.amount, cumulative_fee),
                         rewards,
@@ -677,7 +688,10 @@ impl<T: Config> Pallet<T> {
                         .ok_or(Error::<T>::CalculationError)?;
                     let mut rewards = rewards_a;
                     rewards.append(&mut rewards_b);
-                    second_liquidity_sources.extend(first_liquidity_sources);
+                    merge_two_vectors_unique(
+                        &mut second_liquidity_sources,
+                        first_liquidity_sources,
+                    );
                     Ok((
                         SwapOutcome::new(first_quote.amount, cumulative_fee),
                         rewards,
