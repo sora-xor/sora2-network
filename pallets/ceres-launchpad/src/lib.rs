@@ -745,7 +745,7 @@ pub mod pallet {
             )?;
 
             // Lock liquidity
-            let unlocking_block = current_block
+            /*let unlocking_block = current_block
                 + (T::BLOCKS_PER_ONE_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
             CeresLiquidityLocker::<T>::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
@@ -754,7 +754,7 @@ pub mod pallet {
                 unlocking_block,
                 balance!(1),
                 true,
-            )?;
+            )?;*/
 
             // Calculate LP tokens
             let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), asset_id)

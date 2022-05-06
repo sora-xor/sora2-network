@@ -188,7 +188,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
             Origin::signed(ALICE()),
             base_asset,
             target_asset,
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             lp_percentage,
             true
         ));
@@ -274,7 +274,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
             Origin::signed(ALICE()),
             base_asset,
             target_asset,
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             lp_percentage,
             false
         ));
@@ -325,7 +325,7 @@ fn lock_liquidity_invalid_percentage() {
                 Origin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
-                frame_system::Pallet::<Runtime>::block_number() + 1,
+                pallet_timestamp::Pallet::<Runtime>::get() + 1,
                 balance!(1.1),
                 true,
             ),
@@ -335,18 +335,18 @@ fn lock_liquidity_invalid_percentage() {
 }
 
 #[test]
-fn lock_liquidity_invalid_unlocking_block() {
+fn lock_liquidity_invalid_unlocking_timestamp() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
-                frame_system::Pallet::<Runtime>::block_number(),
+                pallet_timestamp::Pallet::<Runtime>::get(),
                 balance!(0.8),
                 true,
             ),
-            ceres_liquidity_locker::Error::<Runtime>::InvalidUnlockingBlock
+            ceres_liquidity_locker::Error::<Runtime>::InvalidUnlockingTimestamp
         );
     });
 }
@@ -359,7 +359,7 @@ fn lock_liquidity_pool_does_not_exist() {
                 Origin::signed(ALICE()),
                 XOR.into(),
                 DOT.into(),
-                frame_system::Pallet::<Runtime>::block_number() + 1,
+                pallet_timestamp::Pallet::<Runtime>::get() + 1,
                 balance!(0.5),
                 true,
             ),
@@ -376,7 +376,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
                 Origin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
-                frame_system::Pallet::<Runtime>::block_number() + 1,
+                pallet_timestamp::Pallet::<Runtime>::get() + 1,
                 balance!(0.5),
                 true
             ),
@@ -404,7 +404,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             balance!(0.5),
             true
         ));
@@ -414,7 +414,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             balance!(0.3),
             true
         ));
@@ -425,7 +425,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
                 Origin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
-                frame_system::Pallet::<Runtime>::block_number() + 5,
+                pallet_timestamp::Pallet::<Runtime>::get() + 5,
                 balance!(0.3),
                 true
             ),
@@ -465,6 +465,8 @@ fn change_ceres_fee_ok() {
 #[test]
 fn should_remove_expired_lockups() {
     preset_initial(|dex_id| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -481,7 +483,7 @@ fn should_remove_expired_lockups() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            current_timestamp + 5,
             balance!(0.5),
             true
         ));
@@ -491,7 +493,7 @@ fn should_remove_expired_lockups() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 500,
+            current_timestamp + 500,
             balance!(0.3),
             true
         ));
@@ -512,7 +514,7 @@ fn should_remove_expired_lockups() {
             Origin::signed(BOB()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 250,
+            current_timestamp + 250,
             balance!(0.5),
             true
         ));
@@ -522,7 +524,7 @@ fn should_remove_expired_lockups() {
             Origin::signed(BOB()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 20000,
+            current_timestamp + 20000,
             balance!(0.3),
             true
         ));
@@ -532,6 +534,7 @@ fn should_remove_expired_lockups() {
         let mut lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
         assert_eq!(lockups_bob.len(), 2);
 
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 14440);
         run_to_block(14_440);
 
         lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
@@ -539,7 +542,7 @@ fn should_remove_expired_lockups() {
         lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
         assert_eq!(lockups_bob.len(), 1);
 
-        assert_eq!(lockups_bob.get(0).unwrap().unlocking_block, 20000);
+        assert_eq!(lockups_bob.get(0).unwrap().unlocking_timestamp, current_timestamp + 20000);
     });
 }
 
@@ -592,7 +595,7 @@ fn check_if_has_enough_unlocked_liquidity_true() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             balance!(0.5),
             true
         ));
@@ -628,7 +631,7 @@ fn check_if_has_enough_unlocked_liquidity_false() {
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 5,
+            pallet_timestamp::Pallet::<Runtime>::get() + 5,
             balance!(1),
             true
         ));

@@ -131,7 +131,7 @@ mod tests {
         });
     }
 
-    #[test]
+    /*#[test]
     fn create_ilo_ilo_price_zero() {
         preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
@@ -3206,5 +3206,5 @@ mod tests {
                 Error::<Runtime>::AccountIsNotWhitelisted
             );
         });
-    }
+    }*/
 }
