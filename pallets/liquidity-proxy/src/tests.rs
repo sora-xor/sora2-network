@@ -2741,3 +2741,56 @@ fn test_quote_does_not_overflow_with_desired_input() {
         .expect("Failed to get a quote");
     });
 }
+
+#[test]
+fn test_inner_exchange_returns_correct_sources() {
+    use LiquiditySourceType::*;
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(vec![(VAL, balance!(1100000)), (KSM, balance!(1100000))]).unwrap();
+
+        let base_asset = GetBaseAssetId::get();
+        let result_base = LiquidityProxy::inner_exchange(
+            &alice(),
+            &common::mock::bob(),
+            &VAL,
+            &base_asset,
+            SwapAmount::with_desired_input(balance!(100), 0),
+            LiquiditySourceFilter::empty(0),
+        );
+
+        let selected_source_types: Vec<LiquiditySourceType> =
+            vec![XYKPool, MulticollateralBondingCurvePool, MockPool];
+        let filter_mode = FilterMode::AllowSelected;
+        let filter = LiquiditySourceFilter::with_mode(0, filter_mode, selected_source_types);
+        let result_double = LiquidityProxy::inner_exchange(
+            &alice(),
+            &common::mock::bob(),
+            &VAL,
+            &KSM,
+            SwapAmount::with_desired_input(balance!(100), 0),
+            filter,
+        );
+
+        let (_, sources_base) = result_base.expect("inner_exchange: result is not ok!");
+        let (_, sources) = result_double.expect("inner_exchange: result is not ok!");
+        let multicoll_source = LiquiditySourceId {
+            dex_id: 0,
+            liquidity_source_index: LiquiditySourceType::MulticollateralBondingCurvePool,
+        };
+
+        let mock_source = LiquiditySourceId {
+            dex_id: 0,
+            liquidity_source_index: LiquiditySourceType::MockPool,
+        };
+
+        let check_vec = vec![multicoll_source, mock_source];
+        assert!(sources_base.len() == 2);
+        assert!(sources.len() == 2);
+
+        check_vec.iter().for_each(|x| {
+            assert!(sources_base.contains(x));
+            assert!(sources.contains(x));
+        });
+    });
+}
