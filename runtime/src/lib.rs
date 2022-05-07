@@ -128,6 +128,7 @@ use impls::{
 };
 
 use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
+use pallet_timestamp::Config;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -1485,6 +1486,7 @@ parameter_types! {
 }
 
 impl ceres_launchpad::Config for Runtime {
+    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type Event = Event;
     type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }

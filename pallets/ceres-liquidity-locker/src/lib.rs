@@ -41,8 +41,8 @@ pub mod pallet {
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
-    use sp_std::vec::Vec;
     use pallet_timestamp as timestamp;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + timestamp::Config {

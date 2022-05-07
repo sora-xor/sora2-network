@@ -41,15 +41,17 @@ pub mod pallet {
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
+    use pallet_timestamp as timestamp;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
     use sp_std::vec::Vec;
-    use pallet_timestamp as timestamp;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crstlock");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config + timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -212,7 +214,10 @@ pub mod pallet {
 
             // Get current timestamp
             let current_timestamp = Timestamp::<T>::get();
-            ensure!(unlocking_timestamp < current_timestamp, Error::<T>::NotUnlockedYet);
+            ensure!(
+                unlocking_timestamp < current_timestamp,
+                Error::<T>::NotUnlockedYet
+            );
 
             let mut token_lock_info_vec = <TokenLockerData<T>>::get(&user);
             let mut idx = 0;

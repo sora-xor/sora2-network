@@ -54,14 +54,16 @@ pub mod pallet {
     use frame_support::transactional;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use pallet_timestamp as timestamp;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
-    use pallet_timestamp as timestamp;
 
     const PALLET_ID: ModuleId = ModuleId(*b"ceresgov");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config + timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 

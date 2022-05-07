@@ -6,7 +6,7 @@ use common::{
     Description, Fixed, CERES_ASSET_ID,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild};
+use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;

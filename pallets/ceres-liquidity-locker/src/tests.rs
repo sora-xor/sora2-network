@@ -542,7 +542,10 @@ fn should_remove_expired_lockups() {
         lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
         assert_eq!(lockups_bob.len(), 1);
 
-        assert_eq!(lockups_bob.get(0).unwrap().unlocking_timestamp, current_timestamp + 20000);
+        assert_eq!(
+            lockups_bob.get(0).unwrap().unlocking_timestamp,
+            current_timestamp + 20000
+        );
     });
 }
 
