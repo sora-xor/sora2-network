@@ -791,7 +791,7 @@ pub mod pallet {
                     .try_into_balance()
                     .unwrap_or(0);
 
-                while vesting_amount > balance!(0) {
+                /*while vesting_amount > balance!(0) {
                     TokenLocker::<T>::lock_tokens(
                         origin.clone(),
                         asset_id.clone(),
@@ -803,7 +803,7 @@ pub mod pallet {
                     vesting_amount = vesting_amount
                         .checked_sub(ilo_info.team_vesting.team_vesting_percent)
                         .unwrap_or(balance!(0));
-                }
+                }*/
             }
 
             // Emit an event

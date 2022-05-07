@@ -6,7 +6,7 @@ use common::{
     Description, Fixed, CERES_ASSET_ID,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Hooks};
+use frame_support::traits::{GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -30,6 +30,7 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
@@ -306,13 +307,5 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
-    }
-}
-
-pub fn run_to_block(n: u64) {
-    while System::block_number() < n {
-        System::on_finalize(System::block_number());
-        System::set_block_number(System::block_number() + 1);
-        System::on_initialize(System::block_number());
     }
 }

@@ -146,7 +146,7 @@ pub mod pallet {
         InvalidPercentage,
         /// Unauthorized access
         Unauthorized,
-        /// Unlocking date cannot be in past,
+        /// Unlocking date cannot be in past
         InvalidUnlockingTimestamp,
     }
 
