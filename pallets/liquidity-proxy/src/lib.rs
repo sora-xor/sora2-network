@@ -211,23 +211,6 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
-    // fn get_liqidity_sources_for_event(
-    //     dex_id: T::DEXId,
-    //     input_asset_id: &T::AssetId,
-    //     output_asset_id: &T::AssetId,
-    //     selected_source_types: Vec<LiquiditySourceType>,
-    //     filter_mode: FilterMode,
-    // ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
-    //     let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-    //     let sources =
-    //         T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
-
-    //     match sources.len() {
-    //         1 | 2 => Ok(sources),
-    //         _ => fail!(Error::<T>::UnavailableExchangePath),
-    //     }
-    // }
-
     pub fn inner_swap(
         sender: T::AccountId,
         receiver: T::AccountId,
@@ -246,14 +229,6 @@ impl<T: Config> Pallet<T> {
         ) {
             fail!(Error::<T>::ForbiddenFilter);
         }
-
-        // let sources_for_event = Self::get_liqidity_sources_for_event(
-        //     dex_id,
-        //     &input_asset_id,
-        //     &output_asset_id,
-        //     selected_source_types.clone(),
-        //     filter_mode.clone(),
-        // )?;
 
         let (outcome, sources) = Self::inner_exchange(
             &sender,
@@ -1576,7 +1551,6 @@ pub mod pallet {
             Balance,
             Balance,
             Vec<LiquiditySourceIdOf<T>>,
-            // LiquiditySourcesList<T>,
         ),
     }
 
