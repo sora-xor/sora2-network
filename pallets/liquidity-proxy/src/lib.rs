@@ -50,8 +50,7 @@ use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
-pub type LiquiditySourceIdOf<T> =
-    LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
+type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
