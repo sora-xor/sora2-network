@@ -14,7 +14,7 @@ pub async fn incentivized_outbound_channel<M: Middleware>(
     let incentivized_contract = sub
         .storage()
         .incentivized_inbound_channel()
-        .channel_addresses(chain_id, None)
+        .channel_addresses(&chain_id, None)
         .await?
         .ok_or(anyhow::anyhow!("Channel is not registered"))?;
     let incentivized_contract = IncentivizedOutboundChannel::new(incentivized_contract, eth);
@@ -29,7 +29,7 @@ pub async fn basic_outbound_channel<M: Middleware>(
     let basic_contract = sub
         .storage()
         .basic_inbound_channel()
-        .channel_addresses(chain_id, None)
+        .channel_addresses(&chain_id, None)
         .await?
         .ok_or(anyhow::anyhow!("Channel is not registered"))?;
     let basic_contract = BasicOutboundChannel::new(basic_contract, eth);

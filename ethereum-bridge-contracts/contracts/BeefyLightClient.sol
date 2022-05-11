@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./utils/Bits.sol";
@@ -60,7 +59,9 @@ contract BeefyLightClient {
      * @param validatorSetId validator set id that signed the given commitment
      */
     struct Commitment {
+        bytes payloadPrefix;
         bytes32 payload;
+        bytes payloadSuffix;
         uint64 blockNumber;
         uint32 validatorSetId;
     }
@@ -409,6 +410,12 @@ contract BeefyLightClient {
         Commitment calldata commitment,
         ValidatorProof calldata proof
     ) internal view {
+        require(
+            bytes2(
+                commitment.payloadPrefix[commitment.payloadPrefix.length - 2:]
+            ) == 0x6d72,
+            "MMR root should be passed as payload"
+        );
         ValidationData storage data = validationData[id];
 
         // Verify that sender is the same as in `newSignatureCommitment`
@@ -546,8 +553,10 @@ contract BeefyLightClient {
     {
         return
             keccak256(
-                abi.encodePacked(
+                bytes.concat(
+                    commitment.payloadPrefix,
                     commitment.payload,
+                    commitment.payloadSuffix,
                     commitment.blockNumber.encode64(),
                     commitment.validatorSetId.encode32()
                 )

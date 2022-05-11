@@ -60,3 +60,11 @@ impl AppRegistry for () {
         Ok(())
     }
 }
+
+pub trait CommitmentProvider<T> {
+    fn take_commitments() -> Vec<T>;
+}
+
+pub trait EthEncode {
+    fn encode_packed(&self) -> Vec<u8>;
+}

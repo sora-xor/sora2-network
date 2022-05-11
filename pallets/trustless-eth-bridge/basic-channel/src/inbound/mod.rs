@@ -5,7 +5,6 @@ mod benchmarking;
 
 pub mod weights;
 
-mod payload;
 #[cfg(test)]
 mod test;
 
@@ -75,6 +74,8 @@ pub mod pallet {
         InvalidNonce,
         /// This channel already exists
         ChannelExists,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::storage]
@@ -172,12 +173,18 @@ pub mod pallet {
         fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::RegisterOperatorPayload { operator: app };
+
             T::OutboundRouter::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &payload::RegisterOperatorPayload { operator: app }.encode(),
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
             )?;
             Ok(())
         }
@@ -185,12 +192,18 @@ pub mod pallet {
         fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::DeregisterOperatorPayload { operator: app };
+
             T::OutboundRouter::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &payload::DeregisterOperatorPayload { operator: app }.encode(),
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
             )?;
             Ok(())
         }

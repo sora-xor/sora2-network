@@ -9,9 +9,9 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
-ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "4c677933" }
+ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "5f1f967ec14dc89799135c4aad67fd6647f2c84e" }
 common = { path = "../common" }
-subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
+subxt = { git = "https://github.com/paritytech/subxt", rev = "e0439c91abdec73809fc36e337ec2dc808734e36" }
 tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
 anyhow = "1.0.51"
@@ -31,22 +31,23 @@ keccak-hasher = "0.15.3"
 hex = "0.4.3"
 hex-literal = "0.3.4"
 futures = "0.3.17"
-ethash = { git = "https://github.com/vovac12/ethash" }
+ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.19" }
 log = "0.4.14"
 env_logger = "0.9.0"
 sha3 = { version = "0.10.0" }
 sha2 = "0.10.0"
 sha1 = "0.6.0"
-ethereum-types = { version = "0.12.0", features = ["serialize"] }
+ethereum-types = { version = "0.13.1", features = ["serialize"] }
 rayon = "1.5.1"
 serde = { version = "1.0.131", features = ["derive"] }
 serde_json = "1.0.73"
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
-beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
-pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
-pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
     "chain-error",
 ] }

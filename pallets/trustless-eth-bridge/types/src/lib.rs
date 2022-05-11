@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod channel_abi;
 pub mod difficulty;
 pub mod ethashdata;
 pub mod ethashproof;

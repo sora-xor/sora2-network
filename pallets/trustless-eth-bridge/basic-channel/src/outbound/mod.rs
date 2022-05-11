@@ -18,7 +18,7 @@ use sp_runtime::traits::Hash;
 
 use sp_std::prelude::*;
 
-use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
+use bridge_types::types::{ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 
@@ -41,6 +41,8 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::traits::CommitmentProvider;
+    use bridge_types::types::ChannelCommitment;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -116,6 +118,10 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type MessageQueue<T: Config> =
         StorageMap<_, Identity, EthNetworkId, Vec<Message>, ValueQuery>;
+
+    /// Messages waiting to be committed.
+    #[pallet::storage]
+    pub(super) type Commitments<T: Config> = StorageValue<_, Vec<ChannelCommitment>, ValueQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
@@ -249,13 +255,11 @@ pub mod pallet {
             let messages_count = messages.len();
 
             let commitment_hash = Self::make_commitment_hash(&messages);
-            let digest_item = AuxiliaryDigestItem::Commitment(
+            Commitments::<T>::append(ChannelCommitment {
                 network_id,
-                ChannelId::Basic,
-                commitment_hash.clone(),
-            )
-            .into();
-            <frame_system::Pallet<T>>::deposit_log(digest_item);
+                channel_id: ChannelId::Basic,
+                hash: commitment_hash,
+            });
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&*key, &messages.encode());
@@ -287,6 +291,12 @@ pub mod pallet {
 
         fn make_offchain_key(hash: H256) -> Vec<u8> {
             (T::INDEXING_PREFIX, ChannelId::Basic, hash).encode()
+        }
+    }
+
+    impl<T: Config> CommitmentProvider<ChannelCommitment> for Pallet<T> {
+        fn take_commitments() -> Vec<ChannelCommitment> {
+            Commitments::<T>::take()
         }
     }
 }

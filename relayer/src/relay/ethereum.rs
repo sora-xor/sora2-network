@@ -141,7 +141,7 @@ impl Relay {
                         .tx()
                         .basic_inbound_channel()
                         .submit(self.chain_id, message.message)
-                        .sign_and_submit_then_watch(&self.sub)
+                        .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                 }
                 ChannelId::Incentivized => {
@@ -150,7 +150,7 @@ impl Relay {
                         .tx()
                         .incentivized_inbound_channel()
                         .submit(self.chain_id, message.message)
-                        .sign_and_submit_then_watch(&self.sub)
+                        .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                 }
             };
@@ -197,7 +197,7 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(self.chain_id, None)
+            .finalized_block(&self.chain_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Network is not registered"))?;
 
@@ -274,7 +274,7 @@ impl Relay {
         let events = match progress.wait_for_finalized_success().await {
             Err(subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module(
                 runtime::runtime_types::sp_runtime::ModuleError { index, error, .. },
-            )))) if index == 94 && error == 3 => {
+            )))) if index == 94 && error == 3u32.to_le_bytes() => {
                 warn!("DublicateHeader {}", block_number);
                 return Ok(());
             }
@@ -289,7 +289,9 @@ impl Relay {
             Ok(x) => x,
         };
         if let Some(event) = events
-            .find_first_event::<sub_runtime::ethereum_light_client::events::Finalized>()
+            .find::<sub_runtime::ethereum_light_client::events::Finalized>()
+            .next()
+            .transpose()
             .context("find Finalized event")?
         {
             if event.0 == self.chain_id {
@@ -317,7 +319,7 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .headers(self.chain_id, header.compute_hash(), None)
+            .headers(&self.chain_id, &header.compute_hash(), None)
             .await;
         if let Ok(Some(_)) = has_block {
             return Ok(None);
@@ -333,7 +335,7 @@ impl Relay {
             .tx()
             .ethereum_light_client()
             .import_header(self.chain_id, header, proof)
-            .sign_and_submit_then_watch(&self.sub)
+            .sign_and_submit_then_watch_default(&self.sub)
             .await
             .context("submit import header extrinsic")?;
         Ok(Some(result))

@@ -32,17 +32,8 @@
 //!
 //! and thanks to versioning can be easily updated in the future.
 
-use bridge_types::types::MmrLeaf;
 use frame_support::log::warn;
-use sp_runtime::traits::Hash;
-
-use pallet_mmr::primitives::LeafDataProvider;
-
-use codec::Encode;
-
 pub use pallet::*;
-
-type MerkleRootOf<T> = <T as pallet_mmr::Config>::Hash;
 
 /// A type that is able to return current list of parachain heads that end up in the MMR leaf.
 
@@ -50,9 +41,15 @@ type MerkleRootOf<T> = <T as pallet_mmr::Config>::Hash;
 pub mod pallet {
     #![allow(missing_docs)]
 
-    use bridge_types::types::AuxiliaryDigest;
+    use beefy_primitives::mmr::BeefyDataProvider;
+    use bridge_types::traits::{CommitmentProvider, EthEncode};
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    use frame_support::Parameter;
+    use sp_runtime::traits;
+    use sp_runtime::traits::Hash;
+    use sp_std::prelude::*;
+
+    type HashOf<T> = <T as Config>::Hash;
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
@@ -60,18 +57,11 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_finalize(_n: T::BlockNumber) {
-            let digest: AuxiliaryDigest = frame_system::Pallet::<T>::digest().into();
-            LatestDigest::<T>::put(digest);
-        }
-    }
-
     /// Fee for accepting a message
     #[pallet::storage]
-    #[pallet::getter(fn latest_digest)]
-    pub(super) type LatestDigest<T: Config> = StorageValue<_, AuxiliaryDigest, ValueQuery>;
+    #[pallet::getter(fn commitments)]
+    pub(super) type Commitments<T: Config> =
+        StorageMap<_, Identity, <T as Config>::Hash, T::Commitment, OptionQuery>;
 
     /// The module's configuration trait.
     #[pallet::config]
@@ -79,49 +69,35 @@ pub mod pallet {
     pub trait Config: pallet_beefy_mmr::Config {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type Commitment: Parameter + EthEncode;
+        type CommitmentProvider: CommitmentProvider<Self::Commitment>;
+        type Hashing: traits::Hash<Output = <Self as Config>::Hash>;
+        type Hash: traits::Member
+            + traits::MaybeSerializeDeserialize
+            + sp_std::fmt::Debug
+            + sp_std::hash::Hash
+            + AsRef<[u8]>
+            + AsMut<[u8]>
+            + Copy
+            + Default
+            + codec::Codec
+            + codec::EncodeLike
+            + scale_info::TypeInfo
+            + MaxEncodedLen;
     }
 
     #[pallet::event]
     pub enum Event<T: Config> {}
-}
 
-impl<T: pallet_beefy_mmr::Config + Config + pallet_mmr::Config> LeafDataProvider for Pallet<T>
-where
-    MerkleRootOf<T>: From<beefy_merkle_tree::Hash> + Into<beefy_merkle_tree::Hash>,
-{
-    type LeafData = MmrLeaf<
-        <T as frame_system::Config>::BlockNumber,
-        <T as frame_system::Config>::Hash,
-        MerkleRootOf<T>,
-        beefy_merkle_tree::Hash,
-    >;
-
-    fn leaf_data() -> Self::LeafData {
-        let leaf_data = <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data();
-        let digest = Pallet::<T>::latest_digest();
-        let digest_encoded = digest.encode();
-        let digest_hash =
-            <pallet_beefy_mmr::Pallet<T> as beefy_merkle_tree::Hasher>::hash(&digest_encoded);
-        let res = MmrLeaf {
-            version: leaf_data.version,
-            parent_number_and_hash: leaf_data.parent_number_and_hash,
-            beefy_next_authority_set: leaf_data.beefy_next_authority_set,
-            digest_hash,
-        };
-        res
+    impl<T: Config> BeefyDataProvider<HashOf<T>> for Pallet<T> {
+        fn extra_data() -> HashOf<T> {
+            let commitments = T::CommitmentProvider::take_commitments();
+            let mut encoded_commitments = Vec::new();
+            for commitment in commitments.iter() {
+                let mut encoded = commitment.encode_packed();
+                encoded_commitments.append(&mut encoded);
+            }
+            <T as Config>::Hashing::hash(&encoded_commitments)
+        }
     }
-}
-
-impl<T: Config> beefy_merkle_tree::Hasher for Pallet<T>
-where
-    MerkleRootOf<T>: Into<beefy_merkle_tree::Hash>,
-{
-    fn hash(data: &[u8]) -> beefy_merkle_tree::Hash {
-        <T as pallet_mmr::Config>::Hashing::hash(data).into()
-    }
-}
-
-impl<T: Config> Pallet<T> where
-    MerkleRootOf<T>: From<beefy_merkle_tree::Hash> + Into<beefy_merkle_tree::Hash>
-{
 }

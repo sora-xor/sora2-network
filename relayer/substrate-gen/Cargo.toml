@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
     "chain-error",
 ] }
-scale-info = { version = "1.0.0", default-features = false, features = [
+scale-info = { version = "2", default-features = false, features = [
     "derive",
 ] }
 framenode-runtime = { path = "../../runtime", features = ["private-net"] }
@@ -16,8 +16,8 @@ hex = "0.4.3"
 
 [dependencies]
 common = { path = "../../common" }
-subxt = { git = "https://github.com/paritytech/subxt", rev = "70d83fea" }
-codec = { package = "parity-scale-codec", version = "2", features = ["derive"] }
-scale-info = { version = "1.0.0", features = ["derive"] }
+subxt = { git = "https://github.com/paritytech/subxt", rev = "e0439c91abdec73809fc36e337ec2dc808734e36" }
+codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
+scale-info = { version = "2", features = ["derive"] }
 bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14" }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }

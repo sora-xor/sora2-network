@@ -66,7 +66,7 @@ impl BeefyJustification {
             .await?
             .unwrap();
 
-        let leaf_index = commitment.block_number - beefy_start_block - 2;
+        let leaf_index = commitment.block_number - beefy_start_block - 1;
         let leaf_proof = sub
             .mmr_generate_proof(leaf_index as u64, Some(block_hash))
             .await?;
@@ -152,7 +152,7 @@ impl BeefyJustification {
             next_authority_set_id: leaf.beefy_next_authority_set.id,
             next_authority_set_len: leaf.beefy_next_authority_set.len,
             next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
-            digest_hash: leaf.digest_hash,
+            digest_hash: leaf.leaf_extra.0,
         };
 
         let proof =

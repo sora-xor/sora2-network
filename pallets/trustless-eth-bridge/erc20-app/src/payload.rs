@@ -1,9 +1,90 @@
+#![allow(deprecated)]
+
+#[cfg(not(feature = "std"))]
+use alloc::string::{String, ToString};
+
 use codec::Encode;
 use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 
 use bridge_types::{H160, H256, U256};
-use ethabi::{self, Token};
+use ethabi::{self, Function, Param, ParamType, StateMutability, Token};
+
+fn unlock_function() -> Function {
+    Function {
+        name: "unlock".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![
+            Param {
+                name: "_token".into(),
+                kind: ParamType::Address,
+                internal_type: None,
+            },
+            Param {
+                name: "_sender".into(),
+                kind: ParamType::FixedBytes(32),
+                internal_type: None,
+            },
+            Param {
+                name: "_recipient".into(),
+                kind: ParamType::Address,
+                internal_type: None,
+            },
+            Param {
+                name: "_amount".into(),
+                kind: ParamType::Uint(256),
+                internal_type: None,
+            },
+        ],
+    }
+}
+
+fn register_native_asset_function() -> Function {
+    Function {
+        name: "registerAsset".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![
+            Param {
+                name: "name".into(),
+                kind: ParamType::String,
+                internal_type: None,
+            },
+            Param {
+                name: "symbol".into(),
+                kind: ParamType::String,
+                internal_type: None,
+            },
+            Param {
+                name: "decimals".into(),
+                kind: ParamType::Uint(256),
+                internal_type: None,
+            },
+            Param {
+                name: "sidechainAssetId".into(),
+                kind: ParamType::FixedBytes(32),
+                internal_type: None,
+            },
+        ],
+    }
+}
+
+fn register_erc20_asset_function() -> Function {
+    Function {
+        name: "registerAsset".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![Param {
+            name: "token".into(),
+            kind: ParamType::Address,
+            internal_type: None,
+        }],
+    }
+}
 
 // Message to Ethereum (ABI-encoded)
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
@@ -16,16 +97,14 @@ pub struct RegisterNativeAssetPayload {
 
 impl RegisterNativeAssetPayload {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
-        ethabi::encode_function(
-            "registerAsset(string,string,uint256,bytes32)",
-            &[
-                Token::String(self.name.clone()),
-                Token::String(self.symbol.clone()),
-                Token::Uint(U256::from(self.decimals)),
-                Token::FixedBytes(self.asset_id.encode()),
-            ],
-        )
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
+        let tokens = &[
+            Token::String(String::from_utf8_lossy(&self.name).to_string()),
+            Token::String(String::from_utf8_lossy(&self.symbol).to_string()),
+            Token::Uint(U256::from(self.decimals)),
+            Token::FixedBytes(self.asset_id.encode()),
+        ];
+        register_native_asset_function().encode_input(tokens.as_ref())
     }
 }
 
@@ -37,11 +116,9 @@ pub struct RegisterErc20AssetPayload {
 
 impl RegisterErc20AssetPayload {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
-        ethabi::encode_function(
-            "registerAsset(address)",
-            &[Token::Address(self.address.clone())],
-        )
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
+        let tokens = &[Token::Address(self.address.clone())];
+        register_erc20_asset_function().encode_input(tokens.as_ref())
     }
 }
 
@@ -56,14 +133,14 @@ pub struct MintPayload<AccountId: Encode> {
 
 impl<AccountId: Encode> MintPayload<AccountId> {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
         let tokens = vec![
             Token::Address(self.token),
             Token::FixedBytes(self.sender.encode()),
             Token::Address(self.recipient),
             Token::Uint(self.amount),
         ];
-        ethabi::encode_function("unlock(address,bytes32,address,uint256)", tokens.as_ref())
+        unlock_function().encode_input(tokens.as_ref())
     }
 }
 
@@ -85,6 +162,6 @@ mod tests {
         println!("Payload:");
         println!("  {:?}", payload);
         println!("Payload (ABI-encoded):");
-        println!("  {:?}", payload.encode().to_hex::<String>());
+        println!("  {:?}", payload.encode().unwrap().to_hex::<String>());
     }
 }

@@ -36,7 +36,7 @@ impl Command {
             .with_beefy_contract(self.beefy)
             .build()
             .await?
-            .run(true)
+            .run(false)
             .await?;
         Ok(())
     }

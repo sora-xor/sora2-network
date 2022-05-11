@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::path::Path;
 
-use ethabi::H256;
-use ethereum_types::{H128, H512};
+use ethereum_types::{H128, H256, H512};
 use serde::{Deserialize, Deserializer};
 
 #[derive(Clone)]

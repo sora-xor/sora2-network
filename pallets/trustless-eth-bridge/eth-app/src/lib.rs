@@ -125,6 +125,10 @@ pub mod pallet {
         InvalidAppAddress,
         /// App for given network exists.
         AppAlreadyExists,
+        /// Destination account is not set.
+        DestAccountIsNotSet,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::call]
@@ -145,7 +149,7 @@ pub mod pallet {
 
             T::Currency::withdraw(asset_id, &who, amount)?;
 
-            let message = OutboundPayload {
+            let message = OutboundPayload::<T> {
                 sender: who.clone(),
                 recipient: recipient.clone(),
                 amount: amount.into(),
@@ -156,7 +160,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
 

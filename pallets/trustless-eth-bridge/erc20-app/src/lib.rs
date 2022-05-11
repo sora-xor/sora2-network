@@ -15,6 +15,8 @@
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 mod payload;
 pub mod weights;
 
@@ -125,6 +127,8 @@ pub mod pallet {
         InvalidNetwork,
         TokenAlreadyRegistered,
         AppAlreadyRegistered,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::genesis_config]
@@ -284,7 +288,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
@@ -316,7 +320,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
         }
@@ -350,7 +354,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
         }

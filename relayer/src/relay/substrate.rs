@@ -459,14 +459,14 @@ impl Relay {
             .api()
             .storage()
             .basic_outbound_channel()
-            .channel_nonces(self.chain_id, block_hash)
+            .channel_nonces(&self.chain_id, block_hash)
             .await?;
         let sub_incentivized_nonce = self
             .sub
             .api()
             .storage()
             .incentivized_outbound_channel()
-            .channel_nonces(self.chain_id, block_hash)
+            .channel_nonces(&self.chain_id, block_hash)
             .await?;
         Ok(basic_nonce < sub_basic_nonce || incentivized_nonce < sub_incentivized_nonce)
     }
