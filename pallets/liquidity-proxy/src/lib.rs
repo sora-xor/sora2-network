@@ -424,7 +424,7 @@ impl<T: Config> Pallet<T> {
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
         common::with_transaction(|| {
-            let quote_tuple = Self::quote_single(
+            let (outcome, _, sources) = Self::quote_single(
                 input_asset_id,
                 output_asset_id,
                 amount.into(),
@@ -432,10 +432,8 @@ impl<T: Config> Pallet<T> {
                 true,
                 true,
             )?;
-            let sources = quote_tuple.2;
 
-            let res = quote_tuple
-                .0
+            let res = outcome
                 .distribution
                 .into_iter()
                 .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
