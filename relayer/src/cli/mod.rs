@@ -8,6 +8,7 @@ mod register_erc20_app;
 mod register_erc20_asset;
 mod subscribe_beefy;
 mod substrate_relay;
+mod test_transfers;
 mod transfer_to_ethereum;
 mod transfer_to_sora;
 
@@ -43,6 +44,7 @@ enum Commands {
     RegisterErc20Asset(register_erc20_asset::Command),
     EstimateGas(estimate_gas::Command),
     MintTestToken(mint_test_token::Command),
+    TestTransfers(test_transfers::Command),
 }
 
 impl Commands {
@@ -59,6 +61,7 @@ impl Commands {
             Self::RegisterErc20Asset(cmd) => cmd.run().await,
             Self::EstimateGas(cmd) => cmd.run().await,
             Self::MintTestToken(cmd) => cmd.run().await,
+            Self::TestTransfers(cmd) => cmd.run().await,
         }
     }
 }

@@ -18,9 +18,12 @@ impl Command {
         info!("Proof: {:#?}", proof);
         let mut beefy_sub = sub_api.subscribe_beefy().await?;
         while let Some(commitment) = beefy_sub.next().await.transpose()? {
-            let justification =
-                BeefyJustification::create(sub_api.clone(), commitment, beefy_start_block as u32)
-                    .await?;
+            let justification = BeefyJustification::create(
+                sub_api.clone(),
+                commitment.decode()?,
+                beefy_start_block as u32,
+            )
+            .await?;
             println!("{:#?}", justification);
         }
         Ok(())

@@ -220,8 +220,8 @@ pub mod pallet {
         ) -> DispatchResult {
             Addresses::<T>::insert(network_id, (contract, asset_id));
             let bridge_account = Self::bridge_account()?;
+            let scope = permissions::Scope::Limited(common::hash(&asset_id));
             for permission_id in [permissions::BURN, permissions::MINT] {
-                let scope = permissions::Scope::Limited(common::hash(&asset_id));
                 if permissions::Pallet::<T>::check_permission_with_scope(
                     bridge_account.clone(),
                     permission_id,

@@ -3414,6 +3414,7 @@ dependencies = [
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpc-core 18.0.0",
+ "leaf-provider-rpc",
  "libsecp256k1",
  "liquidity-proxy-rpc",
  "log",
@@ -3541,6 +3542,7 @@ dependencies = [
  "iroha-migration",
  "iroha-migration-runtime-api",
  "leaf-provider",
+ "leaf-provider-runtime-api",
  "liquidity-proxy",
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
@@ -5001,6 +5003,39 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "leaf-provider-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "leaf-provider-runtime-api",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "leaf-provider-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "bridge-types",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
  "sp-runtime",
  "sp-std",
 ]

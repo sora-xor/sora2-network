@@ -1,0 +1,25 @@
+[package]
+name = "leaf-provider-rpc"
+version = "0.1.0"
+edition = "2018"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3" }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+jsonrpc-core = "18.0.0"
+jsonrpc-core-client = "18.0.0"
+jsonrpc-derive = "18.0.0"
+serde = { version = "1.0.101", features = ["derive"] }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+
+leaf-provider-runtime-api = { path = "../runtime-api" }
+common = { path = "../../../../common" }

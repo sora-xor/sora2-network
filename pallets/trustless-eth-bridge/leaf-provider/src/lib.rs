@@ -32,7 +32,6 @@
 //!
 //! and thanks to versioning can be easily updated in the future.
 
-use frame_support::log::warn;
 pub use pallet::*;
 
 /// A type that is able to return current list of parachain heads that end up in the MMR leaf.
@@ -42,12 +41,10 @@ pub mod pallet {
     #![allow(missing_docs)]
 
     use beefy_primitives::mmr::BeefyDataProvider;
-    use bridge_types::traits::{CommitmentProvider, EthEncode};
+    use bridge_types::types::AuxiliaryDigest;
     use frame_support::pallet_prelude::*;
-    use frame_support::Parameter;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
-    use sp_std::prelude::*;
 
     type HashOf<T> = <T as Config>::Hash;
 
@@ -57,20 +54,25 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
-    /// Fee for accepting a message
+    #[pallet::hooks]
+    impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
+        fn on_finalize(_n: T::BlockNumber) {
+            let digest: AuxiliaryDigest = frame_system::Pallet::<T>::digest().into();
+            LatestDigest::<T>::put(digest);
+        }
+    }
+
+    /// Latest digest
     #[pallet::storage]
-    #[pallet::getter(fn commitments)]
-    pub(super) type Commitments<T: Config> =
-        StorageMap<_, Identity, <T as Config>::Hash, T::Commitment, OptionQuery>;
+    #[pallet::getter(fn latest_digest)]
+    pub(super) type LatestDigest<T: Config> = StorageValue<_, AuxiliaryDigest, ValueQuery>;
 
     /// The module's configuration trait.
     #[pallet::config]
     #[pallet::disable_frame_system_supertrait_check]
-    pub trait Config: pallet_beefy_mmr::Config {
+    pub trait Config: frame_system::Config {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-        type Commitment: Parameter + EthEncode;
-        type CommitmentProvider: CommitmentProvider<Self::Commitment>;
         type Hashing: traits::Hash<Output = <Self as Config>::Hash>;
         type Hash: traits::Member
             + traits::MaybeSerializeDeserialize
@@ -91,13 +93,9 @@ pub mod pallet {
 
     impl<T: Config> BeefyDataProvider<HashOf<T>> for Pallet<T> {
         fn extra_data() -> HashOf<T> {
-            let commitments = T::CommitmentProvider::take_commitments();
-            let mut encoded_commitments = Vec::new();
-            for commitment in commitments.iter() {
-                let mut encoded = commitment.encode_packed();
-                encoded_commitments.append(&mut encoded);
-            }
-            <T as Config>::Hashing::hash(&encoded_commitments)
+            let digest = Pallet::<T>::latest_digest();
+            let digest_encoded = digest.encode();
+            <T as Config>::Hashing::hash(&digest_encoded)
         }
     }
 }

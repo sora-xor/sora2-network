@@ -51,7 +51,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         Ok(())
     }
 }

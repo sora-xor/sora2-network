@@ -33,7 +33,7 @@ contract IncentivizedOutboundChannel is
     function initialize(
         address[] memory configUpdaters,
         address[] memory defaultOperators,
-        uint256 fee
+        uint256 initial_fee
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Set initial configuration
         for (uint256 i = 0; i < configUpdaters.length; i++) {
@@ -42,7 +42,7 @@ contract IncentivizedOutboundChannel is
         for (uint256 i = 0; i < defaultOperators.length; i++) {
             _authorizeDefaultOperator(defaultOperators[i]);
         }
-        _fee = fee;
+        _fee = initial_fee;
 
         // drop admin privileges
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);

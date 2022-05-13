@@ -25,7 +25,6 @@ impl Command {
         let mut call = sidechain_app.register_asset(
             "XOR".to_string(),
             "XOR".to_string(),
-            18u64.into(),
             hex!("0002000000000000000000000000000000000000000000000000000000000000"),
         );
         // call.tx.set_from(self.inbound_channel);
@@ -35,7 +34,7 @@ impl Command {
             .fill_transaction(&mut call.tx, call.block)
             .await?;
         info!("Call: {:?}", call);
-        call.tx.set_gas(4000000);
+        call.tx.set_gas(4000000u128);
         call.call().await?;
         info!("Send");
         let res = call.send().await?;

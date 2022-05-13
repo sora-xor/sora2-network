@@ -3,13 +3,11 @@
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
 use enum_iterator::IntoEnumIterator;
-use ethabi::Token;
 use frame_support::RuntimeDebug;
 use sp_core::H256;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
-use crate::traits::EthEncode;
 pub use crate::EthNetworkId;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
@@ -132,21 +130,3 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_FEES: &[u8] = b"fees";
 pub const TECH_ACCOUNT_TREASURY_PREFIX: &[u8] = b"treasury";
-
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-pub struct ChannelCommitment {
-    pub network_id: EthNetworkId,
-    pub channel_id: ChannelId,
-    pub hash: H256,
-}
-
-impl EthEncode for ChannelCommitment {
-    fn encode_packed(&self) -> Vec<u8> {
-        ethabi::encode_packed(&[
-            Token::UintSized(self.network_id.into(), 32),
-            Token::UintSized((self.channel_id as u8).into(), 8),
-            Token::FixedBytes(self.hash.0.into()),
-        ])
-    }
-}

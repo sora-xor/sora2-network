@@ -307,7 +307,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "fee",
+        "name": "initial_fee",
         "type": "uint256"
       }
     ],

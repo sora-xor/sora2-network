@@ -347,11 +347,6 @@
         "type": "string"
       },
       {
-        "internalType": "uint256",
-        "name": "decimals",
-        "type": "uint256"
-      },
-      {
         "internalType": "bytes32",
         "name": "sidechainAssetId",
         "type": "bytes32"

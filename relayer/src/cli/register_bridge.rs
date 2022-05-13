@@ -17,9 +17,9 @@ pub(super) struct Command {
     #[clap(long, short)]
     descendants_until_final: u64,
     #[clap(long)]
-    basic_channel_inbound: H160,
+    basic_channel_outbound: H160,
     #[clap(long)]
-    incentivized_channel_inbound: H160,
+    incentivized_channel_outbound: H160,
     #[clap(long)]
     eth_app: H160,
 }
@@ -54,7 +54,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -63,7 +63,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::BasicInboundChannel(
                     runtime::runtime_types::basic_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.basic_channel_inbound
+                        channel: self.basic_channel_outbound
                     },
                 ),
             )
@@ -73,7 +73,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -82,7 +82,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::IncentivizedInboundChannel(
                     runtime::runtime_types::incentivized_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.incentivized_channel_inbound
+                        channel: self.incentivized_channel_outbound
                     },
                 ),
             )
@@ -92,7 +92,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -110,7 +110,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         Ok(())
     }
 }

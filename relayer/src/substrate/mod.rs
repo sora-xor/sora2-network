@@ -152,6 +152,57 @@ impl UnsignedClient {
     pub fn api(&self) -> &ApiInner {
         &self.0
     }
+
+    pub async fn block<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<SignedBlock> {
+        let hash = self.block_hash(block).await?;
+        let block = self
+            .api()
+            .client
+            .rpc()
+            .block(Some(hash))
+            .await?
+            .ok_or(anyhow::anyhow!("Block not found"))?;
+        Ok(block)
+    }
+
+    pub async fn block_hash<T: Into<NumberOrHash>>(
+        &self,
+        block: Option<T>,
+    ) -> AnyResult<BlockHash> {
+        let number = match block.map(|x| x.into()) {
+            Some(NumberOrHash::Hash(hash)) => return Ok(hash),
+            Some(NumberOrHash::Number(number)) => Some(number),
+            None => None,
+        };
+        let hash = self
+            .api()
+            .client
+            .rpc()
+            .block_hash(number.map(|x| x.into()))
+            .await?
+            .ok_or(anyhow::anyhow!("Block not found"))?;
+        Ok(hash)
+    }
+
+    pub async fn header<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<Header> {
+        let hash = self.block_hash(block).await?;
+        let header = self
+            .api()
+            .client
+            .rpc()
+            .header(Some(hash))
+            .await?
+            .ok_or(anyhow::anyhow!("Header not found"))?;
+        Ok(header)
+    }
+
+    pub async fn block_number<T: Into<NumberOrHash>>(
+        &self,
+        block: Option<T>,
+    ) -> AnyResult<BlockNumber> {
+        let header = self.header(block).await?;
+        Ok(header.number)
+    }
 }
 
 #[derive(Clone)]

@@ -45,8 +45,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::traits::CommitmentProvider;
-    use bridge_types::types::ChannelCommitment;
+    use bridge_types::types::AuxiliaryDigestItem;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -92,10 +91,6 @@ pub mod pallet {
     #[pallet::storage]
     pub(crate) type MessageQueues<T: Config> =
         StorageMap<_, Identity, EthNetworkId, Vec<Message>, ValueQuery>;
-
-    /// Messages waiting to be committed.
-    #[pallet::storage]
-    pub(super) type Commitments<T: Config> = StorageValue<_, Vec<ChannelCommitment>, ValueQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
@@ -237,11 +232,13 @@ pub mod pallet {
             let average_payload_size = Self::average_payload_size(&messages);
             let messages_count = messages.len();
             let commitment_hash = Self::make_commitment_hash(&messages);
-            Commitments::<T>::append(ChannelCommitment {
+            let digest_item = AuxiliaryDigestItem::Commitment(
                 network_id,
-                channel_id: ChannelId::Incentivized,
-                hash: commitment_hash,
-            });
+                ChannelId::Incentivized,
+                commitment_hash.clone(),
+            )
+            .into();
+            <frame_system::Pallet<T>>::deposit_log(digest_item);
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&*key, &messages.encode());
@@ -303,12 +300,6 @@ pub mod pallet {
         fn build(&self) {
             Fee::<T>::set(self.fee.clone());
             Interval::<T>::set(self.interval.clone());
-        }
-    }
-
-    impl<T: Config> CommitmentProvider<ChannelCommitment> for Pallet<T> {
-        fn take_commitments() -> Vec<ChannelCommitment> {
-            Commitments::<T>::take()
         }
     }
 }

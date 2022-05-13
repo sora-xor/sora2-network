@@ -6,9 +6,9 @@ use pallet_mmr_primitives::Proof;
 pub use substrate_gen::{runtime, DefaultConfig};
 pub use subxt::rpc::Subscription;
 use subxt::sp_core::Bytes;
-use subxt::SubstrateExtrinsicParams;
+use subxt::PolkadotExtrinsicParams;
 
-pub type SoraExtrinsicParams = SubstrateExtrinsicParams<DefaultConfig>;
+pub type SoraExtrinsicParams = PolkadotExtrinsicParams<DefaultConfig>;
 pub type ApiInner = runtime::RuntimeApi<DefaultConfig, SoraExtrinsicParams>;
 pub type KeyPair = subxt::sp_core::sr25519::Pair;
 pub type PairSigner = subxt::PairSigner<DefaultConfig, KeyPair>;
@@ -16,6 +16,10 @@ pub type AccountId = <DefaultConfig as subxt::Config>::AccountId;
 pub type Index = <DefaultConfig as subxt::Config>::Index;
 pub type BlockNumber = <DefaultConfig as subxt::Config>::BlockNumber;
 pub type BlockHash = <DefaultConfig as subxt::Config>::Hash;
+pub type Header = <DefaultConfig as subxt::Config>::Header;
+pub type Extrinsic = <DefaultConfig as subxt::Config>::Extrinsic;
+pub type SignedBlock = subxt::sp_runtime::generic::SignedBlock<Block>;
+pub type Block = subxt::sp_runtime::generic::Block<Header, Extrinsic>;
 pub type MmrHash = H256;
 pub type LeafExtra = H256;
 pub type BeefySignedCommitment =
@@ -52,5 +56,28 @@ impl EncodedBeefyCommitment {
     pub fn decode(&self) -> AnyResult<BeefySignedCommitment> {
         let mut reader = IoReader(&self.0[..]);
         Ok(Decode::decode(&mut reader)?)
+    }
+}
+
+pub enum NumberOrHash {
+    Number(BlockNumber),
+    Hash(BlockHash),
+}
+
+impl From<u32> for NumberOrHash {
+    fn from(number: u32) -> Self {
+        Self::Number(number)
+    }
+}
+
+impl From<u64> for NumberOrHash {
+    fn from(number: u64) -> Self {
+        Self::Number(number as u32)
+    }
+}
+
+impl From<H256> for NumberOrHash {
+    fn from(hash: H256) -> Self {
+        Self::Hash(hash)
     }
 }

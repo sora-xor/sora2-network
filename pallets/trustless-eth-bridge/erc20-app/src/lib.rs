@@ -339,14 +339,12 @@ pub mod pallet {
             );
             let target = AppAddresses::<T>::get(network_id, AssetKind::Thischain)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
-            let (asset_symbol, asset_name, decimals, _) =
-                assets::Pallet::<T>::get_asset_info(&asset_id);
+            let (asset_symbol, asset_name, ..) = assets::Pallet::<T>::get_asset_info(&asset_id);
 
             let message = RegisterNativeAssetPayload {
                 asset_id: asset_id.into(),
                 name: asset_name.0,
                 symbol: asset_symbol.0,
-                decimals,
             };
 
             T::OutboundRouter::submit(

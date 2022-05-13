@@ -47,8 +47,7 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::traits::CommitmentProvider;
-use bridge_types::types::{ChannelCommitment, ChannelId};
+use bridge_types::types::ChannelId;
 use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
@@ -59,7 +58,7 @@ use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", not(feature = "skip-wasm-build")))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
@@ -260,8 +259,8 @@ parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const UncleGenerations: BlockNumber = 0;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 6 hours
-    pub const BondingDuration: sp_staking::EraIndex = 2; // 28 eras for unbonding (7 days).
+    pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
+    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
     pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
@@ -1697,20 +1696,8 @@ impl pallet_mmr::Config for Runtime {
     type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
 }
 
-pub struct ChannelsCommitmentProvider;
-
-impl CommitmentProvider<ChannelCommitment> for ChannelsCommitmentProvider {
-    fn take_commitments() -> Vec<ChannelCommitment> {
-        let mut commitments = BasicOutboundChannel::take_commitments();
-        commitments.append(&mut IncentivizedOutboundChannel::take_commitments());
-        commitments
-    }
-}
-
 impl leaf_provider::Config for Runtime {
     type Event = Event;
-    type Commitment = ChannelCommitment;
-    type CommitmentProvider = ChannelsCommitmentProvider;
     type Hashing = Keccak256;
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
 }
@@ -1944,6 +1931,9 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic
     {
         System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
@@ -1958,12 +1948,13 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 12,
-        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 13,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 14,
-        Historical: pallet_session_historical::{Pallet} = 15,
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 16,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 17,
+        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -1985,8 +1976,6 @@ construct_runtime! {
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
@@ -2027,6 +2016,9 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic
     {
         System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
@@ -2040,12 +2032,13 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
         Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -2067,8 +2060,6 @@ construct_runtime! {
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
@@ -2705,6 +2696,13 @@ impl_runtime_apis! {
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
         }
+    }
+
+    impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
+        fn latest_digest() -> bridge_types::types::AuxiliaryDigest {
+            LeafProvider::latest_digest()
+        }
+
     }
 
     #[cfg(feature = "runtime-benchmarks")]

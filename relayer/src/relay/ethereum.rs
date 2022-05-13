@@ -201,7 +201,6 @@ impl Relay {
             .await?
             .ok_or(anyhow::anyhow!("Network is not registered"))?;
 
-        let mut watch = self.eth.watch_blocks().await.context("watch blocks")?;
         let latest_block = self
             .eth
             .get_block_number()
@@ -211,15 +210,17 @@ impl Relay {
 
         let mut futures = FuturesOrdered::new();
 
-        debug!("Preimport blocks to {}", latest_block);
-        for number in (finalized_block.number + 1)..=latest_block {
+        let mut current = finalized_block.number + 1;
+
+        debug!("Latest Ethereum block {}", latest_block);
+        loop {
             if let Some(block) = self
                 .eth
-                .get_block(number)
+                .get_block(current)
                 .await
                 .context("get eth block by number")?
             {
-                debug!("Preimport block {}", number);
+                debug!("Preimport block {}", current);
                 while futures.len() > 10 {
                     if let Some(result) = futures.next().await {
                         // Rust can't infer type here for some reason
@@ -235,9 +236,13 @@ impl Relay {
                 if let Some(progress) = progress {
                     futures.push(self.finalize_transaction(progress, number));
                 }
+                current += 1;
+            } else {
+                break;
             }
         }
 
+        let mut watch = self.eth.watch_blocks().await.context("watch blocks")?;
         while let Some(block) = watch.next().await {
             if let Some(block) = self
                 .eth

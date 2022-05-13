@@ -35,6 +35,7 @@ dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
 leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
+leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -174,6 +175,7 @@ std = [
     "eth-app/std",
     "erc20-app/std",
     "leaf-provider/std",
+    "leaf-provider-runtime-api/std",
     "bridge-types/std",
     "farming/std",
     "faucet/std",

@@ -59,11 +59,6 @@ fn register_native_asset_function() -> Function {
                 internal_type: None,
             },
             Param {
-                name: "decimals".into(),
-                kind: ParamType::Uint(256),
-                internal_type: None,
-            },
-            Param {
                 name: "sidechainAssetId".into(),
                 kind: ParamType::FixedBytes(32),
                 internal_type: None,
@@ -90,7 +85,6 @@ fn register_erc20_asset_function() -> Function {
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
 pub struct RegisterNativeAssetPayload {
     pub asset_id: H256,
-    pub decimals: u8,
     pub name: Vec<u8>,
     pub symbol: Vec<u8>,
 }
@@ -101,7 +95,6 @@ impl RegisterNativeAssetPayload {
         let tokens = &[
             Token::String(String::from_utf8_lossy(&self.name).to_string()),
             Token::String(String::from_utf8_lossy(&self.symbol).to_string()),
-            Token::Uint(U256::from(self.decimals)),
             Token::FixedBytes(self.asset_id.encode()),
         ];
         register_native_asset_function().encode_input(tokens.as_ref())

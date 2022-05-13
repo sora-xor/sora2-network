@@ -13,9 +13,9 @@ pub(super) struct Command {
     #[clap(flatten)]
     key: EthereumKey,
     #[clap(long)]
-    basic_channel: H160,
+    basic_inbound_channel: H160,
     #[clap(long)]
-    incentivized_channel: H160,
+    incentivized_inbound_channel: H160,
     #[clap(long)]
     beefy: H160,
 }
@@ -31,12 +31,12 @@ impl Command {
         RelayBuilder::new()
             .with_substrate_client(sub)
             .with_ethereum_client(eth)
-            .with_basic_contract(self.basic_channel)
-            .with_incentivized_contract(self.incentivized_channel)
+            .with_basic_contract(self.basic_inbound_channel)
+            .with_incentivized_contract(self.incentivized_inbound_channel)
             .with_beefy_contract(self.beefy)
             .build()
             .await?
-            .run(false)
+            .run(true)
             .await?;
         Ok(())
     }
