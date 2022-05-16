@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./ParachainLightClient.sol";
 import "./RewardSource.sol";
+import "./BeefyLightClient.sol";
+import "./SimplifiedMMRVerification.sol";
+import "./ScaleCodec.sol";
 
 contract IncentivizedInboundChannel is AccessControl {
+    using ScaleCodec for uint256;
+    using ScaleCodec for uint64;
+    using ScaleCodec for uint32;
+    using ScaleCodec for uint16;
     uint64 public nonce;
 
     struct Message {
@@ -50,26 +55,10 @@ contract IncentivizedInboundChannel is AccessControl {
 
     function submit(
         Message[] calldata _messages,
-        ParachainLightClient.ParachainVerifyInput
-            calldata _parachainVerifyInput,
-        ParachainLightClient.BeefyMMRLeafPartial calldata _beefyMMRLeafPartial,
-        uint256 _beefyMMRLeafIndex,
-        uint256 _beefyMMRLeafCount,
-        bytes32[] calldata _beefyMMRLeafProof
+        LeafBytes calldata _leafBytes,
+        SimplifiedMMRProof calldata proof
     ) public {
-        // Proof
-        // 1. Compute our parachain's message `commitment` by ABI encoding and hashing the `_messages`
-        bytes32 commitment = keccak256(abi.encode(_messages));
-
-        ParachainLightClient.verifyCommitmentInParachain(
-            commitment,
-            _parachainVerifyInput,
-            _beefyMMRLeafPartial,
-            _beefyMMRLeafIndex,
-            _beefyMMRLeafCount,
-            _beefyMMRLeafProof,
-            beefyLightClient
-        );
+        verifyMerkleLeaf(_messages, _leafBytes, proof);
 
         // Require there is enough gas to play all messages
         require(
@@ -78,6 +67,39 @@ contract IncentivizedInboundChannel is AccessControl {
         );
 
         processMessages(payable(msg.sender), _messages);
+    }
+
+    struct LeafBytes {
+        bytes digestPrefix;
+        bytes digestSuffix;
+        bytes leafPrefix;
+    }
+
+    function verifyMerkleLeaf(
+        Message[] calldata _messages,
+        LeafBytes calldata _leafBytes,
+        SimplifiedMMRProof calldata proof
+    ) internal view {
+        bytes32 commitment = keccak256(abi.encode(_messages));
+        bytes32 digestHash = keccak256(
+            bytes.concat(
+                _leafBytes.digestPrefix,
+                uint32(block.chainid).encode32(),
+                bytes1(uint8(1)),
+                commitment,
+                _leafBytes.digestSuffix
+            )
+        );
+        delete commitment;
+        bytes32 leafHash = keccak256(
+            bytes.concat(_leafBytes.leafPrefix, digestHash)
+        );
+        delete digestHash;
+
+        require(
+            beefyLightClient.verifyBeefyMerkleLeaf(leafHash, proof),
+            "Invalid proof"
+        );
     }
 
     function processMessages(

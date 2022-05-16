@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./utils/Bits.sol";
 import "./utils/Bitfield.sol";
 import "./ValidatorRegistry.sol";
-import "./MMRVerification.sol";
+import "./SimplifiedMMRVerification.sol";
 import "./ScaleCodec.sol";
 
 /**
@@ -60,9 +59,11 @@ contract BeefyLightClient {
      * @param validatorSetId validator set id that signed the given commitment
      */
     struct Commitment {
+        bytes payloadPrefix;
         bytes32 payload;
-        uint64 blockNumber;
-        uint32 validatorSetId;
+        bytes payloadSuffix;
+        uint32 blockNumber;
+        uint64 validatorSetId;
     }
 
     /**
@@ -109,16 +110,16 @@ contract BeefyLightClient {
         uint8 version;
         uint32 parentNumber;
         bytes32 parentHash;
-        bytes32 parachainHeadsRoot;
         uint64 nextAuthoritySetId;
         uint32 nextAuthoritySetLen;
         bytes32 nextAuthoritySetRoot;
+        bytes32 digestHash;
     }
 
     /* State */
 
     ValidatorRegistry public validatorRegistry;
-    MMRVerification public mmrVerification;
+    SimplifiedMMRVerification public mmrVerification;
     uint256 public currentId;
     bytes32 public latestMMRRoot;
     uint64 public latestBeefyBlock;
@@ -134,10 +135,12 @@ contract BeefyLightClient {
 
     // We must ensure at least one block is processed every session,
     // so these constants are checked to enforce a maximum gap between commitments.
-    uint64 public constant NUMBER_OF_BLOCKS_PER_SESSION = 2400;
+    uint64 public constant NUMBER_OF_BLOCKS_PER_SESSION = 600;
     uint64 public constant ERROR_AND_SAFETY_BUFFER = 10;
     uint64 public constant MAXIMUM_BLOCK_GAP =
         NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
+
+    bytes2 public constant MMR_ROOT_ID = 0x6d68;
 
     /**
      * @notice Deploys the BeefyLightClient contract
@@ -146,12 +149,13 @@ contract BeefyLightClient {
      */
     constructor(
         ValidatorRegistry _validatorRegistry,
-        MMRVerification _mmrVerification,
+        SimplifiedMMRVerification _mmrVerification,
         uint64 _startingBeefyBlock
     ) {
         validatorRegistry = _validatorRegistry;
         mmrVerification = _mmrVerification;
         currentId = 0;
+        // currentId = 1;
         latestBeefyBlock = _startingBeefyBlock;
     }
 
@@ -160,23 +164,17 @@ contract BeefyLightClient {
     /**
      * @notice Executed by the incoming channel in order to verify commitment
      * @param beefyMMRLeaf contains the merkle leaf to be verified
-     * @param beefyMMRLeafIndex contains the merkle leaf index
-     * @param beefyMMRLeafCount contains the merkle leaf count
-     * @param beefyMMRLeafProof contains the merkle proof to verify against
+     * @param proof contains simplified MMR proof
      */
     function verifyBeefyMerkleLeaf(
         bytes32 beefyMMRLeaf,
-        uint256 beefyMMRLeafIndex,
-        uint256 beefyMMRLeafCount,
-        bytes32[] calldata beefyMMRLeafProof
-    ) external returns (bool) {
+        SimplifiedMMRProof memory proof
+    ) external view returns (bool) {
         return
             mmrVerification.verifyInclusionProof(
                 latestMMRRoot,
                 beefyMMRLeaf,
-                beefyMMRLeafIndex,
-                beefyMMRLeafCount,
-                beefyMMRLeafProof
+                proof
             );
     }
 
@@ -199,6 +197,11 @@ contract BeefyLightClient {
         address validatorPublicKey,
         bytes32[] calldata validatorPublicKeyMerkleProof
     ) public payable {
+        // Save relayer gas if another relayer already call this function
+        // require(
+        //     validationData[currentId - 1].blockNumber + 2 <= block.number,
+        //     "Already sent"
+        // );
         /**
          * @dev Check if validatorPublicKeyMerkleProof is valid based on ValidatorRegistry merkle root
          */
@@ -288,18 +291,10 @@ contract BeefyLightClient {
         Commitment calldata commitment,
         ValidatorProof calldata validatorProof,
         BeefyMMRLeaf calldata latestMMRLeaf,
-        uint64 leafIndex,
-        uint64 leafCount,
-        bytes32[] calldata mmrProofItems
+        SimplifiedMMRProof calldata proof
     ) public {
         verifyCommitment(id, commitment, validatorProof);
-        verifyNewestMMRLeaf(
-            latestMMRLeaf,
-            mmrProofItems,
-            commitment.payload,
-            leafIndex,
-            leafCount
-        );
+        verifyNewestMMRLeaf(latestMMRLeaf, commitment.payload, proof);
 
         processPayload(commitment.payload, commitment.blockNumber);
 
@@ -343,20 +338,15 @@ contract BeefyLightClient {
 
     function verifyNewestMMRLeaf(
         BeefyMMRLeaf calldata leaf,
-        bytes32[] calldata proof,
         bytes32 root,
-        uint64 leafIndex,
-        uint64 leafCount
-    ) public {
+        SimplifiedMMRProof calldata proof
+    ) public view {
         bytes memory encodedLeaf = encodeMMRLeaf(leaf);
         bytes32 hashedLeaf = hashMMRLeaf(encodedLeaf);
 
-        mmrVerification.verifyInclusionProof(
-            root,
-            hashedLeaf,
-            leafIndex,
-            leafCount,
-            proof
+        require(
+            mmrVerification.verifyInclusionProof(root, hashedLeaf, proof),
+            "invalid mmr proof"
         );
     }
 
@@ -565,27 +555,17 @@ contract BeefyLightClient {
     {
         return
             keccak256(
-                abi.encodePacked(
+                bytes.concat(
+                    commitment.payloadPrefix,
+                    MMR_ROOT_ID,
+                    bytes1(0x80), // Vec len: 32
                     commitment.payload,
-                    commitment.blockNumber.encode64(),
-                    commitment.validatorSetId.encode32()
+                    commitment.payloadSuffix,
+                    commitment.blockNumber.encode32(),
+                    commitment.validatorSetId.encode64()
                 )
             );
     }
-
-    // To scale encode the byte array, we need to prefix it
-    // with it's length. This is the expected current length of a leaf.
-    // The length here is 113 bytes:
-    // - 1 byte for the version
-    // - 4 bytes for the block number
-    // - 32 bytes for the block hash
-    // - 8 bytes for the next validator set ID
-    // - 4 bytes for the length of it
-    // - 32 bytes for the root hash of it
-    // - 32 bytes for the parachain heads merkle root
-    // That number is then compact encoded unsigned integer - see SCALE spec
-    bytes2 public constant MMR_LEAF_LENGTH_SCALE_ENCODED =
-        bytes2(uint16(0xc501));
 
     function encodeMMRLeaf(BeefyMMRLeaf calldata leaf)
         public
@@ -599,10 +579,10 @@ contract BeefyLightClient {
             ScaleCodec.encode64(leaf.nextAuthoritySetId),
             ScaleCodec.encode32(leaf.nextAuthoritySetLen),
             leaf.nextAuthoritySetRoot,
-            leaf.parachainHeadsRoot
+            leaf.digestHash
         );
 
-        return bytes.concat(MMR_LEAF_LENGTH_SCALE_ENCODED, scaleEncodedMMRLeaf);
+        return scaleEncodedMMRLeaf;
     }
 
     function hashMMRLeaf(bytes memory leaf) public pure returns (bytes32) {

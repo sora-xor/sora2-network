@@ -1,6 +1,6 @@
 #!/bin/sh
 
-binary="./target/release/framenode"
+binary="./target/debug/framenode"
 
 chain="local"
 
@@ -70,17 +70,17 @@ find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-loc
 port="10000"
 wsport="9944"
 num="0"
-for name in alice bob charlie dave eve
+for name in alice bob charlie dave eve ferdie
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
 		sh -c "$binary --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+	        sleep 40
 	else
-		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/10001/p2p/`cat $localid` 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
-    sleep 40
 	port="$newport"
 	wsport=`expr $wsport + 1`
 	num=$(($num + 1))

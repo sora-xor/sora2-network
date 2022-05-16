@@ -1,10 +1,11 @@
 use crate::mock::{
     child_of_genesis_ethereum_header, child_of_header, ethereum_header_from_file,
-    ethereum_header_proof_from_file, genesis_ethereum_block_hash, log_payload,
-    message_with_receipt_proof, new_tester, new_tester_with_config, receipt_root_and_proof,
-    ropsten_london_header, ropsten_london_message, AccountId,
+    ethereum_header_proof_from_file, genesis_ethereum_block_hash, genesis_ethereum_header,
+    log_payload, message_with_receipt_proof, new_tester, new_tester_with_config,
+    receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
 };
-use snowbridge_core::Verifier as VerifierConfig;
+use bridge_types::traits::Verifier as VerifierConfig;
+use bridge_types::{EthNetworkId, U256};
 
 use crate::mock::mock_verifier_with_pow;
 
@@ -14,9 +15,11 @@ use crate::{
     BestBlock, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers, HeadersByNumber,
     PruningRange,
 };
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::DispatchError;
+
+const BASE_NETWORK_ID: EthNetworkId = 1;
 
 #[test]
 fn it_tracks_highest_difficulty_ethereum_chain() {
@@ -30,16 +33,19 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             child1,
             Default::default(),
         ));
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             child2,
             Default::default(),
         ));
 
-        let (header_id, highest_difficulty) = <BestBlock<Test>>::get();
+        let (header_id, highest_difficulty) =
+            <BestBlock<Test>>::get(BASE_NETWORK_ID).expect("Best block not found");
         assert_eq!(header_id.hash, child1_hash);
         assert_eq!(highest_difficulty, 0xbc140caa61087i64.into());
     });
@@ -58,19 +64,21 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             child1,
             Default::default(),
         ));
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             child2,
             Default::default(),
         ));
 
-        assert!(<Headers<Test>>::contains_key(child1_hash));
-        assert!(<Headers<Test>>::contains_key(child2_hash));
+        assert!(<Headers<Test>>::contains_key(BASE_NETWORK_ID, child1_hash));
+        assert!(<Headers<Test>>::contains_key(BASE_NETWORK_ID, child2_hash));
         assert_eq!(
-            <HeadersByNumber<Test>>::get(1).unwrap(),
+            <HeadersByNumber<Test>>::get(BASE_NETWORK_ID, 1).unwrap(),
             vec![child1_hash, child2_hash]
         );
     });
@@ -104,15 +112,36 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
                 Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
                 header,
                 Default::default(),
             ));
         }
         // Relies on DescendantsUntilFinalized = 2
-        assert_eq!(<FinalizedBlock<Test>>::get().hash, block1_hash);
-        assert!(<Headers<Test>>::get(block1_hash).unwrap().finalized);
-        assert!(<Headers<Test>>::get(block2_hash).unwrap().finalized == false);
-        assert_eq!(BestBlock::<Test>::get().0.hash, block3_hash);
+        assert_eq!(
+            <FinalizedBlock<Test>>::get(BASE_NETWORK_ID)
+                .expect("Finalized block not found")
+                .hash,
+            block1_hash
+        );
+        assert!(
+            <Headers<Test>>::get(BASE_NETWORK_ID, block1_hash)
+                .unwrap()
+                .finalized
+        );
+        assert!(
+            <Headers<Test>>::get(BASE_NETWORK_ID, block2_hash)
+                .unwrap()
+                .finalized
+                == false
+        );
+        assert_eq!(
+            BestBlock::<Test>::get(BASE_NETWORK_ID)
+                .expect("Best block not found")
+                .0
+                .hash,
+            block3_hash
+        );
 
         // With invalid forks (invalid since B1 is final):
         //       B0
@@ -123,11 +152,21 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         //       |
         //       B3
         assert_err!(
-            Verifier::import_header(Origin::signed(ferdie.clone()), block5, Default::default(),),
+            Verifier::import_header(
+                Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
+                block5,
+                Default::default(),
+            ),
             Error::<Test>::HeaderOnStaleFork,
         );
         assert_err!(
-            Verifier::import_header(Origin::signed(ferdie.clone()), block6, Default::default(),),
+            Verifier::import_header(
+                Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
+                block6,
+                Default::default(),
+            ),
             Error::<Test>::AncientHeader,
         );
     });
@@ -158,6 +197,7 @@ fn it_prunes_ethereum_headers_correctly() {
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
                 Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
                 header,
                 Default::default(),
             ));
@@ -165,6 +205,7 @@ fn it_prunes_ethereum_headers_correctly() {
 
         // Prune genesis block
         let new_range = Verifier::prune_header_range(
+            BASE_NETWORK_ID,
             &PruningRange {
                 oldest_unpruned_block: 0,
                 oldest_block_to_keep: 1,
@@ -179,11 +220,15 @@ fn it_prunes_ethereum_headers_correctly() {
                 oldest_block_to_keep: 1
             },
         );
-        assert!(!<Headers<Test>>::contains_key(genesis_ethereum_block_hash()));
-        assert!(!<HeadersByNumber<Test>>::contains_key(0));
+        assert!(!<Headers<Test>>::contains_key(
+            BASE_NETWORK_ID,
+            genesis_ethereum_block_hash()
+        ));
+        assert!(!<HeadersByNumber<Test>>::contains_key(BASE_NETWORK_ID, 0));
 
         // Prune next block (B1)
         let new_range = Verifier::prune_header_range(
+            BASE_NETWORK_ID,
             &PruningRange {
                 oldest_unpruned_block: 1,
                 oldest_block_to_keep: 1,
@@ -198,12 +243,16 @@ fn it_prunes_ethereum_headers_correctly() {
                 oldest_block_to_keep: 2
             },
         );
-        assert!(!<Headers<Test>>::contains_key(block1_hash));
-        assert!(<Headers<Test>>::contains_key(block4_hash));
-        assert_eq!(<HeadersByNumber<Test>>::get(1).unwrap(), vec![block4_hash]);
+        assert!(!<Headers<Test>>::contains_key(BASE_NETWORK_ID, block1_hash));
+        assert!(<Headers<Test>>::contains_key(BASE_NETWORK_ID, block4_hash));
+        assert_eq!(
+            <HeadersByNumber<Test>>::get(BASE_NETWORK_ID, 1).unwrap(),
+            vec![block4_hash]
+        );
 
         // Prune next two blocks (B4, B2)
         let new_range = Verifier::prune_header_range(
+            BASE_NETWORK_ID,
             &PruningRange {
                 oldest_unpruned_block: 1,
                 oldest_block_to_keep: 2,
@@ -218,14 +267,17 @@ fn it_prunes_ethereum_headers_correctly() {
                 oldest_block_to_keep: 4
             },
         );
-        assert!(!<Headers<Test>>::contains_key(block4_hash));
-        assert!(!<HeadersByNumber<Test>>::contains_key(1));
-        assert!(!<Headers<Test>>::contains_key(block2_hash));
-        assert!(!<HeadersByNumber<Test>>::contains_key(2));
+        assert!(!<Headers<Test>>::contains_key(BASE_NETWORK_ID, block4_hash));
+        assert!(!<HeadersByNumber<Test>>::contains_key(BASE_NETWORK_ID, 1));
+        assert!(!<Headers<Test>>::contains_key(BASE_NETWORK_ID, block2_hash));
+        assert!(!<HeadersByNumber<Test>>::contains_key(BASE_NETWORK_ID, 2));
 
         // Finally, we're left with B3
-        assert!(<Headers<Test>>::contains_key(block3_hash));
-        assert_eq!(HeadersByNumber::<Test>::get(3).unwrap(), vec![block3_hash]);
+        assert!(<Headers<Test>>::contains_key(BASE_NETWORK_ID, block3_hash));
+        assert_eq!(
+            HeadersByNumber::<Test>::get(BASE_NETWORK_ID, 3).unwrap(),
+            vec![block3_hash]
+        );
     });
 }
 
@@ -238,12 +290,14 @@ fn it_imports_ethereum_header_only_once() {
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             child,
             Default::default(),
         ));
         assert_err!(
             Verifier::import_header(
                 Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
                 child_for_reimport,
                 Default::default(),
             ),
@@ -257,7 +311,7 @@ fn it_rejects_unsigned_ethereum_header() {
     new_tester::<Test>().execute_with(|| {
         let child = child_of_genesis_ethereum_header();
         assert_err!(
-            Verifier::import_header(Origin::none(), child, Default::default()),
+            Verifier::import_header(Origin::none(), BASE_NETWORK_ID, child, Default::default()),
             DispatchError::BadOrigin,
         );
     });
@@ -272,7 +326,12 @@ fn it_rejects_ethereum_header_before_parent() {
 
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_err!(
-            Verifier::import_header(Origin::signed(ferdie), child_of_child, Default::default(),),
+            Verifier::import_header(
+                Origin::signed(ferdie),
+                BASE_NETWORK_ID,
+                child_of_child,
+                Default::default(),
+            ),
             Error::<Test>::MissingParentHeader,
         );
     });
@@ -281,8 +340,7 @@ fn it_rejects_ethereum_header_before_parent() {
 #[test]
 fn it_validates_proof_of_work() {
     new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
-        initial_header: ethereum_header_from_file(11090290, ""),
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, ethereum_header_from_file(11090290, ""), 0.into())],
     })
     .execute_with(|| {
         let header1 = ethereum_header_from_file(11090291, "");
@@ -292,12 +350,14 @@ fn it_validates_proof_of_work() {
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_ok!(mock_verifier_with_pow::Verifier::import_header(
             mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             header1,
             header1_proof,
         ));
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
                 mock_verifier_with_pow::Origin::signed(ferdie),
+                BASE_NETWORK_ID,
                 header2,
                 Default::default(),
             ),
@@ -309,8 +369,7 @@ fn it_validates_proof_of_work() {
 #[test]
 fn it_rejects_ethereum_header_with_low_difficulty() {
     new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
-        initial_header: ethereum_header_from_file(11090291, ""),
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, ethereum_header_from_file(11090291, ""), 0.into())],
     })
     .execute_with(|| {
         let header = ethereum_header_from_file(11090292, "_low_difficulty");
@@ -319,6 +378,7 @@ fn it_rejects_ethereum_header_with_low_difficulty() {
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
                 mock_verifier_with_pow::Origin::signed(Keyring::Ferdie.into()),
+                BASE_NETWORK_ID,
                 header,
                 header_proof,
             ),
@@ -335,15 +395,13 @@ fn it_confirms_receipt_inclusion_in_finalized_header() {
     let finalized_header_hash = finalized_header.compute_hash();
 
     new_tester_with_config::<Test>(GenesisConfig {
-        initial_header: finalized_header,
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, finalized_header, 0.into())],
     })
     .execute_with(|| {
-        assert_ok!(Verifier::verify(&message_with_receipt_proof(
-            log_payload(),
-            finalized_header_hash,
-            receipt_proof
-        ),));
+        assert_ok!(Verifier::verify(
+            BASE_NETWORK_ID,
+            &message_with_receipt_proof(log_payload(), finalized_header_hash, receipt_proof),
+        ));
     });
 }
 
@@ -352,11 +410,10 @@ fn it_confirms_receipt_inclusion_in_ropsten_london_header() {
     let finalized_header: EthereumHeader = ropsten_london_header();
 
     new_tester_with_config::<Test>(GenesisConfig {
-        initial_header: finalized_header,
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, finalized_header, 0.into())],
     })
     .execute_with(|| {
-        assert_ok!(Verifier::verify(&ropsten_london_message()));
+        assert_ok!(Verifier::verify(BASE_NETWORK_ID, &ropsten_london_message()));
     });
 }
 
@@ -365,11 +422,14 @@ fn it_denies_receipt_inclusion_for_invalid_proof() {
     new_tester::<Test>().execute_with(|| {
         let (_, receipt_proof) = receipt_root_and_proof();
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log_payload(),
-                genesis_ethereum_block_hash(),
-                receipt_proof
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(
+                    log_payload(),
+                    genesis_ethereum_block_hash(),
+                    receipt_proof
+                ),
+            ),
             Error::<Test>::InvalidProof,
         );
     });
@@ -383,17 +443,19 @@ fn it_denies_receipt_inclusion_for_invalid_log() {
     let finalized_header_hash = finalized_header.compute_hash();
 
     new_tester_with_config::<Test>(GenesisConfig {
-        initial_header: finalized_header,
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, finalized_header, 0.into())],
     })
     .execute_with(|| {
         // Invalid log payload
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                Vec::new(),
-                finalized_header_hash,
-                receipt_proof.clone()
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(
+                    Vec::new(),
+                    finalized_header_hash,
+                    receipt_proof.clone()
+                ),
+            ),
             Error::<Test>::DecodeFailed,
         );
 
@@ -401,11 +463,10 @@ fn it_denies_receipt_inclusion_for_invalid_log() {
         let mut log = log_payload();
         log[3] = 204;
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log,
-                finalized_header_hash,
-                receipt_proof
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(log, finalized_header_hash, receipt_proof),
+            ),
             Error::<Test>::InvalidProof,
         );
     })
@@ -429,28 +490,27 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
 
         // Header hasn't been imported yet
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log.clone(),
-                block1_hash,
-                receipt_proof.clone()
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(log.clone(), block1_hash, receipt_proof.clone()),
+            ),
             Error::<Test>::MissingHeader,
         );
 
         let ferdie: AccountId = Keyring::Ferdie.into();
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             block1,
             Default::default(),
         ));
 
         // Header has been imported but not finalized
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log.clone(),
-                block1_hash,
-                receipt_proof.clone()
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(log.clone(), block1_hash, receipt_proof.clone()),
+            ),
             Error::<Test>::HeaderNotFinalized,
         );
 
@@ -465,42 +525,82 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         for header in vec![block1_alt, block2_alt, block3_alt].into_iter() {
             assert_ok!(Verifier::import_header(
                 Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
                 header,
                 Default::default(),
             ));
         }
-        assert_eq!(<FinalizedBlock<Test>>::get().hash, block1_alt_hash);
+        assert_eq!(
+            <FinalizedBlock<Test>>::get(BASE_NETWORK_ID,)
+                .expect("Finalized block not found")
+                .hash,
+            block1_alt_hash
+        );
 
         // A finalized header at this height exists, but it's not block1
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log.clone(),
-                block1_hash,
-                receipt_proof.clone()
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(log.clone(), block1_hash, receipt_proof.clone()),
+            ),
             Error::<Test>::HeaderNotFinalized,
         );
 
         assert_ok!(Verifier::import_header(
             Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
             block4_alt,
             Default::default(),
         ));
 
         // A finalized header at a newer height exists, but block1 isn't its ancestor
         assert_err!(
-            Verifier::verify(&message_with_receipt_proof(
-                log.clone(),
-                block1_hash,
-                receipt_proof.clone()
-            ),),
+            Verifier::verify(
+                BASE_NETWORK_ID,
+                &message_with_receipt_proof(log.clone(), block1_hash, receipt_proof.clone()),
+            ),
             Error::<Test>::HeaderNotFinalized,
         );
         // Verification works for an ancestor of the finalized header
-        assert_ok!(Verifier::verify(&message_with_receipt_proof(
-            log.clone(),
-            block1_alt_hash,
-            receipt_proof.clone()
-        ),));
+        assert_ok!(Verifier::verify(
+            BASE_NETWORK_ID,
+            &message_with_receipt_proof(log.clone(), block1_alt_hash, receipt_proof.clone()),
+        ));
+    });
+}
+
+#[test]
+fn test_register_network() {
+    new_tester::<Test>().execute_with(|| {
+        assert_ok!(Verifier::register_network(
+            Origin::root(),
+            123,
+            genesis_ethereum_header(),
+            U256::zero(),
+        ));
+
+        let caller: AccountId = Keyring::Ferdie.into();
+        let header = child_of_genesis_ethereum_header();
+        assert_ok!(Verifier::import_header(
+            Origin::signed(caller),
+            123,
+            header,
+            Default::default()
+        ));
+    });
+}
+
+#[test]
+fn test_register_network_exists() {
+    new_tester::<Test>().execute_with(|| {
+        assert_noop!(
+            Verifier::register_network(
+                Origin::root(),
+                BASE_NETWORK_ID,
+                genesis_ethereum_header(),
+                U256::zero(),
+            ),
+            Error::<Test>::NetworkAlreadyExists
+        );
     });
 }

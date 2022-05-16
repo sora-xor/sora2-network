@@ -1,30 +1,41 @@
-use ethabi::{Event, Param, ParamKind, Token};
-use snowbridge_ethereum::log::Log;
-use snowbridge_ethereum::H160;
+use bridge_types::log::Log;
+use bridge_types::H160;
+use ethabi::{Event, EventParam, ParamType};
+use once_cell::race::OnceBox;
 
 use sp_core::RuntimeDebug;
 use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
 
-// Used to decode a raw Ethereum log into an [`Envelope`].
-static EVENT_ABI: &Event = &Event {
-    signature: "Message(address,uint64,bytes)",
-    inputs: &[
-        Param {
-            kind: ParamKind::Address,
-            indexed: false,
-        },
-        Param {
-            kind: ParamKind::Uint(64),
-            indexed: false,
-        },
-        Param {
-            kind: ParamKind::Bytes,
-            indexed: false,
-        },
-    ],
-    anonymous: false,
-};
+pub static EVENT_ABI: OnceBox<Event> = OnceBox::new();
+
+fn get_event_abi() -> &'static Event {
+    EVENT_ABI.get_or_init(event_abi)
+}
+
+fn event_abi() -> Box<Event> {
+    Box::new(Event {
+        name: "Message".into(),
+        inputs: vec![
+            EventParam {
+                kind: ParamType::Address,
+                name: "source".into(),
+                indexed: false,
+            },
+            EventParam {
+                kind: ParamType::Uint(64),
+                name: "nonce".into(),
+                indexed: false,
+            },
+            EventParam {
+                kind: ParamType::Bytes,
+                name: "payload".into(),
+                indexed: false,
+            },
+        ],
+        anonymous: false,
+    })
+}
 
 /// An inbound message that has had its outer envelope decoded.
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
@@ -46,32 +57,28 @@ impl TryFrom<Log> for Envelope {
     type Error = EnvelopeDecodeError;
 
     fn try_from(log: Log) -> Result<Self, Self::Error> {
-        let tokens = EVENT_ABI
-            .decode(log.topics, log.data)
+        let address = log.address;
+        let log = get_event_abi()
+            .parse_log((log.topics, log.data).into())
             .map_err(|_| EnvelopeDecodeError)?;
 
-        let mut iter = tokens.into_iter();
-
-        let source = match iter.next().ok_or(EnvelopeDecodeError)? {
-            Token::Address(source) => source,
-            _ => return Err(EnvelopeDecodeError),
-        };
-
-        let nonce = match iter.next().ok_or(EnvelopeDecodeError)? {
-            Token::Uint(value) => value.low_u64(),
-            _ => return Err(EnvelopeDecodeError),
-        };
-
-        let payload = match iter.next().ok_or(EnvelopeDecodeError)? {
-            Token::Bytes(payload) => payload,
-            _ => return Err(EnvelopeDecodeError),
-        };
+        let mut source = None;
+        let mut nonce = None;
+        let mut payload = None;
+        for param in log.params {
+            match param.name.as_str() {
+                "source" => source = param.value.into_address(),
+                "nonce" => nonce = param.value.into_uint().map(|x| x.low_u64()),
+                "payload" => payload = param.value.into_bytes(),
+                _ => return Err(EnvelopeDecodeError),
+            }
+        }
 
         Ok(Self {
-            channel: log.address,
-            source,
-            nonce,
-            payload,
+            channel: address,
+            source: source.ok_or(EnvelopeDecodeError)?,
+            nonce: nonce.ok_or(EnvelopeDecodeError)?,
+            payload: payload.ok_or(EnvelopeDecodeError)?,
         })
     }
 }

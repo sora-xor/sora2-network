@@ -1,11 +1,14 @@
-use crate::mock::{new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test};
+use crate::mock::{
+    new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test, BASE_NETWORK_ID,
+};
+use crate::{Addresses, Error};
 use common::{balance, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
-use snowbridge_core::ChannelId;
+use bridge_types::types::ChannelId;
 
 fn last_event() -> Event {
     System::events().pop().expect("Event expected").event
@@ -14,13 +17,13 @@ fn last_event() -> Event {
 #[test]
 fn mints_after_handling_ethereum_event() {
     new_tester().execute_with(|| {
-        let peer_contract = H160::repeat_byte(1);
+        let peer_contract = H160::default();
         let sender = H160::repeat_byte(7);
         let recipient: AccountId = Keyring::Bob.into();
         let amount = balance!(10);
         let old_balance = Assets::total_balance(&XOR, &recipient).unwrap();
         assert_ok!(EthApp::mint(
-            dispatch::RawOrigin(peer_contract).into(),
+            dispatch::RawOrigin(BASE_NETWORK_ID, peer_contract).into(),
             sender,
             recipient.clone(),
             amount.into()
@@ -32,9 +35,10 @@ fn mints_after_handling_ethereum_event() {
 
         assert_eq!(
             Event::EthApp(crate::Event::<Test>::Minted(
+                BASE_NETWORK_ID,
                 sender,
                 recipient,
-                amount.into()
+                amount
             )),
             last_event()
         );
@@ -46,17 +50,24 @@ fn burn_should_emit_bridge_event() {
     new_tester().execute_with(|| {
         let recipient = H160::repeat_byte(2);
         let bob: AccountId = Keyring::Bob.into();
-        assert_ok!(Assets::mint_to(&XOR, &bob, &bob, 500u32.into()));
+        let amount = balance!(20);
+        assert_ok!(Assets::mint_to(&XOR, &bob, &bob, balance!(500)));
 
         assert_ok!(EthApp::burn(
             Origin::signed(bob.clone()),
+            BASE_NETWORK_ID,
             ChannelId::Incentivized,
             recipient.clone(),
-            20u32.into()
+            amount.into()
         ));
 
         assert_eq!(
-            Event::EthApp(crate::Event::<Test>::Burned(bob, recipient, 20.into())),
+            Event::EthApp(crate::Event::<Test>::Burned(
+                BASE_NETWORK_ID,
+                bob,
+                recipient,
+                amount
+            )),
             last_event()
         );
     });
@@ -67,17 +78,45 @@ fn should_not_burn_on_commitment_failure() {
     new_tester().execute_with(|| {
         let sender: AccountId = Keyring::Bob.into();
         let recipient = H160::repeat_byte(9);
+        let amount = balance!(20);
 
-        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, 500u32.into()));
+        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, balance!(500)));
 
         assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
+                BASE_NETWORK_ID,
                 ChannelId::Basic,
                 recipient.clone(),
-                20u32.into()
+                amount
             ),
             DispatchError::Other("some error!")
         );
+    });
+}
+
+#[test]
+fn test_register_network() {
+    new_tester().execute_with(|| {
+        assert!(!Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
+        assert_ok!(EthApp::register_network(
+            Origin::root(),
+            BASE_NETWORK_ID + 1,
+            XOR,
+            H160::repeat_byte(12)
+        ));
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
+    });
+}
+
+#[test]
+fn test_existing_register_network() {
+    new_tester().execute_with(|| {
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
+        assert_noop!(
+            EthApp::register_network(Origin::root(), BASE_NETWORK_ID, XOR, H160::repeat_byte(12)),
+            Error::<Test>::AppAlreadyExists
+        );
+        assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
     });
 }

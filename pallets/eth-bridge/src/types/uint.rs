@@ -160,11 +160,14 @@ mod tests {
         let deserialized4: Res = serde_json::from_str(r#""1000000""#);
         let deserialized5: Res = serde_json::from_str(r#""1000000000000000000""#);
 
-        assert!(deserialized1.is_err());
-        assert!(deserialized2.is_err());
-        assert!(deserialized3.is_err());
-        assert!(deserialized4.is_err());
-        assert!(deserialized5.is_err());
+        assert!(deserialized1.is_err(), "{:?}", deserialized1);
+        assert_eq!(deserialized2.unwrap(), U256::from(0u128));
+        assert_eq!(deserialized3.unwrap(), U256::from(16u128));
+        assert_eq!(deserialized4.unwrap(), U256::from(16777216u128));
+        assert_eq!(
+            deserialized5.unwrap(),
+            U256::from(4722366482869645213696u128)
+        );
     }
 
     #[test]

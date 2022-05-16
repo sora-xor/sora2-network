@@ -1,11 +1,11 @@
 require("dotenv").config();
 
-import {HardhatRuntimeEnvironment} from "hardhat/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 module.exports = async ({
-    deployments,
-    getUnnamedAccounts,
-    network,
+  deployments,
+  getUnnamedAccounts,
+  network,
 }: HardhatRuntimeEnvironment) => {
   let [deployer] = await getUnnamedAccounts();
 
@@ -30,10 +30,7 @@ module.exports = async ({
     }
   };
 
-  let dotApp = await deployments.get("DOTApp");
   let ethApp = await deployments.get("ETHApp");
-  let erc20App = await deployments.get("ERC20App");
-  let erc721App = await deployments.get("ERC721App");
 
   console.log("Configuring BasicOutboundChannel")
   await deployments.execute(
@@ -43,9 +40,9 @@ module.exports = async ({
       autoMine: true,
     },
     "initialize",
-    deployer,
+    [channels.basic.inbound.address, channels.incentivized.inbound.address],
     principal,
-    [dotApp.address, ethApp.address, erc20App.address, erc721App.address],
+    [ethApp.address],
   );
 
   console.log("Configuring IncentivizedOutboundChannel")
@@ -54,19 +51,10 @@ module.exports = async ({
     {
       from: deployer,
       autoMine: true,
-},
-    "initialize",
-    deployer,
-    dotApp.address,
-    [dotApp.address, ethApp.address, erc20App.address, erc721App.address]
-  );
-  await deployments.execute(
-    "IncentivizedOutboundChannel",
-    {
-      from: deployer,
-      autoMine: true,
     },
-    "setFee",
+    "initialize",
+    [channels.basic.inbound.address, channels.incentivized.inbound.address],
+    [ethApp.address],
     fee
   );
 

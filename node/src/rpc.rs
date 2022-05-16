@@ -133,6 +133,8 @@ where
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
+    C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
+
     P: TransactionPool + Send + Sync + 'static,
 {
     use assets_rpc::{AssetsAPI, AssetsClient};
@@ -141,6 +143,7 @@ where
     use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
     // use farming_rpc::*;
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
+    use leaf_provider_rpc::{LeafProviderAPI, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_mmr_rpc::{Mmr, MmrApi};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
@@ -190,5 +193,8 @@ where
             beefy.subscription_executor,
         )?,
     ));
+    io.extend_with(LeafProviderAPI::to_delegate(LeafProviderClient::new(
+        client.clone(),
+    )));
     Ok(io)
 }
