@@ -4,6 +4,8 @@ mod prepare_migration;
 mod register_assets;
 mod register_bridge;
 mod relay;
+mod relay_raw;
+mod send_to_sora;
 
 use bridge_types::H160;
 
@@ -14,6 +16,8 @@ use crate::substrate::AssetId;
 pub enum Commands {
     DumpAssets(dump_assets::Command),
     Relay(relay::Command),
+    RelayRaw(relay_raw::Command),
+    SendToSora(send_to_sora::Command),
     RegisterAssets(register_assets::Command),
     RegisterBridge(register_bridge::Command),
     PrepareForMigration(prepare_migration::Command),
@@ -25,6 +29,8 @@ impl Commands {
         match self {
             Self::DumpAssets(cmd) => cmd.run().await,
             Self::Relay(cmd) => cmd.run().await,
+            Self::RelayRaw(cmd) => cmd.run().await,
+            Self::SendToSora(cmd) => cmd.run().await,
             Self::RegisterAssets(cmd) => cmd.run().await,
             Self::RegisterBridge(cmd) => cmd.run().await,
             Self::Migrate(cmd) => cmd.run().await,

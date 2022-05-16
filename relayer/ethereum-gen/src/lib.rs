@@ -38,6 +38,9 @@ ethers::contract::abigen!(
     WCFG,
     "src/bytes/WCFG.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
+    Master,
+    "src/bytes/Master.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
 );
 
 // Re-export modules, because it's private
@@ -84,4 +87,16 @@ pub mod eth_bridge {
 
 pub mod wcfg {
     pub use crate::wcfg_mod::*;
+}
+
+pub mod ierc20 {
+    pub use crate::ierc20metadata_mod::*;
+}
+
+pub mod master {
+    pub use crate::master_mod::*;
+}
+
+pub mod test_token {
+    pub use crate::testtoken_mod::*;
 }

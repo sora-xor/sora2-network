@@ -17,8 +17,6 @@ pub type EthWallet = Wallet<SigningKey>;
 
 pub type SignedClientInner = SignerMiddleware<UnsignedClientInner, EthWallet>;
 
-pub type SignedContractCall<D> = ContractCall<SignedClientInner, D>;
-
 pub type UnsignedClientInner = Provider<Ws>;
 
 #[derive(Clone, Debug)]
@@ -88,11 +86,15 @@ impl SignedClient {
         self.0.clone()
     }
 
-    pub async fn save_gas_price<D: abi::Detokenize>(
+    pub async fn save_gas_price<D, M>(
         &self,
-        call: &SignedContractCall<D>,
+        call: &ContractCall<M, D>,
         additional: &str,
-    ) -> AnyResult<()> {
+    ) -> AnyResult<()>
+    where
+        D: abi::Detokenize + core::fmt::Debug,
+        M: Middleware + 'static,
+    {
         use std::io::Write;
         let gas = call.estimate_gas().await?.as_u128();
         let metric = format!(
@@ -104,7 +106,8 @@ impl SignedClient {
         );
         let mut file = std::fs::OpenOptions::new()
             .append(true)
-            .open("gas prices")?;
+            .create(true)
+            .open("gas_prices")?;
         file.write_all(metric.as_bytes())?;
         Ok(())
     }
