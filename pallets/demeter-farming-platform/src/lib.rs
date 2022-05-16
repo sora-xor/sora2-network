@@ -414,7 +414,10 @@ pub mod pallet {
             // Update user info
             if exist {
                 for u_info in user_infos.iter_mut() {
-                    if u_info.is_farm == is_farm {
+                    if u_info.pool_asset == pool_asset
+                        && u_info.reward_asset == reward_asset
+                        && u_info.is_farm == is_farm
+                    {
                         u_info.pooled_tokens += pooled_tokens;
                     }
                 }
