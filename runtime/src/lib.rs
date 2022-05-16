@@ -58,7 +58,7 @@ use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
-#[cfg(all(feature = "std", not(feature = "skip-wasm-build")))]
+#[cfg(all(feature = "std", feature = "wasm-build"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;

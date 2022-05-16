@@ -13,9 +13,6 @@ echo "Beefy $BEEFY"
 
 cargo run --release --bin relayer -- \
     substrate-relay \
-    --basic-inbound-channel $BASIC_INBOUND \
-    --incentivized-inbound-channel $INCENTIVIZED_INBOUND \
-    --beefy $BEEFY \
     --ethereum-key $1 \
     --ethereum-url ws://localhost:8546 \
     --substrate-url ws://localhost:9944

@@ -11,7 +11,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = [
     "derive",
 ] }
-framenode-runtime = { path = "../../runtime", features = ["private-net"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = ["std", "private-net"] }
 hex = "0.4.3"
 
 [dependencies]

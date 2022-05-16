@@ -14,7 +14,6 @@ pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, ClientT, SubscriptionClientT};
 use subxt::sp_core::{Bytes, Pair};
 use subxt::{ClientBuilder, Config};
-use tokio::time::Instant;
 pub use types::*;
 
 pub struct UnsignedClient(ApiInner);
@@ -236,7 +235,6 @@ impl SignedClient {
     }
 
     pub fn set_nonce(&self, index: Index) {
-        debug!("Set nonce to {}", index);
         let mut nonce = self.nonce.write().expect("poisoned");
         *nonce = Some(index);
     }
@@ -274,14 +272,12 @@ impl Signer<DefaultConfig> for SignedClient {
     }
 
     fn nonce(&self) -> Option<Index> {
-        let start = Instant::now();
         let res = *self.nonce.read().expect("poisoned");
         self.nonce
             .write()
             .expect("poisoned")
             .as_mut()
             .map(|nonce| *nonce += 1);
-        debug!("Get nonce in {}s: {:?}", start.elapsed().as_secs_f64(), res);
         res
     }
 

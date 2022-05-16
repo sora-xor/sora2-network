@@ -145,7 +145,7 @@ framenode-chain-spec = { path = "../node/chain_spec", features = [
 ] }
 
 [features]
-default = ["std"]
+default = ["std", "wasm-build"]
 
 std = [
     "assets-runtime-api/std",
@@ -283,3 +283,5 @@ runtime-benchmarks = [
 ]
 
 reduced-pswap-reward-periods = []
+
+wasm-build = []

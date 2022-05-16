@@ -106,13 +106,23 @@ impl Command {
                         .await?
                         .wait_for_success()
                         .await?;
+                    let token = ethereum_gen::IERC20Metadata::new(address, eth.inner());
+                    let call = token
+                        .approve(sidechain_app, 1000000000000000000000000000u128.into())
+                        .legacy();
+                    call.call().await?;
+                    call.send().await?.confirmations(1).await?;
                 }
                 AssetKind::Sidechain => {
                     let token = ethereum_gen::TestToken::new(address, eth.inner());
-                    let call = token.mint(eth.address(), 1000000000000000000u64.into());
+                    let call = token
+                        .mint(eth.address(), 1000000000000000000u64.into())
+                        .legacy();
                     call.call().await?;
                     call.send().await?.confirmations(1).await?;
-                    let call = token.approve(erc20_app, u128::MAX.into());
+                    let call = token
+                        .approve(erc20_app, 1000000000000000000000000000u128.into())
+                        .legacy();
                     call.call().await?;
                     call.send().await?.confirmations(1).await?;
                 }
@@ -128,7 +138,7 @@ impl Command {
         loop {
             for (asset, info) in assets.iter() {
                 let entry = stats.entry(*asset).or_default();
-                let call = if let Some((kind, address)) = info {
+                let mut call = if let Some((kind, address)) = info {
                     match kind {
                         AssetKind::Thischain => {
                             sidechain_app.lock(*address, sub.account_id().into(), 11.into(), 1)
@@ -140,15 +150,28 @@ impl Command {
                 } else {
                     eth_app.lock(sub.account_id().into(), 1).value(100000)
                 }
-                .from(eth.address());
-                let eth_succ = call.call().await.is_ok();
-                if eth_succ {
+                .legacy();
+                let eth_res = eth.fill_transaction(&mut call.tx, call.block).await;
+                if eth_res.is_ok() {
                     entry.eth_succ += 1;
-                    call.send().await?.confirmations(1).await?;
+                    let res = call.send().await?.confirmations(1).await?.unwrap();
+                    debug!("Tx {:?}", res);
                 } else {
+                    debug!(
+                        "Failed to send eth {:?} {}: {:?}",
+                        call.tx.to(),
+                        call.function.name,
+                        eth_res
+                    );
                     entry.eth_fail += 1;
                 }
-                if let Some(_) = info {
+                if let Some((_, token)) = info {
+                    let token = ethereum_gen::IERC20Metadata::new(*token, eth.inner());
+                    info!(
+                        "{} balance: {}",
+                        asset,
+                        token.balance_of(eth.address()).call().await?.as_u128()
+                    );
                     let in_block = sub
                         .api()
                         .tx()
@@ -164,12 +187,19 @@ impl Command {
                         .await?
                         .wait_for_in_block()
                         .await?;
-                    if in_block.wait_for_success().await.is_ok() {
+                    let sub_res = in_block.wait_for_success().await;
+                    if sub_res.is_ok() {
                         entry.sub_succ += 1;
                     } else {
                         entry.sub_fail += 1;
+                        debug!("Failed to send sub: {:?}", sub_res);
                     }
                 } else {
+                    info!(
+                        "{} balance: {}",
+                        asset,
+                        eth.get_balance(eth.address(), None).await?.as_u128()
+                    );
                     let in_block = sub
                         .api()
                         .tx()
@@ -179,10 +209,12 @@ impl Command {
                         .await?
                         .wait_for_in_block()
                         .await?;
-                    if in_block.wait_for_success().await.is_ok() {
+                    let sub_res = in_block.wait_for_success().await;
+                    if sub_res.is_ok() {
                         entry.sub_succ += 1;
                     } else {
                         entry.sub_fail += 1;
+                        debug!("Failed to send sub: {:?}", sub_res);
                     }
                 }
             }

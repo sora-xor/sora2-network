@@ -1,5 +1,7 @@
 use super::*;
+use crate::ethereum::proof_loader::ProofLoader;
 use crate::relay::ethereum::Relay;
+use crate::relay::ethereum_messages::SubstrateMessagesRelay;
 use clap::*;
 use std::path::PathBuf;
 
@@ -22,10 +24,10 @@ impl Command {
             .await?
             .try_sign_with(&self.key.get_key_string()?)
             .await?;
-        Relay::new(self.base_path.clone(), sub, eth)
-            .await?
-            .run()
-            .await?;
+        let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());
+        let relay = Relay::new(sub.clone(), eth.clone(), proof_loader.clone()).await?;
+        let messages_relay = SubstrateMessagesRelay::new(sub, eth, proof_loader).await?;
+        tokio::try_join!(relay.run(), messages_relay.run())?;
         Ok(())
     }
 }
