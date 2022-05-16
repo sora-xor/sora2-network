@@ -22,6 +22,8 @@ pub trait WeightInfo {
     fn change_pool_multiplier() -> Weight;
     fn change_pool_deposit_fee() -> Weight;
     fn change_token_info() -> Weight;
+    fn change_total_tokens() -> Weight;
+    fn change_info() -> Weight;
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -169,6 +171,10 @@ pub mod pallet {
         DepositFeeChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
         /// Token info changed [who, what]
         TokenInfoChanged(AccountIdOf<T>, AssetIdOf<T>),
+        /// Total tokens changed [who, pool_asset, reward_asset, is_farm, amount]
+        TotalTokensChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Info changed [who, pool_asset, reward_asset, is_farm, amount]
+        InfoChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
     }
 
     #[pallet::error]
@@ -676,6 +682,90 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 new_multiplier,
+            ));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change total tokens
+        #[pallet::weight(<T as Config>::WeightInfo::change_total_tokens())]
+        pub fn change_total_tokens(
+            origin: OriginFor<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            total_tokens: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            // Get pool info
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let mut exist = false;
+
+            for p_info in pool_infos.iter_mut() {
+                if !p_info.is_removed && p_info.is_farm == is_farm {
+                    exist = true;
+                    p_info.total_tokens_in_pool = total_tokens;
+                }
+            }
+            ensure!(exist, Error::<T>::PoolDoesNotExist);
+
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::TotalTokensChanged(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                total_tokens,
+            ));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change info
+        #[pallet::weight(<T as Config>::WeightInfo::change_info())]
+        pub fn change_info(
+            origin: OriginFor<T>,
+            changed_user: AccountIdOf<T>,
+            pool_asset: AssetIdOf<T>,
+            reward_asset: AssetIdOf<T>,
+            is_farm: bool,
+            pool_tokens: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            // Get pool info
+            let mut user_infos = <UserInfos<T>>::get(&changed_user);
+            for u_info in user_infos.iter_mut() {
+                if u_info.pool_asset == pool_asset
+                    && u_info.reward_asset == reward_asset
+                    && u_info.is_farm == is_farm
+                {
+                    u_info.pooled_tokens = pool_tokens;
+                }
+            }
+
+            <UserInfos<T>>::insert(&changed_user, &user_infos);
+
+            // Emit an event
+            Self::deposit_event(Event::<T>::InfoChanged(
+                changed_user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens,
             ));
 
             // Return a successful DispatchResult

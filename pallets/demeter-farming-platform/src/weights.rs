@@ -77,6 +77,16 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(2 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
+    fn change_total_tokens() -> Weight {
+        (89_700_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn change_info() -> Weight {
+        (69_400_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -105,6 +115,12 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn change_token_info() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn change_total_tokens() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn change_info() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
