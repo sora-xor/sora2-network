@@ -26,7 +26,8 @@ EOF
 `
 eval "$getopt_code"
 
-export RUST_LOG="beefy=info,ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
+#export RUST_LOG="beefy=info,ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
+export RUST_LOG="info,eth_bridge=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`
@@ -74,6 +75,8 @@ for name in alice bob charlie dave eve
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
+	mkdir -p "db$num/chains/sora-substrate-local/keystore"
+	cp -r bridge "db$num/chains/sora-substrate-local"
 	if [ "$num" == "0" ]; then
 		sh -c "$binary --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	        sleep 40
