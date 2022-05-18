@@ -14,7 +14,7 @@ RUN apt-get update && \
     curl \
     git binaryen \
     software-properties-common \
-    llvm clang && \
+    llvm clang make && \
     rm -rf /var/lib/apt/lists/*
 
 # Install docker
