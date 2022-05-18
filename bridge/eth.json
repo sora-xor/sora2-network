@@ -1,7 +1,0 @@
-{
-	"networks": {
-		"0": {
-			"url": "http://localhost:8545"
-		}
-	}
-}
