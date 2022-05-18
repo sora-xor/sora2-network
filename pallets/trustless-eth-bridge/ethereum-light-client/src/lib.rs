@@ -440,7 +440,7 @@ pub mod pallet {
                     None => (),
                     Some(max) => {
                         ensure!(
-                            max / *difficulty >= (DIFFICULTY_DIFFERENCE_MULT as u64).into(),
+                            max / *difficulty <= (DIFFICULTY_DIFFERENCE_MULT as u64).into(),
                             Error::<T>::DifficultyIsTooLow
                         );
                         if difficulties.len() >= LAST_DIFFICULTIES_VECTOR_LEN {
