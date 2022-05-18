@@ -52,6 +52,10 @@ pub use weights::WeightInfo;
 const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 /// Max number of headers we're pruning in single import call.
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
+/// Length of difficulties vector to store
+const LAST_DIFFICULTIES_VECTOR_LEN: usize = 10;
+/// Calculate the maximum difference between current header difficulty and maximung among stored in vector
+const DIFFICULTY_DIFFERENCE_MULT: f64 = 1.0 + 0.125 * (LAST_DIFFICULTIES_VECTOR_LEN as f64);
 
 /// Ethereum block header as it is stored in the runtime storage.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
@@ -148,6 +152,8 @@ pub mod pallet {
         NetworkNotFound,
         /// Network with given id already registered
         NetworkAlreadyExists,
+        /// Difficulty is too low comparing to last blocks difficulty
+        DifficultyIsTooLow,
         /// This should never be returned - indicates a bug
         Unknown,
     }
@@ -186,6 +192,11 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type HeadersByNumber<T: Config> =
         StorageDoubleMap<_, Identity, EthNetworkId, Twox64Concat, u64, Vec<H256>, OptionQuery>;
+
+    /// Last difficulties not to compute every block
+    #[pallet::storage]
+    pub(super) type LastDifficulties<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, Vec<U256>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
@@ -387,6 +398,8 @@ pub mod pallet {
                 Error::<T>::InvalidHeader,
             );
 
+            Self::validate_header_difficulty(network_id, &header.difficulty)?;
+
             log::trace!(
                 target: "ethereum-light-client",
                 "Header {} passed difficulty verification",
@@ -416,6 +429,28 @@ pub mod pallet {
             );
 
             Ok(())
+        }
+
+        fn validate_header_difficulty(
+            network_id: EthNetworkId,
+            difficulty: &U256,
+        ) -> DispatchResult {
+            LastDifficulties::<T>::try_mutate(network_id, |difficulties| -> DispatchResult {
+                match difficulties.iter().max() {
+                    None => (),
+                    Some(max) => {
+                        ensure!(
+                            max / *difficulty >= (DIFFICULTY_DIFFERENCE_MULT as u64).into(),
+                            Error::<T>::DifficultyIsTooLow
+                        );
+                        if difficulties.len() >= LAST_DIFFICULTIES_VECTOR_LEN {
+                            difficulties.remove(0);
+                        }
+                    }
+                }
+                difficulties.push(*difficulty);
+                Ok(())
+            })
         }
 
         // Import a new, validated Ethereum header
