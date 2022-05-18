@@ -453,6 +453,11 @@ pub mod pallet {
             })
         }
 
+        #[cfg(test)]
+        pub fn add_test_difficulties(network_id: EthNetworkId, difficulties: Vec<U256>) {
+            LastDifficulties::<T>::insert(network_id, difficulties);
+        }
+
         // Import a new, validated Ethereum header
         fn import_validated_header(
             network_id: EthNetworkId,

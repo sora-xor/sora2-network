@@ -604,3 +604,33 @@ fn test_register_network_exists() {
         );
     });
 }
+
+#[test]
+fn it_validates_last_headers_difficulty() {
+    new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
+        initial_networks: vec![(1, ethereum_header_from_file(11090290, ""), 0.into())],
+    })
+    .execute_with(|| {
+        let header1 = ethereum_header_from_file(11090291, "");
+        let header1_proof = ethereum_header_proof_from_file(11090291, "");
+        let header2 = ethereum_header_from_file(11090292, "");
+
+        let ferdie: AccountId = Keyring::Ferdie.into();
+        // assert_ok!(mock_verifier_with_pow::Verifier::import_header(
+        //     mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+        //     BASE_NETWORK_ID,
+        //     header1,
+        //     header1_proof,
+        // ));
+        // assert_err!(
+        //     mock_verifier_with_pow::Verifier::import_header(
+        //         mock_verifier_with_pow::Origin::signed(ferdie),
+        //         BASE_NETWORK_ID,
+        //         header2,
+        //         Default::default(),
+        //     ),
+        //     Error::<mock_verifier_with_pow::Test>::InvalidHeader,
+        // );
+        mock_verifier_with_pow::Verifier::add_test_difficulties(BASE_NETWORK_ID, Vec::new());
+    });
+}
