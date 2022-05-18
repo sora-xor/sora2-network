@@ -1,6 +1,4 @@
 use crate::cli::prelude::*;
-use crate::relay::ethereum::Relay;
-use super::*;
 use crate::ethereum::proof_loader::ProofLoader;
 use crate::relay::ethereum::Relay;
 use crate::relay::ethereum_messages::SubstrateMessagesRelay;

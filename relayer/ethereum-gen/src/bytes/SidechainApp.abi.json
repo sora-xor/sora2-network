@@ -34,6 +34,11 @@
         "internalType": "struct SidechainApp.Channel",
         "name": "_incentivized",
         "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "migrationApp",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -353,6 +358,19 @@
       }
     ],
     "name": "registerAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "registerExistingAsset",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

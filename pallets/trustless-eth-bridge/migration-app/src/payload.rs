@@ -1,8 +1,65 @@
+#![allow(deprecated)]
 use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 
 use bridge_types::H160;
-use ethabi::{self, Token};
+use ethabi::{self, Function, Param, ParamType, StateMutability, Token};
+
+fn migrate_erc20_function() -> Function {
+    Function {
+        name: "migrateNativeErc20".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![
+            Param {
+                name: "contractAddress".into(),
+                kind: ParamType::Address,
+                internal_type: None,
+            },
+            Param {
+                name: "erc20nativeTokens".into(),
+                kind: ParamType::Array(Box::new(ParamType::Address)),
+                internal_type: None,
+            },
+        ],
+    }
+}
+
+fn migrate_eth_function() -> Function {
+    Function {
+        name: "migrateEth".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![Param {
+            name: "contractAddress".into(),
+            kind: ParamType::Address,
+            internal_type: None,
+        }],
+    }
+}
+
+fn migrate_sidechain_function() -> Function {
+    Function {
+        name: "migrateSidechain".into(),
+        state_mutability: StateMutability::NonPayable,
+        constant: None,
+        outputs: vec![],
+        inputs: vec![
+            Param {
+                name: "contractAddress".into(),
+                kind: ParamType::Address,
+                internal_type: None,
+            },
+            Param {
+                name: "sidechainTokens".into(),
+                kind: ParamType::Array(Box::new(ParamType::Address)),
+                internal_type: None,
+            },
+        ],
+    }
+}
 
 // Message to Ethereum (ABI-encoded)
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
@@ -13,7 +70,7 @@ pub struct MigrateErc20Payload {
 
 impl MigrateErc20Payload {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
         let tokens = vec![
             Token::Address(self.contract_address),
             Token::Array(
@@ -23,7 +80,7 @@ impl MigrateErc20Payload {
                     .collect(),
             ),
         ];
-        ethabi::encode_function("migrateNativeErc20(address,address[])", tokens.as_ref())
+        migrate_erc20_function().encode_input(tokens.as_ref())
     }
 }
 
@@ -36,7 +93,7 @@ pub struct MigrateSidechainPayload {
 
 impl MigrateSidechainPayload {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
         let tokens = vec![
             Token::Address(self.contract_address),
             Token::Array(
@@ -46,7 +103,7 @@ impl MigrateSidechainPayload {
                     .collect(),
             ),
         ];
-        ethabi::encode_function("migrateSidechain(address,address[])", tokens.as_ref())
+        migrate_sidechain_function().encode_input(tokens.as_ref())
     }
 }
 
@@ -58,8 +115,8 @@ pub struct MigrateEthPayload {
 
 impl MigrateEthPayload {
     /// ABI-encode this payload
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
         let tokens = vec![Token::Address(self.contract_address)];
-        ethabi::encode_function("migrateEth(address)", tokens.as_ref())
+        migrate_eth_function().encode_input(tokens.as_ref())
     }
 }

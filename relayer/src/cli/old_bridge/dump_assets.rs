@@ -41,7 +41,7 @@ impl Command {
                 .api()
                 .storage()
                 .assets()
-                .asset_infos(asset_id, None)
+                .asset_infos(&asset_id, None)
                 .await?;
             let asset_info = AssetInfo {
                 asset_id,

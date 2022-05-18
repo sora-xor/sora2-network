@@ -3,42 +3,23 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "rewarder",
+        "name": "_basic_inbound",
         "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct ETHApp.Channel",
-        "name": "_basic",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "_basic_outbound",
+        "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct ETHApp.Channel",
-        "name": "_incentivized",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "_incentivized_inbound",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_incentivized_outbound",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -50,23 +31,37 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "sender",
+        "name": "contractAddress",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "recipient",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "Locked",
+    "name": "MigratedEth",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      }
+    ],
+    "name": "MigratedNativeErc20",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      }
+    ],
+    "name": "MigratedSidechain",
     "type": "event"
   },
   {
@@ -145,31 +140,6 @@
     "type": "event"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "sender",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "Unlocked",
-    "type": "event"
-  },
-  {
     "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
@@ -190,32 +160,6 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "REWARD_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "balance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -309,19 +253,50 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "_recipient",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "enum ChannelId",
-        "name": "_channelId",
-        "type": "uint8"
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
       }
     ],
-    "name": "lock",
+    "name": "migrateEth",
     "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "erc20nativeTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "migrateNativeErc20",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "sidechainTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "migrateSidechain",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -370,24 +345,6 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
-        "name": "_recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "reward",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes4",
         "name": "interfaceId",
         "type": "bytes4"
@@ -402,29 +359,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_sender",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address payable",
-        "name": "_recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "unlock",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

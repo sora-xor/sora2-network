@@ -11,7 +11,7 @@ USDT=$(jq '.address' $DEPLOYMENTS/USDT.json | tr -d '"')
 echo "Use deployments from $DEPLOYMENTS"
 
 cargo run --bin relayer --release -- \
-	register-erc20-asset \
+	bridge register-asset \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
@@ -19,7 +19,7 @@ cargo run --bin relayer --release -- \
 	--asset-id 0x0200060000000000000000000000000000000000000000000000000000000000
 
 cargo run --bin relayer --release -- \
-	register-erc20-asset \
+	bridge register-asset \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
@@ -27,7 +27,7 @@ cargo run --bin relayer --release -- \
 	--asset-id 0x0200000000000000000000000000000000000000000000000000000000000000
 
 cargo run --bin relayer --release -- \
-	register-erc20-asset \
+	bridge register-asset \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \

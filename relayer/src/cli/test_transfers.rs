@@ -31,11 +31,11 @@ struct Stats {
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let mut stats = HashMap::<AssetId, Stats>::new();
-        let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone())
+        let eth = EthUnsignedClient::new(self.ethereum.get())
             .await?
             .sign_with_string(&self.ethereum_key.get_key_string()?)
             .await?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone())
+        let sub = SubUnsignedClient::new(self.substrate.get())
             .await?
             .try_sign_with(&self.substrate_key.get_key_string()?)
             .await?;

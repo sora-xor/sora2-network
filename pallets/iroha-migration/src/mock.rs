@@ -85,7 +85,7 @@ construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage,  Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -154,7 +154,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -183,6 +182,8 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 

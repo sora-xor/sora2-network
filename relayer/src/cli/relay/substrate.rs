@@ -1,6 +1,5 @@
 use crate::cli::prelude::*;
 use crate::relay::substrate::RelayBuilder;
-use bridge_types::H160;
 use clap::*;
 use ethers::prelude::Middleware;
 
@@ -23,7 +22,7 @@ impl Command {
             .sign_with_string(&self.key.get_key_string()?)
             .await
             .context("sign ethereum client")?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone()).await?;
+        let sub = SubUnsignedClient::new(self.substrate.get()).await?;
         let network_id = eth.inner().get_chainid().await?.as_u32();
         let eth_app = sub
             .api()

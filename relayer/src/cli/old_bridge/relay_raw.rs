@@ -9,8 +9,8 @@ use eth_bridge::requests::{CurrencyIdEncoded, OutgoingRequestEncoded, RequestSta
 use ethers::abi::Detokenize;
 use ethers::prelude::builders::ContractCall;
 use ethers::prelude::Middleware;
-use jsonrpsee::rpc_params;
-use subxt::rpc::ClientT;
+use jsonrpsee_core::client::CertificateStore;
+use subxt::rpc::{rpc_params, ClientT};
 use subxt::sp_runtime::DispatchResult;
 
 #[derive(Args, Clone, Debug)]
@@ -43,7 +43,7 @@ impl Command {
         let url = self.substrate.get();
         let sub = {
             let (sender, receiver) = subxt::rpc::WsTransportClientBuilder::default()
-                .certificate_store(jsonrpsee::core::client::CertificateStore::WebPki)
+                .certificate_store(CertificateStore::WebPki)
                 .build(url)
                 .await
                 .context("connect ws")?;

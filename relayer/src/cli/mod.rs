@@ -7,11 +7,8 @@ mod mint_test_token;
 mod old_bridge;
 mod relay;
 mod subscribe_beefy;
-mod update_balance;
-mod substrate_relay;
 mod test_transfers;
-mod transfer_to_ethereum;
-mod transfer_to_sora;
+mod update_balance;
 
 use prelude::*;
 
@@ -36,14 +33,13 @@ enum Commands {
     EstimateGas(estimate_gas::Command),
     MintTestToken(mint_test_token::Command),
     UpdateBalance(update_balance::Command),
+    TestTransfers(test_transfers::Command),
     #[clap(subcommand)]
     Bridge(bridge::Commands),
     #[clap(subcommand)]
     Relay(relay::Commands),
     #[clap(subcommand)]
     OldBridge(old_bridge::Commands),
-    #[clap(subcommand)]
-    TestTransfers(test_transfers::Command),
 }
 
 impl Commands {

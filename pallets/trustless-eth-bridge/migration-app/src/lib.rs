@@ -63,6 +63,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
+    use bridge_types::traits::AppRegistry;
     use bridge_types::types::AssetKind;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -81,6 +82,8 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
+
+        type AppRegistry: AppRegistry;
 
         type WeightInfo: WeightInfo;
     }
@@ -122,6 +125,8 @@ pub mod pallet {
         AppAlreadyExists,
         /// Token already registered with another address.
         TokenRegisteredWithAnotherAddress,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::call]
@@ -169,7 +174,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Erc20Migrated(network_id, contract_address));
 
@@ -215,7 +220,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));
 
@@ -238,7 +243,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));
 
@@ -264,6 +269,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         fn register_network_inner(network_id: EthNetworkId, contract: H160) -> DispatchResult {
+            <T as Config>::AppRegistry::register_app(network_id, contract)?;
             Addresses::<T>::insert(network_id, contract);
             Ok(())
         }

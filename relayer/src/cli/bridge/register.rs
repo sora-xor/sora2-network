@@ -125,7 +125,7 @@ impl Command {
                     },
                 ),
             )
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?

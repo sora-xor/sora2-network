@@ -41,6 +41,9 @@ ethers::contract::abigen!(
     Master,
     "src/bytes/Master.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
+    MigrationApp,
+    "src/bytes/MigrationApp.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
 );
 
 // Re-export modules, because it's private

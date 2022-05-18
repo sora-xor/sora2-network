@@ -11,7 +11,7 @@ pub(super) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub_api = SubUnsignedClient::new(Url::parse("ws://localhost:9944")?).await?;
+        let sub_api = SubUnsignedClient::new(self.url.get()).await?;
         let beefy_start_block = sub_api.beefy_start_block().await?;
 
         let proof = sub_api.mmr_generate_proof(0, None).await?;

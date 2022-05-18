@@ -127,7 +127,7 @@ pub fn make_header(block: Block<H256>) -> Header {
         parent_hash: block.parent_hash,
         timestamp: block.timestamp.as_u64(),
         number: block.number.unwrap_or(U64::zero()).as_u64(),
-        author: block.author,
+        author: block.author.unwrap_or_default(),
         transactions_root: block.transactions_root,
         ommers_hash: block.uncles_hash,
         extra_data: block.extra_data.to_vec(),

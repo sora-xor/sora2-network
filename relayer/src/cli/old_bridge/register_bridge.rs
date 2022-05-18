@@ -28,7 +28,7 @@ impl Command {
             .tx()
             .eth_bridge()
             .register_bridge(self.contract, self.peers.clone())
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?

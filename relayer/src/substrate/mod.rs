@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 use common::Balance;
+use jsonrpsee_core::client::CertificateStore;
 use pallet_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use pallet_mmr_rpc::{LeafIndex, LeafProof as RawLeafProof};
 use std::sync::RwLock;
@@ -28,7 +29,7 @@ impl UnsignedClient {
     pub async fn new(url: impl Into<Uri>) -> AnyResult<Self> {
         let url = url.into();
         let (sender, receiver) = subxt::rpc::WsTransportClientBuilder::default()
-            .certificate_store(jsonrpsee::core::client::CertificateStore::WebPki)
+            .certificate_store(CertificateStore::WebPki)
             .build(url)
             .await
             .context("connect ws")?;

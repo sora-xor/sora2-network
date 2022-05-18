@@ -20,8 +20,6 @@ use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
 use system::RawOrigin;
 
-use crate as eth_app;
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -35,12 +33,14 @@ frame_support::construct_runtime!(
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
-        MigrationApp: eth_app::{Pallet, Call, Config, Storage, Event<T>},
+        EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Erc20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        MigrationApp: crate::{Pallet, Call, Config, Storage, Event<T>},
     }
 );
 
@@ -115,11 +115,12 @@ impl tokens::Config for Test {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Test {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
     type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
@@ -202,6 +203,39 @@ impl eth_app::Config for Test {
     type OutboundRouter = MockOutboundRouter<Self::AccountId>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type WeightInfo = ();
+}
+
+pub struct AppRegistry;
+
+impl bridge_types::traits::AppRegistry for AppRegistry {
+    fn register_app(
+        _network_id: bridge_types::EthNetworkId,
+        _app: H160,
+    ) -> frame_support::dispatch::DispatchResult {
+        Ok(())
+    }
+
+    fn deregister_app(
+        _network_id: bridge_types::EthNetworkId,
+        _app: H160,
+    ) -> frame_support::dispatch::DispatchResult {
+        Ok(())
+    }
+}
+
+impl erc20_app::Config for Test {
+    type Event = Event;
+    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type CallOrigin = dispatch::EnsureEthereumAccount;
+    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type AppRegistry = AppRegistry;
+    type WeightInfo = ();
+}
+
+impl crate::Config for Test {
+    type Event = Event;
+    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
     type WeightInfo = ();
 }
 

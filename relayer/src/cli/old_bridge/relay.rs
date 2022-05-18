@@ -68,14 +68,14 @@ impl Command {
             .api()
             .storage()
             .eth_bridge()
-            .bridge_contract_address(self.network, None)
+            .bridge_contract_address(&self.network, None)
             .await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
         let request = sub
             .api()
             .storage()
             .eth_bridge()
-            .requests(self.network, hash, None)
+            .requests(&self.network, &hash, None)
             .await?
             .expect("Should exists");
         info!("Send request {}: {:?}", hash, request);
@@ -83,7 +83,7 @@ impl Command {
             .api()
             .storage()
             .eth_bridge()
-            .request_approvals(self.network, hash, None)
+            .request_approvals(&self.network, &hash, None)
             .await?;
 
         let mut s_vec = vec![];
@@ -131,7 +131,7 @@ impl Command {
                             .api()
                             .storage()
                             .assets()
-                            .asset_infos(request.asset_id, None)
+                            .asset_infos(&request.asset_id, None)
                             .await?;
                         let call = contract.add_new_sidechain_token(
                             String::from_utf8_lossy(&name.0).to_string(),
@@ -182,7 +182,7 @@ impl Command {
                     sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
                     self.network,
                 )
-                .sign_and_submit_then_watch(sub)
+                .sign_and_submit_then_watch_default(sub)
                 .await?
                 .wait_for_in_block()
                 .await?

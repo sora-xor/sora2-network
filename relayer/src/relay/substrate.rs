@@ -395,17 +395,29 @@ impl Relay {
                         if let Ok(log) =
                             <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
                         {
-                            let msg = String::from_utf8_lossy(log.message.as_ref());
-                            info!(
-                                "Message dispatched: ({}, {}, {})",
-                                log.nonce, log.result, msg
-                            );
+                            info!("Message dispatched: {:?}", log);
                         } else if let Ok(log) =
                             <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
                                 &raw_log,
                             )
                         {
                             info!("Message dispatched: {:?}", log);
+                        } else if let Ok(log) =
+                            <ethereum_gen::MigratedEthFilter as EthLogDecode>::decode_log(&raw_log)
+                        {
+                            info!("Migrated eth: {:?}", log);
+                        } else if let Ok(log) =
+                            <ethereum_gen::MigratedNativeErc20Filter as EthLogDecode>::decode_log(
+                                &raw_log,
+                            )
+                        {
+                            info!("Migrated erc20: {:?}", log);
+                        } else if let Ok(log) =
+                            <ethereum_gen::MigratedSidechainFilter as EthLogDecode>::decode_log(
+                                &raw_log,
+                            )
+                        {
+                            info!("Migrated sidechain: {:?}", log);
                         }
                     }
                 }

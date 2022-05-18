@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma abicoder v1;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./sora2-eth/IERC20.sol";
-import "./sora2-eth/MasterToken.sol";
-import "./sora2-eth/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "./MasterToken.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
 import "./IAssetRegister.sol";
+import "./EthTokenReceiver.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract MigrationApp is AccessControl {
+contract MigrationApp is AccessControl, EthTokenReceiver {
     using ScaleCodec for uint256;
 
     mapping(ChannelId => Channel) public channels;
-
-    bool public erc20_migrated;
-    bool public eth_migrated;
-    bool public sidechain_migrated;
 
     struct Channel {
         address inbound;
@@ -48,16 +44,7 @@ contract MigrationApp is AccessControl {
 
         _setupRole(INBOUND_CHANNEL_ROLE, _basic_inbound);
         _setupRole(INBOUND_CHANNEL_ROLE, _incentivized_inbound);
-
-        erc20_migrated = false;
-        eth_migrated = false;
-        sidechain_migrated = false;
     }
-
-    /*
-    Used to recieve Eth from old Bridge contract
-    */
-    function receivePayment() external payable {}
 
     event MigratedNativeErc20(address contractAddress);
 
@@ -65,26 +52,23 @@ contract MigrationApp is AccessControl {
         address contractAddress,
         address[] calldata erc20nativeTokens
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(erc20_migrated == false, "ERC20 assets already migrated");
         IAssetRegister app = IAssetRegister(contractAddress);
         for (uint256 i = 0; i < erc20nativeTokens.length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
             token.transfer(contractAddress, token.balanceOf(address(this)));
             app.registerExistingAsset(erc20nativeTokens[i]);
         }
-        erc20_migrated = true;
         emit MigratedNativeErc20(contractAddress);
     }
 
     event MigratedEth(address contractAddress);
 
-    function migrateEth(address payable contractAddress)
+    function migrateEth(address contractAddress)
         public
         onlyRole(INBOUND_CHANNEL_ROLE)
     {
-        require(eth_migrated == false, "Eth asset already migrated");
-        contractAddress.transfer(address(this).balance);
-        eth_migrated = true;
+        EthTokenReceiver receiver = EthTokenReceiver(contractAddress);
+        receiver.receivePayment{value: address(this).balance}();
         emit MigratedEth(contractAddress);
     }
 
@@ -94,17 +78,14 @@ contract MigrationApp is AccessControl {
         address contractAddress,
         address[] calldata sidechainTokens
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(
-            sidechain_migrated == false,
-            "Sidechain assets already migrated"
-        );
         IAssetRegister app = IAssetRegister(contractAddress);
         for (uint256 i = 0; i < sidechainTokens.length; i++) {
             Ownable token = Ownable(sidechainTokens[i]);
             token.transferOwnership(contractAddress);
             app.registerExistingAsset(sidechainTokens[i]);
         }
-        sidechain_migrated = true;
         emit MigratedSidechain(contractAddress);
     }
+
+    function receivePayment() external payable override {}
 }

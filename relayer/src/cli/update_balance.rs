@@ -33,7 +33,7 @@ impl Command {
                     amount: self.amount,
                 },
             ))
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?;
         info!("Extrinsic submitted");
         let in_block = progress.wait_for_in_block().await?;

@@ -12,7 +12,7 @@ echo "Use deployments from $DEPLOYMENTS"
 echo "Beefy $BEEFY"
 
 cargo run --release --bin relayer -- \
-    substrate-relay \
+    relay substrate \
     --ethereum-key $1 \
     --ethereum-url ws://localhost:8546 \
     --substrate-url ws://localhost:9944
