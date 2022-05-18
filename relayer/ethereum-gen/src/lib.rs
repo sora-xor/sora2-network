@@ -35,9 +35,6 @@ ethers::contract::abigen!(
     Bridge,
     "src/bytes/Bridge.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
-    WCFG,
-    "src/bytes/WCFG.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
     Master,
     "src/bytes/Master.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
@@ -88,10 +85,6 @@ pub mod eth_bridge {
     pub use crate::bridge_mod::*;
 }
 
-pub mod wcfg {
-    pub use crate::wcfg_mod::*;
-}
-
 pub mod ierc20 {
     pub use crate::ierc20metadata_mod::*;
 }
@@ -102,4 +95,8 @@ pub mod master {
 
 pub mod test_token {
     pub use crate::testtoken_mod::*;
+}
+
+pub mod migration_app {
+    pub use crate::migrationapp_mod::*;
 }

@@ -402,22 +402,6 @@ impl Relay {
                             )
                         {
                             info!("Message dispatched: {:?}", log);
-                        } else if let Ok(log) =
-                            <ethereum_gen::MigratedEthFilter as EthLogDecode>::decode_log(&raw_log)
-                        {
-                            info!("Migrated eth: {:?}", log);
-                        } else if let Ok(log) =
-                            <ethereum_gen::MigratedNativeErc20Filter as EthLogDecode>::decode_log(
-                                &raw_log,
-                            )
-                        {
-                            info!("Migrated erc20: {:?}", log);
-                        } else if let Ok(log) =
-                            <ethereum_gen::MigratedSidechainFilter as EthLogDecode>::decode_log(
-                                &raw_log,
-                            )
-                        {
-                            info!("Migrated sidechain: {:?}", log);
                         }
                     }
                 }
