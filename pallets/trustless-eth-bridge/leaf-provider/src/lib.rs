@@ -32,17 +32,7 @@
 //!
 //! and thanks to versioning can be easily updated in the future.
 
-use bridge_types::types::MmrLeaf;
-use frame_support::log::warn;
-use sp_runtime::traits::Hash;
-
-use pallet_mmr::primitives::LeafDataProvider;
-
-use codec::Encode;
-
 pub use pallet::*;
-
-type MerkleRootOf<T> = <T as pallet_mmr::Config>::Hash;
 
 /// A type that is able to return current list of parachain heads that end up in the MMR leaf.
 
@@ -50,9 +40,13 @@ type MerkleRootOf<T> = <T as pallet_mmr::Config>::Hash;
 pub mod pallet {
     #![allow(missing_docs)]
 
+    use beefy_primitives::mmr::BeefyDataProvider;
     use bridge_types::types::AuxiliaryDigest;
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    use sp_runtime::traits;
+    use sp_runtime::traits::Hash;
+
+    type HashOf<T> = <T as Config>::Hash;
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
@@ -61,14 +55,14 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+    impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
         fn on_finalize(_n: T::BlockNumber) {
             let digest: AuxiliaryDigest = frame_system::Pallet::<T>::digest().into();
             LatestDigest::<T>::put(digest);
         }
     }
 
-    /// Fee for accepting a message
+    /// Latest digest
     #[pallet::storage]
     #[pallet::getter(fn latest_digest)]
     pub(super) type LatestDigest<T: Config> = StorageValue<_, AuxiliaryDigest, ValueQuery>;
@@ -76,52 +70,32 @@ pub mod pallet {
     /// The module's configuration trait.
     #[pallet::config]
     #[pallet::disable_frame_system_supertrait_check]
-    pub trait Config: pallet_beefy_mmr::Config {
+    pub trait Config: frame_system::Config {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type Hashing: traits::Hash<Output = <Self as Config>::Hash>;
+        type Hash: traits::Member
+            + traits::MaybeSerializeDeserialize
+            + sp_std::fmt::Debug
+            + sp_std::hash::Hash
+            + AsRef<[u8]>
+            + AsMut<[u8]>
+            + Copy
+            + Default
+            + codec::Codec
+            + codec::EncodeLike
+            + scale_info::TypeInfo
+            + MaxEncodedLen;
     }
 
     #[pallet::event]
     pub enum Event<T: Config> {}
-}
 
-impl<T: pallet_beefy_mmr::Config + Config + pallet_mmr::Config> LeafDataProvider for Pallet<T>
-where
-    MerkleRootOf<T>: From<beefy_merkle_tree::Hash> + Into<beefy_merkle_tree::Hash>,
-{
-    type LeafData = MmrLeaf<
-        <T as frame_system::Config>::BlockNumber,
-        <T as frame_system::Config>::Hash,
-        MerkleRootOf<T>,
-        beefy_merkle_tree::Hash,
-    >;
-
-    fn leaf_data() -> Self::LeafData {
-        let leaf_data = <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data();
-        let digest = Pallet::<T>::latest_digest();
-        let digest_encoded = digest.encode();
-        let digest_hash =
-            <pallet_beefy_mmr::Pallet<T> as beefy_merkle_tree::Hasher>::hash(&digest_encoded);
-        let res = MmrLeaf {
-            version: leaf_data.version,
-            parent_number_and_hash: leaf_data.parent_number_and_hash,
-            beefy_next_authority_set: leaf_data.beefy_next_authority_set,
-            digest_hash,
-        };
-        res
+    impl<T: Config> BeefyDataProvider<HashOf<T>> for Pallet<T> {
+        fn extra_data() -> HashOf<T> {
+            let digest = Pallet::<T>::latest_digest();
+            let digest_encoded = digest.encode();
+            <T as Config>::Hashing::hash(&digest_encoded)
+        }
     }
-}
-
-impl<T: Config> beefy_merkle_tree::Hasher for Pallet<T>
-where
-    MerkleRootOf<T>: Into<beefy_merkle_tree::Hash>,
-{
-    fn hash(data: &[u8]) -> beefy_merkle_tree::Hash {
-        <T as pallet_mmr::Config>::Hashing::hash(data).into()
-    }
-}
-
-impl<T: Config> Pallet<T> where
-    MerkleRootOf<T>: From<beefy_merkle_tree::Hash> + Into<beefy_merkle_tree::Hash>
-{
 }

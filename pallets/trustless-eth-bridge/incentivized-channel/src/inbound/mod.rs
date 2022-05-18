@@ -15,8 +15,6 @@ use traits::MultiCurrency;
 
 mod benchmarking;
 
-mod payload;
-
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -115,6 +113,8 @@ pub mod pallet {
         InvalidRewardFraction,
         /// This contract already exists
         ContractExists,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::call]
@@ -189,12 +189,18 @@ pub mod pallet {
         fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::RegisterOperatorPayload { operator: app };
+
             T::OutboundRouter::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &payload::RegisterOperatorPayload { operator: app }.encode(),
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
             )?;
             Ok(())
         }
@@ -202,12 +208,18 @@ pub mod pallet {
         fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::DeregisterOperatorPayload { operator: app };
+
             T::OutboundRouter::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &payload::DeregisterOperatorPayload { operator: app }.encode(),
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
             )?;
             Ok(())
         }

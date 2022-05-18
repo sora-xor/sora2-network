@@ -543,8 +543,7 @@ mod tests {
                     &VAL,
                     &XOR,
                     SwapAmount::with_desired_output(amount.into(), Balance::max_value()),
-                )
-                .unwrap();
+                );
                 TransactionOutcome::Rollback(whole_outcome)
             });
 
@@ -571,7 +570,7 @@ mod tests {
                         fee: acc.fee + x.fee,
                     },
                 );
-            assert_eq!(whole_outcome, cumulative_outcome);
+            assert_eq!(whole_outcome, Ok(cumulative_outcome));
         });
     }
 

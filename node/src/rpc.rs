@@ -134,6 +134,7 @@ where
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
+
     P: TransactionPool + Send + Sync + 'static,
 {
     use assets_rpc::{AssetsAPI, AssetsClient};

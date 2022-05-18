@@ -98,7 +98,10 @@ pub type BasisPoints = u16;
 pub const FIXED_PRECISION: u32 = FixedPrecision::U32;
 
 /// Similar to #\[transactional]
-pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E>
+where
+    E: From<sp_runtime::DispatchError>,
+{
     frame_support::storage::with_transaction(|| {
         let result = f();
         if result.is_ok() {

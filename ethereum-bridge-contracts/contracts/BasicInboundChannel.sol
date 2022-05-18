@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "./BeefyLightClient.sol";
 import "./SimplifiedMMRVerification.sol";
+import "./ScaleCodec.sol";
 
 contract BasicInboundChannel {
+    using ScaleCodec for uint256;
+    using ScaleCodec for uint64;
+    using ScaleCodec for uint32;
+    using ScaleCodec for uint16;
     uint256 public constant MAX_GAS_PER_MESSAGE = 2000000;
     uint256 public constant GAS_BUFFER = 60000;
 
@@ -57,6 +61,8 @@ contract BasicInboundChannel {
         bytes32 digestHash = keccak256(
             bytes.concat(
                 _leafBytes.digestPrefix,
+                uint32(block.chainid).encode32(),
+                bytes1(uint8(0)),
                 commitment,
                 _leafBytes.digestSuffix
             )

@@ -1,72 +1,20 @@
+pub mod types;
+
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::prelude::*;
-use bridge_types::H256;
-use codec::IoReader;
-use common::{AssetId32, Balance, PredefinedAssetId};
+use common::Balance;
 use pallet_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use pallet_mmr_rpc::{LeafIndex, LeafProof as RawLeafProof};
 use std::sync::RwLock;
-use substrate_gen::runtime::DefaultAccountData;
 pub use substrate_gen::{runtime, DefaultConfig};
+use subxt::extrinsic::Signer;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, ClientT, SubscriptionClientT};
 use subxt::sp_core::{Bytes, Pair};
-pub use subxt::*;
-use tokio::time::Instant;
-
-pub type DefaultExtra = subxt::DefaultExtraWithTxPayment<
-    DefaultConfig,
-    subxt::extrinsic::ChargeTransactionPayment<DefaultConfig>,
->;
-pub type ApiInner = runtime::RuntimeApi<DefaultConfig, DefaultExtra>;
-pub type KeyPair = subxt::sp_core::sr25519::Pair;
-pub type PairSigner = subxt::PairSigner<DefaultConfig, DefaultExtra, KeyPair>;
-pub type AccountId = <DefaultConfig as subxt::Config>::AccountId;
-pub type Index = <DefaultConfig as subxt::Config>::Index;
-pub type BlockNumber = <DefaultConfig as subxt::Config>::BlockNumber;
-pub type BlockHash = <DefaultConfig as subxt::Config>::Hash;
-pub type SignedPayload = subxt::extrinsic::SignedPayload<DefaultConfig, DefaultExtra>;
-pub type UncheckedExtrinsic = subxt::extrinsic::UncheckedExtrinsic<DefaultConfig, DefaultExtra>;
-pub type MmrHash = H256;
-pub type DigestHash = beefy_merkle_tree::Hash;
-pub type BeefySignedCommitment =
-    beefy_primitives::SignedCommitment<BlockNumber, beefy_primitives::crypto::Signature>;
-pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber>;
-pub type MmrLeaf = bridge_types::types::MmrLeaf<BlockNumber, BlockHash, MmrHash, DigestHash>;
-pub type AssetId = AssetId32<PredefinedAssetId>;
-
-pub enum StorageKind {
-    Persistent,
-    Local,
-}
-
-impl StorageKind {
-    fn as_string(&self) -> &'static str {
-        match self {
-            StorageKind::Persistent => "PERSISTENT",
-            StorageKind::Local => "LOCAL",
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LeafProof {
-    pub block_hash: BlockHash,
-    pub leaf: MmrLeaf,
-    pub proof: Proof<MmrHash>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncodedBeefyCommitment(pub sp_core::Bytes);
-
-impl EncodedBeefyCommitment {
-    pub fn decode(&self) -> AnyResult<BeefySignedCommitment> {
-        let mut reader = IoReader(&self.0[..]);
-        Ok(Decode::decode(&mut reader)?)
-    }
-}
+use subxt::{ClientBuilder, Config};
+pub use types::*;
 
 pub struct UnsignedClient(ApiInner);
 
@@ -210,6 +158,57 @@ impl UnsignedClient {
     pub fn api(&self) -> &ApiInner {
         &self.0
     }
+
+    pub async fn block<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<SignedBlock> {
+        let hash = self.block_hash(block).await?;
+        let block = self
+            .api()
+            .client
+            .rpc()
+            .block(Some(hash))
+            .await?
+            .ok_or(anyhow::anyhow!("Block not found"))?;
+        Ok(block)
+    }
+
+    pub async fn block_hash<T: Into<NumberOrHash>>(
+        &self,
+        block: Option<T>,
+    ) -> AnyResult<BlockHash> {
+        let number = match block.map(|x| x.into()) {
+            Some(NumberOrHash::Hash(hash)) => return Ok(hash),
+            Some(NumberOrHash::Number(number)) => Some(number),
+            None => None,
+        };
+        let hash = self
+            .api()
+            .client
+            .rpc()
+            .block_hash(number.map(|x| x.into()))
+            .await?
+            .ok_or(anyhow::anyhow!("Block not found"))?;
+        Ok(hash)
+    }
+
+    pub async fn header<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<Header> {
+        let hash = self.block_hash(block).await?;
+        let header = self
+            .api()
+            .client
+            .rpc()
+            .header(Some(hash))
+            .await?
+            .ok_or(anyhow::anyhow!("Header not found"))?;
+        Ok(header)
+    }
+
+    pub async fn block_number<T: Into<NumberOrHash>>(
+        &self,
+        block: Option<T>,
+    ) -> AnyResult<BlockNumber> {
+        let header = self.header(block).await?;
+        Ok(header.number)
+    }
 }
 
 #[derive(Clone)]
@@ -243,21 +242,18 @@ impl SignedClient {
     }
 
     pub fn set_nonce(&self, index: Index) {
-        debug!("Set nonce to {}", index);
         let mut nonce = self.nonce.write().expect("poisoned");
         *nonce = Some(index);
     }
 
     pub async fn load_nonce(&self) -> AnyResult<()> {
-        let account_storage_entry =
-            DefaultAccountData::storage_entry(self.account_id().clone().into());
-        let account_data = self
+        let nonce = self
+            .inner
             .api()
             .client
-            .storage()
-            .fetch_or_default(&account_storage_entry, None)
+            .rpc()
+            .system_account_next_index(&self.account_id())
             .await?;
-        let nonce = DefaultAccountData::nonce(&account_data);
         self.set_nonce(nonce);
         Ok(())
     }
@@ -277,25 +273,26 @@ impl DerefMut for SignedClient {
     }
 }
 
-#[async_trait::async_trait]
-impl Signer<DefaultConfig, DefaultExtra> for SignedClient {
+impl Signer<DefaultConfig> for SignedClient {
     fn account_id(&self) -> &AccountId {
         self.key.account_id()
     }
 
     fn nonce(&self) -> Option<Index> {
-        let start = Instant::now();
         let res = *self.nonce.read().expect("poisoned");
         self.nonce
             .write()
             .expect("poisoned")
             .as_mut()
             .map(|nonce| *nonce += 1);
-        debug!("Get nonce in {}s: {:?}", start.elapsed().as_secs_f64(), res);
         res
     }
 
-    async fn sign(&self, extrinsic: SignedPayload) -> Result<UncheckedExtrinsic, String> {
-        self.key.sign(extrinsic).await
+    fn sign(&self, extrinsic: &[u8]) -> <DefaultConfig as Config>::Signature {
+        self.key.sign(extrinsic)
+    }
+
+    fn address(&self) -> <DefaultConfig as subxt::Config>::Address {
+        self.account_id()
     }
 }

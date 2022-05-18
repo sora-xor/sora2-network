@@ -6,25 +6,23 @@ homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 version = '0.1.0'
 name = 'pswap-distribution-benchmarking'
-edition = '2018'
+edition = '2021'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "1.0.0", default-features = false, features = [
-    "derive",
-] }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 hex-literal = { version = "0.3.1" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 
@@ -40,12 +38,12 @@ trading-pair = { path = "../../trading-pair", default-features = false }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 hex-literal = { version = '0.3.1' }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 
 common = { path = "../../../common", features = ["test"] }
 dex-manager = { path = "../../dex-manager" }

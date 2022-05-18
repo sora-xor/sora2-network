@@ -10,7 +10,7 @@ use sp_runtime::traits::Hash;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
+use bridge_types::types::{ChannelId, MessageNonce};
 use bridge_types::EthNetworkId;
 
 pub mod weights;
@@ -45,6 +45,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::types::AuxiliaryDigestItem;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;

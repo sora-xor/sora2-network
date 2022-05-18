@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./RewardSource.sol";
 import "./BeefyLightClient.sol";
 import "./SimplifiedMMRVerification.sol";
+import "./ScaleCodec.sol";
 
 contract IncentivizedInboundChannel is AccessControl {
+    using ScaleCodec for uint256;
+    using ScaleCodec for uint64;
+    using ScaleCodec for uint32;
+    using ScaleCodec for uint16;
     uint64 public nonce;
 
     struct Message {
@@ -80,6 +84,8 @@ contract IncentivizedInboundChannel is AccessControl {
         bytes32 digestHash = keccak256(
             bytes.concat(
                 _leafBytes.digestPrefix,
+                uint32(block.chainid).encode32(),
+                bytes1(uint8(1)),
                 commitment,
                 _leafBytes.digestSuffix
             )

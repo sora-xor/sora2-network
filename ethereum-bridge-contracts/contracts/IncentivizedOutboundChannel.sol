@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./OutboundChannel.sol";
@@ -78,10 +77,10 @@ contract IncentivizedOutboundChannel is
         external
         override
     {
-        // require(
-        //     isOperatorFor(msg.sender, feePayer),
-        //     "Caller is not an operator for fee payer"
-        // );
+        require(
+            isOperatorFor(msg.sender, feePayer),
+            "Caller is not an operator for fee payer"
+        );
         // require(msg.value >= _fee, "Not enough fee");
         nonce = nonce + 1;
         emit Message(msg.sender, nonce, _fee, payload);

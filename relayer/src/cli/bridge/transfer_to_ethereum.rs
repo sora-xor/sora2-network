@@ -32,7 +32,7 @@ impl Command {
             .api()
             .storage()
             .eth_app()
-            .addresses(network_id, None)
+            .addresses(&network_id, None)
             .await?
             .expect("network not found");
         let balance = sub
@@ -49,7 +49,7 @@ impl Command {
                     self.recipient,
                     self.amount,
                 )
-                .sign_and_submit_then_watch(&sub)
+                .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()
                 .await?
@@ -66,14 +66,14 @@ impl Command {
                     self.recipient,
                     self.amount,
                 )
-                .sign_and_submit_then_watch(&sub)
+                .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()
                 .await?
                 .wait_for_success()
                 .await?
         };
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         Ok(())
     }
 }

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.7.6;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 /*
  * ChannelAccess implements authorization logic for submitting messages to a channel.
@@ -14,20 +13,14 @@ pragma experimental ABIEncoderV2;
  *   - Default Operator: an account that can submit messages for all users
  *
  * Much of this logic was inspired from the ERC777 operators feature.
-*/
+ */
 abstract contract ChannelAccess {
     mapping(address => bool) private defaultOperators;
     mapping(address => mapping(address => bool)) private operators;
 
-    event OperatorAuthorized(
-        address operator,
-        address user
-    );
+    event OperatorAuthorized(address operator, address user);
 
-    event OperatorRevoked(
-        address operator,
-        address user
-    );
+    event OperatorRevoked(address operator, address user);
 
     // Authorize a default operator
     function _authorizeDefaultOperator(address operator) internal {
@@ -59,7 +52,14 @@ abstract contract ChannelAccess {
     }
 
     // Perform the authorization check
-    function isOperatorFor(address _operator, address _origin) public view returns (bool) {
-        return _operator == _origin || defaultOperators[_operator] || operators[_origin][_operator];
+    function isOperatorFor(address _operator, address _origin)
+        public
+        view
+        returns (bool)
+    {
+        return
+            _operator == _origin ||
+            defaultOperators[_operator] ||
+            operators[_origin][_operator];
     }
 }

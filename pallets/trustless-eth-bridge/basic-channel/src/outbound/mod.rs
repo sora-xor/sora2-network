@@ -18,7 +18,7 @@ use sp_runtime::traits::Hash;
 
 use sp_std::prelude::*;
 
-use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
+use bridge_types::types::{ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 
@@ -41,6 +41,7 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::types::AuxiliaryDigestItem;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;

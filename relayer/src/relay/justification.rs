@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::substrate::{BeefyCommitment, EncodedBeefyCommitment, LeafProof};
+use crate::substrate::{BeefyCommitment, BeefySignedCommitment, LeafProof};
 use beefy_merkle_tree::Hash;
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
@@ -22,7 +22,7 @@ impl beefy_merkle_tree::Hasher for BeefyHasher {
 #[derive(Debug)]
 pub struct BeefyJustification {
     pub commitment: BeefyCommitment,
-    pub commitment_hash: Hash,
+    pub commitment_hash: H256,
     pub signatures: Vec<Option<Signature>>,
     pub num_validators: U256,
     pub signed_validators: Vec<U256>,
@@ -34,14 +34,14 @@ pub struct BeefyJustification {
 impl BeefyJustification {
     pub async fn create(
         sub: SubUnsignedClient,
-        encoded_commitment: EncodedBeefyCommitment,
+        commitment: BeefySignedCommitment,
         beefy_start_block: u32,
     ) -> AnyResult<Self> {
         let SignedCommitment {
             commitment,
             signatures,
-        } = encoded_commitment.decode()?;
-        let commitment_hash = keccak256(&Encode::encode(&commitment));
+        } = commitment;
+        let commitment_hash = keccak256(&Encode::encode(&commitment)).into();
         let num_validators = U256::from(signatures.len());
         let mut signed_validators = vec![];
         for (i, signature) in signatures.iter().enumerate() {
@@ -49,13 +49,7 @@ impl BeefyJustification {
                 signed_validators.push(U256::from(i))
             }
         }
-        let block_hash = sub
-            .api()
-            .client
-            .rpc()
-            .block_hash(Some(commitment.block_number.into()))
-            .await?
-            .unwrap();
+        let block_hash = sub.block_hash(Some(commitment.block_number - 2)).await?;
         let validators: Vec<H160> = sub
             .api()
             .storage()
@@ -65,8 +59,9 @@ impl BeefyJustification {
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
+        let block_hash = sub.block_hash(Some(commitment.block_number)).await?;
 
-        let leaf_index = commitment.block_number - beefy_start_block - 2;
+        let leaf_index = commitment.block_number - beefy_start_block - 1;
         let leaf_proof = sub
             .mmr_generate_proof(leaf_index as u64, Some(block_hash))
             .await?;
@@ -84,14 +79,36 @@ impl BeefyJustification {
     }
 
     pub fn is_supported(&self) -> bool {
-        self.get_raw_payload().is_some()
+        self.get_payload().is_some()
     }
 
-    pub fn get_raw_payload(&self) -> Option<[u8; 32]> {
+    pub fn get_payload(&self) -> Option<(Vec<u8>, [u8; 32], Vec<u8>)> {
         self.commitment
             .payload
             .get_raw(&beefy_primitives::known_payload_ids::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
+            .and_then(|mmr_root: [u8; 32]| {
+                let payload = hex::encode(self.commitment.payload.encode());
+                let mmr_root_with_id = hex::encode(
+                    (
+                        beefy_primitives::known_payload_ids::MMR_ROOT_ID,
+                        mmr_root.to_vec(),
+                    )
+                        .encode(),
+                );
+                let (prefix, suffix) = if let Some(x) = payload.strip_suffix(&mmr_root_with_id) {
+                    (x, "")
+                } else if let Some(x) = payload.strip_prefix(&mmr_root_with_id) {
+                    ("", x)
+                } else {
+                    payload.split_once(&mmr_root_with_id)?
+                };
+                Some((
+                    hex::decode(prefix).expect("should be ok"),
+                    mmr_root,
+                    hex::decode(suffix).expect("should be ok"),
+                ))
+            })
     }
 
     pub fn validator_eth_signature(&self, pos: usize) -> Bytes {
@@ -152,7 +169,7 @@ impl BeefyJustification {
             next_authority_set_id: leaf.beefy_next_authority_set.id,
             next_authority_set_len: leaf.beefy_next_authority_set.len,
             next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
-            digest_hash: leaf.digest_hash,
+            digest_hash: leaf.leaf_extra.0,
         };
 
         let proof =

@@ -563,9 +563,9 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Charlie"),
                     authority_keys_from_seed("Dave"),
                     authority_keys_from_seed("Eve"),
+                    authority_keys_from_seed("Ferdie"),
                     /*
                     authority_keys_from_seed("Treasury"),
-                    authority_keys_from_seed("Ferdie"),
                     */
                 ],
                 vec![

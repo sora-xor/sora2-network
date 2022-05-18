@@ -8,6 +8,10 @@ mod old_bridge;
 mod relay;
 mod subscribe_beefy;
 mod update_balance;
+mod substrate_relay;
+mod test_transfers;
+mod transfer_to_ethereum;
+mod transfer_to_sora;
 
 use prelude::*;
 
@@ -38,6 +42,8 @@ enum Commands {
     Relay(relay::Commands),
     #[clap(subcommand)]
     OldBridge(old_bridge::Commands),
+    #[clap(subcommand)]
+    TestTransfers(test_transfers::Command),
 }
 
 impl Commands {
@@ -51,6 +57,7 @@ impl Commands {
             Self::Relay(cmd) => cmd.run().await,
             Self::OldBridge(cmd) => cmd.run().await,
             Self::UpdateBalance(cmd) => cmd.run().await,
+            Self::TestTransfers(cmd) => cmd.run().await,
         }
     }
 }

@@ -1,5 +1,6 @@
 use super::*;
 use crate::prelude::*;
+use crate::relay::justification::BeefyJustification;
 use clap::*;
 
 #[derive(Args, Clone, Debug)]
@@ -10,19 +11,20 @@ pub(super) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub_api = SubUnsignedClient::new(Uri::from_static("ws://localhost:9944")).await?;
+        let sub_api = SubUnsignedClient::new(Url::parse("ws://localhost:9944")?).await?;
+        let beefy_start_block = sub_api.beefy_start_block().await?;
 
         let proof = sub_api.mmr_generate_proof(0, None).await?;
-        info!("Proof: {:?}", proof);
+        info!("Proof: {:#?}", proof);
         let mut beefy_sub = sub_api.subscribe_beefy().await?;
         while let Some(commitment) = beefy_sub.next().await.transpose()? {
-            let justification = crate::relay::justification::BeefyJustification::create(
+            let justification = BeefyJustification::create(
                 sub_api.clone(),
-                commitment,
-                0,
+                commitment.decode()?,
+                beefy_start_block as u32,
             )
             .await?;
-            info!("{:?}", justification);
+            println!("{:#?}", justification);
         }
         Ok(())
     }

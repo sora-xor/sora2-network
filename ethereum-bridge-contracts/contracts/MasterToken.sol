@@ -1,11 +1,11 @@
-pragma solidity >=0.7.6;
-// "SPDX-License-Identifier: Apache License 2.0"
+// SPDX-License-Identifier: Apache License 2.0
+pragma solidity =0.8.13;
 
-import "./ERC20Detailed.sol";
-import "./ERC20Burnable.sol";
-import "./Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
+contract MasterToken is ERC20Burnable, Ownable {
     bytes32 public _sidechainAssetId;
 
     /**
@@ -14,11 +14,10 @@ contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
     constructor(
         string memory name,
         string memory symbol,
-        uint8 decimals,
         address beneficiary,
         uint256 supply,
         bytes32 sidechainAssetId
-    ) ERC20Detailed(name, symbol, decimals) {
+    ) ERC20(name, symbol) {
         _sidechainAssetId = sidechainAssetId;
         _mint(beneficiary, supply);
     }

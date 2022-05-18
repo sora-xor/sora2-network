@@ -50,13 +50,13 @@ impl Command {
                     },
                 ),
             )
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -69,13 +69,13 @@ impl Command {
                     },
                 ),
             )
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -88,13 +88,13 @@ impl Command {
                     },
                 ),
             )
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -106,13 +106,13 @@ impl Command {
                     asset_id: common::ETH,
                 },
             ))
-            .sign_and_submit_then_watch(&sub)
+            .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         let result = sub
             .api()
             .tx()
@@ -131,7 +131,7 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result);
+        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
         Ok(())
     }
 }

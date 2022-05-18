@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./utils/Bits.sol";
@@ -60,9 +59,11 @@ contract BeefyLightClient {
      * @param validatorSetId validator set id that signed the given commitment
      */
     struct Commitment {
+        bytes payloadPrefix;
         bytes32 payload;
-        uint64 blockNumber;
-        uint32 validatorSetId;
+        bytes payloadSuffix;
+        uint32 blockNumber;
+        uint64 validatorSetId;
     }
 
     /**
@@ -134,10 +135,12 @@ contract BeefyLightClient {
 
     // We must ensure at least one block is processed every session,
     // so these constants are checked to enforce a maximum gap between commitments.
-    uint64 public constant NUMBER_OF_BLOCKS_PER_SESSION = 2400;
+    uint64 public constant NUMBER_OF_BLOCKS_PER_SESSION = 600;
     uint64 public constant ERROR_AND_SAFETY_BUFFER = 10;
     uint64 public constant MAXIMUM_BLOCK_GAP =
         NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
+
+    bytes2 public constant MMR_ROOT_ID = 0x6d68;
 
     /**
      * @notice Deploys the BeefyLightClient contract
@@ -152,6 +155,7 @@ contract BeefyLightClient {
         validatorRegistry = _validatorRegistry;
         mmrVerification = _mmrVerification;
         currentId = 0;
+        // currentId = 1;
         latestBeefyBlock = _startingBeefyBlock;
     }
 
@@ -193,6 +197,11 @@ contract BeefyLightClient {
         address validatorPublicKey,
         bytes32[] calldata validatorPublicKeyMerkleProof
     ) public payable {
+        // Save relayer gas if another relayer already call this function
+        // require(
+        //     validationData[currentId - 1].blockNumber + 2 <= block.number,
+        //     "Already sent"
+        // );
         /**
          * @dev Check if validatorPublicKeyMerkleProof is valid based on ValidatorRegistry merkle root
          */
@@ -546,10 +555,14 @@ contract BeefyLightClient {
     {
         return
             keccak256(
-                abi.encodePacked(
+                bytes.concat(
+                    commitment.payloadPrefix,
+                    MMR_ROOT_ID,
+                    bytes1(0x80), // Vec len: 32
                     commitment.payload,
-                    commitment.blockNumber.encode64(),
-                    commitment.validatorSetId.encode32()
+                    commitment.payloadSuffix,
+                    commitment.blockNumber.encode32(),
+                    commitment.validatorSetId.encode64()
                 )
             );
     }

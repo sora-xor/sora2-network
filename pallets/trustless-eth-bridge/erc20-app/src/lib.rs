@@ -15,6 +15,8 @@
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 mod payload;
 pub mod weights;
 
@@ -125,6 +127,8 @@ pub mod pallet {
         InvalidNetwork,
         TokenAlreadyRegistered,
         AppAlreadyRegistered,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
     #[pallet::genesis_config]
@@ -284,7 +288,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
@@ -316,7 +320,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
         }
@@ -335,14 +339,12 @@ pub mod pallet {
             );
             let target = AppAddresses::<T>::get(network_id, AssetKind::Thischain)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
-            let (asset_symbol, asset_name, decimals, _) =
-                assets::Pallet::<T>::get_asset_info(&asset_id);
+            let (asset_symbol, asset_name, ..) = assets::Pallet::<T>::get_asset_info(&asset_id);
 
             let message = RegisterNativeAssetPayload {
                 asset_id: asset_id.into(),
                 name: asset_name.0,
                 symbol: asset_symbol.0,
-                decimals,
             };
 
             T::OutboundRouter::submit(
@@ -350,7 +352,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
-                &message.encode(),
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
         }

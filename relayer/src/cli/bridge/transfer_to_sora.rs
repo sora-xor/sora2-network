@@ -38,12 +38,19 @@ impl Command {
         let balance = eth.get_balance(eth.address(), None).await?;
         info!("ETH {:?} balance: {}", eth.address(), balance);
         if let Some(token_address) = self.token {
-            let token = ethereum_gen::IERC20Metadata::new(token_address, eth.inner());
+            let token = ethereum_gen::TestToken::new(token_address, eth.inner());
             let balance = token.balance_of(eth.address()).call().await?;
             let name = token.name().call().await?;
             let symbol = token.symbol().call().await?;
             info!("Token {}({}) balance: {}", name, symbol, balance.as_u128());
             if !self.dry_run {
+                let mut call = token.mint(eth.address(), self.amount.into()).legacy();
+                eth.inner()
+                    .fill_transaction(&mut call.tx, call.block)
+                    .await?;
+                call.call().await?;
+                call.send().await?.confirmations(1).await?.unwrap();
+
                 let mut call = token
                     .approve(
                         self.erc20_app.or(self.sidechain_app).unwrap(),
@@ -57,7 +64,7 @@ impl Command {
                 call.call().await?;
                 eth.save_gas_price(&call, "transfer-to-sora::mint").await?;
                 debug!("Send");
-                let tx = call.send().await?.confirmations(3).await?.unwrap();
+                let tx = call.send().await?.confirmations(1).await?.unwrap();
                 debug!("Tx: {:?}", tx);
             }
         }

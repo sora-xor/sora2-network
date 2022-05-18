@@ -18,7 +18,7 @@ use crate::tests::{
 use crate::{Address, AssetConfig};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR};
 use frame_support::assert_ok;
-use frame_support::sp_runtime::TransactionOutcome;
+use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};
 use frame_support::traits::Currency;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
@@ -468,8 +468,9 @@ fn should_cancel_outgoing_prepared_requests() {
                 frame_system::Pallet::<Runtime>::reset_events();
                 let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
-                TransactionOutcome::Rollback(())
-            });
+                TransactionOutcome::Rollback(DispatchResult::Ok(()))
+            })
+            .unwrap();
         }
     });
 }
@@ -612,8 +613,9 @@ fn should_cancel_incoming_prepared_requests() {
                 frame_system::Pallet::<Runtime>::reset_events();
                 let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
-                TransactionOutcome::Rollback(())
-            });
+                TransactionOutcome::Rollback(DispatchResult::Ok(()))
+            })
+            .unwrap();
         }
     });
 }

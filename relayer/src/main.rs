@@ -8,6 +8,9 @@ use prelude::*;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate anyhow;
+
 #[tokio::main]
 async fn main() -> AnyResult<()> {
     init_log();

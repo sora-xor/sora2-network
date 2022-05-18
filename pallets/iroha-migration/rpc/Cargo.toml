@@ -11,10 +11,10 @@ repository = 'https://github.com/sora-xor/sora2-network'
 jsonrpc-core = { version = "18.0.0", default-features = false }
 jsonrpc-core-client = "18.0.0"
 jsonrpc-derive = "18.0.0"
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 
 # Path dependencies
 common = { path = "../../../common" }

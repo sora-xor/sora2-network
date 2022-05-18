@@ -42,7 +42,7 @@ impl BlockWithReceipts {
             let receipt = super::receipt::TypedReceipt::from(receipt).encode();
             trie.insert(&i, &receipt)?;
         }
-        if trie.root_hash()? != block.receipts_root {
+        if trie.root_hash()? != block.receipts_root.0.into() {
             return Err(anyhow::anyhow!(format!(
                 "Incorrect receipt root hash: {} != {}",
                 trie.root_hash()?,

@@ -24,6 +24,7 @@ impl MessageId {
 
 pub type MessageNonce = u64;
 
+#[repr(u8)]
 #[derive(
     Encode, Decode, Copy, Clone, PartialEq, Eq, IntoEnumIterator, RuntimeDebug, scale_info::TypeInfo,
 )]

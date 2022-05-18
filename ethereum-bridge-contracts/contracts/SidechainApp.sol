@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./sora2-eth/IERC20.sol";
-import "./sora2-eth/MasterToken.sol";
-import "./sora2-eth/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "./MasterToken.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
 import "./IAssetRegister.sol";
@@ -140,20 +139,17 @@ contract SidechainApp is AccessControl, IAssetRegister {
      *
      * @param name token title
      * @param symbol token symbol
-     * @param decimals number of decimals
      * @param sidechainAssetId token id on the sidechain
      */
     function registerAsset(
         string memory name,
         string memory symbol,
-        uint256 decimals,
         bytes32 sidechainAssetId
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(
             name,
             symbol,
-            uint8(decimals),
             address(this),
             0,
             sidechainAssetId
