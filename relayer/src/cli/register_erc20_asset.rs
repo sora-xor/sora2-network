@@ -1,10 +1,28 @@
+use std::str::FromStr;
+
 use super::*;
 use crate::prelude::*;
 use bridge_types::H160;
 use clap::*;
-use common::{AssetId32, PredefinedAssetId};
+use common::{AssetId32, AssetName, AssetSymbol, PredefinedAssetId};
 use ethers::prelude::Middleware;
 use substrate_gen::runtime;
+
+#[derive(Subcommand, Clone, Debug)]
+enum AssetKind {
+    ERC20 {
+        #[clap(long)]
+        address: H160,
+        #[clap(long)]
+        name: String,
+        #[clap(long)]
+        symbol: String,
+    },
+    Native {
+        #[clap(long)]
+        asset_id: AssetId32<PredefinedAssetId>,
+    },
+}
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
@@ -14,12 +32,8 @@ pub(super) struct Command {
     sub: SubstrateUrl,
     #[clap(flatten)]
     key: SubstrateKey,
-    #[clap(long)]
-    is_native: bool,
-    #[clap(long)]
-    address: Option<H160>,
-    #[clap(long)]
-    asset_id: AssetId32<PredefinedAssetId>,
+    #[clap(subcommand)]
+    kind: AssetKind,
 }
 
 impl Command {
@@ -30,16 +44,22 @@ impl Command {
             .try_sign_with(&self.key.get_key_string()?)
             .await?;
         let network_id = eth.get_chainid().await?.as_u32();
-        let call = if self.is_native {
-            runtime::runtime_types::erc20_app::pallet::Call::register_native_asset {
+        let call = match &self.kind {
+            AssetKind::ERC20 {
+                address,
+                name,
+                symbol,
+            } => runtime::runtime_types::erc20_app::pallet::Call::register_erc20_asset {
                 network_id,
-                asset_id: self.asset_id,
-            }
-        } else {
-            runtime::runtime_types::erc20_app::pallet::Call::register_erc20_asset {
-                network_id,
-                address: self.address.expect("contract address is required"),
-                asset_id: self.asset_id,
+                address: address.clone(),
+                name: AssetName::from_str(name.as_str()).unwrap(),
+                symbol: AssetSymbol::from_str(symbol.as_str()).unwrap(),
+            },
+            AssetKind::Native { asset_id } => {
+                runtime::runtime_types::erc20_app::pallet::Call::register_native_asset {
+                    network_id,
+                    asset_id: asset_id.clone(),
+                }
             }
         };
         let result = sub
