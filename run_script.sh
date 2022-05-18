@@ -75,8 +75,6 @@ for name in alice bob charlie dave eve ferdie
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
-	mkdir -p "db$num/chains/sora-substrate-local/keystore"
-	cp -r bridge "db$num/chains/sora-substrate-local"
 	if [ "$num" == "0" ]; then
 		sh -c "$binary --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	        sleep 40

@@ -1927,7 +1927,6 @@ impl erc20_app::Config for Runtime {
 impl migration_app::Config for Runtime {
     type Event = Event;
     type OutboundRouter = OutboundRouter<Runtime>;
-    type AppRegistry = ChannelAppRegistry;
     type WeightInfo = ();
 }
 

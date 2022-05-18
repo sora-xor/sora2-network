@@ -63,7 +63,6 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
-    use bridge_types::traits::AppRegistry;
     use bridge_types::types::AssetKind;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -82,8 +81,6 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
-
-        type AppRegistry: AppRegistry;
 
         type WeightInfo: WeightInfo;
     }
@@ -269,7 +266,6 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         fn register_network_inner(network_id: EthNetworkId, contract: H160) -> DispatchResult {
-            <T as Config>::AppRegistry::register_app(network_id, contract)?;
             Addresses::<T>::insert(network_id, contract);
             Ok(())
         }

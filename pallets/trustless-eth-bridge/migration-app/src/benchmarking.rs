@@ -1,7 +1,7 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
-use common::{AssetId32, PredefinedAssetId};
+use common::{AssetId32, PredefinedAssetId, DAI};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use sp_core::H160;
@@ -19,6 +19,12 @@ benchmarks! {
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some(contract));
     }
+    migrate_eth {
+    }: _(RawOrigin::Root, BASE_NETWORK_ID)
+    migrate_erc20 {
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, vec![(DAI.into(), H160::repeat_byte(12))])
+    migrate_sidechain {
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, vec![(DAI.into(), H160::repeat_byte(12))])
 }
 
 impl_benchmark_test_suite!(MigrationApp, crate::mock::new_tester(), crate::mock::Test,);

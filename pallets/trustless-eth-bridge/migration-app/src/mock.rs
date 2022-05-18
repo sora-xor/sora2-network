@@ -3,7 +3,7 @@ use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundRouter;
-use bridge_types::types::ChannelId;
+use bridge_types::types::{AssetKind, ChannelId};
 use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
 use common::{
@@ -174,7 +174,7 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         _: H160,
         _: &[u8],
     ) -> DispatchResult {
-        if channel == ChannelId::Basic {
+        if channel == ChannelId::Incentivized {
             return Err(DispatchError::Other("some error!"));
         }
         Ok(())
@@ -256,6 +256,26 @@ pub fn new_tester() -> sp_io::TestExternalities {
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, Default::default(), XOR)],
+        },
+        &mut storage,
+    )
+    .unwrap();
+
+    GenesisBuild::<Test>::assimilate_storage(
+        &erc20_app::GenesisConfig {
+            apps: vec![
+                (BASE_NETWORK_ID, Default::default(), AssetKind::Thischain),
+                (BASE_NETWORK_ID, Default::default(), AssetKind::Sidechain),
+            ],
+            assets: vec![],
+        },
+        &mut storage,
+    )
+    .unwrap();
+
+    GenesisBuild::<Test>::assimilate_storage(
+        &crate::GenesisConfig {
+            networks: vec![(BASE_NETWORK_ID, Default::default())],
         },
         &mut storage,
     )
