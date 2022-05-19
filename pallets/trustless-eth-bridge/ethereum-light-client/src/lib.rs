@@ -58,6 +58,8 @@ const LAST_DIFFICULTIES_VECTOR_LEN: usize = 10;
 pub(crate) const DIFFICULTY_DIFFERENCE_MULT: f64 =
     1.0 + 0.125 * (LAST_DIFFICULTIES_VECTOR_LEN as f64);
 
+const DIVISION_COEFFICIENT: u64 = 1000;
+
 /// Ethereum block header as it is stored in the runtime storage.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct StoredHeader<Submitter> {
@@ -91,7 +93,6 @@ pub mod pallet {
 
     use super::*;
 
-    use bridge_types::difficulty;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -442,7 +443,9 @@ pub mod pallet {
                     None => (),
                     Some(max) => {
                         let difficulty_difference_mult: U256 =
-                            (DIFFICULTY_DIFFERENCE_MULT as u64).into();
+                            (((DIFFICULTY_DIFFERENCE_MULT * (DIVISION_COEFFICIENT as f64)) as u64)
+                                / DIVISION_COEFFICIENT)
+                                .into();
                         ensure!(
                             // TODO! check owerflow
                             *max <= *difficulty * difficulty_difference_mult,

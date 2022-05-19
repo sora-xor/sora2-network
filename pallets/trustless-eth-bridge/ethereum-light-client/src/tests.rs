@@ -614,37 +614,39 @@ fn it_validates_last_headers_difficulty() {
         let header1 = ethereum_header_from_file(11090291, "");
         let header1_proof = ethereum_header_proof_from_file(11090291, "");
         let header2 = ethereum_header_from_file(11090292, "");
+        let header2_proof = ethereum_header_proof_from_file(11090292, "");
 
         let ferdie: AccountId = Keyring::Ferdie.into();
-        // assert_ok!(mock_verifier_with_pow::Verifier::import_header(
-        //     mock_verifier_with_pow::Origin::signed(ferdie.clone()),
-        //     BASE_NETWORK_ID,
-        //     header1,
-        //     header1_proof,
-        // ));
-        // assert_err!(
-        //     mock_verifier_with_pow::Verifier::import_header(
-        //         mock_verifier_with_pow::Origin::signed(ferdie),
-        //         BASE_NETWORK_ID,
-        //         header2,
-        //         Default::default(),
-        //     ),
-        //     Error::<mock_verifier_with_pow::Test>::InvalidHeader,
-        // );
         let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE_MULT as u64).into();
-        let mult: U256 = 2.into();
-        let difficulties: Vec<U256> = vec![
-            // 19310324346479945_u128.into(),
-            header1.difficulty * diff_mult * mult,
-            header1.difficulty * diff_mult * mult,
+
+        let mut difficulties = vec![
+            (header1.difficulty * diff_mult),
+            (header1.difficulty * diff_mult) / 2,
+            (header1.difficulty * diff_mult) / 4,
         ];
+
+        mock_verifier_with_pow::Verifier::add_test_difficulties(
+            BASE_NETWORK_ID,
+            difficulties.clone(),
+        );
+        assert_ok!(mock_verifier_with_pow::Verifier::import_header(
+            mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+            BASE_NETWORK_ID,
+            header1.clone(),
+            header1_proof.clone(),
+        ));
+
+        let mult: U256 = 1001.into();
+        let div: U256 = 1000.into();
+        // Add an element a little bit bigger than treshold:
+        difficulties.push((header2.difficulty * diff_mult * mult) / div);
         mock_verifier_with_pow::Verifier::add_test_difficulties(BASE_NETWORK_ID, difficulties);
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
                 mock_verifier_with_pow::Origin::signed(ferdie.clone()),
                 BASE_NETWORK_ID,
-                header1,
-                header1_proof,
+                header2,
+                header2_proof,
             ),
             Error::<mock_verifier_with_pow::Test>::DifficultyIsTooLow
         );
