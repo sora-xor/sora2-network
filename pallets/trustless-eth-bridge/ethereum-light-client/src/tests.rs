@@ -631,6 +631,22 @@ fn it_validates_last_headers_difficulty() {
         //     ),
         //     Error::<mock_verifier_with_pow::Test>::InvalidHeader,
         // );
-        mock_verifier_with_pow::Verifier::add_test_difficulties(BASE_NETWORK_ID, Vec::new());
+        let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE_MULT as u64).into();
+        let mult: U256 = 2.into();
+        let difficulties: Vec<U256> = vec![
+            // 19310324346479945_u128.into(),
+            header1.difficulty * diff_mult * mult,
+            header1.difficulty * diff_mult * mult,
+        ];
+        mock_verifier_with_pow::Verifier::add_test_difficulties(BASE_NETWORK_ID, difficulties);
+        assert_err!(
+            mock_verifier_with_pow::Verifier::import_header(
+                mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+                BASE_NETWORK_ID,
+                header1,
+                header1_proof,
+            ),
+            Error::<mock_verifier_with_pow::Test>::DifficultyIsTooLow
+        );
     });
 }

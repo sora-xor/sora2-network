@@ -55,7 +55,8 @@ const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 /// Length of difficulties vector to store
 const LAST_DIFFICULTIES_VECTOR_LEN: usize = 10;
 /// Calculate the maximum difference between current header difficulty and maximung among stored in vector
-const DIFFICULTY_DIFFERENCE_MULT: f64 = 1.0 + 0.125 * (LAST_DIFFICULTIES_VECTOR_LEN as f64);
+pub(crate) const DIFFICULTY_DIFFERENCE_MULT: f64 =
+    1.0 + 0.125 * (LAST_DIFFICULTIES_VECTOR_LEN as f64);
 
 /// Ethereum block header as it is stored in the runtime storage.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
@@ -90,6 +91,7 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::difficulty;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -439,8 +441,11 @@ pub mod pallet {
                 match difficulties.iter().max() {
                     None => (),
                     Some(max) => {
+                        let difficulty_difference_mult: U256 =
+                            (DIFFICULTY_DIFFERENCE_MULT as u64).into();
                         ensure!(
-                            max / *difficulty <= (DIFFICULTY_DIFFERENCE_MULT as u64).into(),
+                            // TODO! check owerflow
+                            *max <= *difficulty * difficulty_difference_mult,
                             Error::<T>::DifficultyIsTooLow
                         );
                         if difficulties.len() >= LAST_DIFFICULTIES_VECTOR_LEN {
