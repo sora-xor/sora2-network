@@ -99,6 +99,11 @@ cd ethereum-bridge-contracts
 yarn
 ```
 
+Prepare dotenv
+```bash
+cp env.template .env
+```
+
 Deploy contracts
 ```bash
 ./deploy.sh
@@ -117,12 +122,12 @@ Example script placed in `bridge-scripts/register-assets.sh`
 
 ### Relay messages from Ethereum
 ```bash
-./bridge-scripts/run-ethereum-relay.sh <private-key>
+./bridge-scripts/run-ethereum-relay.sh
 ```
 
 ### Relay messages from Sora
 ```bash
-./bridge-scripts/run-substrate-relay.sh
+./bridge-scripts/run-substrate-relay.sh <private-key>
 ```
 
 ## Transfer tokens
