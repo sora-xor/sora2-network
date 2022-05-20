@@ -28,15 +28,14 @@ RUN add-apt-repository \
 
 # Install rust
 ENV RUST_VERSION=nightly-2021-11-22
+ENV GRCOV_VERSION=0.8.7
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    rustup default ${RUST_VERSION} && \
+    cargo install sccache && \
+    cargo install grcov --version ${GRCOV_VERSION} && \
+    rustup component add llvm-tools-preview && \
     rustup target add wasm32-unknown-unknown
 RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb
-
-RUN cargo install sccache && \
-    cargo install grcov && \
-    rustup component add llvm-tools-preview
 
 # Build project
 ADD . /app

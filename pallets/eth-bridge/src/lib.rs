@@ -132,10 +132,11 @@ pub trait WeightInfo {
             };
         weight
     }
+    fn remove_sidechain_asset() -> Weight;
+    fn register_existing_sidechain_asset() -> Weight;
 }
 
-type Address = H160;
-type EthereumAddress = Address;
+type EthAddress = H160;
 
 pub mod weights;
 
@@ -155,6 +156,8 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
+/// Maximum substrate blocks can be handled during single offchain procedure.
+const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 3;
 #[cfg(not(test))]
 const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
 #[cfg(test)]
@@ -216,7 +219,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct NetworkParams<AccountId: Ord> {
-    pub bridge_contract_address: Address,
+    pub bridge_contract_address: EthAddress,
     pub initial_peers: BTreeSet<AccountId>,
 }
 
@@ -228,7 +231,7 @@ pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
     pub assets: Vec<AssetConfig<T::AssetId>>,
-    pub bridge_contract_address: Address,
+    pub bridge_contract_address: EthAddress,
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
 
@@ -333,7 +336,7 @@ pub mod pallet {
     use crate::util::get_bridge_account;
     use codec::Codec;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
-    use frame_support::log::debug;
+    use frame_support::log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
@@ -411,9 +414,16 @@ pub mod pallet {
                 return;
             }
 
-            let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
-            let _guard = lock.lock();
-            Self::offchain();
+            let mut lock = StorageLock::<'_, Time>::with_deadline(
+                b"eth-bridge-ocw::lock",
+                sp_core::offchain::Duration::from_millis(100000),
+            );
+            let guard = lock.try_lock();
+            if let Ok(_guard) = guard {
+                Self::offchain();
+            } else {
+                log::debug!("Skip worker {:?}", block_number);
+            }
         }
     }
 
@@ -429,13 +439,14 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
-            bridge_contract_address: EthereumAddress,
+            bridge_contract_address: EthAddress,
             initial_peers: Vec<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
-            let author = ensure_signed(origin)?;
+            ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
+            ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
             let peers_account_id = bridge_multisig::Pallet::<T>::register_multisig_inner(
-                author,
+                initial_peers[0].clone(),
                 initial_peers.clone(),
             )?;
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
@@ -489,7 +500,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
-            token_address: EthereumAddress,
+            token_address: EthAddress,
             symbol: String,
             name: String,
             decimals: u8,
@@ -535,7 +546,7 @@ pub mod pallet {
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            to: EthereumAddress,
+            to: EthAddress,
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
@@ -643,7 +654,7 @@ pub mod pallet {
         pub fn add_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
-            address: EthereumAddress,
+            address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug!("called change_peers_out");
@@ -689,39 +700,57 @@ pub mod pallet {
         pub fn remove_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
+            peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
-            let peer_address = Self::peer_address(network_id, &account_id);
-            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let peer_address = if PeerAddress::<T>::contains_key(network_id, &account_id) {
+                if let Some(peer_address) = peer_address {
+                    ensure!(
+                        peer_address == Self::peer_address(network_id, &account_id),
+                        Error::<T>::UnknownPeerId
+                    );
+                    peer_address
+                } else {
+                    Self::peer_address(network_id, &account_id)
+                }
+            } else {
+                peer_address.ok_or(Error::<T>::UnknownPeerId)?
+            };
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
-            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
-                OutgoingRemovePeer {
-                    author: from.clone(),
-                    peer_account_id: account_id.clone(),
-                    peer_address,
-                    nonce,
-                    network_id,
-                    timepoint,
-                },
-            )))?;
-            frame_system::Pallet::<T>::inc_account_nonce(&from);
-            if network_id == T::GetEthNetworkId::get() {
+            let compat_hash = if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Pallet::<T>::account_nonce(&from);
-                Self::add_request(&OffchainRequest::outgoing(
-                    OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
+                let request = OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(
+                    OutgoingRemovePeerCompat {
                         author: from.clone(),
-                        peer_account_id: account_id,
+                        peer_account_id: account_id.clone(),
                         peer_address,
                         nonce,
                         network_id,
                         timepoint,
-                    }),
-                ))?;
+                    },
+                ));
+                Self::add_request(&request)?;
                 frame_system::Pallet::<T>::inc_account_nonce(&from);
-            }
+                Some(request.hash())
+            } else {
+                None
+            };
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+                OutgoingRemovePeer {
+                    author: from.clone(),
+                    peer_account_id: account_id,
+                    peer_address,
+                    nonce,
+                    network_id,
+                    timepoint,
+                    compat_hash,
+                },
+            )))?;
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -766,8 +795,8 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
-            new_contract_address: EthereumAddress,
-            erc20_native_tokens: Vec<EthereumAddress>,
+            new_contract_address: EthAddress,
+            erc20_native_tokens: Vec<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug!("called prepare_for_migration");
@@ -887,7 +916,7 @@ pub mod pallet {
         pub fn force_add_peer(
             origin: OriginFor<T>,
             who: T::AccountId,
-            address: EthereumAddress,
+            address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
@@ -901,6 +930,55 @@ pub mod pallet {
                 PeerAccountId::<T>::insert(network_id, &address, who.clone());
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
             }
+            Ok(().into())
+        }
+
+        /// Remove asset
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
+        pub fn remove_sidechain_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
+            ensure_root(origin)?;
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::UnknownAssetId)?;
+            RegisteredAsset::<T>::remove(network_id, &asset_id);
+            RegisteredSidechainAsset::<T>::remove(network_id, &token_address);
+            RegisteredSidechainToken::<T>::remove(network_id, &asset_id);
+            SidechainAssetPrecision::<T>::remove(network_id, &asset_id);
+            Ok(().into())
+        }
+
+        /// Register existing asset
+        ///
+        /// Can only be called by root.
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        pub fn register_existing_sidechain_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            token_address: EthAddress,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            log::debug!(
+                "called register_existing_sidechain_asset. asset_id: {:?}",
+                asset_id
+            );
+            ensure_root(origin)?;
+            assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsAlreadyAdded
+            );
+            let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
+            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
             Ok(().into())
         }
     }
@@ -1093,6 +1171,10 @@ pub mod pallet {
         RemovedAndRefunded,
         /// Authority account is not set.
         AuthorityAccountNotSet,
+        /// Not enough peers provided, need at least 1
+        NotEnoughPeers,
+        /// Failed to read value from offchain storage.
+        ReadStorageError,
     }
 
     impl<T: Config> Error<T> {
@@ -1198,7 +1280,7 @@ pub mod pallet {
         Twox64Concat,
         BridgeNetworkId<T>,
         Blake2_128Concat,
-        Address,
+        EthAddress,
         T::AssetId,
     >;
 
@@ -1211,7 +1293,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AssetId,
-        Address,
+        EthAddress,
     >;
 
     /// Network peers set.
@@ -1238,7 +1320,7 @@ pub mod pallet {
         Twox64Concat,
         BridgeNetworkId<T>,
         Blake2_128Concat,
-        Address,
+        EthAddress,
         T::AccountId,
         OptionQuery,
     >;
@@ -1252,7 +1334,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AccountId,
-        Address,
+        EthAddress,
         ValueQuery,
     >;
 
@@ -1277,17 +1359,17 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_address)]
     pub(super) type BridgeContractAddress<T: Config> =
-        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Address, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, EthAddress, ValueQuery>;
 
     /// Sora XOR master contract address.
     #[pallet::storage]
     #[pallet::getter(fn xor_master_contract_address)]
-    pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+    pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, EthAddress, ValueQuery>;
 
     /// Sora VAL master contract address.
     #[pallet::storage]
     #[pallet::getter(fn val_master_contract_address)]
-    pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+    pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, EthAddress, ValueQuery>;
 
     /// Next Network ID counter.
     #[pallet::storage]
@@ -1301,8 +1383,8 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub authority_account: Option<T::AccountId>,
-        pub xor_master_contract_address: Address,
-        pub val_master_contract_address: Address,
+        pub xor_master_contract_address: EthAddress,
+        pub val_master_contract_address: EthAddress,
         pub networks: Vec<NetworkConfig<T>>,
     }
 
@@ -1341,7 +1423,7 @@ pub mod pallet {
                         ..
                     } = &asset_config
                     {
-                        let token_address = Address::from(sidechain_id.0);
+                        let token_address = EthAddress::from(sidechain_id.0);
                         RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
                         RegisteredSidechainToken::<T>::insert(net_id, asset_id, token_address);
                         SidechainAssetPrecision::<T>::insert(net_id, asset_id, precision);
@@ -1506,7 +1588,7 @@ impl<T: Config> Pallet<T> {
 
     /// Registers new sidechain asset and grants mint permission to the bridge account.
     fn register_sidechain_asset(
-        token_address: Address,
+        token_address: EthAddress,
         precision: BalancePrecision,
         symbol: AssetSymbol,
         name: AssetName,
@@ -1536,7 +1618,7 @@ impl<T: Config> Pallet<T> {
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
         RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
         SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
-        let scope = Scope::Unlimited;
+        let scope = Scope::Limited(common::hash(&asset_id));
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
             let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)
@@ -1619,7 +1701,7 @@ impl<T: Config> Pallet<T> {
         }
         info!("Verified request approve {:?}", request_encoded);
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-        let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
+        let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
             1
         } else {
             0
@@ -1645,5 +1727,13 @@ impl<T: Config> Pallet<T> {
             return Ok(Some(weight_info));
         }
         Ok(None)
+    }
+
+    fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {
+        PendingPeer::<T>::get(net_id).is_some()
+            && !matches!(
+                &request,
+                OutgoingRequest::AddPeer(..) | OutgoingRequest::AddPeerCompat(..)
+            )
     }
 }

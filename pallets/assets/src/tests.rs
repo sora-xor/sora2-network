@@ -139,6 +139,21 @@ mod tests {
             assert_err!(
                 Assets::register_asset_id(
                     ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                Error::<Runtime>::InvalidAssetName
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
                     VAL,
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"This is a name with $ymbols".to_vec()),
@@ -177,6 +192,21 @@ mod tests {
                     ALICE,
                     XOR,
                     AssetSymbol(b"xor".to_vec()),
+                    AssetName(b"Super Sora".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"".to_vec()),
                     AssetName(b"Super Sora".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
@@ -343,20 +373,26 @@ mod tests {
                 Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
                 Balance::from(321u32),
             );
-            assert_ok!(Assets::register_asset_id(
-                ALICE,
-                DOT,
-                AssetSymbol(b"DOT".to_vec()),
-                AssetName(b"Polkadot".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                false,
-                None,
-                None,
-            ));
+        })
+    }
+
+    #[test]
+    fn should_not_allow_dead_asset() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
             assert_eq!(
-                Assets::free_balance(&DOT, &ALICE).expect("Failed to query free balance."),
-                Balance::zero(),
+                Assets::register_asset_id(
+                    ALICE,
+                    DOT,
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(0u32),
+                    false,
+                    None,
+                    None,
+                ),
+                Err(Error::<Runtime>::DeadAsset.into())
             );
         })
     }
@@ -543,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn should_register_nft() {
+    fn should_register_indivisible() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let next_asset_id = Assets::gen_asset_id(&ALICE);
@@ -557,7 +593,7 @@ mod tests {
                 None,
                 None,
             ));
-            let (_, _, precision, _) = Assets::asset_infos(next_asset_id);
+            let (_, _, precision, ..) = Assets::asset_infos(next_asset_id);
             assert_eq!(precision, 0u8);
         })
     }

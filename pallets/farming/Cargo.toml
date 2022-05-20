@@ -43,12 +43,13 @@ rustc-hex = { version = "2.1.0", default-features = false }
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
+env_logger = "0.9.0"
 hex-literal = { version = "0.3.1" }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-env_logger = "0.9.0"
 log = "0.4.14"
 
 assets = { path = "../assets" }

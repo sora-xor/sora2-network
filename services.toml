@@ -1,0 +1,149 @@
+[ganache]
+command = "./run.sh"
+workdir = "../ethereum"
+
+[deploy-old-ganache]
+command = "./deploy_ganache.sh"
+workdir = "../sora2-eth"
+
+[deploy-new-ganache]
+command = "./deploy_ganache.sh"
+workdir = "./ethereum-bridge-contracts"
+
+[sora]
+command = "./restart_sora.sh"
+
+[old-relay]
+env = { RUST_LOG = "debug" }
+command = """
+./target/release/relayer \
+	old-bridge relay \
+	--ethereum-url ws://localhost:8545 \
+	--substrate-url ws://localhost:9944 \
+	--ethereum-key 395df67f0c2d2d9fe1ad08d1bc8b6627011959b79c53d7dd6a3536a33ab8a4fd \
+	--substrate-key //Bob \
+	-n 0
+"""
+
+[register-assets]
+env = { RUST_LOG = "debug" }
+command = """
+./target/release/relayer \
+	old-bridge register-assets \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	-n 0 \
+	-i ../sora2-eth/deployed_assets.json
+"""
+
+[run-old-migration]
+env = { RUST_LOG = "debug" }
+command = """
+DEPLOYMENTS=ethereum-bridge-contracts/.deployments/${ETHNET:-ganache}
+MIGRATION_APP=$(jq ".address" $DEPLOYMENTS/MigrationApp.json | tr -d '"')
+
+./target/release/relayer \
+	old-bridge migrate \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	-n 0 \
+	-i ../sora2-eth/deployed_assets.json \
+	--contract $MIGRATION_APP
+"""
+
+[register-old-bridge]
+env = { RUST_LOG = "debug" }
+command = """
+DEPLOYMENTS=../sora2-eth/.deployments/${ETHNET:-ganache}
+BRIDGE=$(jq ".address" $DEPLOYMENTS/Bridge.json | tr -d '"')
+
+./target/release/relayer \
+	old-bridge register-bridge \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Bob \
+	-n 0 \
+	--contract $BRIDGE \
+	--peers 2452e6b66a46450f6858ef72934278407eb42de707c9abe67b8cb41707565ef3 \
+	--peers b71a0812a1edaa236625ba525279201448be05f3a97c02f796db63944bf29895
+"""
+
+[prepare-old-migraion]
+env = { RUST_LOG = "info,relayer=debug" }
+command = """
+./target/release/relayer \
+	old-bridge prepare-for-migration \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	-n 0
+"""
+
+[register-new-bridge]
+env = { RUST_LOG = "info,relayer=debug" }
+command = """
+DEPLOYMENTS=./ethereum-bridge-contracts/.deployments/${ETHNET:-ganache}
+INCENTIVIZED_OUTBOUND=$(jq ".address" $DEPLOYMENTS/IncentivizedOutboundChannel.json | tr -d '"')
+BASIC_OUTBOUND=$(jq ".address" $DEPLOYMENTS/BasicOutboundChannel.json | tr -d '"')
+ETH_APP=$(jq ".address" $DEPLOYMENTS/ETHApp.json | tr -d '"')
+ERC20_APP=$(jq ".address" $DEPLOYMENTS/ERC20App.json | tr -d '"')
+SIDECHAIN_APP=$(jq ".address" $DEPLOYMENTS/SidechainApp.json | tr -d '"')
+
+./target/release/relayer \
+	bridge register \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	--incentivized-channel-outbound $INCENTIVIZED_OUTBOUND \
+	--basic-channel-outbound $BASIC_OUTBOUND \
+	--eth-app $ETH_APP \
+	-d 10
+
+./target/release/relayer \
+	bridge register-app \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	--is-native \
+	--contract $SIDECHAIN_APP
+
+./target/release/relayer \
+	bridge register-app \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key //Alice \
+	--contract $ERC20_APP
+"""
+
+[new-ethereum-relay]
+env = { RUST_LOG = "info,relayer=debug" }
+command = """
+./target/release/relayer \
+	relay ethereum \
+	--base-path /tmp/relayer \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--substrate-key "//Bob"
+"""
+
+[new-substrate-relay]
+env = { RUST_LOG = "info,relayer=debug" }
+command = """
+DEPLOYMENTS=./ethereum-bridge-contracts/.deployments/${ETHNET:-ganache}
+INCENTIVIZED_INBOUND=$(jq ".address" $DEPLOYMENTS/IncentivizedInboundChannel.json | tr -d '"')
+BASIC_INBOUND=$(jq ".address" $DEPLOYMENTS/BasicInboundChannel.json | tr -d '"')
+BEEFY=$(jq ".address" $DEPLOYMENTS/BeefyLightClient.json | tr -d '"')
+
+./target/release/relayer \
+	relay substrate \
+	--ethereum-url ws://localhost:8546 \
+	--substrate-url ws://localhost:9944 \
+	--ethereum-key-file relayer/ethereum-key \
+	--basic-channel-inbound $BASIC_INBOUND \
+	--incentivized-channel-inbound $INCENTIVIZED_INBOUND \
+	--beefy $BEEFY
+"""
+
+[rebuild-relayer]
+command = "cargo b --release --bin relayer"
+
+[rebuild-sora]
+command = "cargo b --release --bin framenode --features private-net"

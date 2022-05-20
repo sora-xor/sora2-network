@@ -8,6 +8,7 @@
     ],
     "rust-analyzer.diagnostics.enableExperimental": false,
     "rust-analyzer.cargo.features": [
-        "private-net"
+        "private-net",
+        "runtime-benchmarks"
     ]
 }

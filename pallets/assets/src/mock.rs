@@ -54,7 +54,7 @@ construct_runtime! {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
@@ -63,7 +63,7 @@ construct_runtime! {
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -138,11 +138,12 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as Config>::GetBaseAssetId;

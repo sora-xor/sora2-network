@@ -35,6 +35,7 @@ hex-literal = "0.3.1"
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 ceres-liquidity-locker = { path = ".", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }

@@ -17,6 +17,7 @@ use frame_support::weights::Weight;
 pub trait WeightInfo {
     fn deposit() -> Weight;
     fn withdraw() -> Weight;
+    fn change_rewards_remaining() -> Weight;
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -39,6 +40,7 @@ pub mod pallet {
     use frame_support::PalletId;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
     use sp_runtime::traits::{AccountIdConversion, Zero};
 
     const PALLET_ID: PalletId = PalletId(*b"cerstake");
@@ -48,7 +50,7 @@ pub mod pallet {
     type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
@@ -79,13 +81,29 @@ pub mod pallet {
         Deposited(AccountIdOf<T>, Balance),
         /// Staked Ceres and rewards withdrawn. [who, staked, rewards]
         Withdrawn(AccountIdOf<T>, Balance, Balance),
+        /// Rewards changed [balance]
+        RewardsChanged(Balance),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         /// Staking pool is full
         StakingPoolIsFull,
+        /// Unauthorized
+        Unauthorized,
     }
+
+    #[pallet::type_value]
+    pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
+    }
+
+    /// Account which has permissions for changing remaining rewards
+    #[pallet::storage]
+    #[pallet::getter(fn authority_account)]
+    pub type AuthorityAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
     /// AccountId -> StakingInfo
     #[pallet::storage]
@@ -182,6 +200,26 @@ pub mod pallet {
             ));
 
             // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Change RewardsRemaining
+        #[pallet::weight(<T as Config>::WeightInfo::change_rewards_remaining())]
+        pub fn change_rewards_remaining(
+            origin: OriginFor<T>,
+            rewards_remaining: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            RewardsRemaining::<T>::put(rewards_remaining);
+
+            // Emit an event
+            Self::deposit_event(Event::RewardsChanged(rewards_remaining));
+
             Ok(().into())
         }
     }

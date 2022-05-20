@@ -177,18 +177,18 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
 /// Contract's deposit event, means that someone transferred some amount of the token/asset to the
 /// bridge contract.
 #[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
-pub struct DepositEvent<Address, AccountId, Balance> {
+pub struct DepositEvent<EthAddress, AccountId, Balance> {
     pub(crate) destination: AccountId,
     pub(crate) amount: Balance,
-    pub(crate) token: Address,
+    pub(crate) token: EthAddress,
     pub(crate) sidechain_asset: H256,
 }
 
-impl<Address, AccountId, Balance> DepositEvent<Address, AccountId, Balance> {
+impl<EthAddress, AccountId, Balance> DepositEvent<EthAddress, AccountId, Balance> {
     pub fn new(
         destination: AccountId,
         amount: Balance,
-        token: Address,
+        token: EthAddress,
         sidechain_asset: H256,
     ) -> Self {
         DepositEvent {
@@ -202,9 +202,9 @@ impl<Address, AccountId, Balance> DepositEvent<Address, AccountId, Balance> {
 
 /// Events that can be emitted by Sidechain smart-contract.
 #[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
-pub enum ContractEvent<Address, AccountId, Balance> {
-    Deposit(DepositEvent<Address, AccountId, Balance>),
-    ChangePeers(Address, bool),
+pub enum ContractEvent<EthAddress, AccountId, Balance> {
+    Deposit(DepositEvent<EthAddress, AccountId, Balance>),
+    ChangePeers(EthAddress, bool),
     PreparedForMigration,
-    Migrated(Address),
+    Migrated(EthAddress),
 }
