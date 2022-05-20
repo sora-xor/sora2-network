@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:buster-slim
 
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rust"
@@ -14,7 +14,7 @@ RUN apt-get update && \
     curl \
     git binaryen \
     software-properties-common \
-    llvm clang && \
+    llvm clang make jemalloc && \
     rm -rf /var/lib/apt/lists/*
 
 # Install docker
