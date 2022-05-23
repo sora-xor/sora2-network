@@ -27,7 +27,7 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_VERSION=nightly-2021-11-22
+ENV RUST_VERSION=nightly-2021-12-10
 ENV GRCOV_VERSION=0.8.7
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     cargo install sccache && \
