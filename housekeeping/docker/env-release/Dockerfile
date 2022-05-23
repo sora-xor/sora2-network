@@ -34,7 +34,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
     cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview && \
     rustup target add wasm32-unknown-unknown
-RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
+RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_linux_amd64_v0.17.0.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb
 
 # Build project
