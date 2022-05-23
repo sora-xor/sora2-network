@@ -1,10 +1,4 @@
-FROM debian:buster-slim
-
-# Set environment variables
-ENV RUSTUP_HOME="/opt/rust"
-ENV CARGO_HOME="/opt/rust"
-ENV PATH="$PATH:$RUSTUP_HOME/bin"
-ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
+FROM docker.io/paritytech/ci-linux:production
 
 # Install dependencies
 RUN apt-get update && \
@@ -27,13 +21,15 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_VERSION=nightly-2021-12-10
+# ENV RUST_VERSION=nightly-2021-12-10
 ENV GRCOV_VERSION=0.8.7
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    cargo install sccache && \
-    cargo install grcov --version ${GRCOV_VERSION} && \
-    rustup component add llvm-tools-preview && \
-    rustup target add wasm32-unknown-unknown
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
+#     cargo install sccache && \
+#     cargo install grcov --version ${GRCOV_VERSION} && \
+#     rustup component add llvm-tools-preview && \
+#     rustup target add wasm32-unknown-unknown
+RUN cargo install grcov --version ${GRCOV_VERSION} && \
+    rustup component add llvm-tools-preview
 
 # Build project
 ADD . /app

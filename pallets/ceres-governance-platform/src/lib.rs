@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(destructuring_assignment)]
 
 pub mod weights;
 

@@ -21,7 +21,9 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
-serde = { features = ['derive'], optional = true, version = '1.0.101' }
+serde = { features = [
+    'derive',
+], default-features = false, optional = true, version = '1.0.101' }
 
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.19", package = "pallet-multisig", default-features = false }
 beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
@@ -202,6 +204,7 @@ std = [
     "pallet-identity/std",
     "pallet-im-online/std",
     "pallet-membership/std",
+    "pallet-multisig/std",
     "pallet-offences/std",
     "pallet-randomness-collective-flip/std",
     "pallet-scheduler/std",
@@ -220,7 +223,7 @@ std = [
     "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
-    "serde",
+    "serde/std",
     "sp-api/std",
     "sp-block-builder/std",
     "sp-consensus-aura/std",
@@ -234,6 +237,7 @@ std = [
     "sp-std/std",
     "sp-transaction-pool/std",
     "sp-version/std",
+    "sp-npos-elections/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
