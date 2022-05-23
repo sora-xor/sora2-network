@@ -43,7 +43,7 @@ use common::{
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use frame_support::{fail, log, transactional};
+use frame_support::{fail, transactional};
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -394,7 +394,6 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::UniqueSaturatedFrom;
-    use traits::MultiCurrency;
 
     #[pallet::config]
     pub trait Config:
@@ -610,6 +609,9 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
+            use frame_support::log;
+            use traits::MultiCurrency;
+
             self.test_crowdloan_rewards.iter().for_each(|reward| {
                 CrowdloanRewards::<T>::insert(
                     T::AccountId::decode(&mut &reward.address[..])
