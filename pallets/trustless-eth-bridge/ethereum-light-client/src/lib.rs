@@ -53,10 +53,10 @@ const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 /// Max number of headers we're pruning in single import call.
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 /// Length of difficulties vector to store
-const LAST_DIFFICULTIES_VECTOR_LEN: usize = 10;
+const CHECK_DIFFICULTY_DIFFERENCE_NUMBER: u64 = 10;
 /// Calculate the maximum difference between current header difficulty and maximung among stored in vector
 pub(crate) const DIFFICULTY_DIFFERENCE_MULT: f64 =
-    1.0 + 0.125 * (LAST_DIFFICULTIES_VECTOR_LEN as f64);
+    1.0 + 0.125 * (CHECK_DIFFICULTY_DIFFERENCE_NUMBER as f64);
 
 const DIVISION_COEFFICIENT: u64 = 1000;
 
@@ -195,11 +195,6 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type HeadersByNumber<T: Config> =
         StorageDoubleMap<_, Identity, EthNetworkId, Twox64Concat, u64, Vec<H256>, OptionQuery>;
-
-    /// Last difficulties not to compute every block
-    #[pallet::storage]
-    pub(super) type LastDifficulties<T: Config> =
-        StorageMap<_, Identity, EthNetworkId, Vec<U256>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
@@ -401,7 +396,7 @@ pub mod pallet {
                 Error::<T>::InvalidHeader,
             );
 
-            Self::validate_header_difficulty(network_id, &header.difficulty)?;
+            Self::validate_header_difficulty(network_id, &header)?;
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -436,34 +431,87 @@ pub mod pallet {
 
         fn validate_header_difficulty(
             network_id: EthNetworkId,
-            difficulty: &U256,
+            new_header: &EthereumHeader,
         ) -> DispatchResult {
-            LastDifficulties::<T>::try_mutate(network_id, |difficulties| -> DispatchResult {
-                match difficulties.iter().max() {
-                    None => (),
-                    Some(max) => {
-                        let difficulty_difference_mult: U256 =
-                            (((DIFFICULTY_DIFFERENCE_MULT * (DIVISION_COEFFICIENT as f64)) as u64)
-                                / DIVISION_COEFFICIENT)
-                                .into();
-                        ensure!(
-                            // TODO! check owerflow
-                            *max <= *difficulty * difficulty_difference_mult,
-                            Error::<T>::DifficultyIsTooLow
-                        );
-                        if difficulties.len() >= LAST_DIFFICULTIES_VECTOR_LEN {
-                            difficulties.remove(0);
-                        }
-                    }
-                }
-                difficulties.push(*difficulty);
-                Ok(())
-            })
+            let check_block_number_prev = match new_header
+                .number
+                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER + 1)
+            {
+                // If less than CHECK_DIFFICULTY_DIFFERENCE_NUMBER - ignore check
+                None => return Ok(()),
+                Some(num) => num,
+            };
+            let check_block_number = match new_header
+                .number
+                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER)
+            {
+                // If less than CHECK_DIFFICULTY_DIFFERENCE_NUMBER - ignore check
+                None => return Ok(()),
+                Some(num) => num,
+            };
+
+            let hashes_prev = match HeadersByNumber::<T>::get(network_id, check_block_number_prev) {
+                // We trust our blockchain, so block should exist
+                None => return Ok(()),
+                Some(h) => h,
+            };
+            let hashes = match HeadersByNumber::<T>::get(network_id, check_block_number) {
+                // We trust our blockchain, so block should exist
+                None => return Ok(()),
+                Some(h) => h,
+            };
+
+            let headers_prev_difficulty_min = match hashes_prev
+                .iter()
+                .map(|hash| Headers::<T>::get(network_id, hash))
+                .flat_map(|x| x)
+                .map(|x| x.total_difficulty)
+                .min()
+            {
+                None => return Ok(()),
+                Some(min) => min,
+            };
+
+            let headers_difficulty_max = match hashes
+                .iter()
+                .map(|hash| Headers::<T>::get(network_id, hash))
+                .flat_map(|x| x)
+                .map(|x| x.total_difficulty)
+                .max()
+            {
+                None => return Ok(()),
+                Some(max) => max,
+            };
+
+            let difficulty_difference_mult: U256 =
+                (((DIFFICULTY_DIFFERENCE_MULT * (DIVISION_COEFFICIENT as f64)) as u64)
+                    / DIVISION_COEFFICIENT)
+                    .into();
+
+            ensure!(
+                headers_difficulty_max - headers_prev_difficulty_min
+                    <= new_header.difficulty * difficulty_difference_mult,
+                Error::<T>::DifficultyIsTooLow
+            );
+            Ok(())
         }
 
         #[cfg(test)]
-        pub fn add_test_difficulties(network_id: EthNetworkId, difficulties: Vec<U256>) {
-            LastDifficulties::<T>::insert(network_id, difficulties);
+        pub fn add_header_for_diffiulty_check(
+            network_id: EthNetworkId,
+            header_number: u64,
+            header: EthereumHeader,
+            total_difficulty: U256,
+        ) {
+            let hash = header.compute_hash();
+            let header_to_store = StoredHeader {
+                submitter: None,
+                header: header.clone(),
+                total_difficulty,
+                finalized: false,
+            };
+            <Headers<T>>::insert(network_id, hash, header_to_store);
+            <HeadersByNumber<T>>::insert(network_id, header_number, vec![hash]);
         }
 
         // Import a new, validated Ethereum header
