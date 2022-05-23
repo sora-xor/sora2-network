@@ -1,5 +1,5 @@
 [package]
-edition = '2018'
+edition = '2021'
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
@@ -12,36 +12,38 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 assets = { path = "../assets", default-features = false }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
-scale-info = { version = "1.0.0", default-features = false, features = [
-    "derive",
-] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false, optional = true }
 hex-literal = { version = "0.3.1" }
-serde = { version = "1.0.101", optional = true, features = [
-    "derive",
-], default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+serde = { version = "1.0.101", features = ["derive"], default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+hex = { version = "0.4", default-features = false, features = ["serde"] }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
+serde_bytes = { version = "0.11", default-features = false, features = [
+    "alloc",
+] }
+serde_json = { version = "1.0", default-features = false }
 technical = { path = "../technical", optional = true, default-features = false }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager" }
 permissions = { path = "../permissions" }
 trading-pair = { path = "../trading-pair" }
@@ -58,14 +60,17 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
+    'hex/std',
+    'multicollateral-bonding-curve-pool/std',
     'serde/std',
+    'serde_bytes/std',
+    'serde_json/std',
     'sp-core/std',
     'sp-io/std',
+    'sp-runtime/std',
     'sp-std/std',
     'tokens/std',
     'traits/std',
-    'sp-runtime/std',
-    'multicollateral-bonding-curve-pool/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
@@ -73,3 +78,4 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "technical",
 ]
+private-net = []

@@ -169,16 +169,44 @@ pub fn run() -> sc_cli::Result<()> {
                     backend,
                     ..
                 } = service::new_partial(&mut config, None)?;
-                Ok((cmd.run(client, backend), task_manager))
+                Ok((cmd.run(client, backend, None), task_manager))
             })
         }
         #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
+            use frame_benchmarking_cli::BenchmarkCmd;
+            use sc_chain_spec::ChainType;
+            use sc_service::Error;
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| {
-                cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
-            })
+            let chain_spec = &runner.config().chain_spec;
+
+            match cmd {
+                BenchmarkCmd::Storage(cmd) => runner.sync_run(|mut config| {
+                    let PartialComponents {
+                        client, backend, ..
+                    } = service::new_partial(&mut config, None)?;
+                    let db = backend.expose_db();
+                    let storage = backend.expose_storage();
+                    cmd.run(config, client, db, storage)
+                }),
+                BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
+                    let PartialComponents { client, .. } = service::new_partial(&mut config, None)?;
+
+                    cmd.run(client)
+                }),
+                BenchmarkCmd::Pallet(cmd) => {
+                    if !matches!(chain_spec.chain_type(), ChainType::Development) {
+                        return Err(Error::Other("Available only for dev chain".into()).into());
+                    }
+
+                    runner.sync_run(|config| {
+                        cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+                    })
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(Error::Other("Command not implemented".into()).into()),
+            }
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;

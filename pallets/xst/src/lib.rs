@@ -648,9 +648,9 @@ impl<T: Config> Pallet<T> {
                 &reference_asset_id,
             )
             .map(|avg| {
-                // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
+                // We don't let the price of XOR w.r.t. DAI go under $11, to prevent manipulation attacks
                 if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
-                    avg.max(balance!(100))
+                    avg.max(balance!(11))
                 } else {
                     avg
                 }
@@ -673,8 +673,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         if input_asset_id == &T::GetBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&output_asset_id)
-        } else {
+        } else if output_asset_id == &T::GetBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&input_asset_id)
+        } else {
+            false
         }
     }
 

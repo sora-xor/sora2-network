@@ -1,10 +1,4 @@
-FROM debian:bullseye-slim
-
-# Set environment variables
-ENV RUSTUP_HOME="/opt/rust"
-ENV CARGO_HOME="/opt/rust"
-ENV PATH="$PATH:$RUSTUP_HOME/bin"
-ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
+FROM docker.io/paritytech/ci-linux:production
 
 # Install dependencies
 RUN apt-get update && \
@@ -14,7 +8,7 @@ RUN apt-get update && \
     curl \
     git binaryen \
     software-properties-common \
-    llvm clang && \
+    llvm clang make cmake time rhash && \
     rm -rf /var/lib/apt/lists/*
 
 # Install docker
@@ -27,16 +21,18 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_VERSION=nightly-2021-11-22
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    rustup default ${RUST_VERSION} && \
-    rustup target add wasm32-unknown-unknown
-RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
-    dpkg -i subw.deb && rm subw.deb
-
-RUN cargo install sccache && \
-    cargo install grcov && \
+# ENV RUST_VERSION=nightly-2021-12-10
+ENV GRCOV_VERSION=0.8.7
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
+#     cargo install sccache && \
+#     cargo install grcov --version ${GRCOV_VERSION} && \
+#     rustup component add llvm-tools-preview && \
+#     rustup target add wasm32-unknown-unknown
+RUN cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview
+
+RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_linux_amd64_v0.17.0.deb -sSL -o subw.deb && \
+    dpkg -i subw.deb && rm subw.deb
 
 # Build project
 ADD . /app
@@ -44,5 +40,6 @@ WORKDIR /app
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo build --release --features "include-real-files" && \
-    cargo test --release
+    cargo test --release && \
+    rm -rf $(find target -name deps -type d) $(find target -name build -type d)
 WORKDIR /

@@ -30,7 +30,7 @@
 
 #![warn(missing_docs)]
 
-use common::TradingPair;
+use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
@@ -103,6 +103,8 @@ where
         AssetSymbol,
         AssetName,
         BalancePrecision,
+        ContentSource,
+        Description,
     >,
     C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<
         Block,
@@ -130,6 +132,7 @@ where
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
+    C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
@@ -148,6 +151,7 @@ where
     use rewards_rpc::{RewardsAPI, RewardsClient};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
+    use vested_rewards_rpc::{VestedRewardsApi, VestedRewardsClient};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
@@ -190,5 +194,8 @@ where
             beefy.subscription_executor,
         )?,
     ));
+    io.extend_with(VestedRewardsApi::to_delegate(VestedRewardsClient::new(
+        client,
+    )));
     Ok(io)
 }

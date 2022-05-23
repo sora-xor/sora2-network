@@ -1,8 +1,8 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error};
-    use common::balance;
     use common::prelude::FixedWrapper;
+    use common::{balance, CERES_ASSET_ID};
     use frame_support::{assert_err, assert_ok, PalletId};
     use sp_runtime::traits::AccountIdConversion;
 
@@ -165,6 +165,30 @@ mod tests {
                 (FixedWrapper::from(7306.0606060606) - FixedWrapper::from(alice_balance)) < diff,
                 true
             );
+        });
+    }
+
+    #[test]
+    fn change_rewards_remaining_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                CeresStaking::change_rewards_remaining(Origin::signed(ALICE), balance!(100)),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_rewards_remaining_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(CeresStaking::change_rewards_remaining(
+                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                balance!(100)
+            ));
+
+            assert_eq!(pallet::RewardsRemaining::<Runtime>::get(), balance!(100));
         });
     }
 }

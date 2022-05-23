@@ -180,12 +180,12 @@ impl FilterBuilder {
 #[cfg(test)]
 mod tests {
     use crate::types::log::{Bytes, Log};
-    use crate::types::{Address, H160, H256};
+    use crate::types::{EthAddress, H160, H256};
 
     #[test]
     fn is_removed_removed_true() {
         let log = Log {
-            address: Address::from_low_u64_be(1),
+            address: EthAddress::from_low_u64_be(1),
             topics: vec![],
             data: Bytes(vec![]),
             block_hash: Some(H256::from_low_u64_be(2)),
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn is_removed_log_type_removed() {
         let log = Log {
-            address: Address::from_low_u64_be(1),
+            address: EthAddress::from_low_u64_be(1),
             topics: vec![],
             data: Bytes(vec![]),
             block_hash: Some(H256::from_low_u64_be(2)),
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn is_removed_log_type_mined() {
         let log = Log {
-            address: Address::from_low_u64_be(1),
+            address: EthAddress::from_low_u64_be(1),
             topics: vec![],
             data: Bytes(vec![]),
             block_hash: Some(H256::from_low_u64_be(2)),
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn is_removed_log_type_and_removed_none() {
         let log = Log {
-            address: Address::from_low_u64_be(1),
+            address: EthAddress::from_low_u64_be(1),
             topics: vec![],
             data: Bytes(vec![]),
             block_hash: Some(H256::from_low_u64_be(2)),
