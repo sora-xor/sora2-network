@@ -41,5 +41,5 @@ RUN cargo check && \
     cargo check --features private-net && \
     cargo test --features private-net && \
     cargo check --features runtime-benchmarks && \
-    rm -rf target/deps target/build
+    rm -rf $(find target -name deps -type d) $(find target -name build -type d)
 WORKDIR /

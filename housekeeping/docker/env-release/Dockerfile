@@ -41,5 +41,5 @@ ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo build --release --features "include-real-files" && \
     cargo test --release && \
-    rm -rf target/deps target/build
+    rm -rf $(find target -name deps -type d) $(find target -name build -type d)
 WORKDIR /
