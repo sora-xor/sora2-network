@@ -40,5 +40,6 @@ WORKDIR /app
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo build --release --features "include-real-files" && \
-    cargo test --release --lib
+    cargo test --release && \
+    rm -rf target/deps target/build
 WORKDIR /
