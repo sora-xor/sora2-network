@@ -37,8 +37,8 @@ WORKDIR /app
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo check && \
-    cargo test && \
+    cargo test --lib && \
     cargo check --features private-net && \
-    cargo test --features private-net && \
+    cargo test --features private-net --lib && \
     cargo check --features runtime-benchmarks
 WORKDIR /
