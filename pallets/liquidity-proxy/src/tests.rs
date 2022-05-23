@@ -2759,6 +2759,15 @@ fn test_inner_exchange_returns_correct_sources() {
             LiquiditySourceFilter::empty(0),
         );
 
+        let result_base_reverse = LiquidityProxy::inner_exchange(
+            &alice(),
+            &common::mock::bob(),
+            &base_asset,
+            &VAL,
+            SwapAmount::with_desired_input(balance!(100), 0),
+            LiquiditySourceFilter::empty(0),
+        );
+
         let selected_source_types: Vec<LiquiditySourceType> =
             vec![XYKPool, MulticollateralBondingCurvePool, MockPool];
         let filter_mode = FilterMode::AllowSelected;
@@ -2773,6 +2782,8 @@ fn test_inner_exchange_returns_correct_sources() {
         );
 
         let (_, sources_base) = result_base.expect("inner_exchange: result is not ok!");
+        let (_, sources_base_reverse) =
+            result_base_reverse.expect("inner_exchange: result is not ok!");
         let (_, sources_val_ksm) = result_val_ksm.expect("inner_exchange: result is not ok!");
         let multicoll_source = LiquiditySourceId {
             dex_id: 0,
@@ -2785,12 +2796,8 @@ fn test_inner_exchange_returns_correct_sources() {
         };
 
         let check_vec = vec![multicoll_source, mock_source];
-        assert_eq!(2, sources_base.len());
-        assert_eq!(2, sources_val_ksm.len());
-
-        check_vec.iter().for_each(|x| {
-            assert!(sources_base.contains(x));
-            assert!(sources_val_ksm.contains(x));
-        });
+        assert_eq!(check_vec, sources_base);
+        assert_eq!(check_vec, sources_base_reverse);
+        assert_eq!(check_vec, sources_val_ksm);
     });
 }
