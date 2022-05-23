@@ -5,7 +5,7 @@ use crate::mock::{
     receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
 };
 use bridge_types::traits::Verifier as VerifierConfig;
-use bridge_types::{EthNetworkId, U256};
+use bridge_types::{header, EthNetworkId, U256};
 
 use crate::mock::mock_verifier_with_pow;
 
@@ -611,49 +611,44 @@ fn it_validates_last_headers_difficulty() {
         initial_networks: vec![(1, ethereum_header_from_file(11090290, ""), 0.into())],
     })
     .execute_with(|| {
-        let header1 = ethereum_header_from_file(11090291, "");
+        let mut header1 = ethereum_header_from_file(11090291, "");
         let header1_proof = ethereum_header_proof_from_file(11090291, "");
-        let mut header2 = ethereum_header_from_file(11090292, "");
+        let header2 = ethereum_header_from_file(11090292, "");
         let header2_proof = ethereum_header_proof_from_file(11090292, "");
 
         let ferdie: AccountId = Keyring::Ferdie.into();
         let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE_MULT as u64).into();
 
-        // let mut difficulties = vec![
-        //     (header1.difficulty * diff_mult),
-        //     (header1.difficulty * diff_mult) / 2,
-        //     (header1.difficulty * diff_mult) / 4,
-        // ];
-
-        // mock_verifier_with_pow::Verifier::add_header_for_diffiulty_check(
-        //     BASE_NETWORK_ID,
-        //     header1.number - 10,
-        //     header1.clone(),
-        //     header1.difficulty * diff_mult,
-        // );
-
-        assert_ok!(mock_verifier_with_pow::Verifier::import_header(
-            mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+        let check_header_num_prev = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER - 1;
+        let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
+        mock_verifier_with_pow::Verifier::add_header_for_diffiulty_check(
             BASE_NETWORK_ID,
+            check_header_num_prev,
             header1.clone(),
-            header1_proof.clone(),
-        ));
+            header1.difficulty,
+        );
+        mock_verifier_with_pow::Verifier::add_header_for_diffiulty_check(
+            BASE_NETWORK_ID,
+            check_header_num,
+            header2.clone(),
+            header1.difficulty * diff_mult * 1001 / 1000 + header1.difficulty,
+        );
 
-        header2.difficulty = header1.difficulty;
-
-        // let mult: U256 = 1001.into();
-        // let div: U256 = 1000.into();
-        // Add an element a little bit bigger than treshold:
-        // difficulties.push((header2.difficulty * diff_mult * mult) / div);
-        // mock_verifier_with_pow::Verifier::add_test_difficulties(BASE_NETWORK_ID, difficulties);
-        assert_ok!(
-            mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::signed(ferdie.clone()),
+        assert_err!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(
                 BASE_NETWORK_ID,
-                header2,
-                header2_proof,
-            ) // ,
-              // Error::<mock_verifier_with_pow::Test>::DifficultyIsTooLow
+                &header1
+            ),
+            Error::<Test>::DifficultyIsTooLow
+        );
+
+        // increase difficulty a little bit
+        header1.difficulty = header1.difficulty * 1002 / 1000;
+        assert_ok!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(
+                BASE_NETWORK_ID,
+                &header1
+            )
         );
     });
 }

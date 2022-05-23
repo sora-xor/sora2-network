@@ -497,6 +497,14 @@ pub mod pallet {
         }
 
         #[cfg(test)]
+        pub fn validate_header_difficulty_test(
+            network_id: EthNetworkId,
+            new_header: &EthereumHeader,
+        ) -> DispatchResult {
+            Self::validate_header_difficulty(network_id, new_header)
+        }
+
+        #[cfg(test)]
         pub fn add_header_for_diffiulty_check(
             network_id: EthNetworkId,
             header_number: u64,
