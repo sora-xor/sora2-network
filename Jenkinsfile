@@ -12,7 +12,7 @@ String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4', 'sub4-0.9.19': 'sub4']
+Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
 
 pipeline {
     options {
