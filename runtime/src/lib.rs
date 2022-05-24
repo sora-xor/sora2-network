@@ -51,7 +51,7 @@ use bridge_types::types::ChannelId;
 use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, PredefinedAssetId, ETH};
+use common::{AssetId32, Description, PredefinedAssetId, ETH};
 use constants::currency::deposit;
 use constants::time::*;
 use dispatch::EnsureEthereumAccount;
@@ -114,6 +114,7 @@ pub use common::{
     ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
+use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::{EthereumDifficultyConfig, EthereumHeader};
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{

@@ -9,7 +9,10 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
-ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "5f1f967ec14dc89799135c4aad67fd6647f2c84e" }
+ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "37f3df5234b248630d96a4b130a7f99db0ff3c6a", features = [
+    "ws",
+    "rustls",
+] }
 common = { path = "../common" }
 subxt = { git = "https://github.com/paritytech/subxt", rev = "e0439c91abdec73809fc36e337ec2dc808734e36" }
 tokio = { version = "1.14.0", features = ["full"] }
