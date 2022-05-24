@@ -104,6 +104,14 @@ Prepare dotenv
 cp env.template .env
 ```
 
+Get private key via `ethkey`
+
+```bash
+./ethkey inspect --private <ethereum node folder>/data/keystore/<your key data>
+```
+
+And set to `GETH_PRIVATE_KEY` var in `.env`
+
 Deploy contracts
 ```bash
 ./deploy.sh

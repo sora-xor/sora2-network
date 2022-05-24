@@ -21,6 +21,7 @@ const getenv = (name: string) => {
 }
 
 const ropstenPrivateKey = getenv("ROPSTEN_PRIVATE_KEY");
+const gethPrivateKey = getenv("GETH_PRIVATE_KEY");
 const infuraKey = getenv("INFURA_PROJECT_ID");
 const etherscanKey = getenv("ETHERSCAN_API_KEY");
 
@@ -35,23 +36,11 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: "myth like bonus scare over problem client lizard pioneer submit female collect"
       },
-      gas: 6000000,
-      gasPrice: 5000000000,
     },
     geth: {
       url: "http://127.0.0.1:8545",
       chainId: 4224,
-      accounts: ["a78a2acb5b21d4489bff3f7d113ce826c5a2e2ce27740b2ce62e9a923ac6e910"],
-    },
-    geth2: {
-      url: "http://127.0.0.1:8555",
-      chainId: 4225,
-      accounts: ["a78a2acb5b21d4489bff3f7d113ce826c5a2e2ce27740b2ce62e9a923ac6e910"],
-    },
-    oe: {
-      url: "http://127.0.0.1:8545",
-      chainId: 17,
-      accounts: ["4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7"],
+      accounts: [gethPrivateKey],
     },
     ropsten: {
       chainId: 3,
