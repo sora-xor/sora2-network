@@ -117,10 +117,10 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::FeeChanged(caller, new_fee).into());
     }
-}
 
-frame_benchmarking::impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Runtime
-);
+    // impl_benchmark_test_suite!(
+    //     Pallet,
+    //     crate::mock::ExtBuilder::default().build(),
+    //     crate::mock::Runtime
+    // );
+}

@@ -6,7 +6,7 @@ use super::*;
 
 use codec::Decode;
 use common::{balance, FromGenericPair, CERES_ASSET_ID};
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
@@ -87,14 +87,14 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::RewardsChanged(rewards).into());
     }
-}
 
-impl_benchmark_test_suite!(
-    CeresStaking,
-    crate::mock::ExtBuilder {
-        endowed_assets: vec![],
-        endowed_accounts: vec![]
-    }
-    .build(),
-    crate::mock::Runtime
-);
+    // impl_benchmark_test_suite!(
+    //     CeresStaking,
+    //     crate::mock::ExtBuilder {
+    //         endowed_assets: vec![],
+    //         endowed_accounts: vec![]
+    //     }
+    //     .build(),
+    //     crate::mock::Runtime
+    // );
+}

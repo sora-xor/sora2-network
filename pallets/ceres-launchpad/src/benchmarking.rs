@@ -567,9 +567,9 @@ benchmarks! {
         assert_last_event::<T>(Event::RemovedWhitelistedIloOrganizer(ilo_organizer).into());
     }
 
-    impl_benchmark_test_suite!(
-        Pallet,
-        crate::mock::ExtBuilder::default().build(),
-        crate::mock::Runtime
-    );
+    // impl_benchmark_test_suite!(
+    //     Pallet,
+    //     crate::mock::ExtBuilder::default().build(),
+    //     crate::mock::Runtime
+    // );
 }

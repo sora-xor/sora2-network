@@ -41,22 +41,29 @@ hex-literal = "0.3.1"
 [dev-dependencies]
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../demeter-farming-platform" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 permissions = { path = "../permissions" }
-technical = { path = "../technical", default-features = false }
+technical = { path = "../technical" }
 pswap-distribution = { path = "../pswap-distribution" }
-multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
-dex-manager = { path = "../dex-manager", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+dex-manager = { path = "../dex-manager" }
 
 [features]
 default = ["std"]
 
 std = [
     "codec/std",
+    "common/std",
+    "assets/std",
+    "pool-xyk/std",
+    "pswap-distribution/std",
+    "vested-rewards/std",
+    "trading-pair/std",
+    "technical/std",
     "frame-support/std",
     "frame-system/std",
     'serde/std',
