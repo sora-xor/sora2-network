@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as faucet, Config};
+use crate::{self as faucet, max_amount, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, FixedWrapper};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
     DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR,
@@ -97,7 +97,7 @@ construct_runtime! {
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Rewards: rewards::{Pallet, Event<T>},
@@ -142,6 +142,7 @@ impl rewards::Config for Runtime {
     const MAX_CHUNK_SIZE: usize = 1;
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 100;
+    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type WeightInfo = ();
 }
@@ -180,7 +181,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -209,6 +209,8 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -222,7 +224,13 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(9000)), (alice(), balance!(0))],
+            balances: vec![
+                (
+                    account_id.clone(),
+                    (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+                ),
+                (alice(), balance!(0)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -267,7 +275,11 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            balances: vec![(account_id.clone(), VAL.into(), balance!(9000))],
+            balances: vec![(
+                account_id.clone(),
+                VAL.into(),
+                (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();

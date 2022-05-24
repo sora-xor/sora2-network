@@ -278,12 +278,16 @@ pub mod pallet {
             name: AssetName,
             initial_supply: Balance,
             is_mintable: bool,
-            is_nft: bool,
+            is_indivisible: bool,
             opt_content_src: Option<ContentSource>,
             opt_desc: Option<Description>,
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
-            let precision = if is_nft { 0 } else { DEFAULT_BALANCE_PRECISION };
+            let precision = if is_indivisible {
+                0
+            } else {
+                DEFAULT_BALANCE_PRECISION
+            };
 
             let asset_id = Self::register_from(
                 &author,
@@ -398,9 +402,9 @@ pub mod pallet {
         AssetIdNotExists,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length <= 7.
+        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length is from 1 to 7.
         InvalidAssetSymbol,
-        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
+        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length is from 1 to 33.
         InvalidAssetName,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
@@ -414,6 +418,8 @@ pub mod pallet {
         InvalidContentSource,
         /// Description is not valid. It must be 200 characters long at max.
         InvalidDescription,
+        /// The asset is not mintable and its initial balance is 0.
+        DeadAsset,
     }
 
     /// Asset Id -> Owner Account Id
@@ -422,14 +428,21 @@ pub mod pallet {
     pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
-    /// Asset Id -> (Symbol, Name, Precision, Is Mintable)
+    /// Asset Id -> (Symbol, Name, Precision, Is Mintable, Content Source, Description)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
     pub type AssetInfos<T: Config> = StorageMap<
         _,
         Twox64Concat,
         T::AssetId,
-        (AssetSymbol, AssetName, BalancePrecision, bool),
+        (
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            bool,
+            Option<ContentSource>,
+            Option<Description>,
+        ),
         ValueQuery,
     >;
 
@@ -438,18 +451,6 @@ pub mod pallet {
     #[pallet::getter(fn tuple_from_asset_id)]
     pub type AssetRecordAssetId<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, AssetRecord<T>>;
-
-    /// Asset Id -> Content Source
-    #[pallet::storage]
-    #[pallet::getter(fn asset_content_source)]
-    pub type AssetContentSource<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, ContentSource, OptionQuery>;
-
-    /// Asset Id -> Description
-    #[pallet::storage]
-    #[pallet::getter(fn asset_description)]
-    pub type AssetDescription<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, Description, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -566,6 +567,7 @@ impl<T: Config> Pallet<T> {
         );
         ensure!(symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
         ensure!(name.is_valid(), Error::<T>::InvalidAssetName);
+        ensure!(initial_supply > 0 || is_mintable, Error::<T>::DeadAsset);
         ensure!(
             !Self::asset_exists(&asset_id),
             Error::<T>::AssetIdAlreadyExists
@@ -581,7 +583,17 @@ impl<T: Config> Pallet<T> {
         frame_system::Pallet::<T>::inc_consumers(&account_id)
             .map_err(|_| Error::<T>::IncRefError)?;
         AssetOwners::<T>::insert(asset_id, account_id.clone());
-        AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
+        AssetInfos::<T>::insert(
+            asset_id,
+            (
+                symbol,
+                name,
+                precision,
+                is_mintable,
+                opt_content_src,
+                opt_desc,
+            ),
+        );
 
         let scope = Scope::Limited(hash(&asset_id));
         let permission_ids = [MINT, BURN];
@@ -596,13 +608,6 @@ impl<T: Config> Pallet<T> {
 
         if !initial_supply.is_zero() {
             T::Currency::deposit(asset_id.clone(), &account_id, initial_supply)?;
-        }
-
-        if let Some(content_src) = opt_content_src {
-            AssetContentSource::<T>::insert(asset_id, content_src);
-        }
-        if let Some(desc) = opt_desc {
-            AssetDescription::<T>::insert(asset_id, desc);
         }
 
         frame_system::Pallet::<T>::inc_account_nonce(&account_id);
@@ -640,7 +645,7 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
-        let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+        let (_, _, _, is_mintable, ..) = AssetInfos::<T>::get(asset_id);
         ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         Ok(())
     }
@@ -814,7 +819,7 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable)| {
+        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable, ..)| {
             ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
             *is_mintable = false;
             Ok(())
@@ -825,26 +830,59 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
-    pub fn list_registered_asset_infos(
-    ) -> Vec<(T::AssetId, AssetSymbol, AssetName, BalancePrecision, bool)> {
+    pub fn list_registered_asset_infos() -> Vec<(
+        T::AssetId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    )> {
         AssetInfos::<T>::iter()
-            .map(|(key, (symbol, name, precision, is_mintable))| {
-                (key, symbol, name, precision, is_mintable)
-            })
+            .map(
+                |(key, (symbol, name, precision, is_mintable, content_source, description))| {
+                    (
+                        key,
+                        symbol,
+                        name,
+                        precision,
+                        is_mintable,
+                        content_source,
+                        description,
+                    )
+                },
+            )
             .collect()
     }
 
     pub fn get_asset_info(
         asset_id: &T::AssetId,
-    ) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
-        AssetInfos::<T>::get(asset_id)
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    ) {
+        let (symbol, name, precision, is_mintable, content_source, description) =
+            AssetInfos::<T>::get(asset_id);
+        (
+            symbol,
+            name,
+            precision,
+            is_mintable,
+            content_source,
+            description,
+        )
     }
 
     pub fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
-        AssetContentSource::<T>::get(asset_id)
+        AssetInfos::<T>::get(asset_id).4
     }
 
     pub fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
-        AssetDescription::<T>::get(asset_id)
+        AssetInfos::<T>::get(asset_id).5
     }
 }

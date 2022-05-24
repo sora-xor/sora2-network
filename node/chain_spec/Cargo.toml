@@ -34,9 +34,14 @@ rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }
 xor-fee = { path = "../../pallets/xor-fee" }
 
+[dev-dependencies]
+common = { path = "../../common", features = ["test"] }
+
 [features]
 include-real-files = []
 main-net-coded = []
-test = []
+test = [
+    "common/test"
+]
 
 private-net = ["faucet", "framenode-runtime/private-net"]

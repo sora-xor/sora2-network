@@ -70,7 +70,7 @@ pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
     Paid((T::AccountId, Option<NegativeImbalanceOf<T>>)),
     /// The fee payment has been postponed to after the transaction
-    Postponed(BalanceOf<T>),
+    Postponed(T::AccountId, BalanceOf<T>),
     /// Default value
     NotPaid,
 }
@@ -81,8 +81,8 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
             LiquidityInfo::Paid((a, b)) => {
                 write!(f, "Paid({:?}, {:?})", a, b.as_ref().map(|b| b.peek()))
             }
-            LiquidityInfo::Postponed(b) => {
-                write!(f, "Postponed({:?})", b)
+            LiquidityInfo::Postponed(account_id, b) => {
+                write!(f, "Postponed({:?}, {:?})", account_id, b)
             }
             LiquidityInfo::NotPaid => {
                 write!(f, "NotPaid")
@@ -97,7 +97,9 @@ impl<T: Config> PartialEq for LiquidityInfo<T> {
             (LiquidityInfo::Paid((a1, b1)), LiquidityInfo::Paid((a2, b2))) => {
                 (a1 == a2) && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
             }
-            (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
+            (LiquidityInfo::Postponed(a1, b1), LiquidityInfo::Postponed(a2, b2)) => {
+                a1 == a2 && b1 == b2
+            }
             _ => false,
         }
     }
@@ -117,8 +119,12 @@ impl<T: Config> From<(T::AccountId, Option<NegativeImbalanceOf<T>>)> for Liquidi
 
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
-    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>
-        + IsCalledByBridgePeer<T::AccountId>,
+    CallOf<T>: ExtractProxySwap<
+            AccountId = T::AccountId,
+            DexId = T::DEXId,
+            AssetId = T::AssetId,
+            Amount = SwapAmount<u128>,
+        > + IsCalledByBridgePeer<T::AccountId>,
     BalanceOf<T>: Into<u128>,
     DispatchInfoOf<CallOf<T>>: Into<DispatchInfo> + Clone,
 {
@@ -148,6 +154,7 @@ where
 
         // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
         let SwapInfo {
+            fee_source,
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -204,14 +211,15 @@ where
             } => (swap.amount <= max_amount_in, desired_amount_out),
         };
 
+        let fee_source = fee_source.unwrap_or(who.clone());
         // Check the swap result + existing balance is enough for fee
         if limits_ok
-            && T::XorCurrency::free_balance(who).into() + output_amount
+            && T::XorCurrency::free_balance(&fee_source).into() + output_amount
                 - T::XorCurrency::minimum_balance().into()
                 >= final_fee.into()
         {
             // The fee is applied afterwards, in correct_and_deposit_fee
-            return Ok(LiquidityInfo::Postponed(final_fee));
+            return Ok(LiquidityInfo::Postponed(fee_source, final_fee));
         }
 
         Err(InvalidTransaction::Payment.into())
@@ -227,23 +235,20 @@ where
     ) -> Result<(), TransactionValidityError> {
         let (fee_source, withdrawn) = match already_withdrawn {
             LiquidityInfo::Paid(opt) => opt,
-            LiquidityInfo::Postponed(fee) => {
+            LiquidityInfo::Postponed(fee_source, fee) => {
                 let withdraw_reason = if tip.is_zero() {
                     WithdrawReasons::TRANSACTION_PAYMENT
                 } else {
                     WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
                 };
-
-                (
-                    who.clone(),
-                    T::XorCurrency::withdraw(
-                        who,
-                        fee,
-                        withdraw_reason,
-                        ExistenceRequirement::KeepAlive,
-                    )
-                    .ok(),
+                let result = T::XorCurrency::withdraw(
+                    &fee_source,
+                    fee,
+                    withdraw_reason,
+                    ExistenceRequirement::KeepAlive,
                 )
+                .ok();
+                (fee_source, result)
             }
             LiquidityInfo::NotPaid => (who.clone(), None),
         };
@@ -383,7 +388,8 @@ impl<Call> ApplyCustomFees<Call> for () {
     }
 }
 
-pub struct SwapInfo<DexId, AssetId, Amount> {
+pub struct SwapInfo<AccountId, DexId, AssetId, Amount> {
+    pub fee_source: Option<AccountId>,
     pub dex_id: DexId,
     pub input_asset_id: AssetId,
     pub output_asset_id: AssetId,
@@ -394,10 +400,13 @@ pub struct SwapInfo<DexId, AssetId, Amount> {
 
 /// A trait for extracting call information out of liquidity_proxy.swap calls
 pub trait ExtractProxySwap {
+    type AccountId;
     type DexId;
     type AssetId;
     type Amount;
-    fn extract(&self) -> Option<SwapInfo<Self::DexId, Self::AssetId, Self::Amount>>;
+    fn extract(
+        &self,
+    ) -> Option<SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>>;
 }
 
 pub trait IsCalledByBridgePeer<AccountId> {

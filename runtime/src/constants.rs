@@ -60,7 +60,7 @@ pub mod time {
     // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
     pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 
-    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 1 * HOURS;
+    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
 
     // These time units are defined in number of blocks.
     pub const MINUTES: BlockNumber = 60 / (SECS_PER_BLOCK as BlockNumber);
@@ -91,3 +91,10 @@ pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
         c: PRIMARY_PROBABILITY,
         allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
     };
+
+pub mod rewards {
+    use sp_runtime::Percent;
+
+    pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
+    pub const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
+}

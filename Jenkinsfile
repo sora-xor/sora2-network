@@ -4,8 +4,9 @@ String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
-String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
-String rustcVersion           = '1.56'
+String cargoAuditImage        = registry + '/build-tools/cargo_audit'
+String envImageName           = registry + '/sora2/env'
+String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
@@ -29,6 +30,20 @@ pipeline {
                     gitNotify('main-CI', 'PENDING', 'This commit is being built')
                     docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion)
+                    }
+                }
+            }
+        }
+        stage('Audit') {
+            steps {
+                script {
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
+                        docker.image(cargoAuditImage + ':latest').inside(){
+                            sh '''
+                               cargo audit  > cargoAuditReport.txt || exit 0
+                            '''
+                            archiveArtifacts artifacts: "cargoAuditReport.txt"
+                        }
                     }
                 }
             }
@@ -58,8 +73,8 @@ pipeline {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
-                                    cargo build --release --features \"${featureList}\" --target-dir /app/target/
                                     cargo test  --release --features runtime-benchmarks --target-dir /app/target/
+                                    cargo build --release --features \"${featureList}\" --target-dir /app/target/
                                     sccache -s
                                     mv /app/target/release/framenode .
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm

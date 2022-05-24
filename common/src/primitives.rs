@@ -33,10 +33,12 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
+use hex_literal::hex;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
+
 #[cfg(feature = "std")]
 use {
     rustc_hex::ToHex,
@@ -164,6 +166,12 @@ pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
 pub const XSTUSD: AssetId32<PredefinedAssetId> =
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
+pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
+pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
@@ -420,7 +428,8 @@ impl AssetSymbol {
     /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
     /// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
             && self
                 .0
                 .iter()
@@ -486,7 +495,8 @@ impl AssetName {
     /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
     /// guarantees that all graphemes are of length 1, therefore length check is valid.
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= ASSET_NAME_MAX_LENGTH
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_NAME_MAX_LENGTH
             && self.0.iter().all(|byte| {
                 (b'A'..=b'Z').contains(&byte)
                     || (b'a'..=b'z').contains(&byte)
@@ -950,6 +960,8 @@ pub enum RewardReason {
     LiquidityProvisionFarming,
     /// High volume trading is rewarded.
     MarketMakerVolume,
+    /// Crowdloan reward.
+    Crowdloan,
 }
 
 impl Default for RewardReason {

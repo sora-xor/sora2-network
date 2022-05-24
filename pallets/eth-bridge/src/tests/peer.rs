@@ -9,7 +9,7 @@ use crate::tests::{
     approve_next_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
 use crate::types::{Bytes, Transaction};
-use crate::{types, Address};
+use crate::{types, EthAddress};
 use common::eth;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -17,7 +17,7 @@ use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use secp256k1::{PublicKey, SecretKey};
-use sp_core::H256;
+use sp_core::{H160, H256};
 
 #[test]
 fn should_add_peer_in_eth_network() {
@@ -69,9 +69,9 @@ fn should_add_peer_in_eth_network() {
         )
         .unwrap();
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: new_peer_id.clone(),
+            peer_account_id: Some(new_peer_id.clone()),
             peer_address: new_peer_address,
-            added: true,
+            removed: false,
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -136,7 +136,7 @@ fn should_add_peer_in_eth_network() {
 #[test]
 fn should_add_peer_in_simple_networks() {
     let mut builder = ExtBuilder::default();
-    let net_id = builder.add_network(vec![], None, Some(4));
+    let net_id = builder.add_network(vec![], None, Some(4), Default::default());
     assert_ne!(net_id, ETH_NETWORK_ID);
     let (mut ext, state) = builder.build();
 
@@ -183,9 +183,9 @@ fn should_add_peer_in_simple_networks() {
         )
         .unwrap();
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: new_peer_id.clone(),
+            peer_account_id: Some(new_peer_id.clone()),
             peer_address: new_peer_address,
-            added: true,
+            removed: false,
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -205,7 +205,7 @@ fn should_add_peer_in_simple_networks() {
 #[test]
 fn should_remove_peer_in_simple_network() {
     let mut builder = ExtBuilder::default();
-    let net_id = builder.add_network(vec![], None, Some(5));
+    let net_id = builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -219,6 +219,7 @@ fn should_remove_peer_in_simple_network() {
         assert_ok!(EthBridge::remove_peer(
             Origin::root(),
             peer_id.clone(),
+            Some(H160::repeat_byte(12)),
             net_id,
         ));
         assert_eq!(
@@ -246,9 +247,9 @@ fn should_remove_peer_in_simple_network() {
         .unwrap();
         let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: peer_id.clone(),
+            peer_account_id: Some(peer_id.clone()),
             peer_address,
-            added: false,
+            removed: true,
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -267,7 +268,7 @@ fn should_remove_peer_in_simple_network() {
 #[test]
 fn should_remove_peer_in_eth_network() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -282,6 +283,7 @@ fn should_remove_peer_in_eth_network() {
         assert_ok!(EthBridge::remove_peer(
             Origin::root(),
             peer_id.clone(),
+            Some(H160::repeat_byte(12)),
             net_id,
         ));
         assert_eq!(
@@ -289,6 +291,7 @@ fn should_remove_peer_in_eth_network() {
             peer_id
         );
         assert!(crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        approve_next_request(&state, net_id).expect("request wasn't approved");
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
@@ -309,9 +312,9 @@ fn should_remove_peer_in_eth_network() {
         .unwrap();
         let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: peer_id.clone(),
+            peer_account_id: Some(peer_id.clone()),
             peer_address,
-            added: false,
+            removed: true,
             author: alice.clone(),
             tx_hash,
             at_height: 1,
@@ -376,7 +379,7 @@ fn should_remove_peer_in_eth_network() {
 #[ignore]
 fn should_not_allow_add_and_remove_peer_only_to_authority() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -384,14 +387,14 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
         assert_err!(
-            EthBridge::remove_peer(Origin::signed(bob.clone()), peer_id.clone(), net_id),
+            EthBridge::remove_peer(Origin::signed(bob.clone()), peer_id.clone(), None, net_id),
             Error::Forbidden
         );
         assert_err!(
             EthBridge::add_peer(
                 Origin::signed(bob.clone()),
                 peer_id.clone(),
-                Address::from(&hex!("2222222222222222222222222222222222222222")),
+                EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
             ),
             Error::Forbidden
@@ -402,7 +405,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
 #[test]
 fn should_not_allow_changing_peers_simultaneously() {
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+    builder.add_network(vec![], None, Some(5), Default::default());
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -413,11 +416,18 @@ fn should_not_allow_changing_peers_simultaneously() {
         assert_ok!(EthBridge::remove_peer(
             Origin::root(),
             peer_id.clone(),
+            Some(H160::repeat_byte(12)),
             net_id,
         ));
         approve_next_request(&state, net_id).expect("request wasn't approved");
+        approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_err!(
-            EthBridge::remove_peer(Origin::root(), peer_id.clone(), net_id,),
+            EthBridge::remove_peer(
+                Origin::root(),
+                peer_id.clone(),
+                Some(H160::repeat_byte(12)),
+                net_id
+            ),
             Error::UnknownPeerId
         );
         assert_err!(
@@ -501,6 +511,7 @@ fn should_parse_remove_peer_on_old_contract() {
         assert_ok!(EthBridge::remove_peer(
             Origin::root(),
             new_peer_id.clone(),
+            None,
             net_id,
         ));
 
@@ -508,11 +519,11 @@ fn should_parse_remove_peer_on_old_contract() {
             author: alice.clone(),
             hash: tx_hash,
             timepoint: Default::default(),
-            kind: IncomingTransactionRequestKind::RemovePeer,
+            kind: IncomingTransactionRequestKind::RemovePeerCompat,
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24f900298875549765970cd1d139eabba0f29461a71b8ef1777ed722f03e93d6b000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed242b1bd542bd68ef39afeee8c1d9957a9bfa53038558ce2c618859205a77d6ffce00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::val_master_contract_address().0)),
             ..Default::default()

@@ -29,7 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Tips:
-// * not(feature = "private-net") means "main net", however, given that "main net" is the default option and Cargo doesn't provide any way to disable "main net" if any "private net" is specified, we have to rely on such constructions.
+// * not(feature = "private-net") means "main net", however, given that "main net" is the default
+//   option and Cargo doesn't provide any way to disable "main net" if any "private net" is
+//   specified, we have to rely on such constructions.
 
 #![allow(unused_imports, unused_macros, dead_code)]
 
@@ -47,8 +49,8 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BasicInboundChannelConfig, BasicOutboundChannelConfig, BeefyConfig,
-    BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
-    EthAppConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
+    BeefyId, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig, DEXManagerConfig,
+    DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
     GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
     GrandpaConfig, ImOnlineId, IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig,
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
@@ -74,7 +76,7 @@ use std::str::FromStr;
 use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
-use framenode_runtime::{FaucetConfig, SudoConfig};
+use framenode_runtime::{FaucetConfig, SudoConfig, VestedRewardsConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -200,17 +202,8 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-#[cfg(any(not(feature = "private-net"), feature = "test"))]
 pub fn main_net() -> Result<ChainSpec, String> {
-    #[cfg(feature = "test")]
-    {
-        ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_main.json")[..])
-    }
-
-    #[cfg(not(feature = "test"))]
-    {
-        ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
-    }
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
 }
 
 #[cfg(feature = "private-net")]
@@ -645,6 +638,7 @@ fn testnet_genesis(
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
     use common::XSTUSD;
+    use framenode_runtime::EthAppConfig;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -660,6 +654,7 @@ fn testnet_genesis(
     let val_rewards_for_erc20_xor_holders = balance!(33100000);
 
     // Initial accounts
+
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -892,14 +887,16 @@ fn testnet_genesis(
             hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
             balance!(333),
         )],
+        umi_nfts: vec![PSWAP.into(), VAL.into()],
     };
 
     #[cfg(feature = "include-real-files")]
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
-        val_owners: include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+        val_owners: our_include!("bytes/rewards_val_owners.in"),
+        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
+        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
+        umi_nfts: vec![PSWAP.into(), VAL.into()],
     };
 
     let rewards_pswap_reserves =
@@ -1326,6 +1323,36 @@ fn testnet_genesis(
         beefy: BeefyConfig {
             authorities: vec![],
         },
+        vested_rewards: VestedRewardsConfig {
+            test_crowdloan_rewards: vec![
+                CrowdloanReward {
+                    id: Vec::new(),
+                    address: hex!(
+                        "f88629a067c975e17f9675ee57f011b3b1273b20768b81b097242e8581777c72"
+                    )
+                    .to_vec(),
+                    contribution: fixed!(0.0),
+                    xor_reward: fixed!(1.2),
+                    pswap_reward: fixed!(2.3),
+                    val_reward: fixed!(3.4),
+                    xstusd_reward: fixed!(4.5),
+                    percent: fixed!(5.6),
+                },
+                CrowdloanReward {
+                    id: Vec::new(),
+                    address: hex!(
+                        "f230e5df6850af42da63b271202cad2afe5deee8de8791c91157b353c3c1900c"
+                    )
+                    .to_vec(),
+                    contribution: fixed!(0.0),
+                    xor_reward: fixed!(2.3),
+                    pswap_reward: fixed!(3.4),
+                    val_reward: fixed!(4.5),
+                    xstusd_reward: fixed!(5.6),
+                    percent: fixed!(6.7),
+                },
+            ],
+        },
     }
 }
 
@@ -1640,9 +1667,10 @@ fn mainnet_genesis(
     }
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
-        val_owners: our_include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
+        val_owners: Vec::new(),
+        pswap_farm_owners: Vec::new(),
+        pswap_waifu_owners: Vec::new(),
+        umi_nfts: Vec::new(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
@@ -1737,8 +1765,7 @@ fn mainnet_genesis(
             None,
         ),
     ];
-    let bridge_assets_data: Vec<BridgeAssetData<Runtime>> =
-        include!("bytes/eth_bridge_assets_main.in");
+    let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
         AssetConfig::sidechain(
             x.asset_id,
@@ -2035,14 +2062,23 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         },
         iroha_migration: IrohaMigrationConfig {
-            iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
-            account_id: Some(iroha_migration_account_id),
+            iroha_accounts: Vec::new(),
+            account_id: iroha_migration_account_id,
         },
-        rewards: rewards_config,
-        democracy: DemocracyConfig::default(),
-        elections_phragmen: Default::default(),
-        im_online: Default::default(),
-        xst_pool: XSTPoolConfig {
+        rewards: Some(rewards_config),
+        pallet_collective_Instance1: CouncilConfig {
+            members: council_accounts,
+            phantom: Default::default(),
+        },
+        pallet_collective_Instance2: TechnicalCommitteeConfig {
+            members: technical_committee_accounts,
+            phantom: Default::default(),
+        },
+        pallet_democracy: DemocracyConfig::default(),
+        pallet_elections_phragmen: Default::default(),
+        pallet_membership_Instance1: Default::default(),
+        pallet_im_online: Default::default(),
+        xst: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
@@ -2078,12 +2114,12 @@ pub fn ext() -> sp_io::TestExternalities {
 mod tests {
     use hex_literal::hex;
 
-    use common::eth::EthereumAddress;
+    use common::eth::EthAddress;
     use common::{balance, Balance};
 
     #[test]
     fn calculate_reserves() {
-        let accounts: Vec<(EthereumAddress, Balance)> = vec![
+        let accounts: Vec<(EthAddress, Balance)> = vec![
             (
                 hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
                 balance!(100),

@@ -42,6 +42,7 @@ technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 hex-literal = "0.3.1"
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 common = { path = "../../common", features = ["test"] }

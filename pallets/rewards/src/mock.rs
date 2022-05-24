@@ -97,7 +97,7 @@ construct_runtime! {
     {
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>},
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
@@ -112,6 +112,7 @@ impl Config for Runtime {
     const MAX_CHUNK_SIZE: usize = 1;
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 100;
+    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type WeightInfo = ();
 }
@@ -177,7 +178,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -206,6 +206,8 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -324,6 +326,7 @@ impl ExtBuilder {
             val_owners,
             pswap_farm_owners,
             pswap_waifu_owners,
+            umi_nfts: vec![PSWAP.into()],
         }
         .assimilate_storage(&mut t)
         .unwrap();

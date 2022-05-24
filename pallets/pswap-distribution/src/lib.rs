@@ -317,7 +317,7 @@ impl<T: Config> Pallet<T> {
 
         // Calculate amount for vesting from remaining amount.
         amount_left = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
-        let amount_vesting = amount_left.saturating_sub(amount_left / 100); // 1% of vested PSWAP is burned without being reminted
+        let amount_vesting = amount_left.saturating_sub(T::PSWAP_BURN_PERCENT * amount_left); // 3% of vested PSWAP is burned without being reminted
 
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,
@@ -392,6 +392,7 @@ pub mod pallet {
     use super::*;
     use common::{AccountIdOf, PoolXykPallet};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Percent;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
@@ -399,6 +400,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + technical::Config
     {
+        const PSWAP_BURN_PERCENT: Percent;
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type GetIncentiveAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
