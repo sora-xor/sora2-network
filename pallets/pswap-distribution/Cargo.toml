@@ -62,6 +62,7 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'permissions/std',
+    "liquidity-proxy/std",
     'serde/std',
     'sp-arithmetic/std',
     'sp-core/std',
