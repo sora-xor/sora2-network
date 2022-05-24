@@ -599,7 +599,7 @@ fn can_claim_crowdloan_reward() {
             Origin::root(),
             tech_account,
             PSWAP.into(),
-            balance!(1000) as <Runtime as tokens::Config>::Amount,
+            balance!(1000000) as <Runtime as tokens::Config>::Amount,
         )
         .unwrap();
 
@@ -609,7 +609,7 @@ fn can_claim_crowdloan_reward() {
         ][..];
         let account =
             <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-        let pswap_reward = Fixed::try_from(100).unwrap();
+        let pswap_reward = Fixed::try_from(60000).unwrap();
 
         CrowdloanRewards::<Runtime>::insert(
             &account,
@@ -630,17 +630,17 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
+
+        // second claim for the same period doesn't change the balance
 
         crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
             .unwrap();
 
-        // second claim for the same period doesn't change the balance
-
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
 
@@ -655,7 +655,7 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            99999999999999999999,
+            59999999999999999999832,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
     });
