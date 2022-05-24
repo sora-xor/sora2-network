@@ -2,21 +2,23 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::dispatch::DispatchError;
-use frame_support::traits::{Currency, Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::{assert_err, assert_noop, assert_ok, parameter_types};
+use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill};
+use sp_runtime::{AccountId32, MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
-use snowbridge_core::{Message, MessageDispatch, Proof};
-use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
+use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundRouter};
+use bridge_types::types::{Message, Proof};
+use bridge_types::{Log, U256};
 
-use common::mock::{alice, ExistentialDeposits};
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};
+use common::mock::ExistentialDeposits;
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, XOR};
 use hex_literal::hex;
 
 use crate::inbound::Error;
@@ -25,6 +27,8 @@ use crate::inbound as incentivized_inbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -37,6 +41,7 @@ frame_support::construct_runtime!(
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         IncentivizedInboundChannel: incentivized_inbound_channel::{Pallet, Call, Storage, Event<T>},
     }
@@ -94,7 +99,7 @@ impl pallet_balances::Config for Test {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxReserves = MaxReserves;
-    type ReserveIdentifier = [u8; 8];
+    type ReserveIdentifier = ();
 }
 
 impl common::Config for Test {
@@ -128,7 +133,7 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = alice();
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -150,12 +155,17 @@ impl assets::Config for Test {
 pub struct MockVerifier;
 
 impl Verifier for MockVerifier {
-    fn verify(message: &Message) -> Result<Log, DispatchError> {
+    fn verify(_: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
         let log: Log = rlp::decode(&message.data).unwrap();
         Ok(log)
     }
 
-    fn initialize_storage(_: Vec<EthereumHeader>, _: U256, _: u8) -> Result<(), &'static str> {
+    fn initialize_storage(
+        _network_id: EthNetworkId,
+        _headers: Vec<bridge_types::Header>,
+        _difficulty: u128,
+        _descendants_until_final: u8,
+    ) -> Result<(), &'static str> {
         Ok(())
     }
 }
@@ -164,7 +174,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, MessageId> for MockMessageDispatch {
-    fn dispatch(_: H160, _: MessageId, _: &[u8]) {}
+    fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: &[u8]) {}
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(_: MessageId) -> Option<<Test as frame_system::Config>::Event> {
@@ -175,6 +185,34 @@ impl MessageDispatch<Test, MessageId> for MockMessageDispatch {
 parameter_types! {
     pub SourceAccount: AccountId = Keyring::Eve.into();
     pub TreasuryAccount: AccountId = Keyring::Dave.into();
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetTreasuryTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTreasuryAccountId: AccountId = {
+        let tech_account_id = GetTreasuryTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 pub struct FeeConverter<T: Config>(PhantomData<T>);
@@ -191,25 +229,63 @@ impl incentivized_inbound_channel::Config for Test {
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
-    type UpdateOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type WeightInfo = ();
+    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type TreasuryTechAccountId = GetTreasuryTechAccountId;
+}
+
+pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+
+impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+    fn submit(
+        _: EthNetworkId,
+        _: ChannelId,
+        _: &RawOrigin<AccountId>,
+        _: H160,
+        _: &[u8],
+    ) -> DispatchResult {
+        Ok(())
+    }
+}
+
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+
+impl technical::Config for Test {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 pub fn new_tester(source_channel: H160) -> sp_io::TestExternalities {
-    new_tester_with_config(incentivized_inbound_channel::GenesisConfig::<Test> {
-        source_channel,
+    new_tester_with_config(incentivized_inbound_channel::GenesisConfig {
+        networks: vec![(BASE_NETWORK_ID, source_channel)],
         reward_fraction: Perbill::from_percent(80),
-        source_account: Default::default(),
-        treasury_account: Default::default(),
     })
 }
 
 pub fn new_tester_with_config(
-    config: incentivized_inbound_channel::GenesisConfig<Test>,
+    config: incentivized_inbound_channel::GenesisConfig,
 ) -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
+
+    technical::GenesisConfig::<Test> {
+        register_tech_accounts: vec![
+            (
+                GetTrustlessBridgeFeesAccountId::get(),
+                GetTrustlessBridgeFeesTechAccountId::get(),
+            ),
+            (GetTreasuryAccountId::get(), GetTreasuryTechAccountId::get()),
+        ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(&config, &mut storage).unwrap();
 
@@ -292,7 +368,7 @@ fn test_submit_with_invalid_source_channel() {
             },
         };
         assert_noop!(
-            IncentivizedInboundChannel::submit(origin.clone(), message.clone()),
+            IncentivizedInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidSourceChannel
         );
     });
@@ -315,9 +391,10 @@ fn test_submit() {
         };
         assert_ok!(IncentivizedInboundChannel::submit(
             origin.clone(),
+            BASE_NETWORK_ID,
             message_1
         ));
-        let nonce: u64 = <Nonce<Test>>::get();
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit message 2
@@ -331,9 +408,10 @@ fn test_submit() {
         };
         assert_ok!(IncentivizedInboundChannel::submit(
             origin.clone(),
+            BASE_NETWORK_ID,
             message_2
         ));
-        let nonce: u64 = <Nonce<Test>>::get();
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
     });
 }
@@ -355,14 +433,15 @@ fn test_submit_with_invalid_nonce() {
         };
         assert_ok!(IncentivizedInboundChannel::submit(
             origin.clone(),
+            BASE_NETWORK_ID,
             message.clone()
         ));
-        let nonce: u64 = <Nonce<Test>>::get();
+        let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
         assert_noop!(
-            IncentivizedInboundChannel::submit(origin.clone(), message.clone()),
+            IncentivizedInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
         );
     });
@@ -373,16 +452,23 @@ fn test_submit_with_invalid_nonce() {
 fn test_handle_fee() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
+        let fee_asset_id = <Test as Config>::FeeAssetId::get();
+        let treasury_acc = <Test as Config>::TreasuryTechAccountId::get();
+        let fees_acc = <Test as Config>::FeeTechAccountId::get();
 
-        let _ = Balances::deposit_creating(&SourceAccount::get(), 100000000000); // 10 DOT
-        let _ = Balances::deposit_creating(&TreasuryAccount::get(), Balances::minimum_balance());
-        let _ = Balances::deposit_creating(&relayer, Balances::minimum_balance());
+        technical::Pallet::<Test>::mint(&fee_asset_id, &fees_acc, balance!(10)).unwrap();
 
-        let fee = 10000000000; // 1 DOT
+        let fee = balance!(1); // 1 DOT
 
         IncentivizedInboundChannel::handle_fee(fee, &relayer);
-        assert_eq!(Balances::free_balance(&TreasuryAccount::get()), 2000000001);
-        assert_eq!(Balances::free_balance(&relayer), 8000000001);
+        assert_eq!(
+            technical::Pallet::<Test>::total_balance(&fee_asset_id, &treasury_acc,).unwrap(),
+            balance!(0.2)
+        );
+        assert_eq!(
+            assets::Pallet::<Test>::total_balance(&fee_asset_id, &relayer).unwrap(),
+            balance!(0.8)
+        );
     });
 }
 
@@ -398,4 +484,100 @@ fn test_set_reward_fraction_not_authorized() {
             DispatchError::BadOrigin
         );
     });
+}
+
+#[test]
+fn test_submit_with_invalid_network_id() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        // Submit message
+        let message = Message {
+            data: MESSAGE_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_noop!(
+            IncentivizedInboundChannel::submit(
+                origin.clone(),
+                BASE_NETWORK_ID + 1,
+                message.clone()
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+    });
+}
+
+#[test]
+fn test_register_channel() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_ok!(IncentivizedInboundChannel::register_channel(
+            Origin::root(),
+            BASE_NETWORK_ID + 1,
+            H160::from(SOURCE_CHANNEL_ADDR),
+        ));
+
+        assert_eq!(
+            ChannelAddresses::<Test>::get(BASE_NETWORK_ID + 1),
+            Some(H160::from(SOURCE_CHANNEL_ADDR)),
+        );
+    });
+}
+
+#[test]
+fn test_register_existing_channel() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_noop!(
+            IncentivizedInboundChannel::register_channel(
+                Origin::root(),
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+            ),
+            Error::<Test>::ContractExists
+        );
+    });
+}
+
+#[test]
+fn test_register_app() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_ok!(IncentivizedInboundChannel::register_app(
+            BASE_NETWORK_ID,
+            H160::repeat_byte(7)
+        ));
+    })
+}
+
+#[test]
+fn test_register_app_invalid_network() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_err!(
+            IncentivizedInboundChannel::register_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
+            Error::<Test>::InvalidNetwork
+        );
+    })
+}
+
+#[test]
+fn test_deregister_app() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_ok!(IncentivizedInboundChannel::deregister_app(
+            BASE_NETWORK_ID,
+            H160::repeat_byte(7)
+        ));
+    })
+}
+
+#[test]
+fn test_deregister_app_invalid_network() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        assert_err!(
+            IncentivizedInboundChannel::deregister_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
+            Error::<Test>::InvalidNetwork
+        );
+    })
 }

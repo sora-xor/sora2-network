@@ -1,7 +1,7 @@
+use bridge_types::log::Log;
+use bridge_types::H160;
 use ethabi::{Event, EventParam, ParamType};
 use once_cell::race::OnceBox;
-use snowbridge_ethereum::log::Log;
-use snowbridge_ethereum::H160;
 
 use sp_core::RuntimeDebug;
 use sp_std::convert::TryFrom;
@@ -59,7 +59,7 @@ impl TryFrom<Log> for Envelope {
     fn try_from(log: Log) -> Result<Self, Self::Error> {
         let address = log.address;
         let log = get_event_abi()
-            .parse_log(log.into())
+            .parse_log((log.topics, log.data).into())
             .map_err(|_| EnvelopeDecodeError)?;
 
         let mut source = None;

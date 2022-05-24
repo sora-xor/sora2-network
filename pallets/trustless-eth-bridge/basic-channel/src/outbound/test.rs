@@ -3,6 +3,7 @@ use super::*;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
@@ -14,6 +15,8 @@ use crate::outbound as basic_outbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -71,7 +74,6 @@ impl basic_outbound_channel::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type SetPrincipalOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type WeightInfo = ();
 }
 
@@ -82,7 +84,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
-            principal: Some(Keyring::Bob.into()),
+            networks: vec![(BASE_NETWORK_ID, vec![Keyring::Bob.into()])],
             interval: 1u64,
         };
     config.assimilate_storage(&mut storage).unwrap();
@@ -99,11 +101,21 @@ fn test_submit() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(<Nonce<Test>>::get(), 1);
+        assert_ok!(BasicOutboundChannel::submit(
+            &RawOrigin::Signed(who.clone()),
+            BASE_NETWORK_ID,
+            target,
+            &vec![0, 1, 2]
+        ));
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
 
-        assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(<Nonce<Test>>::get(), 2);
+        assert_ok!(BasicOutboundChannel::submit(
+            &RawOrigin::Signed(who.clone()),
+            BASE_NETWORK_ID,
+            target,
+            &vec![0, 1, 2]
+        ));
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
     });
 }
 
@@ -114,12 +126,24 @@ fn test_submit_exceeds_queue_limit() {
         let who: AccountId = Keyring::Bob.into();
 
         let max_messages = MaxMessagesPerCommit::get();
-        (0..max_messages)
-            .for_each(|_| BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]).unwrap());
+        (0..max_messages).for_each(|_| {
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who.clone()),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2],
+            )
+            .unwrap()
+        });
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
-            Error::<Test>::QueueSizeLimitReached,
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who.clone()),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
+            Error::<Test>::QueueSizeLimitReached
         );
     })
 }
@@ -134,7 +158,12 @@ fn test_submit_exceeds_payload_limit() {
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, payload.as_slice()),
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                payload.as_slice()
+            ),
             Error::<Test>::PayloadTooLarge,
         );
     })
@@ -146,9 +175,14 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        <Nonce<Test>>::set(u64::MAX);
+        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::Overflow,
         );
     });
@@ -161,33 +195,63 @@ fn test_submit_fails_not_authorized() {
         let who: AccountId = Keyring::Charlie.into();
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID,
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::NotAuthorized,
         );
     });
 }
 
 #[test]
-fn test_set_principal_unauthorized() {
+fn test_register_operator_unauthorized() {
     new_tester().execute_with(|| {
         let dave: AccountId = Keyring::Dave.into();
 
         assert_noop!(
-            BasicOutboundChannel::set_principal(Origin::signed(dave), Keyring::Alice.into()),
+            BasicOutboundChannel::register_operator(
+                Origin::signed(dave),
+                BASE_NETWORK_ID,
+                Keyring::Alice.into()
+            ),
             DispatchError::BadOrigin
         );
     });
 }
 
 #[test]
-fn test_set_principal() {
+fn test_register_operator() {
     new_tester().execute_with(|| {
         let alice: AccountId = Keyring::Alice.into();
 
-        assert_ok!(BasicOutboundChannel::set_principal(
+        assert_ok!(BasicOutboundChannel::register_operator(
             Origin::root(),
+            BASE_NETWORK_ID,
             alice.clone()
         ));
-        assert_eq!(<Principal<Test>>::get().unwrap(), alice);
+        assert_eq!(<ChannelOperators<Test>>::get(BASE_NETWORK_ID, alice), true);
+    });
+}
+
+#[test]
+fn test_submit_with_wrong_network_id() {
+    new_tester().execute_with(|| {
+        let target = H160::zero();
+        let who: AccountId = Keyring::Bob.into();
+
+        assert_noop!(
+            BasicOutboundChannel::submit(
+                &RawOrigin::Signed(who),
+                BASE_NETWORK_ID + 1,
+                target,
+                &vec![0, 1, 2]
+            ),
+            Error::<Test>::NotAuthorized
+        );
+
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1), 0);
     });
 }

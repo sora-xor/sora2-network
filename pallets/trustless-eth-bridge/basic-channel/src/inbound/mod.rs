@@ -8,8 +8,10 @@ pub mod weights;
 #[cfg(test)]
 mod test;
 
+use bridge_types::traits::{AppRegistry, MessageDispatch, Verifier};
+use bridge_types::types::{ChannelId, Message, MessageId};
+use bridge_types::EthNetworkId;
 use frame_system::ensure_signed;
-use snowbridge_core::{ChannelId, Message, MessageDispatch, MessageId, Verifier};
 use sp_core::H160;
 use sp_std::convert::TryFrom;
 
@@ -23,9 +25,11 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::traits::OutboundRouter;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -46,6 +50,8 @@ pub mod pallet {
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, MessageId>;
 
+        type OutboundRouter: OutboundRouter<Self::AccountId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -58,32 +64,36 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        /// Message came from an invalid etherem network
+        InvalidNetwork,
         /// Message came from an invalid outbound channel on the Ethereum side.
         InvalidSourceChannel,
         /// Message has an invalid envelope.
         InvalidEnvelope,
         /// Message has an unexpected nonce.
         InvalidNonce,
+        /// This channel already exists
+        ChannelExists,
+        /// Call encoding failed.
+        CallEncodeFailed,
     }
 
-    /// Source channel on the ethereum side
     #[pallet::storage]
-    #[pallet::getter(fn source_channel)]
-    pub type SourceChannel<T: Config> = StorageValue<_, H160, ValueQuery>;
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
 
     #[pallet::storage]
-    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+    pub type ChannelAddresses<T: Config> = StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub source_channel: H160,
+        pub networks: Vec<(EthNetworkId, H160)>,
     }
 
     #[cfg(feature = "std")]
     impl Default for GenesisConfig {
         fn default() -> Self {
             Self {
-                source_channel: Default::default(),
+                networks: Default::default(),
             }
         }
     }
@@ -91,29 +101,38 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            <SourceChannel<T>>::put(self.source_channel);
+            for (network_id, channel) in &self.networks {
+                <ChannelAddresses<T>>::insert(network_id, channel);
+            }
         }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(T::WeightInfo::submit())]
-        pub fn submit(origin: OriginFor<T>, message: Message) -> DispatchResult {
+        pub fn submit(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            message: Message,
+        ) -> DispatchResult {
             ensure_signed(origin)?;
             // submit message to verifier for verification
-            let log = T::Verifier::verify(&message)?;
+            let log = T::Verifier::verify(network_id, &message).map_err(|err| {
+                frame_support::log::warn!("Failed to verify message: {:?}", err);
+                err
+            })?;
 
             // Decode log into an Envelope
             let envelope = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
 
-            // Verify that the message was submitted to us from a known
-            // outbound channel on the ethereum side
-            if envelope.channel != <SourceChannel<T>>::get() {
-                return Err(Error::<T>::InvalidSourceChannel.into());
-            }
+            ensure!(
+                <ChannelAddresses<T>>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?
+                    == envelope.channel,
+                Error::<T>::InvalidSourceChannel
+            );
 
             // Verify message nonce
-            <Nonce<T>>::try_mutate(|nonce| -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
                 if envelope.nonce != *nonce + 1 {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
@@ -123,8 +142,69 @@ pub mod pallet {
             })?;
 
             let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
-            T::MessageDispatch::dispatch(envelope.source, message_id, &envelope.payload);
+            T::MessageDispatch::dispatch(
+                network_id,
+                envelope.source,
+                message_id,
+                &envelope.payload,
+            );
 
+            Ok(())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::register_channel())]
+        pub fn register_channel(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            channel: H160,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                <ChannelAddresses<T>>::contains_key(network_id) == false,
+                Error::<T>::ChannelExists
+            );
+
+            <ChannelAddresses<T>>::insert(network_id, channel);
+            Ok(())
+        }
+    }
+
+    impl<T: Config> AppRegistry for Pallet<T> {
+        fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+            let target =
+                ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::RegisterOperatorPayload { operator: app };
+
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
+            )?;
+            Ok(())
+        }
+
+        fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+            let target =
+                ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+            let message = bridge_types::channel_abi::DeregisterOperatorPayload { operator: app };
+
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                message
+                    .encode()
+                    .map_err(|_| Error::<T>::CallEncodeFailed)?
+                    .as_ref(),
+            )?;
             Ok(())
         }
     }

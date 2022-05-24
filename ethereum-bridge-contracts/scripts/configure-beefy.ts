@@ -1,29 +1,24 @@
-let { ApiPromise, WsProvider } = require('@polkadot/api');
+import { ApiPromise, WsProvider } from '@polkadot/api';
+import * as hre from "hardhat";
 
-const relaychainEndpoint = process.env.RELAYCHAIN_ENDPOINT;
+const soraEndpoint = process.env.RELAYCHAIN_ENDPOINT;
 
 async function configureBeefy() {
-  const hre = require("hardhat");
-
-  const signer = await hre.ethers.getSigner()
-
   const beefyDeployment = await hre.deployments.get("BeefyLightClient");
 
   const validatorRegistryDeployment = await hre.deployments.get("ValidatorRegistry");
-  const validatorRegistryContract = await new hre.ethers.Contract(validatorRegistryDeployment.address,
-    validatorRegistryDeployment.abi);
+  const validatorRegistry = await hre.ethers.getContractAt("ValidatorRegistry", validatorRegistryDeployment.address);
+  console.log(`Contract address ${validatorRegistryDeployment.address}`);
 
-  const validatorRegistry = await validatorRegistryContract.connect(signer)
+  const wsProvider = new WsProvider(soraEndpoint);
+  const api = await ApiPromise.create({ provider: wsProvider });
 
-  const relayChainProvider = new WsProvider(relaychainEndpoint);
-  const relaychainAPI = await ApiPromise.create({
-    provider: relayChainProvider,
-  })
-
-  const authorities = await relaychainAPI.query.mmrLeaf.beefyNextAuthorities()
-  const root = authorities.root.toString();
-  const numValidators = authorities.len.toString();
-  const id = authorities.id.toString();
+  const blockHash = await api.rpc.chain.getBlockHash(1);
+  const authorities = await (await api.at(blockHash)).query.mmrLeaf.beefyNextAuthorities();
+  console.log(authorities);
+  const root = authorities['root'].toString();
+  const numValidators = authorities['len'].toString();
+  const id = authorities['id'].toString();
 
 
   console.log("Configuring ValidatorRegistry with updated validators")
@@ -31,14 +26,18 @@ async function configureBeefy() {
     root, numValidators, id
   });
 
-  await validatorRegistry.update(root, numValidators, id)
+  let result = await validatorRegistry.update(root, numValidators, id)
+  console.log(result);
+  console.log(await result.wait());
 
   console.log("Transferring ownership of ValidatorRegistry to BeefyLightClient")
   console.log({
     beefyAddress: beefyDeployment.address,
   });
 
-  await validatorRegistry.transferOwnership(beefyDeployment.address)
+  result = await validatorRegistry.transferOwnership(beefyDeployment.address)
+  console.log(result);
+  console.log(await result.wait());
 
   return;
 }

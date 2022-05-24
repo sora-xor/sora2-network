@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.5;
-pragma experimental ABIEncoderV2;
+pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./RewardSource.sol";
@@ -23,7 +22,7 @@ contract ETHApp is RewardSource, AccessControl {
 
     event Unlocked(bytes32 sender, address recipient, uint256 amount);
 
-    bytes2 constant MINT_CALL = 0x6001;
+    bytes2 constant MINT_CALL = 0x6401;
 
     bytes32 public constant REWARD_ROLE = keccak256("REWARD_ROLE");
 

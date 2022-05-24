@@ -26,8 +26,7 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 
-snowbridge-core = { path = "../../../primitives/core", default-features = false }
-snowbridge-ethereum = { path = "../../../primitives/ethereum", default-features = false }
+bridge-types = { path = "../types", default-features = false }
 ethabi = { version = "17.0.0", default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features = [
     'alloc',
@@ -53,12 +52,11 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
-    "snowbridge-core/std",
-    "snowbridge-ethereum/std",
+    "bridge-types/std",
     "ethabi/std",
 ]
 runtime-benchmarks = [
-    "snowbridge-core/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",

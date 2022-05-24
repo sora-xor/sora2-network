@@ -27,15 +27,14 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 
-snowbridge-core = { path = "../../../primitives/core", default-features = false }
-snowbridge-ethereum = { path = "../../../primitives/ethereum", default-features = false }
+bridge-types = { path = "../types", default-features = false }
 
 ethash = { git = "https://github.com/rust-ethereum/ethash", rev = "43876fd11acf6680e2965e13ae6db7f3a55cf24f", default-features = false }
 
 [dev-dependencies]
+bridge-types = { path = "../types", features = ["test"] }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 hex-literal = { version = "0.3.1" }
-snowbridge-testutils = { path = "../../../primitives/testutils" }
 serde_json = "1.0"
 
 [features]
@@ -51,12 +50,12 @@ std = [
     "sp-io/std",
     "sp-runtime/std",
     "sp-std/std",
-    "snowbridge-core/std",
-    "snowbridge-ethereum/std",
+    "bridge-types/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
     "hex-literal",
 ]

@@ -47,18 +47,18 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
+use bridge_types::types::ChannelId;
+use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, ETH};
 use constants::currency::deposit;
-use constants::rewards::*;
 use constants::time::*;
 use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
-use snowbridge_core::ChannelId;
 
 // Make the WASM binary available.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "wasm-build"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
@@ -114,6 +114,7 @@ pub use common::{
     ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
+use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::{EthereumDifficultyConfig, EthereumHeader};
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -1480,6 +1481,48 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetTreasuryTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTreasuryAccountId: AccountId = {
+        let tech_account_id = GetTreasuryTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1692,17 +1735,11 @@ impl pallet_mmr::Config for Runtime {
     type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
 }
 
-// pub struct ParasProvider;
-// impl pallet_beefy_mmr::ParachainHeadsProvider for ParasProvider {
-//     fn parachain_heads() -> Vec<(u32, Vec<u8>)> {
-//         // FIXME:
-//         // Paras::parachains()
-//         //     .into_iter()
-//         //     .filter_map(|id| Paras::para_head(&id).map(|head| (id.into(), head.0)))
-//         //     .collect()
-//         Vec::new()
-//     }
-// }
+impl leaf_provider::Config for Runtime {
+    type Event = Event;
+    type Hashing = Keccak256;
+    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
+}
 
 parameter_types! {
     /// Version of the produced MMR leaf.
@@ -1724,8 +1761,8 @@ parameter_types! {
 impl pallet_beefy_mmr::Config for Runtime {
     type LeafVersion = LeafVersion;
     type BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
-    type LeafExtra = Vec<u8>;
-    type BeefyDataProvider = ();
+    type LeafExtra = H256;
+    type BeefyDataProvider = leaf_provider::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1804,7 +1841,7 @@ impl Contains<Call> for CallFilter {
 impl dispatch::Config for Runtime {
     type Origin = Origin;
     type Event = Event;
-    type MessageId = snowbridge_core::MessageId;
+    type MessageId = bridge_types::types::MessageId;
     type Call = Call;
     type CallFilter = CallFilter;
 }
@@ -1817,28 +1854,34 @@ const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 pub struct OutboundRouter<T>(PhantomData<T>);
 
-impl<T> snowbridge_core::OutboundRouter<T::AccountId> for OutboundRouter<T>
+pub use frame_system::RawOrigin;
+impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for OutboundRouter<T>
 where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
     fn submit(
+        network_id: bridge_types::EthNetworkId,
         channel_id: ChannelId,
-        who: &T::AccountId,
+        who: &RawOrigin<T::AccountId>,
         target: H160,
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
-            ChannelId::Basic => basic_channel::outbound::Pallet::<T>::submit(who, target, payload),
-            ChannelId::Incentivized => {
-                incentivized_channel::outbound::Pallet::<T>::submit(who, target, payload)
+            ChannelId::Basic => {
+                basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
             }
+            ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
+                who, network_id, target, payload,
+            ),
         }
     }
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 256;
-    pub const MaxMessagesPerCommit: u64 = 20;
+    pub const IncentivizedMaxMessagePayloadSize: u64 = 256;
+    pub const IncentivizedMaxMessagesPerCommit: u64 = 20;
+    pub const BasicMaxMessagePayloadSize: u64 = 2048;
+    pub const BasicMaxMessagesPerCommit: u64 = 4;
     pub const Decimals: u32 = 12;
 }
 
@@ -1847,15 +1890,15 @@ impl basic_channel_inbound::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = dispatch::Pallet<Runtime>;
     type WeightInfo = ();
+    type OutboundRouter = OutboundRouter<Self>;
 }
 
 impl basic_channel_outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
-    type MaxMessagePayloadSize = MaxMessagePayloadSize;
-    type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type SetPrincipalOrigin = EnsureRoot<AccountId>;
+    type MaxMessagePayloadSize = BasicMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BasicMaxMessagesPerCommit;
     type WeightInfo = ();
 }
 
@@ -1876,25 +1919,27 @@ impl incentivized_channel_inbound::Config for Runtime {
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = dispatch::Pallet<Runtime>;
     type FeeConverter = FeeConverter;
-    type UpdateOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
     type FeeAssetId = Ether;
+    type OutboundRouter = OutboundRouter<Self>;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
 
 impl incentivized_channel_outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
-    type MaxMessagePayloadSize = MaxMessagePayloadSize;
-    type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
     type FeeCurrency = Ether;
-    type SetFeeOrigin = MoreThanHalfCouncil;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
 }
 
 parameter_types! {
-    pub const DescendantsUntilFinalized: u8 = 3;
-    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
+    pub const DescendantsUntilFinalized: u8 = 30;
+    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::testnet();
     pub const VerifyPoW: bool = true;
 }
 
@@ -1906,12 +1951,43 @@ impl ethereum_light_client::Config for Runtime {
     type WeightInfo = ();
 }
 
+pub struct ChannelAppRegistry;
+
+impl bridge_types::traits::AppRegistry for ChannelAppRegistry {
+    fn register_app(
+        network_id: bridge_types::EthNetworkId,
+        app: H160,
+    ) -> frame_support::dispatch::DispatchResult {
+        BasicInboundChannel::register_app(network_id, app)?;
+        IncentivizedInboundChannel::register_app(network_id, app)?;
+        Ok(())
+    }
+
+    fn deregister_app(
+        network_id: bridge_types::EthNetworkId,
+        app: H160,
+    ) -> frame_support::dispatch::DispatchResult {
+        BasicInboundChannel::deregister_app(network_id, app)?;
+        IncentivizedInboundChannel::deregister_app(network_id, app)?;
+        Ok(())
+    }
+}
+
 impl eth_app::Config for Runtime {
     type Event = Event;
     type OutboundRouter = OutboundRouter<Runtime>;
     type CallOrigin = EnsureEthereumAccount;
+    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();
-    type FeeCurrency = Ether;
+}
+
+impl erc20_app::Config for Runtime {
+    type Event = Event;
+    type OutboundRouter = OutboundRouter<Runtime>;
+    type CallOrigin = EnsureEthereumAccount;
+    type AppRegistry = ChannelAppRegistry;
+    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type WeightInfo = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -1922,6 +1998,9 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic
     {
         System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
@@ -1936,12 +2015,13 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
         Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -1963,8 +2043,6 @@ construct_runtime! {
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
@@ -1992,10 +2070,12 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
+        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
     }
 }
 
@@ -2007,6 +2087,9 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic
     {
         System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
@@ -2020,12 +2103,13 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
         Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -2047,8 +2131,6 @@ construct_runtime! {
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
@@ -2074,10 +2156,12 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
+        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
     }
 }
 
@@ -2127,8 +2211,26 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    MigratePalletVersionToStorageVersion,
+    (
+        MigratePalletVersionToStorageVersion,
+        AddTrustlessBridgeTechnical,
+    ),
 >;
+
+pub struct AddTrustlessBridgeTechnical;
+
+impl OnRuntimeUpgrade for AddTrustlessBridgeTechnical {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        let _ = Technical::register_tech_account_id_if_not_exist(
+            &GetTrustlessBridgeTechAccountId::get(),
+        );
+        let _ = Technical::register_tech_account_id_if_not_exist(
+            &GetTrustlessBridgeFeesTechAccountId::get(),
+        );
+        let _ = Technical::register_tech_account_id_if_not_exist(&GetTreasuryTechAccountId::get());
+        RocksDbWeight::get().reads_writes(6, 6)
+    }
+}
 
 /// Migrate from `PalletVersion` to the new `StorageVersion`
 pub struct MigratePalletVersionToStorageVersion;
@@ -2681,6 +2783,13 @@ impl_runtime_apis! {
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
         }
+    }
+
+    impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
+        fn latest_digest() -> bridge_types::types::AuxiliaryDigest {
+            LeafProvider::latest_digest()
+        }
+
     }
 
     #[cfg(feature = "runtime-benchmarks")]

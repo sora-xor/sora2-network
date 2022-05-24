@@ -1,9 +1,12 @@
 //! IncentivizedOutboundChannel pallet benchmarking
 use super::*;
 
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, BenchmarkError};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
+use frame_system::RawOrigin;
 use sp_core::U256;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as IncentivizedOutboundChannel;
@@ -17,7 +20,8 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            <MessageQueue<T>>::append(Message {
+            <MessageQueues<T>>::append(BASE_NETWORK_ID, Message {
+                network_id: BASE_NETWORK_ID,
                 target: H160::zero(),
                 nonce: 0u64,
                 fee: U256::zero(),
@@ -25,17 +29,19 @@ benchmarks! {
             });
         }
 
-        let block_number = Interval::<T>::get();
+        let block_number = T::BlockNumber::from(BASE_NETWORK_ID) % Interval::<T>::get();
 
     }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(<MessageQueue<T>>::get().len(), 0);
+        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 0);
     }
 
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
     // because it's not a commitment interval.
     on_initialize_non_interval {
-        <MessageQueue<T>>::append(Message {
+        <MessageQueues<T>>::take(BASE_NETWORK_ID);
+        <MessageQueues<T>>::append(BASE_NETWORK_ID, Message {
+            network_id: BASE_NETWORK_ID,
             target: H160::zero(),
             nonce: 0u64,
             fee: U256::zero(),
@@ -43,17 +49,17 @@ benchmarks! {
         });
 
         Interval::<T>::put::<T::BlockNumber>(10u32.into());
-        let block_number: T::BlockNumber = 11u32.into();
+        let block_number: T::BlockNumber = 12u32.into();
 
     }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(<MessageQueue<T>>::get().len(), 1);
+        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 1);
     }
 
     // Benchmark 'on_initialize` for the case where it is a commitment interval
     // but there are no messages in the queue.
     on_initialize_no_messages {
-        <MessageQueue<T>>::kill();
+        <MessageQueues<T>>::take(BASE_NETWORK_ID);
 
         let block_number = Interval::<T>::get();
 
@@ -62,15 +68,10 @@ benchmarks! {
     // Benchmark `set_fee` under worst case conditions:
     // * The origin is authorized, i.e. equals SetFeeOrigin
     set_fee {
-        let authorized_origin = match T::SetFeeOrigin::successful_origin().into() {
-            Ok(raw) => raw,
-            Err(_) => return Err(BenchmarkError::Stop("Failed to get raw origin from origin")),
-        };
-
         let new_fee: BalanceOf<T> = 32000000u128.into();
         assert!(<Fee<T>>::get() != new_fee);
 
-    }: _(authorized_origin, new_fee)
+    }: _(RawOrigin::Root, new_fee)
     verify {
         assert_eq!(<Fee<T>>::get(), new_fee);
     }

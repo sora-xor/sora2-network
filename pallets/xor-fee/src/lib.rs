@@ -335,6 +335,12 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
             start_index,
         )
     }
+
+    fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
+        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::new_session_genesis(
+            new_index,
+        )
+    }
 }
 
 impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::FullIdentification>
@@ -357,6 +363,12 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
 
     fn start_session(start_index: SessionIndex) {
         <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::start_session(start_index)
+    }
+
+    fn new_session_genesis(
+        new_index: SessionIndex,
+    ) -> Option<Vec<(T::AccountId, T::FullIdentification)>> {
+        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::new_session_genesis(new_index)
     }
 }
 

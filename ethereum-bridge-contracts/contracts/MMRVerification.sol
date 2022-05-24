@@ -1,5 +1,5 @@
-// "SPDX-License-Identifier: UNLICENSED"
-pragma solidity ^0.8.5;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
 
 /**
  * @dev MMRVerification library for MMR inclusion proofs generated
@@ -78,14 +78,13 @@ contract MMRVerification {
         }
 
         // Calculate our leaf's mountain peak hash
-        bytes32 mountainHash =
-            calculatePeakRoot(
-                numLeftPeaks,
-                leafNodeHash,
-                leafPos,
-                targetPeakPos,
-                proofItems
-            );
+        bytes32 mountainHash = calculatePeakRoot(
+            numLeftPeaks,
+            leafNodeHash,
+            leafPos,
+            targetPeakPos,
+            proofItems
+        );
 
         // Bag peaks
         bytes32 bagger = mountainHash;
@@ -123,8 +122,11 @@ contract MMRVerification {
         uint256 qFront;
         uint256 qBack;
 
-        MountainData memory mountainData =
-            MountainData(leafPos, leafNodeHash, 1);
+        MountainData memory mountainData = MountainData(
+            leafPos,
+            leafNodeHash,
+            1
+        );
         queue[qBack] = mountainData;
         qBack = qBack + 1;
 

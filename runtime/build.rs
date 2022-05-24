@@ -31,9 +31,11 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+#[cfg(feature = "wasm-build")]
 use substrate_wasm_builder::WasmBuilder;
 
 fn main() {
+    #[cfg(feature = "wasm-build")]
     WasmBuilder::new()
         .with_current_project()
         .import_memory()
