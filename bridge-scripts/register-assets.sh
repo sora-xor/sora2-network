@@ -15,15 +15,17 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
+	erc20 
 	--address $DAI \
-	--asset-id 0x0200060000000000000000000000000000000000000000000000000000000000
+	--name "DAI"
+	--symbol "DAI"
 
 cargo run --bin relayer --release -- \
 	register-erc20-asset \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	--is-native \
+	native \
 	--asset-id 0x0200000000000000000000000000000000000000000000000000000000000000
 
 cargo run --bin relayer --release -- \
@@ -31,5 +33,5 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \
 	--substrate-key //Alice \
-	--is-native \
+	native \
 	--asset-id 0x0200040000000000000000000000000000000000000000000000000000000000

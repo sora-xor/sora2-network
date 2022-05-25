@@ -69,23 +69,23 @@ macro_rules! fixed_wrapper {
 #[macro_export]
 macro_rules! dbg {
     () => {
-        debug::info!("[{}]", core::line!());
+        log::info!("[{}]", core::line!());
     };
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         match $val {
             tmp => {
-                debug::info!("[{}] {} = {:#?}",
+                log::info!("[{}] {} = {:#?}",
                     core::line!(), core::stringify!($val), &tmp);
                 tmp
             }
         }
     };
     // Trailing comma with single argument is ignored
-    ($val:expr,) => { debug::info!($val) };
+    ($val:expr,) => { log::info!($val) };
     ($($val:expr),+ $(,)?) => {
-        ($(debug::info!($val)),+,)
+        ($(log::info!($val)),+,)
     };
 }
 
@@ -114,10 +114,10 @@ macro_rules! vec_push {
 #[macro_export]
 macro_rules! our_include {
     ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
+        #[cfg(all(feature = "include-real-files", not(feature = "test")))]
         let output = include!($x);
 
-        #[cfg(not(feature = "include-real-files"))]
+        #[cfg(any(not(feature = "include-real-files"), feature = "test"))]
         let output = Default::default();
 
         output
@@ -127,10 +127,10 @@ macro_rules! our_include {
 #[macro_export]
 macro_rules! our_include_bytes {
     ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
+        #[cfg(all(feature = "include-real-files", not(feature = "test")))]
         static OUTPUT: &'static [u8] = include_bytes!($x);
 
-        #[cfg(not(feature = "include-real-files"))]
+        #[cfg(any(not(feature = "include-real-files"), feature = "test"))]
         static OUTPUT: &'static [u8] = &[];
 
         OUTPUT

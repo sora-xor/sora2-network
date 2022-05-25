@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
-use crate::{AppAddresses, AssetKinds, TokenAddresses};
+use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::{AssetKind, ChannelId};
-use common::{balance, ETH, XOR};
+use common::{balance, AssetName, AssetSymbol, ETH, XOR};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
@@ -150,12 +150,20 @@ fn test_register_asset_internal() {
 #[test]
 fn test_register_erc20_asset() {
     new_tester().execute_with(|| {
-        let asset_id = ETH;
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
-        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
-        Erc20App::register_erc20_asset(Origin::root(), network_id, asset_id, address).unwrap();
-        assert!(TokenAddresses::<Test>::contains_key(network_id, asset_id));
+        assert!(!AssetsByAddresses::<Test>::contains_key(
+            network_id, address
+        ));
+        Erc20App::register_erc20_asset(
+            Origin::root(),
+            network_id,
+            address,
+            AssetSymbol(b"ETH".to_vec()),
+            AssetName(b"ETH".to_vec()),
+        )
+        .unwrap();
+        assert!(AssetsByAddresses::<Test>::contains_key(network_id, address));
     })
 }
 

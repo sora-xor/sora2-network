@@ -19,6 +19,7 @@ fixnum = { git = "https://github.com/vovac12/fixnum", branch = "polkadot-v0.9.19
     "i128",
     "parity",
     "scale-info",
+    "serde",
 ] }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
@@ -39,6 +40,7 @@ sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkado
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 static_assertions = "1.1.0"
+hex-literal = "0.3.1"
 
 [dev-dependencies]
 serde_json = "1.0.41"
@@ -54,12 +56,12 @@ std = [
     'num-traits/std',
     'frame-support/std',
     'frame-system/std',
-    'fixnum/serde',
     'fixnum/std',
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
     'currencies/std',
     'orml-traits/std',
+    "fixnum/std",
 ]
 test = []

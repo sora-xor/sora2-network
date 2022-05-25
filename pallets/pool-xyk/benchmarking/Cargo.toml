@@ -31,6 +31,7 @@ hex-literal = "0.3.1"
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }

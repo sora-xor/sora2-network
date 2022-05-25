@@ -37,6 +37,7 @@ trading-pair = { path = "../../trading-pair", default-features = false }
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
 hex-literal = { version = '0.3.1' }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
 serde = { version = "1.0.101", features = ["derive"] }

@@ -46,7 +46,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -98,10 +98,10 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -114,6 +114,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>}
     }
 }
 
@@ -145,7 +146,6 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
@@ -169,6 +169,8 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -177,7 +179,6 @@ impl permissions::Config for Runtime {
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -255,6 +256,13 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
@@ -272,6 +280,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();

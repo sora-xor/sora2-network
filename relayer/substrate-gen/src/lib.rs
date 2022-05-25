@@ -33,6 +33,10 @@ pub mod runtime {
     use bridge_types::HeaderId;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use common::AssetId32;
+    #[subxt(substitute_type = "common::primitives::AssetName")]
+    use common::AssetName;
+    #[subxt(substitute_type = "common::primitives::AssetSymbol")]
+    use common::AssetSymbol;
     #[subxt(substitute_type = "common::primitives::LiquiditySourceType")]
     use common::LiquiditySourceType;
     #[subxt(substitute_type = "common::primitives::PredefinedAssetId")]

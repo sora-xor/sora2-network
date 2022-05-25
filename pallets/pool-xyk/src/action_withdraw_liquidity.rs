@@ -121,7 +121,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         let has_enough_unlocked_liquidity =
             ceres_liquidity_locker::Pallet::<T>::check_if_has_enough_unlocked_liquidity(
-                source,
+                &source,
                 self.destination.0.asset,
                 self.destination.1.asset,
                 self.pool_tokens,
@@ -129,6 +129,18 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         ensure!(
             has_enough_unlocked_liquidity == true,
             Error::<T>::NotEnoughUnlockedLiquidity
+        );
+
+        let has_enough_liquidity_out_of_farming =
+            demeter_farming_platform::Pallet::<T>::check_if_has_enough_liquidity_out_of_farming(
+                source,
+                self.destination.0.asset,
+                self.destination.1.asset,
+                self.pool_tokens,
+            );
+        ensure!(
+            has_enough_liquidity_out_of_farming == true,
+            Error::<T>::NotEnoughLiquidityOutOfFarming
         );
 
         ensure!(self.pool_tokens > 0, Error::<T>::ZeroValueInAmountParameter);

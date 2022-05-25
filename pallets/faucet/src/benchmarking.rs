@@ -40,7 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::eth::EthereumAddress;
+use common::eth::EthAddress;
 use common::{AssetName, AssetSymbol, Balance, XOR};
 use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
@@ -73,8 +73,7 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
 
 /// Adds `n` of rewards
 fn add_rewards<T: Config>(n: u32) {
-    let unaccessible_eth_addr: EthereumAddress =
-        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
+    let unaccessible_eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
     for _i in 0..n {
         ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
         PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);

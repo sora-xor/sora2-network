@@ -56,10 +56,10 @@ pub struct BalanceInfo<Balance> {
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait RewardsAPI<EthereumAddress, Balance> where
-        EthereumAddress: Codec,
+    pub trait RewardsAPI<EthAddress, Balance> where
+        EthAddress: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay
     {
-        fn claimables(eth_address: EthereumAddress) -> Vec<BalanceInfo<Balance>>;
+        fn claimables(eth_address: EthAddress) -> Vec<BalanceInfo<Balance>>;
     }
 }

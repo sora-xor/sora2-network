@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Decode;
-use common::eth::EthereumAddress;
+use common::eth::EthAddress;
 use common::{balance, PSWAP, VAL};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
@@ -42,19 +42,18 @@ use crate::{
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43");
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
 // Adds `n` of unaccessible rewards and after adds 1 reward that will be claimed
 fn add_rewards<T: Config>(n: u32) {
-    let unaccessible_eth_addr: EthereumAddress =
-        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
+    let unaccessible_eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
     for _i in 0..n {
         ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
         PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
         PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
     }
-    let eth_addr: EthereumAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into();
+    let eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into();
     ValOwners::<T>::insert(&eth_addr, RewardInfo::from(300));
     PswapFarmOwners::<T>::insert(&eth_addr, 300);
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
