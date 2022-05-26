@@ -55,10 +55,17 @@ const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 /// Length of difficulties vector to store
 const CHECK_DIFFICULTY_DIFFERENCE_NUMBER: u64 = 10;
 /// Calculate the maximum difference between current header difficulty and maximung among stored in vector
-pub(crate) const DIFFICULTY_DIFFERENCE_MULT: f64 =
+pub(crate) const DIFFICULTY_DIFFERENCE: f64 =
     1.0 + 0.125 * (CHECK_DIFFICULTY_DIFFERENCE_NUMBER as f64);
 
 const DIVISION_COEFFICIENT: u64 = 1000;
+
+const DIFFICULTY_DIFFERENCE_MULT: U256 = U256([
+    ((DIFFICULTY_DIFFERENCE * (DIVISION_COEFFICIENT as f64)) as u64) / DIVISION_COEFFICIENT,
+    0,
+    0,
+    0,
+]);
 
 /// Ethereum block header as it is stored in the runtime storage.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
@@ -483,14 +490,14 @@ pub mod pallet {
                 Some(max) => max,
             };
 
-            let difficulty_difference_mult: U256 =
-                (((DIFFICULTY_DIFFERENCE_MULT * (DIVISION_COEFFICIENT as f64)) as u64)
-                    / DIVISION_COEFFICIENT)
-                    .into();
-
             ensure!(
-                headers_difficulty_max - headers_prev_difficulty_min
-                    <= new_header.difficulty * difficulty_difference_mult,
+                headers_difficulty_max
+                    .checked_sub(headers_prev_difficulty_min)
+                    .unwrap_or(0.into())
+                    <= new_header
+                        .difficulty
+                        .checked_mul(DIFFICULTY_DIFFERENCE_MULT)
+                        .unwrap_or(U256::MAX),
                 Error::<T>::DifficultyIsTooLow
             );
             Ok(())

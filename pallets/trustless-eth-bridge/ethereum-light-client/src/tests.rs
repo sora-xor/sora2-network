@@ -5,7 +5,7 @@ use crate::mock::{
     receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
 };
 use bridge_types::traits::Verifier as VerifierConfig;
-use bridge_types::{header, EthNetworkId, U256};
+use bridge_types::{EthNetworkId, U256};
 
 use crate::mock::mock_verifier_with_pow;
 
@@ -617,7 +617,7 @@ fn it_validates_last_headers_difficulty() {
         let header2_proof = ethereum_header_proof_from_file(11090292, "");
 
         let ferdie: AccountId = Keyring::Ferdie.into();
-        let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE_MULT as u64).into();
+        let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE as u64).into();
 
         let check_header_num_prev = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER - 1;
         let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
@@ -642,7 +642,7 @@ fn it_validates_last_headers_difficulty() {
             Error::<Test>::DifficultyIsTooLow
         );
 
-        // increase difficulty a little bit
+        // increase difficulty a little bit to fit the difference
         header1.difficulty = header1.difficulty * 1002 / 1000;
         assert_ok!(
             mock_verifier_with_pow::Verifier::validate_header_difficulty_test(
