@@ -272,9 +272,9 @@ dependencies = [
 
 [[package]]
 name = "async-io"
-version = "1.6.0"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a811e6a479f2439f0c04038796b5cfb3d2ad56c230e0f2d3f7b04d68cfee607b"
+checksum = "e5e18f61464ae81cde0a23e713ae8fd299580c54d697a35820cfd0625b8b0e07"
 dependencies = [
  "concurrent-queue",
  "futures-lite",
@@ -5087,9 +5087,9 @@ dependencies = [
 
 [[package]]
 name = "keccak"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
+checksum = "f9b7d56ba4a8344d6be9729995e6b06f928af29998cdf79fe390cbf6b1fee838"
 
 [[package]]
 name = "keccak-hash"
@@ -5682,7 +5682,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-swarm",
  "log",
- "lru 0.7.5",
+ "lru 0.7.6",
  "rand 0.7.3",
  "smallvec 1.8.0",
  "unsigned-varint 0.7.1",
@@ -6037,9 +6037,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32613e41de4c47ab04970c348ca7ae7382cf116625755af070b008a15516a889"
+checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
 dependencies = [
  "hashbrown 0.11.2",
 ]
@@ -6680,7 +6680,7 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 [[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#52ec52b733b3fc326d8e7104ff414d7e3c3b8b06"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#954cc7d97f70fe5c3c5ba286e0160b48ab5c6758"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6697,7 +6697,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#52ec52b733b3fc326d8e7104ff414d7e3c3b8b06"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#954cc7d97f70fe5c3c5ba286e0160b48ab5c6758"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6712,7 +6712,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#52ec52b733b3fc326d8e7104ff414d7e3c3b8b06"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#954cc7d97f70fe5c3c5ba286e0160b48ab5c6758"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -6730,7 +6730,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#52ec52b733b3fc326d8e7104ff414d7e3c3b8b06"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library.git#954cc7d97f70fe5c3c5ba286e0160b48ab5c6758"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -6743,9 +6743,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.0.1"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "029d8d0b2f198229de29dca79676f2738ff952edf3fde542eb8bf94d8c21b435"
+checksum = "21326818e99cfe6ce1e524c2a805c189a99b5ae555a35d19f9a284b427d86afa"
 dependencies = [
  "memchr",
 ]
@@ -8668,7 +8668,7 @@ dependencies = [
  "k256",
  "keccak-hasher",
  "log",
- "lru 0.7.5",
+ "lru 0.7.6",
  "pallet-beefy-mmr",
  "pallet-mmr-primitives",
  "pallet-mmr-rpc",
@@ -9393,7 +9393,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.19#174735ea1bb5fc4513519c45181d8df63d86f613"
 dependencies = [
  "lazy_static",
- "lru 0.7.5",
+ "lru 0.7.6",
  "parity-scale-codec",
  "parking_lot 0.12.0",
  "sc-executor-common",
@@ -9558,7 +9558,7 @@ dependencies = [
  "linked-hash-map",
  "linked_hash_set",
  "log",
- "lru 0.7.5",
+ "lru 0.7.6",
  "parity-scale-codec",
  "parking_lot 0.12.0",
  "pin-project 1.0.10",
@@ -9596,7 +9596,7 @@ dependencies = [
  "futures-timer",
  "libp2p",
  "log",
- "lru 0.7.5",
+ "lru 0.7.6",
  "sc-network",
  "sp-runtime",
  "substrate-prometheus-endpoint",
@@ -10562,7 +10562,7 @@ source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.
 dependencies = [
  "futures 0.3.21",
  "log",
- "lru 0.7.5",
+ "lru 0.7.6",
  "parity-scale-codec",
  "parking_lot 0.12.0",
  "sp-api",
@@ -11172,9 +11172,9 @@ dependencies = [
 
 [[package]]
 name = "ss58-registry"
-version = "1.18.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceb8b72a924ccfe7882d0e26144c114503760a4d1248bb5cd06c8ab2d55404cc"
+checksum = "5e1e7c268f5610088463d23188fc9e764cda491784360e5e4ea3a8ce1e0e2ac9"
 dependencies = [
  "Inflector",
  "num-format",
@@ -12962,8 +12962,8 @@ dependencies = [
 
 [[package]]
 name = "xcm"
-version = "0.9.20"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.20#568169b41aea59a54ab8cfa23c31e84a26708280"
+version = "0.9.22"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.22#17c7b9594aedbfc644d7e6e26f7bd244e68ccf4d"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
@@ -12976,7 +12976,7 @@ dependencies = [
 [[package]]
 name = "xcm-procedural"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.20#568169b41aea59a54ab8cfa23c31e84a26708280"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.22#17c7b9594aedbfc644d7e6e26f7bd244e68ccf4d"
 dependencies = [
  "Inflector",
  "proc-macro2",

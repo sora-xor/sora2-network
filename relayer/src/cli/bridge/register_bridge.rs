@@ -7,30 +7,22 @@ use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    eth: EthereumUrl,
-    #[clap(flatten)]
-    sub: SubstrateUrl,
-    #[clap(flatten)]
-    key: SubstrateKey,
+pub(crate) struct Command {
     #[clap(long, short)]
     descendants_until_final: u64,
-    #[clap(long)]
-    basic_channel_outbound: H160,
-    #[clap(long)]
-    incentivized_channel_outbound: H160,
     #[clap(long)]
     eth_app: H160,
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.sub.substrate_url.clone())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_unsigned_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
+
+        let eth_app = ethereum_gen::ETHApp::new(self.eth_app, eth.inner());
+        let basic_outbound_channel = eth_app.channels(0).call().await?.1;
+        let incentivized_outbound_channel = eth_app.channels(1).call().await?.1;
+
         let network_id = eth.get_chainid().await?.as_u32();
         let number = eth.get_block_number().await? - self.descendants_until_final;
         let block = eth.get_block(number).await?.expect("block not found");
@@ -63,7 +55,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::BasicInboundChannel(
                     runtime::runtime_types::basic_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.basic_channel_outbound
+                        channel: basic_outbound_channel
                     },
                 ),
             )
@@ -82,7 +74,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::IncentivizedInboundChannel(
                     runtime::runtime_types::incentivized_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.incentivized_channel_outbound
+                        channel: incentivized_outbound_channel
                     },
                 ),
             )
@@ -98,7 +90,7 @@ impl Command {
             .tx()
             .sudo()
             .sudo(runtime::runtime_types::framenode_runtime::Call::EthApp(
-                runtime::runtime_types::eth_app::pallet::Call::register_network {
+                runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: self.eth_app,
                     asset_id: common::ETH,

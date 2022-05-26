@@ -25,9 +25,9 @@ impl Clone for UnsignedClient {
 }
 
 impl UnsignedClient {
-    pub async fn new(url: impl Into<Url>) -> AnyResult<Self> {
+    pub async fn new(url: impl Into<String>) -> AnyResult<Self> {
         let api = ClientBuilder::new()
-            .set_url(url.into())
+            .set_url(url)
             .build()
             .await
             .context("Substrate client api build")?

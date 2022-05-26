@@ -326,6 +326,36 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[transactional]
+        pub fn register_existing_erc20_asset(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            address: H160,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !AssetsByAddresses::<T>::contains_key(network_id, address),
+                Error::<T>::TokenAlreadyRegistered
+            );
+            let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)
+                .ok_or(Error::<T>::AppIsNotRegistered)?;
+
+            Self::register_asset_inner(network_id, asset_id, address, AssetKind::Sidechain)?;
+
+            let message = RegisterErc20AssetPayload { address };
+
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+            )?;
+            Ok(())
+        }
+
         #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
         #[transactional]
         pub fn register_native_asset(

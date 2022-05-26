@@ -6,10 +6,6 @@ use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
-    #[clap(flatten)]
-    url: EthereumUrl,
-    #[clap(flatten)]
-    key: EthereumKey,
     #[clap(long)]
     token: H160,
     #[clap(long, short)]
@@ -19,10 +15,8 @@ pub(super) struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.url.ethereum_url.clone()).await?;
-        let key = self.key.get_key_string()?;
-        let eth = eth.sign_with_string(&key).await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_signed_ethereum().await?;
         let token = ethereum_gen::TestToken::new(self.token, eth.inner());
         let balance = token.balance_of(eth.address()).call().await?;
         let name = token.name().call().await?;

@@ -6,24 +6,15 @@ use clap::*;
 use std::path::PathBuf;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    ethereum: EthereumUrl,
-    #[clap(flatten)]
-    substrate: SubstrateUrl,
+pub(crate) struct Command {
     #[clap(long)]
     base_path: PathBuf,
-    #[clap(flatten)]
-    key: SubstrateKey,
 }
 
 impl Command {
-    pub async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_unsigned_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
         let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());
         let relay = Relay::new(sub.clone(), eth.clone(), proof_loader.clone()).await?;
         let messages_relay = SubstrateMessagesRelay::new(sub, eth, proof_loader).await?;

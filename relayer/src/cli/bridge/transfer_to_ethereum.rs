@@ -7,13 +7,7 @@ use common::{AssetId32, PredefinedAssetId};
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    eth: EthereumUrl,
-    #[clap(flatten)]
-    sub: SubstrateUrl,
-    #[clap(flatten)]
-    key: SubstrateKey,
+pub(crate) struct Command {
     #[clap(short, long)]
     recipient: H160,
     #[clap(short, long)]
@@ -23,12 +17,9 @@ pub(super) struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.sub.substrate_url.clone())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_unsigned_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?.as_u32();
         let (_, native_asset_id) = sub
             .api()

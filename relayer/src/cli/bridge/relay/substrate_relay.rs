@@ -5,25 +5,15 @@ use clap::*;
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    ethereum: EthereumUrl,
-    #[clap(flatten)]
-    substrate: SubstrateUrl,
-    #[clap(flatten)]
-    key: EthereumKey,
+pub(crate) struct Command {
     #[clap(short, long)]
     send_unneeded_commitments: bool,
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone())
-            .await?
-            .sign_with_string(&self.key.get_key_string()?)
-            .await
-            .context("sign ethereum client")?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone()).await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_signed_ethereum().await?;
+        let sub = args.get_unsigned_substrate().await?;
         let network_id = eth.inner().get_chainid().await?.as_u32();
         let eth_app = sub
             .api()

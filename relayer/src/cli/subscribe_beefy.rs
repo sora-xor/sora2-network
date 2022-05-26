@@ -4,18 +4,15 @@ use crate::relay::justification::BeefyJustification;
 use clap::*;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    url: SubstrateUrl,
-}
+pub(super) struct Command {}
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub_api = SubUnsignedClient::new(Url::parse("ws://localhost:9944")?).await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let sub_api = args.get_unsigned_substrate().await?;
         let beefy_start_block = sub_api.beefy_start_block().await?;
 
-        let proof = sub_api.mmr_generate_proof(0, None).await?;
-        info!("Proof: {:#?}", proof);
+        // let proof = sub_api.mmr_generate_proof(1, None).await?;
+        // info!("Proof: {:#?}", proof);
         let mut beefy_sub = sub_api.subscribe_beefy().await?;
         while let Some(commitment) = beefy_sub.next().await.transpose()? {
             let justification = BeefyJustification::create(

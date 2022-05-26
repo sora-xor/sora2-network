@@ -2,6 +2,7 @@
 use super::*;
 
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
+use common::{AssetName, AssetSymbol};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
@@ -50,6 +51,15 @@ benchmarks! {
     }
 
     register_network {
+        let contract = H160::repeat_byte(6);
+        let asset_name = AssetName(b"ETH".to_vec());
+        let asset_symbol = AssetSymbol(b"ETH".to_vec());
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, contract)
+    verify {
+        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
+    }
+
+    register_network_with_existing_asset {
         let asset_id: T::AssetId = XOR.into();
         let contract = H160::repeat_byte(6);
     }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract)

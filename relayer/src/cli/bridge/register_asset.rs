@@ -8,8 +8,8 @@ use common::{AssetId32, AssetName, AssetSymbol, PredefinedAssetId};
 use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
-#[derive(Subcommand, Clone, Debug)]
-enum AssetKind {
+#[derive(Subcommand, Debug)]
+pub(crate) enum Commands {
     ERC20 {
         #[clap(long)]
         address: H160,
@@ -24,28 +24,13 @@ enum AssetKind {
     },
 }
 
-#[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    eth: EthereumUrl,
-    #[clap(flatten)]
-    sub: SubstrateUrl,
-    #[clap(flatten)]
-    key: SubstrateKey,
-    #[clap(subcommand)]
-    kind: AssetKind,
-}
-
-impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.ethereum_url.clone()).await?;
-        let sub = SubUnsignedClient::new(self.sub.substrate_url.clone())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+impl Commands {
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_unsigned_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?.as_u32();
-        let call = match &self.kind {
-            AssetKind::ERC20 {
+        let call = match self {
+            Self::ERC20 {
                 address,
                 name,
                 symbol,
@@ -55,7 +40,7 @@ impl Command {
                 name: AssetName::from_str(name.as_str()).unwrap(),
                 symbol: AssetSymbol::from_str(symbol.as_str()).unwrap(),
             },
-            AssetKind::Native { asset_id } => {
+            Self::Native { asset_id } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_asset {
                     network_id,
                     asset_id: asset_id.clone(),

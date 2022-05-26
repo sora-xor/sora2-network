@@ -9,16 +9,7 @@ use ethers::prelude::Middleware;
 use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {
-    #[clap(flatten)]
-    ethereum: EthereumUrl,
-    #[clap(flatten)]
-    ethereum_key: EthereumKey,
-    #[clap(flatten)]
-    substrate: SubstrateUrl,
-    #[clap(flatten)]
-    substrate_key: SubstrateKey,
-}
+pub(crate) struct Command {}
 
 #[derive(Debug, Default)]
 struct Stats {
@@ -29,16 +20,10 @@ struct Stats {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
         let mut stats = HashMap::<AssetId, Stats>::new();
-        let eth = EthUnsignedClient::new(self.ethereum.ethereum_url.clone())
-            .await?
-            .sign_with_string(&self.ethereum_key.get_key_string()?)
-            .await?;
-        let sub = SubUnsignedClient::new(self.substrate.substrate_url.clone())
-            .await?
-            .try_sign_with(&self.substrate_key.get_key_string()?)
-            .await?;
+        let eth = args.get_signed_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?.as_u32();
 
         let sidechain_app = sub
