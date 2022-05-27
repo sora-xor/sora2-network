@@ -100,7 +100,10 @@ pub fn new_partial(
         sc_consensus::DefaultImportQueue<Block, FullClient>,
         sc_transaction_pool::FullPool<Block, FullClient>,
         (
-            impl sc_service::RpcExtensionBuilder,
+            impl Fn(
+                sc_rpc::DenyUnsafe,
+                sc_rpc::SubscriptionTaskExecutor,
+            ) -> Result<crate::rpc::RpcExtension, sc_service::Error>,
             (
                 sc_consensus_babe::BabeBlockImport<Block, FullClient, FullGrandpaBlockImport>,
                 sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
@@ -307,7 +310,7 @@ pub fn new_partial(
 
         move |deny_unsafe,
               subscription_executor|
-              -> Result<crate::rpc::JsonRpcHandler, sc_service::Error> {
+              -> Result<crate::rpc::RpcExtension, sc_service::Error> {
             let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: pool.clone(),
@@ -446,7 +449,7 @@ pub fn new_full(
         keystore: keystore_container.sync_keystore(),
         task_manager: &mut task_manager,
         transaction_pool: transaction_pool.clone(),
-        rpc_extensions_builder: Box::new(rpc_extensions_builder),
+        rpc_builder: Box::new(rpc_extensions_builder),
         backend: backend.clone(),
         system_rpc_tx,
         config,
@@ -542,6 +545,7 @@ pub fn new_full(
         let beefy_params = beefy_gadget::BeefyParams {
             protocol_name: beefy_protocol_name,
             client: client.clone(),
+            runtime: client.clone(),
             backend: backend.clone(),
             key_store: keystore.clone(),
             network: network.clone(),
@@ -551,7 +555,7 @@ pub fn new_full(
             prometheus_registry: prometheus_registry.clone(),
         };
 
-        let gadget = beefy_gadget::start_beefy_gadget::<_, _, _, _>(beefy_params);
+        let gadget = beefy_gadget::start_beefy_gadget::<_, _, _, _, _>(beefy_params);
 
         task_manager
             .spawn_essential_handle() // FIXME: use `spawn_handle` in non-test case

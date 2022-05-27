@@ -84,7 +84,7 @@ impl Command {
                                 currency_id: asset,
                                 amount: 1000000000000000000000,
                             },
-                        ))
+                        ))?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()
@@ -167,7 +167,7 @@ impl Command {
                             *asset,
                             eth.address(),
                             110,
-                        )
+                        )?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()
@@ -189,7 +189,7 @@ impl Command {
                         .api()
                         .tx()
                         .eth_app()
-                        .burn(network_id, ChannelId::Incentivized, eth.address(), 9)
+                        .burn(network_id, ChannelId::Incentivized, eth.address(), 9)?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()

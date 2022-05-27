@@ -6,6 +6,7 @@ use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
 use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::LeafProof;
+use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, ChannelId};
@@ -614,7 +615,7 @@ impl Relay {
     pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await?;
         self.sync_historical_commitments().await?;
-        let mut beefy_sub = self.sub.subscribe_beefy().await?;
+        let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification = BeefyJustification::create(
                 self.sub.clone(),

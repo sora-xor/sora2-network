@@ -16,27 +16,27 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
 
-pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-ethabi = { git = "https://github.com/vovac12/ethabi.git", branch = "polkadot-v0.9.19", package = "ethabi", default-features = false, features = [
+ethabi = { git = "https://github.com/vovac12/ethabi.git", branch = "polkadot-v0.9.22", package = "ethabi", default-features = false, features = [
     "alloc",
 ] }
 
 [dev-dependencies]
-sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
 hex-literal = { version = "0.3.1" }
 
 [features]
@@ -52,7 +52,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "bridge-types/std",
-    "pallet-mmr-primitives/std",
+    "sp-mmr-primitives/std",
     "pallet-mmr/std",
     "pallet-beefy-mmr/std",
 ]

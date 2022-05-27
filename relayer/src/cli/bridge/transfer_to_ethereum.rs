@@ -1,5 +1,6 @@
 use super::*;
 use crate::prelude::*;
+use assets_rpc::AssetsAPIClient;
 use bridge_types::types::ChannelId;
 use bridge_types::H160;
 use clap::*;
@@ -29,7 +30,8 @@ impl Command {
             .await?
             .expect("network not found");
         let balance = sub
-            .get_total_balance(self.asset_id, sub.account_id())
+            .assets()
+            .total_balance(sub.account_id(), self.asset_id, None)
             .await?;
         info!("Current balance: {:?}", balance);
         let result = if self.asset_id == native_asset_id {
@@ -41,7 +43,7 @@ impl Command {
                     ChannelId::Incentivized,
                     self.recipient,
                     self.amount,
-                )
+                )?
                 .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()
@@ -58,7 +60,7 @@ impl Command {
                     self.asset_id,
                     self.recipient,
                     self.amount,
-                )
+                )?
                 .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()

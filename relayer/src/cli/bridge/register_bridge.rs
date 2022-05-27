@@ -39,7 +39,7 @@ impl Command {
                         initial_difficulty: Default::default(),
                     },
                 ),
-            )
+            )?
             .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
@@ -58,7 +58,7 @@ impl Command {
                         channel: basic_outbound_channel
                     },
                 ),
-            )
+            )?
             .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
@@ -77,7 +77,7 @@ impl Command {
                         channel: incentivized_outbound_channel
                     },
                 ),
-            )
+            )?
             .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
@@ -95,7 +95,7 @@ impl Command {
                     contract: self.eth_app,
                     asset_id: common::ETH,
                 },
-            ))
+            ))?
             .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()

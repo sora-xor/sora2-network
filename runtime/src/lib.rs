@@ -75,7 +75,6 @@ use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use pallet_mmr_primitives as mmr;
 use pallet_session::historical as pallet_session_historical;
 use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
@@ -83,6 +82,7 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Encode, OpaqueMetadata, H160, U256};
+use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
@@ -610,10 +610,12 @@ parameter_types! {
 
     // signed config
     pub const SignedMaxSubmissions: u32 = 16;
+    pub const SignedMaxRefunds: u32 = 16 / 4;
     pub const SignedDepositBase: Balance = deposit(2, 0);
     pub const SignedDepositByte: Balance = deposit(0, 10) / 1024;
     pub SignedRewardBase: Balance =  constants::currency::UNITS / 10;
     pub SolutionImprovementThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
+    pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
 
     // 1 hour session, 15 minutes unsigned phase, 8 offchain executions.
     pub OffchainRepeat: BlockNumber = UnsignedPhase::get() / 8;
@@ -641,10 +643,11 @@ generate_solution_type!(
 pub type OnChainAccuracy = sp_runtime::Perbill;
 
 pub struct OnChainSeqPhragmen;
-impl onchain::ExecutionConfig for OnChainSeqPhragmen {
+impl onchain::Config for OnChainSeqPhragmen {
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
     type DataProvider = Staking;
+    type WeightInfo = ();
 }
 
 impl pallet_election_provider_multi_phase::Config for Runtime {
@@ -653,6 +656,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type EstimateCallFee = TransactionPayment;
     type UnsignedPhase = UnsignedPhase;
     type SignedMaxSubmissions = SignedMaxSubmissions;
+    type SignedMaxRefunds = SignedMaxRefunds;
     type SignedRewardBase = SignedRewardBase;
     type SignedDepositBase = SignedDepositBase;
     type SignedDepositByte = SignedDepositByte;
@@ -661,7 +665,8 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type SlashHandler = (); // burn slashes
     type RewardHandler = (); // nothing to do upon rewards
     type SignedPhase = SignedPhase;
-    type SolutionImprovementThreshold = SolutionImprovementThreshold;
+    type BetterUnsignedThreshold = BetterUnsignedThreshold;
+    type BetterSignedThreshold = ();
     type MinerMaxWeight = OffchainSolutionWeightLimit; // For now use the one from staking.
     type MinerMaxLength = OffchainSolutionLengthLimit;
     type OffchainRepeat = OffchainRepeat;
@@ -2718,36 +2723,49 @@ impl_runtime_apis! {
         }
     }
 
-    impl pallet_mmr_primitives::MmrApi<Block, Hash> for Runtime {
-        fn generate_proof(leaf_index: u64)
+    impl mmr::MmrApi<Block, Hash> for Runtime {
+        fn generate_proof(_leaf_index: u64)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Mmr::generate_proof(leaf_index)
-                .map(|(leaf, proof)| (mmr::EncodableOpaqueLeaf::from_leaf(&leaf), proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
+        fn verify_proof(_leaf: mmr::EncodableOpaqueLeaf, _proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type Leaf = <
-                <Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider
-            >::LeafData;
-
-            let leaf: Leaf = leaf
-                .into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)?;
-            Mmr::verify_leaf(leaf, proof)
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn verify_proof_stateless(
-            root: Hash,
-            leaf: mmr::EncodableOpaqueLeaf,
-            proof: mmr::Proof<Hash>
+            _root: Hash,
+            _leaf: mmr::EncodableOpaqueLeaf,
+            _proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
-            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
-            pallet_mmr::verify_leaf_proof::<MmrHashing, _>(root, node, proof)
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn mmr_root() -> Result<Hash, mmr::Error> {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn generate_batch_proof(_leaf_indices: Vec<u64>)
+            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_batch_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::BatchProof<Hash>)
+            -> Result<(), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_batch_proof_stateless(
+            _root: Hash,
+            _leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            _proof: mmr::BatchProof<Hash>
+        ) -> Result<(), mmr::Error> {
+            Err(mmr::Error::PalletNotIncluded)
         }
     }
 

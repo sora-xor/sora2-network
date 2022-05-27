@@ -31,9 +31,11 @@
 
 use codec::Codec;
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult as Result},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -46,9 +48,9 @@ pub use vested_rewards_runtime_api::{
     BalanceInfo, CrowdloanLease, VestedRewardsApi as VestedRewardsRuntimeApi,
 };
 
-#[rpc]
+#[rpc(server, client)]
 pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
-    #[rpc(name = "vestedRewards_crowdloanClaimable")]
+    #[method(name = "vestedRewards_crowdloanClaimable")]
     fn crowdloan_claimable(
         &self,
         address: EthAddress,
@@ -56,7 +58,7 @@ pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
-    #[rpc(name = "vestedRewards_crowdloanLease")]
+    #[method(name = "vestedRewards_crowdloanLease")]
     fn crowdloan_lease(&self, at: Option<BlockHash>) -> Result<CrowdloanLease>;
 }
 
@@ -76,8 +78,12 @@ impl<C, B> VestedRewardsClient<C, B> {
 }
 
 impl<C, Block, EthAddress, AssetId, Balance>
-    VestedRewardsApi<<Block as BlockT>::Hash, EthAddress, AssetId, Option<BalanceInfo<Balance>>>
-    for VestedRewardsClient<C, Block>
+    VestedRewardsApiServer<
+        <Block as BlockT>::Hash,
+        EthAddress,
+        AssetId,
+        Option<BalanceInfo<Balance>>,
+    > for VestedRewardsClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
@@ -99,11 +105,7 @@ where
             self.client.info().best_hash,
         ));
         api.crowdloan_claimable(&at, address, asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get crowdloan claimables.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn crowdloan_lease(&self, at: Option<<Block as BlockT>::Hash>) -> Result<CrowdloanLease> {
@@ -112,10 +114,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.crowdloan_lease(&at).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get crowdloan lease info.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.crowdloan_lease(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

@@ -14,7 +14,7 @@ pub struct SignatureParams {
 
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
-    generated_type_derives = "Clone"
+    derive_for_all_types = "Clone"
 )]
 pub mod runtime {
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
@@ -55,7 +55,43 @@ pub mod runtime {
     use subxt::sp_core::U256;
 }
 
+#[async_trait::async_trait]
+impl<T: subxt::Config + Sync + Send, X: Sync + Send> ClientT for runtime::RuntimeApi<T, X> {
+    async fn notification<'a>(
+        &self,
+        method: &'a str,
+        params: Option<ParamsSer<'a>>,
+    ) -> Result<(), RpcError> {
+        self.client.rpc().client.notification(method, params).await
+    }
+
+    async fn request<'a, R>(
+        &self,
+        method: &'a str,
+        params: Option<ParamsSer<'a>>,
+    ) -> Result<R, RpcError>
+    where
+        R: DeserializeOwned,
+    {
+        self.client.rpc().client.request(method, params).await
+    }
+
+    async fn batch_request<'a, R>(
+        &self,
+        batch: Vec<(&'a str, Option<ParamsSer<'a>>)>,
+    ) -> Result<Vec<R>, RpcError>
+    where
+        R: DeserializeOwned + Default + Clone,
+    {
+        self.client.rpc().client.batch_request(batch).await
+    }
+}
+
 pub use config::DefaultConfig;
+use jsonrpsee::{
+    core::{client::ClientT, DeserializeOwned, Error as RpcError},
+    types::ParamsSer,
+};
 
 pub mod config {
     use std::fmt::Debug;

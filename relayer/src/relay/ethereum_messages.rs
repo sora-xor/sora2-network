@@ -113,7 +113,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .basic_inbound_channel()
-                        .submit(self.network_id, message)
+                        .submit(self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()
@@ -190,7 +190,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .incentivized_inbound_channel()
-                        .submit(self.network_id, message)
+                        .submit(self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()

@@ -30,9 +30,11 @@
 
 use codec::Codec;
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult as Result},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use leaf_provider_runtime_api::AuxiliaryDigest;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -43,12 +45,12 @@ use std::sync::Arc;
 
 pub use leaf_provider_runtime_api::LeafProviderAPI as LeafProviderRuntimeAPI;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait LeafProviderAPI<BlockHash>
 where
     BlockHash: Codec,
 {
-    #[rpc(name = "leafProvider_latestDigest")]
+    #[method(name = "leafProvider_latestDigest")]
     fn latest_digest(&self, at: Option<BlockHash>) -> Result<AuxiliaryDigest>;
 }
 
@@ -67,7 +69,7 @@ impl<C, B> LeafProviderClient<C, B> {
     }
 }
 
-impl<C, Block> LeafProviderAPI<<Block as BlockT>::Hash> for LeafProviderClient<C, Block>
+impl<C, Block> LeafProviderAPIServer<<Block as BlockT>::Hash> for LeafProviderClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
@@ -80,10 +82,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.latest_digest(&at).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get latest digest.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.latest_digest(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

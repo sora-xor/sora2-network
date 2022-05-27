@@ -37,8 +37,6 @@ contract ETHApp is RewardSource, AccessControl {
         Channel memory _basic,
         Channel memory _incentivized
     ) {
-        balance = 0;
-
         Channel storage c1 = channels[ChannelId.Basic];
         c1.inbound = _basic.inbound;
         c1.outbound = _basic.outbound;
