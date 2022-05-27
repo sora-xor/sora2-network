@@ -621,13 +621,14 @@ fn it_validates_last_headers_difficulty() {
 
         let check_header_num_prev = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER - 1;
         let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
-        mock_verifier_with_pow::Verifier::add_header_for_diffiulty_check(
+
+        add_header_for_diffiulty_check(
             BASE_NETWORK_ID,
             check_header_num_prev,
             header1.clone(),
             header1.difficulty,
         );
-        mock_verifier_with_pow::Verifier::add_header_for_diffiulty_check(
+        add_header_for_diffiulty_check(
             BASE_NETWORK_ID,
             check_header_num,
             header2.clone(),
@@ -639,7 +640,7 @@ fn it_validates_last_headers_difficulty() {
                 BASE_NETWORK_ID,
                 &header1
             ),
-            Error::<Test>::DifficultyIsTooLow
+            Error::<Test>::DifficultyTooLow
         );
 
         // increase difficulty a little bit to fit the difference
@@ -651,4 +652,21 @@ fn it_validates_last_headers_difficulty() {
             )
         );
     });
+}
+
+fn add_header_for_diffiulty_check(
+    network_id: EthNetworkId,
+    header_number: u64,
+    header: EthereumHeader,
+    total_difficulty: U256,
+) {
+    let hash = header.compute_hash();
+    let header_to_store: crate::StoredHeader<AccountId> = crate::StoredHeader {
+        submitter: None,
+        header: header.clone(),
+        total_difficulty,
+        finalized: false,
+    };
+    Headers::<Test>::insert(network_id, hash, header_to_store);
+    HeadersByNumber::<Test>::insert(network_id, header_number, vec![hash]);
 }

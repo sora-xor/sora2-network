@@ -54,12 +54,10 @@ const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 /// Length of difficulties vector to store
 const CHECK_DIFFICULTY_DIFFERENCE_NUMBER: u64 = 10;
-/// Calculate the maximum difference between current header difficulty and maximung among stored in vector
+/// Calculate the maximum difference between current header difficulty and maximum among stored in vector
 pub(crate) const DIFFICULTY_DIFFERENCE: f64 =
     1.0 + 0.125 * (CHECK_DIFFICULTY_DIFFERENCE_NUMBER as f64);
-
 const DIVISION_COEFFICIENT: u64 = 1000;
-
 const DIFFICULTY_DIFFERENCE_MULT: U256 = U256([
     ((DIFFICULTY_DIFFERENCE * (DIVISION_COEFFICIENT as f64)) as u64) / DIVISION_COEFFICIENT,
     0,
@@ -163,7 +161,9 @@ pub mod pallet {
         /// Network with given id already registered
         NetworkAlreadyExists,
         /// Difficulty is too low comparing to last blocks difficulty
-        DifficultyIsTooLow,
+        DifficultyTooLow,
+        /// Network state is not suitable to proceed transacton
+        NetworkStateInvalid,
         /// This should never be returned - indicates a bug
         Unknown,
     }
@@ -448,14 +448,7 @@ pub mod pallet {
                 None => return Ok(()),
                 Some(num) => num,
             };
-            let check_block_number = match new_header
-                .number
-                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER)
-            {
-                // If less than CHECK_DIFFICULTY_DIFFERENCE_NUMBER - ignore check
-                None => return Ok(()),
-                Some(num) => num,
-            };
+            let check_block_number = new_header.number - CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
 
             let hashes_prev = match HeadersByNumber::<T>::get(network_id, check_block_number_prev) {
                 // We trust our blockchain, so block should exist
@@ -468,6 +461,7 @@ pub mod pallet {
                 Some(h) => h,
             };
 
+            // here get minimum value from previus to check block difficulty
             let headers_prev_difficulty_min = match hashes_prev
                 .iter()
                 .map(|hash| Headers::<T>::get(network_id, hash))
@@ -475,10 +469,11 @@ pub mod pallet {
                 .map(|x| x.total_difficulty)
                 .min()
             {
-                None => return Ok(()),
+                None => frame_support::fail!(Error::<T>::NetworkStateInvalid),
                 Some(min) => min,
             };
 
+            // here get maximum value from check block difficulty
             let headers_difficulty_max = match hashes
                 .iter()
                 .map(|hash| Headers::<T>::get(network_id, hash))
@@ -486,10 +481,11 @@ pub mod pallet {
                 .map(|x| x.total_difficulty)
                 .max()
             {
-                None => return Ok(()),
+                None => frame_support::fail!(Error::<T>::NetworkStateInvalid),
                 Some(max) => max,
             };
 
+            // check total difficulty difference change and compare with new header difficulty
             ensure!(
                 headers_difficulty_max
                     .checked_sub(headers_prev_difficulty_min)
@@ -498,7 +494,7 @@ pub mod pallet {
                         .difficulty
                         .checked_mul(DIFFICULTY_DIFFERENCE_MULT)
                         .unwrap_or(U256::MAX),
-                Error::<T>::DifficultyIsTooLow
+                Error::<T>::DifficultyTooLow
             );
             Ok(())
         }
@@ -509,24 +505,6 @@ pub mod pallet {
             new_header: &EthereumHeader,
         ) -> DispatchResult {
             Self::validate_header_difficulty(network_id, new_header)
-        }
-
-        #[cfg(test)]
-        pub fn add_header_for_diffiulty_check(
-            network_id: EthNetworkId,
-            header_number: u64,
-            header: EthereumHeader,
-            total_difficulty: U256,
-        ) {
-            let hash = header.compute_hash();
-            let header_to_store = StoredHeader {
-                submitter: None,
-                header: header.clone(),
-                total_difficulty,
-                finalized: false,
-            };
-            <Headers<T>>::insert(network_id, hash, header_to_store);
-            <HeadersByNumber<T>>::insert(network_id, header_number, vec![hash]);
         }
 
         // Import a new, validated Ethereum header
