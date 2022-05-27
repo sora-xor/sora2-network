@@ -648,9 +648,9 @@ impl<T: Config> Pallet<T> {
                 &reference_asset_id,
             )
             .map(|avg| {
-                // We don't let the price of XOR w.r.t. DAI go under $11, to prevent manipulation attacks
+                // We don't let the price of XOR w.r.t. DAI go under $3, to prevent manipulation attacks
                 if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
-                    avg.max(balance!(11))
+                    avg.max(balance!(3))
                 } else {
                     avg
                 }
