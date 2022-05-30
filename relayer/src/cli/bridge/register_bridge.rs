@@ -12,6 +12,8 @@ pub(crate) struct Command {
     descendants_until_final: u64,
     #[clap(long)]
     eth_app: H160,
+    #[clap(long)]
+    migration_app: Option<H160>,
 }
 
 impl Command {
@@ -103,6 +105,27 @@ impl Command {
             .wait_for_success()
             .await?;
         info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        if let Some(migration_app) = self.migration_app {
+            let result = sub
+                .api()
+                .tx()
+                .sudo()
+                .sudo(
+                    runtime::runtime_types::framenode_runtime::Call::MigrationApp(
+                        runtime::runtime_types::migration_app::pallet::Call::register_network {
+                            network_id,
+                            contract: migration_app,
+                        },
+                    ),
+                )?
+                .sign_and_submit_then_watch_default(&sub)
+                .await?
+                .wait_for_in_block()
+                .await?
+                .wait_for_success()
+                .await?;
+            info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        }
         Ok(())
     }
 }

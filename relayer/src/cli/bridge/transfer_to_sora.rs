@@ -113,6 +113,8 @@ impl Command {
             .await?;
         debug!("Check {:?}", call);
         call.call().await?;
+        eth.save_gas_price(&call, "transfer-to-sora::transfer")
+            .await?;
         if !self.dry_run {
             debug!("Send");
             let tx = call.send().await?.confirmations(3).await?.unwrap();

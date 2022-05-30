@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./RewardSource.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
+import "./EthTokenReceiver.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract ETHApp is RewardSource, AccessControl {
+contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
     using ScaleCodec for uint256;
 
     mapping(ChannelId => Channel) public channels;
@@ -101,4 +102,6 @@ contract ETHApp is RewardSource, AccessControl {
     {
         _recipient.transfer(_amount);
     }
+
+    function receivePayment() external payable override {}
 }

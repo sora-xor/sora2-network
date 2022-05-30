@@ -5,6 +5,7 @@ pub mod receipt;
 use crate::prelude::*;
 use bridge_types::Header;
 pub use ethers::core::k256::ecdsa::SigningKey;
+use ethers::prelude::builders::ContractCall;
 pub use ethers::prelude::*;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -83,6 +84,32 @@ impl SignedClient {
 
     pub fn inner(&self) -> Arc<SignedClientInner> {
         self.0.clone()
+    }
+
+    pub async fn save_gas_price<D, M>(
+        &self,
+        call: &ContractCall<M, D>,
+        additional: &str,
+    ) -> AnyResult<()>
+    where
+        D: abi::Detokenize + core::fmt::Debug,
+        M: Middleware + 'static,
+    {
+        use std::io::Write;
+        let gas = call.estimate_gas().await?.as_u128();
+        let metric = format!(
+            "{:?} {} '{}' {}\n",
+            call.tx.to(),
+            call.function.name,
+            additional,
+            gas
+        );
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open("gas_prices")?;
+        file.write_all(metric.as_bytes())?;
+        Ok(())
     }
 }
 

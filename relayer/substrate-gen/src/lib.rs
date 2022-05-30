@@ -12,11 +12,20 @@ pub struct SignatureParams {
     pub v: u8,
 }
 
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
+pub enum AssetKind {
+    Thischain,
+    Sidechain,
+    SidechainOwned,
+}
+
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
     derive_for_all_types = "Clone"
 )]
 pub mod runtime {
+    #[subxt(substitute_type = "eth_bridge::requests::AssetKind")]
+    use crate::AssetKind;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]

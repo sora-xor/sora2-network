@@ -7,13 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./MasterToken.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
+import "./IAssetRegister.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract SidechainApp is AccessControl {
+contract SidechainApp is AccessControl, IAssetRegister {
     using ScaleCodec for uint256;
 
     mapping(address => bool) public tokens;
@@ -45,7 +46,11 @@ contract SidechainApp is AccessControl {
     bytes32 public constant INBOUND_CHANNEL_ROLE =
         keccak256("INBOUND_CHANNEL_ROLE");
 
-    constructor(Channel memory _basic, Channel memory _incentivized) {
+    constructor(
+        Channel memory _basic,
+        Channel memory _incentivized,
+        address migrationApp
+    ) {
         Channel storage c1 = channels[ChannelId.Basic];
         c1.inbound = _basic.inbound;
         c1.outbound = _basic.outbound;
@@ -56,6 +61,7 @@ contract SidechainApp is AccessControl {
 
         _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
         _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
+        _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
@@ -151,5 +157,13 @@ contract SidechainApp is AccessControl {
             channels[ChannelId.Basic].outbound
         );
         channel.submit(msg.sender, call);
+    }
+
+    function registerExistingAsset(address token)
+        public
+        override
+        onlyRole(INBOUND_CHANNEL_ROLE)
+    {
+        tokens[token] = true;
     }
 }

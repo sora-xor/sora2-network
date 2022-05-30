@@ -1,8 +1,9 @@
-use super::*;
 use crate::prelude::*;
 use bridge_types::H160;
 use clap::*;
 use ethers::prelude::Middleware;
+
+use super::BaseArgs;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
@@ -33,6 +34,7 @@ impl Command {
             .await?;
         debug!("Check {:?}", call);
         call.call().await?;
+        eth.save_gas_price(&call, "mint-test-token").await?;
         if !self.dry_run {
             debug!("Send");
             let tx = call.send().await?.confirmations(3).await?.unwrap();

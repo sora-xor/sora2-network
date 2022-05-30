@@ -963,6 +963,7 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        migration_app: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),

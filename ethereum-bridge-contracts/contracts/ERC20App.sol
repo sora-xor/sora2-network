@@ -6,13 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
+import "./IAssetRegister.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract ERC20App is AccessControl {
+contract ERC20App is AccessControl, IAssetRegister {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
@@ -44,7 +45,11 @@ contract ERC20App is AccessControl {
     bytes32 public constant INBOUND_CHANNEL_ROLE =
         keccak256("INBOUND_CHANNEL_ROLE");
 
-    constructor(Channel memory _basic, Channel memory _incentivized) {
+    constructor(
+        Channel memory _basic,
+        Channel memory _incentivized,
+        address migrationApp
+    ) {
         Channel storage c1 = channels[ChannelId.Basic];
         c1.inbound = _basic.inbound;
         c1.outbound = _basic.outbound;
@@ -55,6 +60,7 @@ contract ERC20App is AccessControl {
 
         _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
         _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
+        _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
@@ -125,6 +131,14 @@ contract ERC20App is AccessControl {
      */
     function registerAsset(address token)
         public
+        onlyRole(INBOUND_CHANNEL_ROLE)
+    {
+        tokens[token] = true;
+    }
+
+    function registerExistingAsset(address token)
+        public
+        override
         onlyRole(INBOUND_CHANNEL_ROLE)
     {
         tokens[token] = true;

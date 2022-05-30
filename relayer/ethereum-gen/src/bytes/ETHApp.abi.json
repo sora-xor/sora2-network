@@ -312,6 +312,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "receivePayment",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",

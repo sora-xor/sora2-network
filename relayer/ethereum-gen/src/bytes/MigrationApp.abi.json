@@ -2,42 +2,23 @@
   {
     "inputs": [
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SidechainApp.Channel",
-        "name": "_basic",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SidechainApp.Channel",
-        "name": "_incentivized",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "_basic_inbound",
+        "type": "address"
       },
       {
         "internalType": "address",
-        "name": "migrationApp",
+        "name": "_basic_outbound",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_incentivized_inbound",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_incentivized_outbound",
         "type": "address"
       }
     ],
@@ -50,29 +31,11 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "token",
+        "name": "contractAddress",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "recipient",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "Burned",
+    "name": "MigratedEth",
     "type": "event"
   },
   {
@@ -81,29 +44,24 @@
       {
         "indexed": false,
         "internalType": "address",
-        "name": "token",
+        "name": "contractAddress",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "sender",
-        "type": "bytes32"
-      },
+      }
+    ],
+    "name": "MigratedNativeErc20",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
       {
         "indexed": false,
         "internalType": "address",
-        "name": "recipient",
+        "name": "contractAddress",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
       }
     ],
-    "name": "Minted",
+    "name": "MigratedSidechain",
     "type": "event"
   },
   {
@@ -296,49 +254,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_token",
+        "name": "contractAddress",
         "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_recipient",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum ChannelId",
-        "name": "_channelId",
-        "type": "uint8"
       }
     ],
-    "name": "lock",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "sidechainAssetId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registerAsset",
+    "name": "migrateEth",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -347,13 +267,43 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "token",
+        "name": "contractAddress",
         "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "erc20nativeTokens",
+        "type": "address[]"
       }
     ],
-    "name": "registerExistingAsset",
+    "name": "migrateNativeErc20",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address[]",
+        "name": "sidechainTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "migrateSidechain",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "receivePayment",
+    "outputs": [],
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -409,53 +359,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "tokens",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_token",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_sender",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "_recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "unlock",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

@@ -3,7 +3,6 @@ use crate::prelude::*;
 use assets_rpc::AssetsAPIClient;
 use bridge_types::types::ChannelId;
 use bridge_types::H160;
-use clap::*;
 use common::{AssetId32, PredefinedAssetId};
 use ethers::prelude::Middleware;
 

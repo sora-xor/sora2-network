@@ -17,6 +17,7 @@ common = { path = "../common" }
 subxt = { git = "https://github.com/paritytech/subxt", rev = "ec23283d75e4b3b894294e351fd7ffa2b4431201" }
 tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
+http = "0.2.6"
 anyhow = "1.0.51"
 jsonrpsee = { version = "0.13", features = [
     "macros",
@@ -59,3 +60,4 @@ lru = "0.7.2"
 k256 = "0.10.1"
 assets-rpc = { path = "../pallets/assets/rpc" }
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
+eth-bridge = { path = "../pallets/eth-bridge" }
