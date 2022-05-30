@@ -11224,13 +11224,12 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.22#616d33ea23bab86cafffaf116fc607b6790fb4eb"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.16#19162e43be45817b44c7d48e50d03f074f60fbf4"
 dependencies = [
  "ansi_term",
  "build-helper",
  "cargo_metadata",
  "sp-maybe-compressed-blob",
- "strum 0.23.0",
  "tempfile",
  "toml",
  "walkdir",
