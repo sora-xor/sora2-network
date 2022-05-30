@@ -10,7 +10,7 @@ use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
     #[clap(long)]
-    token: AssetId,
+    asset_id: AssetId,
     #[clap(long, short)]
     recipient: AccountId,
     #[clap(long, short)]
@@ -34,9 +34,14 @@ impl Command {
             .ok_or(anyhow!("Network not registered"))?;
         let balance = eth.get_balance(eth.address(), None).await?;
         info!("ETH {:?} balance: {}", eth.address(), balance);
-        let mut call = if self.token == eth_asset {
+        let mut call = if self.asset_id == eth_asset {
+            info!(
+                "Transfer native eth token to {} ({})",
+                self.recipient,
+                hex::encode(recipient)
+            );
             let eth_app = ethereum_gen::ETHApp::new(eth_app_address, eth.inner());
-            let balance = eth_app.balance().call().await?;
+            let balance = eth.get_balance(eth_app_address, None).await?;
             info!("EthApp balance: {}", balance);
             eth_app.lock(recipient, 1).value(self.amount)
         } else {
@@ -44,7 +49,7 @@ impl Command {
                 .api()
                 .storage()
                 .erc20_app()
-                .asset_kinds(&network_id, &self.token, None)
+                .asset_kinds(&network_id, &self.asset_id, None)
                 .await?
                 .ok_or(anyhow!("Asset is not registered"))?;
             let app_address = sub
@@ -58,15 +63,17 @@ impl Command {
                 .api()
                 .storage()
                 .erc20_app()
-                .token_addresses(&network_id, &self.token, None)
+                .token_addresses(&network_id, &self.asset_id, None)
                 .await?
                 .expect("should be registered");
             match asset_kind {
                 AssetKind::Thischain => {
+                    info!("Transfer native Sora token");
                     let sidechain_app = ethereum_gen::SidechainApp::new(app_address, eth.inner());
                     sidechain_app.lock(token_address, recipient, self.amount.into(), 1)
                 }
                 AssetKind::Sidechain => {
+                    info!("Transfer native ERC20 token");
                     let token = ethereum_gen::TestToken::new(token_address, eth.inner());
                     let balance = token.balance_of(eth.address()).call().await?;
                     let name = token.name().call().await?;
@@ -99,7 +106,8 @@ impl Command {
                 }
             }
         }
-        .legacy();
+        .legacy()
+        .from(eth.address());
         eth.inner()
             .fill_transaction(&mut call.tx, call.block)
             .await?;

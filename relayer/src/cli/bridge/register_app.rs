@@ -24,13 +24,13 @@ impl Commands {
         let network_id = eth.get_chainid().await?.as_u32();
         let call = match self {
             Self::ERC20App { contract } => {
-                runtime::runtime_types::erc20_app::pallet::Call::register_native_app {
+                runtime::runtime_types::erc20_app::pallet::Call::register_erc20_app {
                     network_id,
                     contract: *contract,
                 }
             }
             Self::NativeApp { contract } => {
-                runtime::runtime_types::erc20_app::pallet::Call::register_erc20_app {
+                runtime::runtime_types::erc20_app::pallet::Call::register_native_app {
                     network_id,
                     contract: *contract,
                 }

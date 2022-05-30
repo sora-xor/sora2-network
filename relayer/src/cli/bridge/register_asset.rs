@@ -10,6 +10,12 @@ use substrate_gen::runtime;
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum Commands {
+    ExistingERC20 {
+        #[clap(long)]
+        asset_id: AssetId32<PredefinedAssetId>,
+        #[clap(long)]
+        address: H160,
+    },
     ERC20 {
         #[clap(long)]
         address: H160,
@@ -30,6 +36,13 @@ impl Commands {
         let sub = args.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?.as_u32();
         let call = match self {
+            Self::ExistingERC20 { asset_id, address } => {
+                runtime::runtime_types::erc20_app::pallet::Call::register_existing_erc20_asset {
+                    network_id,
+                    asset_id: asset_id.clone(),
+                    address: *address,
+                }
+            }
             Self::ERC20 {
                 address,
                 name,

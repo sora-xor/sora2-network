@@ -394,11 +394,7 @@ impl Relay {
                         if let Ok(log) =
                             <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
                         {
-                            let msg = String::from_utf8_lossy(log.message.as_ref());
-                            info!(
-                                "Message dispatched: ({}, {}, {})",
-                                log.nonce, log.result, msg
-                            );
+                            info!("Message dispatched: {:?}", log);
                         } else if let Ok(log) =
                             <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
                                 &raw_log,

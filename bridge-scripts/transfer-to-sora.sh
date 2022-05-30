@@ -5,6 +5,6 @@ cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--ethereum-key $1 \
 	bridge transfer-to-sora \
-	--asset-id 0x0200070000000000000000000000000000000000000000000000000000000000 \
-	-r $2 \
-	-a $3
+	--asset-id $2 \
+	-r $3 \
+	-a $4
