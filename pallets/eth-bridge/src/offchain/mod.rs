@@ -43,7 +43,7 @@ use crate::requests::{
 use crate::types::{Log, Transaction, TransactionReceipt};
 use crate::util::Decoder;
 use crate::{
-    Address, BridgeContractAddress, Config, Error, Pallet, Requests, DEPOSIT_TOPIC,
+    BridgeContractAddress, Config, Error, EthAddress, Pallet, Requests, DEPOSIT_TOPIC,
     STORAGE_NETWORK_IDS_KEY,
 };
 use alloc::string::String;
@@ -97,7 +97,7 @@ pub mod crypto {
 impl<T: Config> Pallet<T> {
     fn parse_deposit_event(
         log: &Log,
-    ) -> Result<DepositEvent<Address, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<DepositEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
         if log.removed.unwrap_or(true) {
             return Err(Error::<T>::EthLogWasRemoved);
         }
@@ -125,10 +125,15 @@ impl<T: Config> Pallet<T> {
     /// Loops through the given array of logs and finds the first one that matches the type
     /// and topic.
     pub fn parse_main_event(
+        network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
-    ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<ContractEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
         for log in logs {
+            // Check address to be sure what it came from our contract
+            if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
+                continue;
+            }
             if log.removed.unwrap_or(true) {
                 continue;
             }
@@ -153,9 +158,9 @@ impl<T: Config> Pallet<T> {
                     let decoded = ethabi::decode(&types, &log.data.0)
                         .map_err(|_| Error::<T>::EthAbiDecodingError)?;
                     let mut decoder = Decoder::<T>::new(decoded);
-                    let added = decoder.next_bool()?;
+                    let removed = decoder.next_bool()?;
                     let peer_address = decoder.next_address()?;
-                    return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
+                    return Ok(ContractEvent::ChangePeers(H160(peer_address.0), removed));
                 }
                 hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
                     if kind == IncomingTransactionRequestKind::PrepareForMigration =>
@@ -287,7 +292,7 @@ impl<T: Config> Pallet<T> {
     /// a Sidechain(Owned) asset, otherwise, Thischain.
     pub(crate) fn get_asset_by_raw_asset_id(
         raw_asset_id: H256,
-        token_address: &Address,
+        token_address: &EthAddress,
         network_id: T::NetworkId,
     ) -> Result<Option<(T::AssetId, AssetKind)>, Error<T>> {
         let is_sidechain_token = raw_asset_id == H256::zero();
@@ -426,7 +431,7 @@ impl<T: Config> Pallet<T> {
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
 
-        let call = Self::parse_main_event(&tx_receipt.logs, kind)?;
+        let call = Self::parse_main_event(network_id, &tx_receipt.logs, kind)?;
         // TODO (optimization): pre-validate the parsed calls.
         IncomingRequest::<T>::try_from_contract_event(call, incoming_pre_request, at_height)
     }
@@ -434,7 +439,7 @@ impl<T: Config> Pallet<T> {
     /// Checks that the given contract address is known to the bridge network.
     ///
     /// There are special cases for XOR and VAL contracts.
-    pub fn ensure_known_contract(to: Address, network_id: T::NetworkId) -> Result<(), Error<T>> {
+    pub fn ensure_known_contract(to: EthAddress, network_id: T::NetworkId) -> Result<(), Error<T>> {
         if network_id == T::GetEthNetworkId::get() {
             ensure!(
                 to == BridgeContractAddress::<T>::get(network_id)

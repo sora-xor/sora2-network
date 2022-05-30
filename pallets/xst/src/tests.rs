@@ -566,4 +566,20 @@ mod tests {
             assert_eq!(quote_outcome_d.amount, quote_without_impact_d.amount);
         });
     }
+
+    #[test]
+    fn exchange_synthesic_to_any_token_disallowed() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+
+            let alice = alice();
+            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+            // add some reserves
+            assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
+        });
+    }
+
 }

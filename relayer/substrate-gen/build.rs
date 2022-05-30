@@ -1,10 +1,11 @@
+use sp_core::{Bytes, OpaqueMetadata};
 use std::path::PathBuf;
 use std::str::FromStr;
 
 fn main() {
-    let metadata: Vec<u8> = framenode_runtime::Runtime::metadata().into();
+    let metadata: Bytes = OpaqueMetadata::new(framenode_runtime::Runtime::metadata().into()).into();
     let out_dir = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).unwrap();
-    std::fs::write(out_dir.join("src/bytes/metadata.scale"), metadata).unwrap();
+    std::fs::write(out_dir.join("src/bytes/metadata.scale"), metadata.0).unwrap();
     let workspace_root = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .unwrap()
         .parent()

@@ -45,7 +45,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -70,6 +70,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -107,6 +108,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
@@ -143,6 +145,7 @@ impl Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -207,6 +210,7 @@ impl technical::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -219,6 +223,13 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {

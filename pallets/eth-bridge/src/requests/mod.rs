@@ -31,7 +31,7 @@
 use crate::contract::{ContractEvent, DepositEvent};
 use crate::offchain::SignatureParams;
 use crate::{
-    Address, BridgeNetworkId, BridgeTimepoint, Config, Error, Pallet, PeerAccountId,
+    BridgeNetworkId, BridgeTimepoint, Config, Error, EthAddress, Pallet, PeerAccountId,
     RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
 use codec::{Decode, Encode};
@@ -222,6 +222,13 @@ impl<T: Config> OutgoingRequest<T> {
     pub fn is_allowed_during_migration(&self) -> bool {
         matches!(self, OutgoingRequest::Migrate(_))
     }
+
+    pub fn should_be_skipped(&self) -> bool {
+        match self {
+            OutgoingRequest::RemovePeer(req) => req.should_be_skipped(),
+            _ => false,
+        }
+    }
 }
 
 /// Types of transaction-requests that can be made from a sidechain.
@@ -295,7 +302,7 @@ pub enum IncomingRequest<T: Config> {
 
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
-        event: ContractEvent<Address, T::AccountId, Balance>,
+        event: ContractEvent<EthAddress, T::AccountId, Balance>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
     ) -> Result<Self, Error<T>> {
@@ -344,13 +351,16 @@ impl<T: Config> IncomingRequest<T> {
                     should_take_fee: false,
                 })
             }
-            ContractEvent::ChangePeers(peer_address, added) => {
-                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address)
-                    .ok_or(Error::<T>::UnknownPeerAddress)?;
+            ContractEvent::ChangePeers(peer_address, removed) => {
+                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address);
+                ensure!(
+                    removed || peer_account_id.is_some(),
+                    Error::<T>::UnknownPeerAddress
+                );
                 IncomingRequest::ChangePeers(IncomingChangePeers {
                     peer_account_id,
                     peer_address,
-                    added,
+                    removed,
                     author,
                     tx_hash,
                     at_height,
@@ -817,6 +827,13 @@ impl<T: Config> OffchainRequest<T> {
     pub fn is_incoming(&self) -> bool {
         match self {
             OffchainRequest::Incoming(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn should_be_skipped(&self) -> bool {
+        match self {
+            OffchainRequest::Outgoing(req, _) => req.should_be_skipped(),
             _ => false,
         }
     }

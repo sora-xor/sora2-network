@@ -2,7 +2,7 @@ use crate::prelude::*;
 use bridge_types::H256;
 use codec::IoReader;
 use common::{AssetId32, PredefinedAssetId};
-use pallet_mmr_primitives::Proof;
+use sp_mmr_primitives::Proof;
 pub use substrate_gen::{runtime, DefaultConfig};
 pub use subxt::rpc::Subscription;
 use subxt::sp_core::Bytes;

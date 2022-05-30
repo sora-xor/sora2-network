@@ -1,8 +1,11 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
+pub use common::TechAssetId as Tas;
+pub use common::TechPurpose::*;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, DEXId,
+    Description, CERES_ASSET_ID,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -10,7 +13,6 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
-use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -32,6 +34,7 @@ construct_runtime! {
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>},
     }
 }
@@ -40,12 +43,11 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
-    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -121,6 +123,15 @@ impl common::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type Event = Event;
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 impl tokens::Config for Runtime {

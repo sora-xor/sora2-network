@@ -3,6 +3,7 @@ pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
 import "./IAssetRegister.sol";
@@ -14,6 +15,7 @@ enum ChannelId {
 
 contract ERC20App is AccessControl, IAssetRegister {
     using ScaleCodec for uint256;
+    using SafeERC20 for IERC20;
 
     mapping(address => bool) public tokens;
 
@@ -73,20 +75,25 @@ contract ERC20App is AccessControl, IAssetRegister {
                 _channelId == ChannelId.Incentivized,
             "Invalid channel ID"
         );
+        IERC20 token = IERC20(_token);
+        uint256 beforeBalance = token.balanceOf(address(this));
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 transferredAmount = token.balanceOf(address(this)) -
+            beforeBalance;
 
-        emit Locked(_token, msg.sender, _recipient, _amount);
+        emit Locked(_token, msg.sender, _recipient, transferredAmount);
 
-        bytes memory call = encodeCall(_token, msg.sender, _recipient, _amount);
+        bytes memory call = encodeCall(
+            _token,
+            msg.sender,
+            _recipient,
+            transferredAmount
+        );
 
         OutboundChannel channel = OutboundChannel(
             channels[_channelId].outbound
         );
         channel.submit(msg.sender, call);
-
-        require(
-            IERC20(_token).transferFrom(msg.sender, address(this), _amount),
-            "Contract token allowances insufficient to complete this lock request"
-        );
     }
 
     function unlock(
@@ -96,11 +103,7 @@ contract ERC20App is AccessControl, IAssetRegister {
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
         require(tokens[_token], "Token is not registered");
-        require(_amount > 0, "Must unlock a positive amount");
-        require(
-            IERC20(_token).transfer(_recipient, _amount),
-            "ERC20 token transfer failed"
-        );
+        IERC20(_token).safeTransfer(_recipient, _amount);
         emit Unlocked(_token, _sender, _recipient, _amount);
     }
 

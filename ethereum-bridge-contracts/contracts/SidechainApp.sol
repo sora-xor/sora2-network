@@ -17,8 +17,6 @@ enum ChannelId {
 contract SidechainApp is AccessControl, IAssetRegister {
     using ScaleCodec for uint256;
 
-    mapping(address => uint256) public balances;
-
     mapping(address => bool) public tokens;
 
     mapping(ChannelId => Channel) public channels;
@@ -79,8 +77,8 @@ contract SidechainApp is AccessControl, IAssetRegister {
             "Invalid channel ID"
         );
 
-        balances[_token] = balances[_token] + _amount;
-
+        ERC20Burnable mtoken = ERC20Burnable(_token);
+        mtoken.burnFrom(msg.sender, _amount);
         emit Burned(_token, msg.sender, _recipient, _amount);
 
         bytes memory call = mintCall(_token, msg.sender, _recipient, _amount);
@@ -89,9 +87,6 @@ contract SidechainApp is AccessControl, IAssetRegister {
             channels[_channelId].outbound
         );
         channel.submit(msg.sender, call);
-
-        ERC20Burnable mtoken = ERC20Burnable(_token);
-        mtoken.burnFrom(msg.sender, _amount);
     }
 
     function unlock(
@@ -101,7 +96,6 @@ contract SidechainApp is AccessControl, IAssetRegister {
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
         require(tokens[_token], "Token is not registered");
-        require(_amount > 0, "Must unlock a positive amount");
 
         MasterToken tokenInstance = MasterToken(_token);
         tokenInstance.mintTokens(_recipient, _amount);

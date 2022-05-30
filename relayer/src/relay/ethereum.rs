@@ -178,7 +178,7 @@ impl Relay {
             .api()
             .tx()
             .ethereum_light_client()
-            .import_header(self.chain_id, header, proof)
+            .import_header(self.chain_id, header, proof)?
             .sign_and_submit_then_watch_default(&self.sub)
             .await
             .context("submit import header extrinsic")?;

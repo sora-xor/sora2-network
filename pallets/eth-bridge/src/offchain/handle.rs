@@ -41,7 +41,8 @@ use crate::{
     MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS, MAX_PENDING_TX_BLOCKS_PERIOD,
     MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE, RE_HANDLE_TXS_PERIOD,
     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_PENDING_TRANSACTIONS_KEY, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
+    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
@@ -52,7 +53,7 @@ use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{One, Saturating, Zero};
 use frame_support::traits::Get;
-use frame_support::{ensure, fail};
+use frame_support::{ensure, fail, log};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
@@ -133,7 +134,7 @@ impl<T: Config> Pallet<T> {
     /// (`SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION`), it's re-sent.
     fn handle_substrate_block(
         block: SubstrateBlockLimited,
-        finalized_height: T::BlockNumber,
+        current_height: T::BlockNumber,
     ) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
@@ -161,7 +162,7 @@ impl<T: Config> Pallet<T> {
                     let not_sent_or_too_long_finalization = tx
                         .submitted_at
                         .map(|submitted_height| {
-                            finalized_height
+                            current_height
                                 > submitted_height
                                     + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
                         })
@@ -316,6 +317,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
         for log in logs {
+            // Check address to be sure what it came from our contract
+            if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
+                continue;
+            }
             // We assume that all events issued by our contracts are valid and, therefore, ignore
             // the invalid ones.
             let event = match Self::parse_deposit_event(&log) {
@@ -446,18 +451,23 @@ impl<T: Config> Pallet<T> {
         let substrate_finalized_height =
             <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
         let s_sub_to_handle_from_height =
-            StorageValueRef::persistent(b"eth-bridge-ocw::sub-to-handle-from-height");
+            StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
             .get::<T::BlockNumber>()
-            .ok()
-            .flatten();
+            .map_err(|_| Error::<T>::ReadStorageError)?;
         if from_block_opt.is_none() {
             s_sub_to_handle_from_height.set(&substrate_finalized_height);
         }
-        let from_block = from_block_opt.unwrap_or(substrate_finalized_height);
-        if from_block <= substrate_finalized_height {
+        let mut from_block = from_block_opt.unwrap_or(substrate_finalized_height);
+        let to_block = from_block + SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK.into();
+        while from_block <= substrate_finalized_height && from_block < to_block {
+            log::debug!(
+                "Handle substrate block: {:?}, finalized block: {:?}",
+                from_block,
+                substrate_finalized_height
+            );
             match Self::load_substrate_block(from_block)
-                .and_then(|block| Self::handle_substrate_block(block, substrate_finalized_height))
+                .and_then(|block| Self::handle_substrate_block(block, from_block))
             {
                 Ok(_) => {}
                 Err(e) => {
@@ -468,11 +478,9 @@ impl<T: Config> Pallet<T> {
                     return Ok(substrate_finalized_height);
                 }
             };
-            if from_block != substrate_finalized_height {
-                // Handle only one block per off-chain thread. Since soft-forks occur quite often,
-                // it should always "catch up" the finalized height.
-                s_sub_to_handle_from_height.set(&(from_block + T::BlockNumber::one()));
-            }
+            from_block += T::BlockNumber::one();
+            // Will not process block with height bigger than finalized height
+            s_sub_to_handle_from_height.set(&from_block);
         }
         Ok(substrate_finalized_height)
     }
@@ -558,6 +566,17 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    fn is_peer_for_network(network_id: T::NetworkId) -> bool {
+        let keystore_accounts = Self::get_keystore_accounts();
+        let peers = Self::peers(network_id);
+        for account in keystore_accounts {
+            if peers.contains(&account) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Retrieves latest needed information about networks and handles corresponding
     /// requests queues.
     ///
@@ -571,6 +590,10 @@ impl<T: Config> Pallet<T> {
     ) where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
+        if !Self::is_peer_for_network(network_id) {
+            log::debug!("Node is not peer for network {:?}, skipping", network_id);
+            return;
+        }
         let current_eth_height = match Self::handle_ethereum(network_id) {
             Ok(v) => v,
             Err(_e) => {
@@ -587,6 +610,10 @@ impl<T: Config> Pallet<T> {
                 Some(v) => v,
                 _ => continue, // TODO: remove from queue
             };
+            if request.should_be_skipped() {
+                log::debug!("Temporary skip request: {:?}", request_hash);
+                continue;
+            }
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(network_id, &request_hash);
             let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);

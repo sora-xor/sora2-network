@@ -1,28 +1,40 @@
-mod register;
 mod register_app;
 mod register_asset;
+mod register_bridge;
+mod relay;
+mod test_transfers;
 mod transfer_to_ethereum;
 mod transfer_to_sora;
 
-use super::prelude::*;
+use crate::prelude::*;
+use clap::*;
 
-#[derive(Subcommand, Debug)]
-pub enum Commands {
+use super::BaseArgs;
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Commands {
+    #[clap(subcommand)]
+    Relay(relay::Commands),
+    RegisterBridge(register_bridge::Command),
+    #[clap(subcommand)]
+    RegisterApp(register_app::Commands),
+    #[clap(subcommand)]
+    RegisterAsset(register_asset::Commands),
+    TestTransfers(test_transfers::Command),
     TransferToSora(transfer_to_sora::Command),
     TransferToEthereum(transfer_to_ethereum::Command),
-    Register(register::Command),
-    RegisterApp(register_app::Command),
-    RegisterAsset(register_asset::Command),
 }
 
 impl Commands {
-    pub async fn run(&self) -> AnyResult<()> {
+    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
         match self {
-            Self::TransferToSora(cmd) => cmd.run().await,
-            Self::TransferToEthereum(cmd) => cmd.run().await,
-            Self::Register(cmd) => cmd.run().await,
-            Self::RegisterApp(cmd) => cmd.run().await,
-            Self::RegisterAsset(cmd) => cmd.run().await,
+            Commands::Relay(cmd) => cmd.run(args).await,
+            Commands::RegisterBridge(cmd) => cmd.run(args).await,
+            Commands::RegisterApp(cmd) => cmd.run(args).await,
+            Commands::RegisterAsset(cmd) => cmd.run(args).await,
+            Commands::TestTransfers(cmd) => cmd.run(args).await,
+            Commands::TransferToSora(cmd) => cmd.run(args).await,
+            Commands::TransferToEthereum(cmd) => cmd.run(args).await,
         }
     }
 }

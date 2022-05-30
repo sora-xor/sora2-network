@@ -16,6 +16,7 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::EnsureOrigin;
 use frame_support::transactional;
@@ -46,17 +47,21 @@ pub trait WeightInfo {
     fn burn() -> Weight;
     fn mint() -> Weight;
     fn register_network() -> Weight;
+    fn register_network_with_existing_asset() -> Weight;
 }
 
 impl WeightInfo for () {
     fn burn() -> Weight {
-        0
+        EXTRINSIC_FIXED_WEIGHT
     }
     fn mint() -> Weight {
-        0
+        EXTRINSIC_FIXED_WEIGHT
     }
     fn register_network() -> Weight {
-        0
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn register_network_with_existing_asset() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
 }
 
@@ -66,6 +71,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
+    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
@@ -191,6 +197,35 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
         #[transactional]
         pub fn register_network(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            name: AssetName,
+            symbol: AssetSymbol,
+            contract: H160,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !Addresses::<T>::contains_key(network_id),
+                Error::<T>::AppAlreadyExists
+            );
+            let bridge_account = Self::bridge_account()?;
+            let asset_id = assets::Pallet::<T>::register_from(
+                &bridge_account,
+                symbol,
+                name,
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            )?;
+            Self::register_network_inner(network_id, asset_id, contract)?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
+        #[transactional]
+        pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
             asset_id: AssetIdOf<T>,

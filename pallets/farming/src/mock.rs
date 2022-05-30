@@ -46,7 +46,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
 
@@ -120,6 +120,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = 1024;
 }
 
@@ -143,9 +144,9 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-
         Farming: farming::{Pallet, Storage},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -249,6 +250,13 @@ impl technical::Config for Runtime {
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
@@ -266,6 +274,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -295,6 +304,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 

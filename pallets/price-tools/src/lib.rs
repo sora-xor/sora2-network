@@ -65,7 +65,7 @@ pub use pallet::*;
 /// Count of blocks to participate in avg value calculation.
 pub const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks when price goes down.
-const MAX_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00007); // 0.007%
+const MAX_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00005); // 0.005%
 /// Max percentage difference for average value between blocks when price goes up.
 const MAX_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197%
 

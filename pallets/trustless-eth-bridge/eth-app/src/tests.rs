@@ -99,7 +99,7 @@ fn should_not_burn_on_commitment_failure() {
 fn test_register_network() {
     new_tester().execute_with(|| {
         assert!(!Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
-        assert_ok!(EthApp::register_network(
+        assert_ok!(EthApp::register_network_with_existing_asset(
             Origin::root(),
             BASE_NETWORK_ID + 1,
             XOR,
@@ -114,7 +114,12 @@ fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
         assert_noop!(
-            EthApp::register_network(Origin::root(), BASE_NETWORK_ID, XOR, H160::repeat_byte(12)),
+            EthApp::register_network_with_existing_asset(
+                Origin::root(),
+                BASE_NETWORK_ID,
+                XOR,
+                H160::repeat_byte(12)
+            ),
             Error::<Test>::AppAlreadyExists
         );
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));

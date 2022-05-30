@@ -1,0 +1,79 @@
+[package]
+description = "Pallet for CERES Launchpad/ILO platform."
+authors = [
+    "Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>, Jovan Milosevic <jovan.milosevic@cerestoken.io>",
+]
+license = "BSD-4-Clause"
+homepage = "https://cerestoken.io"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "ceres-launchpad"
+version = "1.0.0"
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+ceres-token-locker = { path = "../ceres-token-locker", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+serde = { version = "1.0.101", optional = true, features = [
+    "derive",
+], default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
+vested-rewards = { path = "../vested-rewards", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+technical = { path = "../technical", default-features = false }
+hex-literal = "0.3.1"
+
+[dev-dependencies]
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../demeter-farming-platform" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
+permissions = { path = "../permissions" }
+technical = { path = "../technical" }
+pswap-distribution = { path = "../pswap-distribution" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+dex-manager = { path = "../dex-manager" }
+
+[features]
+default = ["std"]
+
+std = [
+    "codec/std",
+    "common/std",
+    "assets/std",
+    "pool-xyk/std",
+    "pswap-distribution/std",
+    "vested-rewards/std",
+    "trading-pair/std",
+    "technical/std",
+    "frame-support/std",
+    "frame-system/std",
+    'serde/std',
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

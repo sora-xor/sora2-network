@@ -28,9 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult as Result},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -41,9 +43,9 @@ use std::sync::Arc;
 // Runtime API imports.
 pub use iroha_migration_runtime_api::IrohaMigrationAPI as IrohaMigrationRuntimeAPI;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait IrohaMigrationAPI<BlockHash> {
-    #[rpc(name = "irohaMigration_needsMigration")]
+    #[method(name = "irohaMigration_needsMigration")]
     fn needs_migration(&self, iroha_address: String, at: Option<BlockHash>) -> Result<bool>;
 }
 
@@ -62,7 +64,7 @@ impl<C, B> IrohaMigrationClient<C, B> {
     }
 }
 
-impl<C, Block> IrohaMigrationAPI<<Block as BlockT>::Hash> for IrohaMigrationClient<C, Block>
+impl<C, Block> IrohaMigrationAPIServer<<Block as BlockT>::Hash> for IrohaMigrationClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
@@ -76,10 +78,6 @@ where
             self.client.info().best_hash,
         ));
         api.needs_migration(&at, iroha_address)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to check if needs migration.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

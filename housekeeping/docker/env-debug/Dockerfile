@@ -1,9 +1,5 @@
-FROM debian:bullseye-slim
-# Set environment variables
-ENV RUSTUP_HOME="/opt/rust"
-ENV CARGO_HOME="/opt/rust"
-ENV PATH="$PATH:$RUSTUP_HOME/bin"
-ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
+FROM docker.io/paritytech/ci-linux:production
+
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
@@ -12,8 +8,9 @@ RUN apt-get update && \
     curl \
     git binaryen \
     software-properties-common \
-    llvm clang && \
+    llvm clang make cmake time rhash && \
     rm -rf /var/lib/apt/lists/*
+
 # Install docker
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 RUN add-apt-repository \
@@ -22,13 +19,16 @@ RUN add-apt-repository \
     apt-get install --no-install-recommends -y \
     docker-ce docker-ce-cli containerd.io && \
     rm -rf /var/lib/apt/lists/*
-# Install rust
-ENV RUST_VERSION=nightly-2021-11-22
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    rustup target add wasm32-unknown-unknown
 
-RUN cargo install sccache && \
-    cargo install grcov && \
+# Install rust
+# ENV RUST_VERSION=nightly-2021-12-10
+ENV GRCOV_VERSION=0.8.7
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
+#     cargo install sccache && \
+#     cargo install grcov --version ${GRCOV_VERSION} && \
+#     rustup component add llvm-tools-preview && \
+#     rustup target add wasm32-unknown-unknown
+RUN cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview
 
 # Build project
@@ -40,5 +40,6 @@ RUN cargo check && \
     cargo test && \
     cargo check --features private-net && \
     cargo test --features private-net && \
-    cargo check --features runtime-benchmarks
+    cargo check --features runtime-benchmarks && \
+    rm -rf $(find target -name deps -type d) $(find target -name build -type d)
 WORKDIR /

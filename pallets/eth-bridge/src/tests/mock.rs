@@ -38,7 +38,7 @@ use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
     STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
-    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
+    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
 };
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
@@ -574,19 +574,30 @@ impl State {
             digest: (),
         });
         // Thischain block.
-        push_json_rpc_response(finalized_block_hash);
-        push_json_rpc_response(SubstrateSignedBlockLimited {
-            block: SubstrateBlockLimited {
-                header: SubstrateHeaderLimited {
-                    parent_hash: Default::default(),
-                    number: finalized_thischain_height.into(),
-                    state_root: Default::default(),
-                    extrinsics_root: Default::default(),
-                    digest: (),
+        let from_block = self
+            .storage_read::<BlockNumber>(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY)
+            .unwrap_or(finalized_thischain_height);
+        let handle_count = if finalized_thischain_height < from_block {
+            0
+        } else {
+            (finalized_thischain_height - from_block + 1)
+                .min(SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK as u64)
+        };
+        for _ in 0..handle_count {
+            push_json_rpc_response(finalized_block_hash);
+            push_json_rpc_response(SubstrateSignedBlockLimited {
+                block: SubstrateBlockLimited {
+                    header: SubstrateHeaderLimited {
+                        parent_hash: Default::default(),
+                        number: finalized_thischain_height.into(),
+                        state_root: Default::default(),
+                        extrinsics_root: Default::default(),
+                        digest: (),
+                    },
+                    extrinsics: vec![],
                 },
-                extrinsics: vec![],
-            },
-        });
+            });
+        }
         // Sidechain height.
         push_json_rpc_response(U64::from(sidechain_height));
 
@@ -628,13 +639,16 @@ impl State {
         }
     }
 
-    pub fn storage_read<T: Decode + Default>(&self, key: &[u8]) -> T {
+    pub fn storage_read_or_default<T: Decode + Default>(&self, key: &[u8]) -> T {
+        self.storage_read(key).unwrap_or_default()
+    }
+
+    pub fn storage_read<T: Decode + Default>(&self, key: &[u8]) -> Option<T> {
         self.offchain_state
             .read()
             .persistent_storage
             .get(key)
             .and_then(|x| Decode::decode(&mut &x[..]).ok())
-            .unwrap_or_default()
     }
 
     pub fn storage_remove(&self, key: &[u8]) {
@@ -645,15 +659,15 @@ impl State {
     }
 
     pub fn pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
-        self.storage_read(STORAGE_PENDING_TRANSACTIONS_KEY)
+        self.storage_read_or_default(STORAGE_PENDING_TRANSACTIONS_KEY)
     }
 
     pub fn failed_pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
-        self.storage_read(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY)
+        self.storage_read_or_default(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY)
     }
 
     pub fn substrate_to_handle_from_height(&self) -> BlockNumber {
-        self.storage_read(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY)
+        self.storage_read_or_default(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY)
     }
 
     pub fn set_should_fail_send_signed_transactions(&self, flag: bool) {
@@ -707,6 +721,7 @@ impl Default for ExtBuilder {
                 (VAL.into(), common::balance!(33900000)),
             ]),
             Some(4),
+            Default::default(),
         );
         builder
     }
@@ -739,6 +754,7 @@ impl ExtBuilder {
         assets: Vec<AssetConfig<AssetId32<PredefinedAssetId>>>,
         reserves: Option<Vec<(AssetId32<PredefinedAssetId>, Balance)>>,
         peers_num: Option<usize>,
+        contract_address: H160,
     ) -> u32 {
         let net_id = self.last_network_id;
         let multisig_account_id = bridge_multisig::Pallet::<Runtime>::multi_account_id(
@@ -754,7 +770,7 @@ impl ExtBuilder {
                     initial_peers: peers_keys.iter().map(|(_, id, _)| id).cloned().collect(),
                     bridge_account_id: multisig_account_id.clone(),
                     assets,
-                    bridge_contract_address: Default::default(),
+                    bridge_contract_address: contract_address,
                     reserves: reserves.unwrap_or_default(),
                 },
                 ocw_keypairs: peers_keys,
@@ -852,8 +868,8 @@ impl ExtBuilder {
                 (
                     x.1,
                     self.root_account_id.clone(),
-                    AssetSymbol(b"".to_vec()),
-                    AssetName(b"".to_vec()),
+                    AssetSymbol(b"T".to_vec()),
+                    AssetName(b"T".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,

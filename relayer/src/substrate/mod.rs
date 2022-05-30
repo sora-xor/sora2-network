@@ -4,17 +4,16 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::prelude::*;
-use common::Balance;
-use jsonrpsee_core::client::CertificateStore;
-use pallet_mmr_primitives::{EncodableOpaqueLeaf, Proof};
-use pallet_mmr_rpc::{LeafIndex, LeafProof as RawLeafProof};
+use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
+use pallet_mmr_rpc::MmrApiClient;
+use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafIndex, Proof};
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
 use subxt::extrinsic::Signer;
 pub use subxt::rpc::Subscription;
-use subxt::rpc::{rpc_params, ClientT, SubscriptionClientT};
+use subxt::rpc::{rpc_params, ClientT};
 use subxt::sp_core::{Bytes, Pair};
-use subxt::{ClientBuilder, Config};
+use subxt::{ClientBuilder, Config, RpcClient};
 pub use types::*;
 
 pub struct UnsignedClient(ApiInner);
@@ -26,21 +25,61 @@ impl Clone for UnsignedClient {
 }
 
 impl UnsignedClient {
-    pub async fn new(url: impl Into<Uri>) -> AnyResult<Self> {
-        let url = url.into();
-        let (sender, receiver) = subxt::rpc::WsTransportClientBuilder::default()
-            .certificate_store(CertificateStore::WebPki)
-            .build(url)
-            .await
-            .context("connect ws")?;
-        let client = subxt::rpc::RpcClientBuilder::default().build(sender, receiver);
+    pub async fn new(url: impl Into<String>) -> AnyResult<Self> {
         let api = ClientBuilder::new()
-            .set_client(client)
+            .set_url(url)
             .build()
             .await
             .context("Substrate client api build")?
             .to_runtime_api::<ApiInner>();
         Ok(Self(api))
+    }
+
+    pub fn rpc(&self) -> &RpcClient {
+        &self.api().client.rpc().client
+    }
+
+    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash> {
+        self.rpc()
+    }
+
+    pub fn beefy(
+        &self,
+    ) -> &impl beefy_gadget_rpc::BeefyApiClient<types::EncodedBeefyCommitment, BlockHash> {
+        self.rpc()
+    }
+
+    pub fn assets(
+        &self,
+    ) -> &impl assets_rpc::AssetsAPIClient<
+        BlockHash,
+        AccountId,
+        AssetId,
+        Balance,
+        Option<assets_runtime_api::BalanceInfo<Balance>>,
+        Option<
+            assets_runtime_api::AssetInfo<
+                AssetId,
+                AssetSymbol,
+                AssetName,
+                u8,
+                ContentSource,
+                Description,
+            >,
+        >,
+        Vec<
+            assets_runtime_api::AssetInfo<
+                AssetId,
+                AssetSymbol,
+                AssetName,
+                u8,
+                ContentSource,
+                Description,
+            >,
+        >,
+        Vec<AssetId>,
+    > {
+        self.rpc()
     }
 
     pub async fn sign_with_keypair(self, key: impl Into<KeyPair>) -> AnyResult<SignedClient> {
@@ -98,33 +137,27 @@ impl UnsignedClient {
         Ok(res.map(|x| x.0))
     }
 
-    pub async fn subscribe_beefy(&self) -> AnyResult<Subscription<EncodedBeefyCommitment>> {
-        let sub = self
-            .api()
-            .client
-            .rpc()
-            .client
-            .subscribe(
-                "beefy_subscribeJustifications",
-                None,
-                "beefy_unsubscribeJustifications",
-            )
-            .await?;
-        Ok(sub)
-    }
+    // pub async fn subscribe_beefy(&self) -> AnyResult<Subscription<EncodedBeefyCommitment>> {
+    //     let sub = self
+    //         .api()
+    //         .client
+    //         .rpc()
+    //         .client
+    //         .subscribe(
+    //             "beefy_subscribeJustifications",
+    //             None,
+    //             "beefy_unsubscribeJustifications",
+    //         )
+    //         .await?;
+    //     Ok(sub)
+    // }
 
     pub async fn mmr_generate_proof(
         &self,
         leaf_index: LeafIndex,
         at: Option<BlockHash>,
     ) -> AnyResult<LeafProof> {
-        let res = self
-            .api()
-            .client
-            .rpc()
-            .client
-            .request::<RawLeafProof<BlockHash>>("mmr_generateProof", rpc_params![leaf_index, at])
-            .await?;
+        let res = self.mmr().generate_proof(leaf_index, at).await?;
         let leaf = MmrLeaf::decode(
             &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
                 .into_opaque_leaf()
@@ -136,24 +169,6 @@ impl UnsignedClient {
             proof,
             block_hash: res.block_hash,
         })
-    }
-
-    pub async fn get_total_balance(
-        &self,
-        asset_id: AssetId,
-        account: AccountId,
-    ) -> AnyResult<Option<Balance>> {
-        let res = self
-            .api()
-            .client
-            .rpc()
-            .client
-            .request::<Option<assets_runtime_api::BalanceInfo<Balance>>>(
-                "assets_totalBalance",
-                rpc_params![asset_id, account],
-            )
-            .await?;
-        Ok(res.map(|x| x.balance))
     }
 
     pub fn api(&self) -> &ApiInner {

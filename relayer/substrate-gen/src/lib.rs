@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate codec;
 
-#[macro_use]
-extern crate serde;
-
 /// Separated components of a secp256k1 signature.
 #[derive(
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, scale_info::TypeInfo, Default, Debug,
@@ -15,9 +12,7 @@ pub struct SignatureParams {
     pub v: u8,
 }
 
-#[derive(
-    Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo, Serialize, Deserialize,
-)]
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum AssetKind {
     Thischain,
     Sidechain,
@@ -26,7 +21,7 @@ pub enum AssetKind {
 
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
-    generated_type_derives = "Clone"
+    derive_for_all_types = "Clone"
 )]
 pub mod runtime {
     #[subxt(substitute_type = "eth_bridge::requests::AssetKind")]
@@ -47,6 +42,10 @@ pub mod runtime {
     use bridge_types::HeaderId;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use common::AssetId32;
+    #[subxt(substitute_type = "common::primitives::AssetName")]
+    use common::AssetName;
+    #[subxt(substitute_type = "common::primitives::AssetSymbol")]
+    use common::AssetSymbol;
     #[subxt(substitute_type = "common::primitives::LiquiditySourceType")]
     use common::LiquiditySourceType;
     #[subxt(substitute_type = "common::primitives::PredefinedAssetId")]
@@ -66,7 +65,6 @@ pub mod runtime {
 }
 
 pub use config::DefaultConfig;
-
 pub mod config {
     use std::fmt::Debug;
     use subxt::*;

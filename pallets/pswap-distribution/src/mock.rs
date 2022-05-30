@@ -46,7 +46,7 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{AccountId32, Perbill};
+use sp_runtime::{AccountId32, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -146,6 +146,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -177,6 +178,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -261,6 +263,13 @@ impl dex_manager::Config for Runtime {}
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 

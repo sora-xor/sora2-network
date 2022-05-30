@@ -33,8 +33,9 @@ use crate::offchain::SignatureParams;
 use crate::requests::Assets;
 use crate::util::get_bridge_account;
 use crate::{
-    Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
-    EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint, WeightInfo,
+    AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
+    EthAddress, EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint,
+    WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use codec::{Decode, Encode};
@@ -63,7 +64,7 @@ pub const MAX_PEERS: usize = 100;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingAddToken<T: Config> {
-    pub token_address: Address,
+    pub token_address: EthAddress,
     pub asset_id: T::AssetId,
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
@@ -104,9 +105,9 @@ impl<T: Config> IncomingAddToken<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeers<T: Config> {
-    pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
-    pub added: bool,
+    pub peer_account_id: Option<T::AccountId>,
+    pub peer_address: EthAddress,
+    pub removed: bool,
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
@@ -122,10 +123,16 @@ impl<T: Config> IncomingChangePeers<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let pending_peer =
             crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
-        ensure!(
-            pending_peer == self.peer_account_id,
-            Error::<T>::WrongPendingPeer
-        );
+        if !self.removed {
+            ensure!(
+                &pending_peer
+                    == self
+                        .peer_account_id
+                        .as_ref()
+                        .ok_or(Error::<T>::UnknownPeerAddress)?,
+                Error::<T>::WrongPendingPeer
+            );
+        }
         let is_eth_network = self.network_id == T::GetEthNetworkId::get();
         let eth_sync_peers_opt = if is_eth_network {
             let mut eth_sync_peers: EthPeersSync = crate::PendingEthPeersSync::<T>::get();
@@ -139,16 +146,22 @@ impl<T: Config> IncomingChangePeers<T> {
             .map(|x| x.is_ready())
             .unwrap_or(true);
         if is_ready {
-            if self.added {
-                let account_id = self.peer_account_id.clone();
+            if self.removed {
+                if let Some(peer) = &self.peer_account_id {
+                    frame_system::Pallet::<T>::dec_consumers(peer);
+                }
+            } else {
+                let account_id = self
+                    .peer_account_id
+                    .as_ref()
+                    .ok_or(Error::<T>::UnknownPeerAddress)?
+                    .clone();
                 bridge_multisig::Pallet::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
-            } else {
-                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }
@@ -182,7 +195,7 @@ pub enum ChangePeersContract {
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_account_id: T::AccountId,
-    pub peer_address: Address,
+    pub peer_address: EthAddress,
     pub added: bool,
     pub contract: ChangePeersContract,
     pub author: T::AccountId,
@@ -252,7 +265,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingTransfer<T: Config> {
-    pub from: Address,
+    pub from: EthAddress,
     pub to: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
@@ -554,7 +567,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingMigrate<T: Config> {
-    pub new_contract_address: Address,
+    pub new_contract_address: EthAddress,
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,

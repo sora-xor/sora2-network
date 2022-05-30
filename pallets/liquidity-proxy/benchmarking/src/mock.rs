@@ -51,7 +51,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{AccountId32, DispatchError, DispatchResult};
+use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -97,6 +97,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -115,7 +116,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -123,6 +124,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -256,7 +258,6 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
@@ -270,6 +271,13 @@ impl dex_api::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
@@ -294,6 +302,7 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -458,6 +467,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;

@@ -3,7 +3,7 @@
 use crate::*;
 use bridge_types::types::{AssetKind, ChannelId};
 use bridge_types::EthNetworkId;
-use common::{balance, AssetId32, PredefinedAssetId, DAI, ETH, XOR};
+use common::{balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, ETH, XOR};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
@@ -91,10 +91,12 @@ benchmarks! {
         let asset_id: T::AssetId = ETH.into();
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
-        assert!(!TokenAddresses::<T>::contains_key(network_id, asset_id));
-    }: _(RawOrigin::Root, network_id, asset_id, address)
+        let symbol = AssetSymbol(b"ETH".to_vec());
+        let name = AssetName(b"ETH".to_vec());
+        assert!(!AssetsByAddresses::<T>::contains_key(network_id, address));
+    }: _(RawOrigin::Root, network_id, address, symbol, name)
     verify {
-        assert!(TokenAddresses::<T>::contains_key(network_id, asset_id));
+        assert!(AssetsByAddresses::<T>::contains_key(network_id, address));
     }
 
     register_native_asset {

@@ -29,10 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use common::InvokeRPCError;
 pub use eth_bridge_runtime_api::EthBridgeRuntimeApi;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result as RpcResult};
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -41,7 +43,7 @@ use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use std::sync::Arc;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait EthBridgeApi<
     BlockHash,
     Hash,
@@ -49,7 +51,7 @@ pub trait EthBridgeApi<
     AccountId,
     AssetKind,
     AssetId,
-    Address,
+    EthAddress,
     OffchainRequest,
     RequestStatus,
     OutgoingRequestEncoded,
@@ -58,7 +60,7 @@ pub trait EthBridgeApi<
     BalancePrecision,
 >
 {
-    #[rpc(name = "ethBridge_getRequests")]
+    #[method(name = "ethBridge_getRequests")]
     fn get_requests(
         &self,
         request_hashes: Vec<Hash>,
@@ -67,7 +69,7 @@ pub trait EthBridgeApi<
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>>;
 
-    #[rpc(name = "ethBridge_getApprovedRequests")]
+    #[method(name = "ethBridge_getApprovedRequests")]
     fn get_approved_requests(
         &self,
         request_hashes: Vec<Hash>,
@@ -75,7 +77,7 @@ pub trait EthBridgeApi<
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>>;
 
-    #[rpc(name = "ethBridge_getApprovals")]
+    #[method(name = "ethBridge_getApprovals")]
     fn get_approvals(
         &self,
         request_hashes: Vec<Hash>,
@@ -83,7 +85,7 @@ pub trait EthBridgeApi<
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<Vec<Approval>>, DispatchError>>;
 
-    #[rpc(name = "ethBridge_getAccountRequests")]
+    #[method(name = "ethBridge_getAccountRequests")]
     fn get_account_requests(
         &self,
         account_id: AccountId,
@@ -91,7 +93,7 @@ pub trait EthBridgeApi<
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<(NetworkId, Hash)>, DispatchError>>;
 
-    #[rpc(name = "ethBridge_getRegisteredAssets")]
+    #[method(name = "ethBridge_getRegisteredAssets")]
     fn get_registered_assets(
         &self,
         network_id: Option<NetworkId>,
@@ -101,7 +103,7 @@ pub trait EthBridgeApi<
             Vec<(
                 AssetKind,
                 (AssetId, BalancePrecision),
-                Option<(Address, BalancePrecision)>,
+                Option<(EthAddress, BalancePrecision)>,
             )>,
             DispatchError,
         >,
@@ -130,21 +132,21 @@ impl<
         AccountId,
         AssetKind,
         AssetId,
-        Address,
+        EthAddress,
         OffchainRequest,
         RequestStatus,
         OutgoingRequestEncoded,
         NetworkId,
         BalancePrecision,
     >
-    EthBridgeApi<
+    EthBridgeApiServer<
         <Block as BlockT>::Hash,
         Hash,
         Approval,
         AccountId,
         AssetKind,
         AssetId,
-        Address,
+        EthAddress,
         OffchainRequest,
         RequestStatus,
         OutgoingRequestEncoded,
@@ -163,7 +165,7 @@ where
         AccountId,
         AssetKind,
         AssetId,
-        Address,
+        EthAddress,
         OffchainRequest,
         RequestStatus,
         OutgoingRequestEncoded,
@@ -175,7 +177,7 @@ where
     AccountId: Codec,
     AssetKind: Codec,
     AssetId: Codec,
-    Address: Codec,
+    EthAddress: Codec,
     OffchainRequest: Codec,
     RequestStatus: Codec,
     OutgoingRequestEncoded: Codec,
@@ -197,11 +199,7 @@ where
             network_id,
             redirect_finished_load_requests.unwrap_or(true),
         )
-        .map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get off-chain requests and statuses.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn get_approved_requests(
@@ -213,11 +211,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_approved_requests(&at, request_hashes, network_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get encoded off-chain requests and approvals.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn get_approvals(
@@ -229,11 +223,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_approvals(&at, request_hashes, network_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get approvals of the requests.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn get_account_requests(
@@ -245,11 +235,7 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_account_requests(&at, account_id, status_filter)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get account requests.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn get_registered_assets(
@@ -261,7 +247,7 @@ where
             Vec<(
                 AssetKind,
                 (AssetId, BalancePrecision),
-                Option<(Address, BalancePrecision)>,
+                Option<(EthAddress, BalancePrecision)>,
             )>,
             DispatchError,
         >,
@@ -269,10 +255,6 @@ where
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_registered_assets(&at, network_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get registered assets and tokens.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

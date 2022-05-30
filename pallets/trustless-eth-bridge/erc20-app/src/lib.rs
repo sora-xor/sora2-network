@@ -52,6 +52,7 @@ pub mod pallet {
     use bridge_types::traits::{AppRegistry, OutboundRouter};
     use bridge_types::types::{AssetKind, ChannelId};
     use bridge_types::EthNetworkId;
+    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
@@ -98,11 +99,6 @@ pub mod pallet {
     #[pallet::getter(fn app_address)]
     pub(super) type AppAddresses<T: Config> =
         StorageDoubleMap<_, Identity, EthNetworkId, Identity, AssetKind, H160, OptionQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn locked_amount)]
-    pub(super) type LockedAmount<T: Config> =
-        StorageDoubleMap<_, Twox128, EthNetworkId, Twox128, AssetIdOf<T>, BalanceOf<T>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_kind)]
@@ -204,9 +200,6 @@ pub mod pallet {
                     )?;
                 }
                 AssetKind::Sidechain => {
-                    LockedAmount::<T>::mutate(network_id, asset_id, |v| {
-                        *v = v.saturating_add(amount);
-                    });
                     assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, &recipient, amount)?;
                 }
             }
@@ -261,11 +254,6 @@ pub mod pallet {
 
             match asset_kind {
                 AssetKind::Sidechain => {
-                    LockedAmount::<T>::try_mutate(network_id, &asset_id, |locked_amount| {
-                        ensure!(amount <= *locked_amount, Error::<T>::NotEnoughFunds);
-                        *locked_amount -= amount;
-                        DispatchResult::Ok(())
-                    })?;
                     assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, &who, amount)?;
                 }
                 AssetKind::Thischain => {
@@ -300,12 +288,55 @@ pub mod pallet {
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
-            asset_id: AssetIdOf<T>,
             address: H160,
+            symbol: AssetSymbol,
+            name: AssetName,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
-                !TokenAddresses::<T>::contains_key(network_id, asset_id),
+                !AssetsByAddresses::<T>::contains_key(network_id, address),
+                Error::<T>::TokenAlreadyRegistered
+            );
+            let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)
+                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let bridge_account = Self::bridge_account()?;
+
+            let asset_id = assets::Pallet::<T>::register_from(
+                &bridge_account,
+                symbol,
+                name,
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            )?;
+
+            Self::register_asset_inner(network_id, asset_id, address, AssetKind::Sidechain)?;
+
+            let message = RegisterErc20AssetPayload { address };
+
+            T::OutboundRouter::submit(
+                network_id,
+                ChannelId::Basic,
+                &RawOrigin::Root,
+                target,
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+            )?;
+            Ok(())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[transactional]
+        pub fn register_existing_erc20_asset(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            address: H160,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !AssetsByAddresses::<T>::contains_key(network_id, address),
                 Error::<T>::TokenAlreadyRegistered
             );
             let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)

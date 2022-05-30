@@ -42,16 +42,19 @@ use frame_support::dispatch::{DispatchError, GetCallMetadata};
 use frame_support::log::{debug, error};
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::traits::{BlockNumberProvider, Saturating};
+use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
+use frame_support::sp_runtime::RuntimeAppPublic;
 use frame_support::traits::GetCallName;
 use frame_support::{ensure, fail};
 #[cfg(test)]
 use frame_system::offchain::SignMessage;
 use frame_system::offchain::{
-    Account, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes, Signer,
+    Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes,
+    Signer,
 };
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::vec::Vec;
 
 type Call<T> = <T as Config>::Call;
 
@@ -151,6 +154,20 @@ impl<T: Config> Pallet<T> {
             fail!(<Error<T>>::NoLocalAccountForSigning);
         }
         Ok(signer)
+    }
+
+    pub(crate) fn get_keystore_accounts() -> Vec<T::AccountId> {
+        <<T as Config>::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
+            .into_iter()
+            .map(|key| {
+                let generic_public = <<T as Config>::PeerId as AppCrypto<
+                    T::Public,
+                    T::Signature,
+                >>::GenericPublic::from(key);
+                let public: T::Public = generic_public.into();
+                public.into_account()
+            })
+            .collect()
     }
 
     /// Sends a substrate transaction signed by an off-chain worker. After a successful signing

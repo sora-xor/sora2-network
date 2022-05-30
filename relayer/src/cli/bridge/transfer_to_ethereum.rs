@@ -1,17 +1,13 @@
-use crate::cli::prelude::*;
+use super::*;
+use crate::prelude::*;
+use assets_rpc::AssetsAPIClient;
 use bridge_types::types::ChannelId;
 use bridge_types::H160;
 use common::{AssetId32, PredefinedAssetId};
 use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
-pub struct Command {
-    #[clap(flatten)]
-    eth: EthereumUrl,
-    #[clap(flatten)]
-    sub: SubstrateUrl,
-    #[clap(flatten)]
-    key: SubstrateKey,
+pub(crate) struct Command {
     #[clap(short, long)]
     recipient: H160,
     #[clap(short, long)]
@@ -21,12 +17,9 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.eth.get()).await?;
-        let sub = SubUnsignedClient::new(self.sub.get())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_unsigned_ethereum().await?;
+        let sub = args.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?.as_u32();
         let (_, native_asset_id) = sub
             .api()
@@ -36,7 +29,8 @@ impl Command {
             .await?
             .expect("network not found");
         let balance = sub
-            .get_total_balance(self.asset_id, sub.account_id())
+            .assets()
+            .total_balance(sub.account_id(), self.asset_id, None)
             .await?;
         info!("Current balance: {:?}", balance);
         let result = if self.asset_id == native_asset_id {
@@ -48,7 +42,7 @@ impl Command {
                     ChannelId::Incentivized,
                     self.recipient,
                     self.amount,
-                )
+                )?
                 .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()
@@ -65,7 +59,7 @@ impl Command {
                     self.asset_id,
                     self.recipient,
                     self.amount,
-                )
+                )?
                 .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()

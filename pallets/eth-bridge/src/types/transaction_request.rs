@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::types::{Address, Bytes, U256};
+use crate::types::{Bytes, EthAddress, U256};
 use serde::{Deserialize, Serialize};
 
 /// Call contract request (eth_call / eth_estimateGas)
@@ -40,10 +40,10 @@ use serde::{Deserialize, Serialize};
 pub struct CallRequest {
     /// Sender address (None for arbitrary address)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<Address>,
+    pub from: Option<EthAddress>,
     /// To address (None allowed for eth_estimateGas)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<Address>,
+    pub to: Option<EthAddress>,
     /// Supplied gas (None for sensible default)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas: Option<U256>,
@@ -63,10 +63,10 @@ pub struct CallRequest {
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct TransactionRequest {
     /// Sender address
-    pub from: Address,
+    pub from: EthAddress,
     /// Recipient address (None for contract creation)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<Address>,
+    pub to: Option<EthAddress>,
     /// Supplied gas (None for sensible default)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gas: Option<U256>,
@@ -102,7 +102,7 @@ pub enum TransactionCondition {
 
 #[cfg(test)]
 mod tests {
-    use super::{Address, CallRequest, TransactionCondition, TransactionRequest};
+    use super::{CallRequest, EthAddress, TransactionCondition, TransactionRequest};
     use serde_json;
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
         // given
         let call_request = CallRequest {
             from: None,
-            to: Some(Address::from_low_u64_be(5)),
+            to: Some(EthAddress::from_low_u64_be(5)),
             gas: Some(21_000.into()),
             gas_price: None,
             value: Some(5_000_000.into()),
@@ -143,7 +143,7 @@ mod tests {
         let deserialized: CallRequest = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(deserialized.from, None);
-        assert_eq!(deserialized.to, Some(Address::from_low_u64_be(5)));
+        assert_eq!(deserialized.to, Some(EthAddress::from_low_u64_be(5)));
         assert_eq!(deserialized.gas, Some(21_000.into()));
         assert_eq!(deserialized.gas_price, None);
         assert_eq!(deserialized.value, Some(5_000_000.into()));
@@ -154,7 +154,7 @@ mod tests {
     fn should_serialize_transaction_request() {
         // given
         let tx_request = TransactionRequest {
-            from: Address::from_low_u64_be(5),
+            from: EthAddress::from_low_u64_be(5),
             to: None,
             gas: Some(21_000.into()),
             gas_price: None,
@@ -195,7 +195,7 @@ mod tests {
 }"#;
         let deserialized: TransactionRequest = serde_json::from_str(&serialized).unwrap();
 
-        assert_eq!(deserialized.from, Address::from_low_u64_be(5));
+        assert_eq!(deserialized.from, EthAddress::from_low_u64_be(5));
         assert_eq!(deserialized.to, None);
         assert_eq!(deserialized.gas, Some(21_000.into()));
         assert_eq!(deserialized.gas_price, None);

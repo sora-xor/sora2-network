@@ -1,11 +1,10 @@
+use crate::mock::*;
 use common::prelude::FixedWrapper;
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySourceType, ToFeeAccount,
     DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_support::{assert_err, assert_ok};
-
-use crate::mock::*;
 
 fn preset_initial<Fun>(tests: Fun)
 where

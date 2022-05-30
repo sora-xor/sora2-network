@@ -1,28 +1,28 @@
 mod bridge;
-mod common;
 mod error;
-mod estimate_gas;
 mod fetch_ethereum_header;
 mod mint_test_token;
-mod old_bridge;
-mod relay;
 mod subscribe_beefy;
-mod test_transfers;
-mod update_balance;
+pub mod utils;
 
-use prelude::*;
+pub use utils::*;
+
+use crate::prelude::*;
+use clap::*;
 
 /// App struct
 #[derive(Parser, Debug)]
 #[clap(version, author)]
 pub struct Cli {
+    #[clap(flatten)]
+    base_args: BaseArgs,
     #[clap(subcommand)]
     commands: Commands,
 }
 
 impl Cli {
     pub async fn run(&self) -> AnyResult<()> {
-        self.commands.run().await
+        self.commands.run(&self.base_args).await
     }
 }
 
@@ -30,37 +30,18 @@ impl Cli {
 enum Commands {
     SubscribeBeefy(subscribe_beefy::Command),
     FetchEthereumHeader(fetch_ethereum_header::Command),
-    EstimateGas(estimate_gas::Command),
     MintTestToken(mint_test_token::Command),
-    UpdateBalance(update_balance::Command),
-    TestTransfers(test_transfers::Command),
     #[clap(subcommand)]
     Bridge(bridge::Commands),
-    #[clap(subcommand)]
-    Relay(relay::Commands),
-    #[clap(subcommand)]
-    OldBridge(old_bridge::Commands),
 }
 
 impl Commands {
-    pub async fn run(&self) -> AnyResult<()> {
+    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
         match self {
-            Self::SubscribeBeefy(cmd) => cmd.run().await,
-            Self::FetchEthereumHeader(cmd) => cmd.run().await,
-            Self::EstimateGas(cmd) => cmd.run().await,
-            Self::MintTestToken(cmd) => cmd.run().await,
-            Self::Bridge(cmd) => cmd.run().await,
-            Self::Relay(cmd) => cmd.run().await,
-            Self::OldBridge(cmd) => cmd.run().await,
-            Self::UpdateBalance(cmd) => cmd.run().await,
-            Self::TestTransfers(cmd) => cmd.run().await,
+            Self::SubscribeBeefy(cmd) => cmd.run(args).await,
+            Self::FetchEthereumHeader(cmd) => cmd.run(args).await,
+            Self::MintTestToken(cmd) => cmd.run(args).await,
+            Self::Bridge(cmd) => cmd.run(args).await,
         }
     }
-}
-
-mod prelude {
-    pub use super::common::*;
-    pub use super::error::*;
-    pub use crate::prelude::*;
-    pub use clap::*;
 }
