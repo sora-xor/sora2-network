@@ -1502,6 +1502,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }

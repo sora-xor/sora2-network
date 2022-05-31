@@ -557,6 +557,16 @@ pub trait PoolXykPallet<AccountId, AssetId> {
     }
 }
 
+pub trait DemeterFarmingPallet<AccountId, AssetId> {
+    fn update_pool_tokens(
+        _user: AccountId,
+        _pool_tokens: Balance,
+        _pool_asset: AssetId,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
 pub trait OnPoolCreated {
     type AccountId;
     type DEXId;

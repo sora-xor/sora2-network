@@ -35,7 +35,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{LockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, PoolXykPallet};
+    use common::{balance, DemeterFarmingPallet, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
@@ -53,6 +53,9 @@ pub mod pallet {
 
         /// Reference to pool_xyk pallet
         type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
+
+        /// Reference to demeter_farming_platform pallet
+        type DemeterFarmingPlatform: DemeterFarmingPallet<Self::AccountId, Self::AssetId>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
@@ -186,7 +189,7 @@ pub mod pallet {
                 .0;
 
             // Calculate number of pool tokens to be locked
-            let pool_tokens =
+            let mut pool_tokens =
                 T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
@@ -220,7 +223,7 @@ pub mod pallet {
             if option {
                 // Transfer 1% of LP tokens
                 Self::pay_fee_in_lp_tokens(
-                    pool_account,
+                    pool_account.clone(),
                     asset_a,
                     asset_b,
                     user.clone(),
@@ -238,7 +241,7 @@ pub mod pallet {
                 )?;
                 // Transfer 0.5% of LP tokens
                 Self::pay_fee_in_lp_tokens(
-                    pool_account,
+                    pool_account.clone(),
                     asset_a,
                     asset_b,
                     user.clone(),
@@ -247,6 +250,10 @@ pub mod pallet {
                     option,
                 )?;
             }
+
+            pool_tokens = T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                .unwrap_or(0);
+            T::DemeterFarmingPlatform::update_pool_tokens(user.clone(), pool_tokens, asset_b)?;
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
