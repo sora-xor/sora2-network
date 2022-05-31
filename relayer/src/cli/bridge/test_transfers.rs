@@ -30,21 +30,21 @@ impl Command {
             .api()
             .storage()
             .erc20_app()
-            .app_addresses(&network_id, &AssetKind::Thischain, None)
+            .app_addresses(false, &network_id, &AssetKind::Thischain, None)
             .await?
             .unwrap();
         let erc20_app = sub
             .api()
             .storage()
             .erc20_app()
-            .app_addresses(&network_id, &AssetKind::Sidechain, None)
+            .app_addresses(false, &network_id, &AssetKind::Sidechain, None)
             .await?
             .unwrap();
         let (eth_app, native_asset) = sub
             .api()
             .storage()
             .eth_app()
-            .addresses(&network_id, None)
+            .addresses(false, &network_id, None)
             .await?
             .unwrap();
 
@@ -54,21 +54,21 @@ impl Command {
             .api()
             .storage()
             .erc20_app()
-            .assets_by_addresses_iter(None)
+            .assets_by_addresses_iter(false, None)
             .await?;
         while let Some((_, asset)) = assets_iter.next().await? {
             let asset_kind = sub
                 .api()
                 .storage()
                 .erc20_app()
-                .asset_kinds(&network_id, &asset, None)
+                .asset_kinds(false, &network_id, &asset, None)
                 .await?
                 .unwrap();
             let address = sub
                 .api()
                 .storage()
                 .erc20_app()
-                .token_addresses(&network_id, &asset, None)
+                .token_addresses(false, &network_id, &asset, None)
                 .await?
                 .unwrap();
             match asset_kind {
@@ -78,13 +78,16 @@ impl Command {
                     sub.api()
                         .tx()
                         .sudo()
-                        .sudo(sub_types::framenode_runtime::Call::Currencies(
-                            sub_types::orml_currencies::module::Call::update_balance {
-                                who: acc,
-                                currency_id: asset,
-                                amount: 1000000000000000000000,
-                            },
-                        ))?
+                        .sudo(
+                            false,
+                            sub_types::framenode_runtime::Call::Currencies(
+                                sub_types::orml_currencies::module::Call::update_balance {
+                                    who: acc,
+                                    currency_id: asset,
+                                    amount: 1000000000000000000000,
+                                },
+                            ),
+                        )?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()
@@ -126,14 +129,14 @@ impl Command {
                 let mut call = if let Some((kind, address)) = info {
                     match kind {
                         AssetKind::Thischain => {
-                            sidechain_app.lock(*address, sub.account_id().into(), 11.into(), 1)
+                            sidechain_app.lock(*address, sub.account_id().into(), 11u128.into(), 1)
                         }
                         AssetKind::Sidechain => {
-                            erc20_app.lock(*address, sub.account_id().into(), 1100.into(), 1)
+                            erc20_app.lock(*address, sub.account_id().into(), 1100u128.into(), 1)
                         }
                     }
                 } else {
-                    eth_app.lock(sub.account_id().into(), 1).value(100000)
+                    eth_app.lock(sub.account_id().into(), 1).value(100000u128)
                 }
                 .legacy();
                 let eth_res = eth.fill_transaction(&mut call.tx, call.block).await;
@@ -162,6 +165,7 @@ impl Command {
                         .tx()
                         .erc20_app()
                         .burn(
+                            false,
                             network_id,
                             ChannelId::Incentivized,
                             *asset,
@@ -189,7 +193,7 @@ impl Command {
                         .api()
                         .tx()
                         .eth_app()
-                        .burn(network_id, ChannelId::Incentivized, eth.address(), 9)?
+                        .burn(false, network_id, ChannelId::Incentivized, eth.address(), 9)?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()

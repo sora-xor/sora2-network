@@ -5,10 +5,6 @@ use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
-    #[clap(flatten)]
-    ethereum: EthereumUrl,
-    #[clap(flatten)]
-    ethereum_key: EthereumKey,
     #[clap(short, long)]
     contract: H160,
     #[clap(short, long)]
@@ -26,12 +22,8 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.ethereum.get())
-            .await?
-            .sign_with_string(&self.ethereum_key.get_key_string()?)
-            .await
-            .context("sign ethereum client")?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let eth = args.get_signed_ethereum().await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(self.contract, eth.inner());
         let to: &[u8] = self.to.as_ref();
         let to: [u8; 32] = to.to_vec().try_into().unwrap();

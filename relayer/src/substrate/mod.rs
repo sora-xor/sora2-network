@@ -112,7 +112,7 @@ impl UnsignedClient {
             .api()
             .storage()
             .mmr()
-            .number_of_leaves(Some(latest_finalized_hash))
+            .number_of_leaves(false, Some(latest_finalized_hash))
             .await?;
         let beefy_start_block = latest_finalized_number as u64 - mmr_leaves;
         debug!("Beefy started at: {}", beefy_start_block);

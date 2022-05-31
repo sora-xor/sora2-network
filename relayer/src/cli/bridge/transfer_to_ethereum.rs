@@ -25,7 +25,7 @@ impl Command {
             .api()
             .storage()
             .eth_app()
-            .addresses(&network_id, None)
+            .addresses(false, &network_id, None)
             .await?
             .expect("network not found");
         let balance = sub
@@ -38,6 +38,7 @@ impl Command {
                 .tx()
                 .eth_app()
                 .burn(
+                    false,
                     network_id,
                     ChannelId::Incentivized,
                     self.recipient,
@@ -54,6 +55,7 @@ impl Command {
                 .tx()
                 .erc20_app()
                 .burn(
+                    false,
                     network_id,
                     ChannelId::Incentivized,
                     self.asset_id,

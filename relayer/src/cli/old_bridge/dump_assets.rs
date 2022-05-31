@@ -5,8 +5,6 @@ use substrate_gen::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
-    #[clap(flatten)]
-    sub: SubstrateUrl,
     #[clap(long, short)]
     output: PathBuf,
 }
@@ -26,22 +24,22 @@ struct AssetsDump {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub = SubUnsignedClient::new(self.sub.get()).await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let sub = args.get_unsigned_substrate().await?;
         let mut asset_iter = sub
             .api()
             .storage()
             .eth_bridge()
-            .registered_asset_iter(None)
+            .registered_asset_iter(false, None)
             .await?;
         let mut assets = AssetsDump::default();
         while let Some((asset_id, asset_kind)) = asset_iter.next().await? {
             let asset_id = crate::substrate::AssetId::from_bytes(asset_id.0.try_into().unwrap());
-            let (asset_symbol, asset_name, decimals, _) = sub
+            let (asset_symbol, asset_name, decimals, _, _, _) = sub
                 .api()
                 .storage()
                 .assets()
-                .asset_infos(&asset_id, None)
+                .asset_infos(false, &asset_id, None)
                 .await?;
             let asset_info = AssetInfo {
                 asset_id,

@@ -446,14 +446,14 @@ impl Relay {
             .api()
             .storage()
             .basic_outbound_channel()
-            .interval(None)
+            .interval(false, None)
             .await?;
         let incentivized_interval = self
             .sub
             .api()
             .storage()
             .incentivized_outbound_channel()
-            .interval(None)
+            .interval(false, None)
             .await?;
         let basic_mod = self.chain_id % basic_interval;
         let incentivized_mod = self.chain_id % incentivized_interval;
@@ -484,14 +484,14 @@ impl Relay {
             .api()
             .storage()
             .basic_outbound_channel()
-            .channel_nonces(&self.chain_id, block_hash)
+            .channel_nonces(false, &self.chain_id, block_hash)
             .await?;
         let sub_incentivized_nonce = self
             .sub
             .api()
             .storage()
             .incentivized_outbound_channel()
-            .channel_nonces(&self.chain_id, block_hash)
+            .channel_nonces(false, &self.chain_id, block_hash)
             .await?;
         Ok(basic_nonce < sub_basic_nonce || incentivized_nonce < sub_incentivized_nonce)
     }
@@ -530,8 +530,13 @@ impl Relay {
 
     pub async fn sync_historical_commitments(&self) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await?;
-        let epoch_duration = self.sub.api().constants().babe().epoch_duration()?;
-        let sessions_per_era = self.sub.api().constants().staking().sessions_per_era()?;
+        let epoch_duration = self.sub.api().constants().babe().epoch_duration(false)?;
+        let sessions_per_era = self
+            .sub
+            .api()
+            .constants()
+            .staking()
+            .sessions_per_era(false)?;
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
@@ -541,7 +546,7 @@ impl Relay {
                 .api()
                 .storage()
                 .staking()
-                .active_era(Some(latest_beefy_block_hash))
+                .active_era(false, Some(latest_beefy_block_hash))
                 .await?
                 .expect("should exist");
             let current_block_hash = self.sub.api().client.rpc().finalized_head().await?;
@@ -556,7 +561,7 @@ impl Relay {
                 .api()
                 .storage()
                 .staking()
-                .bonded_eras(Some(next_block_hash))
+                .bonded_eras(false, Some(next_block_hash))
                 .await?;
             debug!("latest era: {latest_era:?}, next block: {next_block}, eras: {next_eras:?}");
             let next_block = if let Some((_, session)) = next_eras

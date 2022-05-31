@@ -33,14 +33,14 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .basic_inbound_channel()
-            .channel_addresses(&network_id, None)
+            .channel_addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Channel is not registered"))?;
         let incentivized = sub
             .api()
             .storage()
             .incentivized_inbound_channel()
-            .channel_addresses(&network_id, None)
+            .channel_addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Channel is not registered"))?;
         Ok(Self {
@@ -62,7 +62,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
@@ -79,7 +79,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .basic_inbound_channel()
-            .channel_nonces(&self.network_id, None)
+            .channel_nonces(false, &self.network_id, None)
             .await?;
         debug!(
             "Basic: Found {} events from {} to {}",
@@ -113,7 +113,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .basic_inbound_channel()
-                        .submit(self.network_id, message)?
+                        .submit(false, self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()
@@ -141,7 +141,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
@@ -158,7 +158,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .incentivized_inbound_channel()
-            .channel_nonces(&self.network_id, None)
+            .channel_nonces(false, &self.network_id, None)
             .await?;
         debug!(
             "Incentivized: Found {} events from {} to {}",
@@ -190,7 +190,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .incentivized_inbound_channel()
-                        .submit(self.network_id, message)?
+                        .submit(false, self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()
@@ -230,7 +230,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;

@@ -36,7 +36,7 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.chain_id, None)
+            .finalized_block(false, &self.chain_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Network is not registered"))?;
 
@@ -163,7 +163,7 @@ impl Relay {
             .api()
             .storage()
             .ethereum_light_client()
-            .headers(&self.chain_id, &header.compute_hash(), None)
+            .headers(false, &self.chain_id, &header.compute_hash(), None)
             .await;
         if let Ok(Some(_)) = has_block {
             return Ok(None);
@@ -178,7 +178,7 @@ impl Relay {
             .api()
             .tx()
             .ethereum_light_client()
-            .import_header(self.chain_id, header, proof)?
+            .import_header(false, self.chain_id, header, proof)?
             .sign_and_submit_then_watch_default(&self.sub)
             .await
             .context("submit import header extrinsic")?;

@@ -54,7 +54,7 @@ impl BeefyJustification {
             .api()
             .storage()
             .beefy()
-            .authorities(Some(block_hash))
+            .authorities(false, Some(block_hash))
             .await?
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))

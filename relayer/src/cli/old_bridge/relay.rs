@@ -5,14 +5,6 @@ use substrate_gen::SignatureParams;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
-    #[clap(flatten)]
-    ethereum: EthereumUrl,
-    #[clap(flatten)]
-    substrate: SubstrateUrl,
-    #[clap(flatten)]
-    ethereum_key: EthereumKey,
-    #[clap(flatten)]
-    substrate_key: SubstrateKey,
     #[clap(short, long)]
     network: u32,
     #[clap(long)]
@@ -20,16 +12,9 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let eth = EthUnsignedClient::new(self.ethereum.get())
-            .await?
-            .sign_with_string(&self.ethereum_key.get_key_string()?)
-            .await
-            .context("sign ethereum client")?;
-        let sub = SubUnsignedClient::new(self.substrate.get())
-            .await?
-            .try_sign_with(&self.substrate_key.get_key_string()?)
-            .await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let sub = args.get_signed_substrate().await?;
+        let eth = args.get_signed_ethereum().await?;
         if let Some(hash) = self.hash {
             self.relay_request(&eth, &sub, hash).await?;
             return Ok(());
@@ -68,14 +53,14 @@ impl Command {
             .api()
             .storage()
             .eth_bridge()
-            .bridge_contract_address(&self.network, None)
+            .bridge_contract_address(false, &self.network, None)
             .await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
         let request = sub
             .api()
             .storage()
             .eth_bridge()
-            .requests(&self.network, &hash, None)
+            .requests(false, &self.network, &hash, None)
             .await?
             .expect("Should exists");
         info!("Send request {}: {:?}", hash, request);
@@ -83,7 +68,7 @@ impl Command {
             .api()
             .storage()
             .eth_bridge()
-            .request_approvals(&self.network, &hash, None)
+            .request_approvals(false, &self.network, &hash, None)
             .await?;
 
         let mut s_vec = vec![];
@@ -131,7 +116,7 @@ impl Command {
                             .api()
                             .storage()
                             .assets()
-                            .asset_infos(&request.asset_id, None)
+                            .asset_infos(false, &request.asset_id, None)
                             .await?;
                         let call = contract.add_new_sidechain_token(
                             String::from_utf8_lossy(&name.0).to_string(),
@@ -178,10 +163,11 @@ impl Command {
                 .tx()
                 .eth_bridge()
                 .request_from_sidechain(
+                    false,
                     tx.transaction_hash,
                     sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
                     self.network,
-                )
+                )?
                 .sign_and_submit_then_watch_default(sub)
                 .await?
                 .wait_for_in_block()

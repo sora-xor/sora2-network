@@ -2,6 +2,7 @@ mod bridge;
 mod error;
 mod fetch_ethereum_header;
 mod mint_test_token;
+mod old_bridge;
 mod subscribe_beefy;
 pub mod utils;
 
@@ -33,6 +34,8 @@ enum Commands {
     MintTestToken(mint_test_token::Command),
     #[clap(subcommand)]
     Bridge(bridge::Commands),
+    #[clap(subcommand)]
+    OldBridge(old_bridge::Commands),
 }
 
 impl Commands {
@@ -42,6 +45,13 @@ impl Commands {
             Self::FetchEthereumHeader(cmd) => cmd.run(args).await,
             Self::MintTestToken(cmd) => cmd.run(args).await,
             Self::Bridge(cmd) => cmd.run(args).await,
+            Self::OldBridge(cmd) => cmd.run(args).await,
         }
     }
+}
+
+pub mod prelude {
+    pub use crate::cli::utils::*;
+    pub use crate::prelude::*;
+    pub use clap::*;
 }

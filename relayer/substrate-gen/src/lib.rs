@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate codec;
 
+#[macro_use]
+extern crate serde;
 /// Separated components of a secp256k1 signature.
 #[derive(
     Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, scale_info::TypeInfo, Default, Debug,
@@ -12,7 +14,9 @@ pub struct SignatureParams {
     pub v: u8,
 }
 
-#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
 pub enum AssetKind {
     Thischain,
     Sidechain,

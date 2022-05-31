@@ -19,7 +19,7 @@ impl Command {
             .api()
             .storage()
             .eth_app()
-            .addresses(&network_id, None)
+            .addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .0;

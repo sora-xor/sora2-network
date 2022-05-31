@@ -18,7 +18,7 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 
 [dependencies]
 common = { path = "../../common" }
-subxt = { git = "https://github.com/paritytech/subxt", rev = "ec23283d75e4b3b894294e351fd7ffa2b4431201" }
+subxt = { git = "https://github.com/vovac12/subxt", rev = "767a86196a41cb991d06e67319580198abdbcd71" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }
@@ -29,3 +29,4 @@ jsonrpsee = { version = "0.13", features = [
     "http-client",
 ] }
 async-trait = "0.1.49"
+serde = { version = "1.0.137", features = ["derive"] }

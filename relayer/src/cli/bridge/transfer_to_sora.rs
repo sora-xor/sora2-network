@@ -29,7 +29,7 @@ impl Command {
             .api()
             .storage()
             .eth_app()
-            .addresses(&network_id, None)
+            .addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow!("Network not registered"))?;
         let balance = eth.get_balance(eth.address(), None).await?;
@@ -49,21 +49,21 @@ impl Command {
                 .api()
                 .storage()
                 .erc20_app()
-                .asset_kinds(&network_id, &self.asset_id, None)
+                .asset_kinds(false, &network_id, &self.asset_id, None)
                 .await?
                 .ok_or(anyhow!("Asset is not registered"))?;
             let app_address = sub
                 .api()
                 .storage()
                 .erc20_app()
-                .app_addresses(&network_id, &asset_kind, None)
+                .app_addresses(false, &network_id, &asset_kind, None)
                 .await?
                 .expect("should be registered");
             let token_address = sub
                 .api()
                 .storage()
                 .erc20_app()
-                .token_addresses(&network_id, &self.asset_id, None)
+                .token_addresses(false, &network_id, &self.asset_id, None)
                 .await?
                 .expect("should be registered");
             match asset_kind {

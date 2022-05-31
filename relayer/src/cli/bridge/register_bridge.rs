@@ -34,6 +34,7 @@ impl Command {
             .tx()
             .sudo()
             .sudo(
+                false,
                 runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
                     runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
                         header,
@@ -53,7 +54,7 @@ impl Command {
             .api()
             .tx()
             .sudo()
-            .sudo(
+            .sudo(false,
                 runtime::runtime_types::framenode_runtime::Call::BasicInboundChannel(
                     runtime::runtime_types::basic_channel::inbound::pallet::Call::register_channel {
                         network_id,
@@ -72,7 +73,7 @@ impl Command {
             .api()
             .tx()
             .sudo()
-            .sudo(
+            .sudo(false,
                 runtime::runtime_types::framenode_runtime::Call::IncentivizedInboundChannel(
                     runtime::runtime_types::incentivized_channel::inbound::pallet::Call::register_channel {
                         network_id,
@@ -91,7 +92,7 @@ impl Command {
             .api()
             .tx()
             .sudo()
-            .sudo(runtime::runtime_types::framenode_runtime::Call::EthApp(
+            .sudo(false, runtime::runtime_types::framenode_runtime::Call::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: self.eth_app,
@@ -111,6 +112,7 @@ impl Command {
                 .tx()
                 .sudo()
                 .sudo(
+                    false,
                     runtime::runtime_types::framenode_runtime::Call::MigrationApp(
                         runtime::runtime_types::migration_app::pallet::Call::register_network {
                             network_id,

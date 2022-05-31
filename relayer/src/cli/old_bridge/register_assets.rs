@@ -5,10 +5,6 @@ use crate::cli::prelude::*;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
-    #[clap(flatten)]
-    sub: SubstrateUrl,
-    #[clap(flatten)]
-    key: SubstrateKey,
     #[clap(short, long)]
     input: PathBuf,
     #[clap(short, long)]
@@ -16,11 +12,8 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub = SubUnsignedClient::new(self.sub.get())
-            .await?
-            .try_sign_with(&self.key.get_key_string()?)
-            .await?;
+    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+        let sub = args.get_signed_substrate().await?;
         let file = std::fs::OpenOptions::new().read(true).open(&self.input)?;
         let infos: Vec<AssetInfo> = serde_json::from_reader(file)?;
         let mut calls = vec![];
@@ -28,12 +21,8 @@ impl Command {
             if info.kind == "0x01" {
                 continue;
             }
-            let name = sub_runtime::runtime_types::common::primitives::AssetName(
-                info.name.as_bytes().to_vec(),
-            );
-            let symbol = sub_runtime::runtime_types::common::primitives::AssetSymbol(
-                info.symbol.as_bytes().to_vec(),
-            );
+            let name = common::AssetName(info.name.as_bytes().to_vec());
+            let symbol = common::AssetSymbol(info.symbol.as_bytes().to_vec());
             let call = sub_types::framenode_runtime::Call::Assets(
                 sub_types::assets::pallet::Call::register {
                     symbol,
@@ -42,7 +31,7 @@ impl Command {
                     initial_supply: 0,
                     opt_content_src: None,
                     opt_desc: None,
-                    is_nft: false,
+                    is_indivisible: false,
                 },
             );
             calls.push(call);
@@ -84,7 +73,7 @@ impl Command {
         sub.api()
             .tx()
             .utility()
-            .batch(calls)
+            .batch(false, calls)?
             .sign_and_submit_then_watch_default(&sub)
             .await?
             .wait_for_in_block()
