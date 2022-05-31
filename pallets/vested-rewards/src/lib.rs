@@ -322,7 +322,8 @@ impl<T: Config> Pallet<T> {
         };
         let reward = reward
             / Fixed::try_from(LEASE_TOTAL_DAYS)
-                .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?.into();
+                .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?
+                .into();
 
         (reward * claim_days)
             .try_into_balance()
