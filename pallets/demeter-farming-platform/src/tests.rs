@@ -1764,6 +1764,94 @@ mod tests {
     }
 
     #[test]
+    fn change_total_tokens_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let total_tokens = balance!(200);
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: balance!(100),
+                rewards: 0,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            assert_ok!(
+                demeter_farming_platform::Pallet::<Runtime>::change_total_tokens(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    total_tokens
+                )
+            );
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm && !pool_info.is_removed {
+                    assert_eq!(pool_info.total_tokens_in_pool, total_tokens);
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn change_info_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let pooled_tokens = 10;
+            let rewards = 1;
+
+            let user_info = UserInfo {
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens,
+                rewards,
+            };
+
+            demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
+
+            let pool_tokens = balance!(69);
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::change_info(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                ALICE.into(),
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens
+            ));
+
+            let user_info_alice = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            for user_info in &user_info_alice {
+                if user_info.pool_asset == pool_asset
+                    && user_info.reward_asset == reward_asset
+                    && user_info.is_farm == is_farm
+                {
+                    assert_eq!(user_info.pooled_tokens, pool_tokens);
+                }
+            }
+        });
+    }
+
+    #[test]
     fn on_initialize_ok() {
         preset_initial(|| {
             let dex_id = DEX_A_ID;
