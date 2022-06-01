@@ -40,6 +40,7 @@ use common::{
     balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
     XSTUSD,
 };
+use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
@@ -308,7 +309,8 @@ impl<T: Config> Pallet<T> {
         } else {
             current_block_number.saturating_sub(last_claim_block)
         };
-        let claim_days = claim_period / BLOCKS_PER_DAY;
+        let claim_days = Fixed::try_from(claim_period / BLOCKS_PER_DAY)
+            .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?;
         let reward = if asset_id == &VAL.into() {
             rewards.val_reward
         } else if asset_id == &PSWAP.into() {
@@ -318,9 +320,14 @@ impl<T: Config> Pallet<T> {
         } else {
             return Err(Error::<T>::NoRewardsForAsset.into());
         };
-        let reward = reward / LEASE_TOTAL_DAYS.into();
+        let reward = reward
+            / Fixed::try_from(LEASE_TOTAL_DAYS)
+                .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?
+                .into();
 
-        Ok((reward * claim_days).into_balance())
+        (reward * claim_days)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::ArithmeticError.into())
     }
 }
 
@@ -529,6 +536,10 @@ pub mod pallet {
         MarketMakingPairAlreadyDisallowed,
         /// There are no rewards for the asset ID.
         NoRewardsForAsset,
+        /// Something is wrong with arithmetic - overflow happened, for example.
+        ArithmeticError,
+        /// This error appears on wrong conversion of a number into another type.
+        NumberConversionError,
     }
 
     #[pallet::event]

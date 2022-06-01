@@ -30,13 +30,13 @@
 
 use crate::{
     Config, CrowdloanReward, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
-    FARMING_REWARDS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, PSWAP_CROWDLOAN_REWARDS,
+    FARMING_REWARDS, LEASE_TOTAL_DAYS, MARKET_MAKER_ELIGIBILITY_TX_COUNT, PSWAP_CROWDLOAN_REWARDS,
     SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT, VAL_CROWDLOAN_REWARDS, XSTUSD_CROWDLOAN_REWARDS,
 };
 use codec::Decode;
 use common::prelude::{Balance, FixedWrapper};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_wrapper, RewardReason, PSWAP, VAL, XOR, XSTUSD};
+use common::{balance, fixed_wrapper, Fixed, RewardReason, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
@@ -66,11 +66,18 @@ pub fn migrate<T: Config>() -> Weight {
         }) => {
             weight = add_funds_to_farming_rewards_account::<T>();
         }
+        // we had this, but didn't update the pallet version, so it's commented and we have it here
+        // for documentating purposes
+        // Some(PalletVersion {
+        // major: 1,
+        // minor: 2,
+        // patch: 0,
+        // }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
         Some(PalletVersion {
             major: 1,
             minor: 2,
             patch: 0,
-        }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
+        }) => weight = weight.saturating_add(reset_claiming_for_crowdloan_errors::<T>()),
         _ => (),
     }
 
@@ -290,6 +297,9 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
     EXTRINSIC_FIXED_WEIGHT
 }
 
+// this function is here for documentating purposes. It was used in migration for crowdloan rewards.
+// See migrate function for more.
+#[allow(dead_code)]
 pub fn add_funds_to_crowdloan_rewards_account<T: Config>() -> Weight {
     if let Err(e) = T::Currency::deposit(
         VAL.into(),
@@ -316,4 +326,46 @@ pub fn add_funds_to_crowdloan_rewards_account<T: Config>() -> Weight {
     }
 
     T::DbWeight::get().writes(3)
+}
+
+pub fn reset_claiming_for_crowdloan_errors<T: Config>() -> Weight {
+    let rewards = serde_json::from_str::<Vec<CrowdloanReward>>(CROWDLOAN_REWARDS)
+        .expect("Can't deserialize crowdloan contributors.");
+    let mut number_of_writes = 0;
+    rewards
+        .into_iter()
+        .map(|reward| {
+            let address = T::AccountId::decode(&mut &reward.address[..])
+                .expect("Can't decode contributor address.");
+            let mut assets = Vec::new();
+
+            if should_reset_claim_history(reward.val_reward) {
+                assets.push(T::AssetId::from(VAL));
+            }
+
+            if should_reset_claim_history(reward.pswap_reward) {
+                assets.push(T::AssetId::from(PSWAP));
+            }
+
+            if should_reset_claim_history(reward.xstusd_reward) {
+                assets.push(T::AssetId::from(XSTUSD));
+            }
+
+            (address, assets)
+        })
+        .for_each(|(address, assets)| {
+            assets.into_iter().for_each(|asset| {
+                crate::CrowdloanClaimHistory::<T>::insert(
+                    &address,
+                    asset,
+                    T::BlockNumber::default(),
+                );
+                number_of_writes += 1;
+            })
+        });
+    T::DbWeight::get().writes(number_of_writes)
+}
+
+fn should_reset_claim_history(value: Fixed) -> bool {
+    (value / LEASE_TOTAL_DAYS.into()).get().is_err()
 }
