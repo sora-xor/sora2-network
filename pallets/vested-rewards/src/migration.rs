@@ -66,15 +66,17 @@ pub fn migrate<T: Config>() -> Weight {
         }) => {
             weight = add_funds_to_farming_rewards_account::<T>();
         }
+        // we had this, but didn't update the pallet version, so it's commented and we have it here
+        // for documentating purposes
+        // Some(PalletVersion {
+        // major: 1,
+        // minor: 2,
+        // patch: 0,
+        // }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
         Some(PalletVersion {
             major: 1,
             minor: 2,
             patch: 0,
-        }) => weight = weight.saturating_add(add_funds_to_crowdloan_rewards_account::<T>()),
-        Some(PalletVersion {
-            major: 1,
-            minor: 2,
-            patch: 1,
         }) => weight = weight.saturating_add(reset_claiming_for_crowdloan_errors::<T>()),
         _ => (),
     }
@@ -295,6 +297,9 @@ pub fn add_crowdloan_rewards<T: Config>() -> Weight {
     EXTRINSIC_FIXED_WEIGHT
 }
 
+// this function is here for documentating purposes. It was used in migration for crowdloan rewards.
+// See migrate function for more.
+#[allow(dead_code)]
 pub fn add_funds_to_crowdloan_rewards_account<T: Config>() -> Weight {
     if let Err(e) = T::Currency::deposit(
         VAL.into(),

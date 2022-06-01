@@ -726,14 +726,8 @@ fn crowdloan_reward_period_is_whole_days() {
 fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        // we call migration for 1.2.0 to prepare crowdloan rewards
-        PalletVersion {
-            major: 1,
-            minor: 2,
-            patch: 0,
-        }
-        .put_into_storage::<PalletInfoOf<Runtime>, crate::Pallet<Runtime>>();
-        migration::migrate::<Runtime>();
+        migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
+        migration::add_crowdloan_rewards::<Runtime>();
 
         // this account is known as having issue with getting PSWAP reward
         let mut raw_address = &[
@@ -757,7 +751,7 @@ fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
         PalletVersion {
             major: 1,
             minor: 2,
-            patch: 1,
+            patch: 0,
         }
         .put_into_storage::<PalletInfoOf<Runtime>, crate::Pallet<Runtime>>();
 
