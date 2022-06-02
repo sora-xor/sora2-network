@@ -34,7 +34,7 @@ RUN cargo install grcov --version ${GRCOV_VERSION} && \
 # Build project
 ADD . /app
 WORKDIR /app
-ENV RUSTC_WRAPPER=sccache
+# ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo check && \
     cargo test && \
