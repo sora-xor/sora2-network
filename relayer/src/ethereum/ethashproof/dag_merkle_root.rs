@@ -14,9 +14,11 @@ async fn process_during_read(
     path: impl AsRef<Path>,
     start: u64,
     full_size_128: u32,
+    progress: bool,
 ) -> anyhow::Result<()> {
     let mut f = tokio::fs::OpenOptions::new().read(true).open(path).await?;
     f.seek(SeekFrom::Start(start * 128)).await?;
+    let mut percent = -1;
     for i in 0..full_size_128 {
         let mut buf = [0; 128];
         if let Err(e) = f.read_exact(&mut buf).await {
@@ -26,6 +28,13 @@ async fn process_during_read(
             return Err(e.into());
         }
         mt.insert(buf.into(), i);
+        if progress {
+            let new_percent = i as i64 * 100 / full_size_128 as i64;
+            if new_percent > percent {
+                percent = new_percent;
+                debug!("Prepare cache: {}%", percent);
+            }
+        }
     }
     Ok(())
 }
@@ -52,7 +61,7 @@ pub async fn calculate_dataset_merkle_root(
     }
     dt.register_index(indices);
     let path = dag_path(epoch, data_dir.as_ref());
-    process_during_read(&mut dt, path, 0, full_size_128 as u32)
+    process_during_read(&mut dt, path, 0, full_size_128 as u32, true)
         .await
         .context("read dataset")?;
     dt.finalize();
@@ -90,6 +99,7 @@ pub async fn calculate_proof(
         path,
         subtree_start as u64,
         1 << (branch_depth - CACHE_LEVEL as u32),
+        false,
     )
     .await?;
     dt.finalize();

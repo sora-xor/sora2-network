@@ -855,7 +855,7 @@ dependencies = [
  "common",
  "enum-iterator",
  "ethabi 13.0.0",
- "ethash 0.4.0",
+ "ethash",
  "ethbloom 0.12.1",
  "ethereum-types 0.13.1",
  "frame-support",
@@ -2782,20 +2782,8 @@ dependencies = [
 
 [[package]]
 name = "ethash"
-version = "0.4.0"
-source = "git+https://github.com/rust-ethereum/ethash?rev=43876fd11acf6680e2965e13ae6db7f3a55cf24f#43876fd11acf6680e2965e13ae6db7f3a55cf24f"
-dependencies = [
- "byteorder",
- "ethereum-types 0.13.1",
- "primitive-types 0.11.1",
- "rlp 0.5.1",
- "sha3 0.10.1",
-]
-
-[[package]]
-name = "ethash"
 version = "0.5.0"
-source = "git+https://github.com/vovac12/ethash?branch=polkadot-v0.9.22#bb58f11dcbd2b20c031b747756af7914a38307ff"
+source = "git+https://github.com/vovac12/ethash?branch=polkadot-v0.9.22#a03320f8328d503e4bd55fcdbbcd78991880e256"
 dependencies = [
  "byteorder",
  "ethereum-types 0.13.1",
@@ -2846,7 +2834,7 @@ name = "ethereum-light-client"
 version = "0.1.1"
 dependencies = [
  "bridge-types",
- "ethash 0.4.0",
+ "ethash",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8517,7 +8505,7 @@ dependencies = [
  "env_logger 0.9.0",
  "eth-bridge",
  "eth_trie",
- "ethash 0.5.0",
+ "ethash",
  "ethereum-gen",
  "ethereum-types 0.13.1",
  "ethers",
