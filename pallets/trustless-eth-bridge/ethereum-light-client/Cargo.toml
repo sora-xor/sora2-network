@@ -29,7 +29,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 
 bridge-types = { path = "../types", default-features = false }
 
-ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.22", default-features = false }
+ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.22-no-std", default-features = false }
 
 [dev-dependencies]
 bridge-types = { path = "../types", features = ["test"] }

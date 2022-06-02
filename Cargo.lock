@@ -2783,7 +2783,7 @@ dependencies = [
 [[package]]
 name = "ethash"
 version = "0.5.0"
-source = "git+https://github.com/vovac12/ethash?branch=polkadot-v0.9.22#a03320f8328d503e4bd55fcdbbcd78991880e256"
+source = "git+https://github.com/vovac12/ethash?branch=polkadot-v0.9.22-no-std#a03320f8328d503e4bd55fcdbbcd78991880e256"
 dependencies = [
  "byteorder",
  "ethereum-types 0.13.1",
