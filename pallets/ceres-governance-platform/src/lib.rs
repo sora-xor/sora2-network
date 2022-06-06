@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
 
+pub mod migrations;
 pub mod weights;
 
 mod benchmarking;
@@ -34,20 +35,33 @@ pub struct VotingInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PollInfo<Moment> {
+pub struct PollInfo<BlockNumber, Moment> {
     /// Number of options
-    number_of_options: u32,
+    pub number_of_options: u32,
+    /// Poll start block
+    pub poll_start_block: BlockNumber,
+    /// Poll end block
+    pub poll_end_block: BlockNumber,
     /// Poll start timestamp
-    poll_start_timestamp: Moment,
+    pub poll_start_timestamp: Moment,
     /// Poll end timestamp
-    poll_end_timestamp: Moment,
+    pub poll_end_timestamp: Moment,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PollInfo, VotingInfo, WeightInfo};
+    use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
@@ -75,7 +89,7 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type Timestamp<T> = timestamp::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
@@ -91,7 +105,18 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn poll_data)]
     pub type PollData<T: Config> =
-        StorageMap<_, Identity, Vec<u8>, PollInfo<T::Moment>, ValueQuery>;
+        StorageMap<_, Identity, Vec<u8>, PollInfo<T::BlockNumber, T::Moment>, ValueQuery>;
+
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", T::Moment = "Moment")]
@@ -236,6 +261,8 @@ pub mod pallet {
 
             let poll_info = PollInfo {
                 number_of_options,
+                poll_start_block: 0u32.into(),
+                poll_end_block: 0u32.into(),
                 poll_end_timestamp,
                 poll_start_timestamp,
             };
@@ -294,7 +321,17 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet

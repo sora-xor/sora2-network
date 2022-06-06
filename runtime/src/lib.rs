@@ -128,7 +128,6 @@ use impls::{
 };
 
 use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
-use pallet_timestamp::Config;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.

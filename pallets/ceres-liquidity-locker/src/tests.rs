@@ -6,6 +6,7 @@ use common::{
 use frame_support::{assert_err, assert_ok};
 
 use crate::mock::*;
+use frame_support::traits::Hooks;
 
 fn preset_initial<Fun>(tests: Fun)
 where
@@ -648,5 +649,82 @@ fn check_if_has_enough_unlocked_liquidity_false() {
             ),
             false
         );
+    });
+}
+
+#[test]
+fn liquidity_locker_storage_migration_works() {
+    preset_initial(|_dex_id| {
+        let base_asset: AssetId = XOR.into();
+        let target_asset: AssetId = CERES_ASSET_ID.into();
+
+        let lock_info_a = ceres_liquidity_locker::LockInfo {
+            pool_tokens: balance!(5),
+            unlocking_block: 120u64,
+            unlocking_timestamp: 0u64,
+            asset_a: base_asset,
+            asset_b: target_asset,
+        };
+
+        let lock_info_b = ceres_liquidity_locker::LockInfo {
+            pool_tokens: balance!(6),
+            unlocking_block: 529942780u64,
+            unlocking_timestamp: 0u64,
+            asset_a: base_asset,
+            asset_b: target_asset,
+        };
+
+        let lock_info_c = ceres_liquidity_locker::LockInfo {
+            pool_tokens: balance!(7),
+            unlocking_block: 3u64,
+            unlocking_timestamp: 0u64,
+            asset_a: base_asset,
+            asset_b: target_asset,
+        };
+
+        ceres_liquidity_locker::LockerData::<Runtime>::append(ALICE(), lock_info_a);
+        ceres_liquidity_locker::LockerData::<Runtime>::append(ALICE(), lock_info_b);
+        ceres_liquidity_locker::LockerData::<Runtime>::append(BOB(), lock_info_c);
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+        run_to_block(5);
+
+        // Storage migration
+        ceres_liquidity_locker::Pallet::<Runtime>::on_runtime_upgrade();
+
+        let lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
+        for lockup in lockups_alice {
+            if lockup.pool_tokens == balance!(5) {
+                assert_eq!(lockup.unlocking_timestamp, 10690);
+            } else if lockup.pool_tokens == balance!(6) {
+                assert_eq!(lockup.unlocking_timestamp, 3179666650);
+            }
+        }
+
+        let lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
+        for lockup in lockups_bob {
+            assert_eq!(lockup.unlocking_timestamp, 9988);
+        }
+
+        // Storage version should be V2 so no changes made
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+        run_to_block(10);
+
+        // Storage migration
+        ceres_liquidity_locker::Pallet::<Runtime>::on_runtime_upgrade();
+
+        let lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
+        for lockup in lockups_alice {
+            if lockup.pool_tokens == balance!(5) {
+                assert_eq!(lockup.unlocking_timestamp, 10690);
+            } else if lockup.pool_tokens == balance!(6) {
+                assert_eq!(lockup.unlocking_timestamp, 3179666650);
+            }
+        }
+
+        let lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
+        for lockup in lockups_bob {
+            assert_eq!(lockup.unlocking_timestamp, 9988);
+        }
     });
 }

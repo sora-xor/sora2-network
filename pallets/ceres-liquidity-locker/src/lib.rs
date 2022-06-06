@@ -6,6 +6,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
 pub mod weights;
 
 use codec::{Decode, Encode};
@@ -18,22 +19,33 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct LockInfo<Balance, Moment, AssetId> {
+pub struct LockInfo<Balance, BlockNumber, Moment, AssetId> {
     /// Amount of locked pool tokens
-    pool_tokens: Balance,
+    pub pool_tokens: Balance,
+    /// The time (block height) at which the tokens will be unlocked
+    pub unlocking_block: BlockNumber,
     /// The timestamp at which the tokens will be unlocked
     pub unlocking_timestamp: Moment,
     /// Base asset of locked liquidity
-    asset_a: AssetId,
+    pub asset_a: AssetId,
     /// Target asset of locked liquidity
-    asset_b: AssetId,
+    pub asset_b: AssetId,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{LockInfo, WeightInfo};
+    use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
@@ -63,9 +75,9 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type Timestamp<T> = timestamp::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -118,13 +130,25 @@ pub mod pallet {
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
+    /// Contains data about lockups for each account
     #[pallet::storage]
     #[pallet::getter(fn locker_data)]
     pub type LockerData<T: Config> = StorageMap<
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<LockInfo<Balance, T::Moment, AssetIdOf<T>>>,
+        Vec<LockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
@@ -180,6 +204,7 @@ pub mod pallet {
                 asset_a,
                 asset_b,
                 unlocking_timestamp,
+                unlocking_block: 0u32.into(),
             };
 
             // Get pool account
@@ -311,6 +336,16 @@ pub mod pallet {
             T::DbWeight::get()
                 .reads(1)
                 .saturating_add(T::DbWeight::get().writes(counter))
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
         }
     }
 

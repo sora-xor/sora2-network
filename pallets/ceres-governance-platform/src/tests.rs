@@ -1,7 +1,8 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error};
+    use crate::{pallet, Error, PollInfo};
     use common::{balance, CERES_ASSET_ID};
+    use frame_support::traits::Hooks;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
@@ -410,5 +411,62 @@ mod tests {
                 balance!(0)
             );
         })
+    }
+
+    #[test]
+    fn governance_storage_migration_works() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let poll_id_a = Vec::from([1, 2, 3, 4]);
+            let poll_id_b = Vec::from([1, 2, 3, 5]);
+
+            let poll_info_a = PollInfo {
+                number_of_options: 2,
+                poll_start_block: 4482112u64,
+                poll_end_block: 4496512u64,
+                poll_start_timestamp: 0u64,
+                poll_end_timestamp: 0u64,
+            };
+
+            let poll_info_b = PollInfo {
+                number_of_options: 3,
+                poll_start_block: 529942780u64,
+                poll_end_block: 529942790u64,
+                poll_start_timestamp: 0u64,
+                poll_end_timestamp: 0u64,
+            };
+
+            pallet::PollData::<Runtime>::insert(&poll_id_a, poll_info_a);
+            pallet::PollData::<Runtime>::insert(&poll_id_b, poll_info_b);
+
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+            run_to_block(5);
+
+            // Storage migration
+            CeresGovernancePlatform::on_runtime_upgrade();
+
+            let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
+            assert_eq!(poll_a.poll_start_timestamp, 26902642);
+            assert_eq!(poll_a.poll_end_timestamp, 26989042);
+
+            let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
+            assert_eq!(poll_b.poll_start_timestamp, 3179666650);
+            assert_eq!(poll_b.poll_end_timestamp, 3179666710);
+
+            // Storage version should be V2 so no changes made
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+            run_to_block(10);
+
+            // Storage migration
+            CeresGovernancePlatform::on_runtime_upgrade();
+
+            let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
+            assert_eq!(poll_a.poll_start_timestamp, 26902642);
+            assert_eq!(poll_a.poll_end_timestamp, 26989042);
+
+            let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
+            assert_eq!(poll_b.poll_start_timestamp, 3179666650);
+            assert_eq!(poll_b.poll_end_timestamp, 3179666710);
+        });
     }
 }

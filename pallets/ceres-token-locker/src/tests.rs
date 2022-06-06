@@ -1,7 +1,8 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error};
+    use crate::{pallet, Error, TokenLockInfo};
     use common::{balance, CERES_ASSET_ID};
+    use frame_support::traits::Hooks;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
@@ -224,6 +225,78 @@ mod tests {
             ));
 
             assert_eq!(pallet::FeeAmount::<Runtime>::get(), new_fee);
+        });
+    }
+
+    #[test]
+    fn token_locker_storage_migration_works() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let lock_info_a = TokenLockInfo {
+                tokens: balance!(5),
+                unlocking_block: 8660039u64,
+                unlocking_timestamp: 0u64,
+                asset_id: CERES_ASSET_ID,
+            };
+
+            let lock_info_b = TokenLockInfo {
+                tokens: balance!(6),
+                unlocking_block: 16052893u64,
+                unlocking_timestamp: 0u64,
+                asset_id: CERES_ASSET_ID,
+            };
+
+            let lock_info_c = TokenLockInfo {
+                tokens: balance!(7),
+                unlocking_block: 3u64,
+                unlocking_timestamp: 0u64,
+                asset_id: CERES_ASSET_ID,
+            };
+
+            pallet::TokenLockerData::<Runtime>::append(&ALICE, lock_info_a);
+            pallet::TokenLockerData::<Runtime>::append(&ALICE, lock_info_b);
+            pallet::TokenLockerData::<Runtime>::append(&BOB, lock_info_c);
+
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+            run_to_block(5);
+
+            // Storage migration
+            CeresTokenLocker::on_runtime_upgrade();
+
+            let lockups_alice = pallet::TokenLockerData::<Runtime>::get(&ALICE);
+            for lockup in lockups_alice {
+                if lockup.tokens == balance!(5) {
+                    assert_eq!(lockup.unlocking_timestamp, 51970204);
+                } else if lockup.tokens == balance!(6) {
+                    assert_eq!(lockup.unlocking_timestamp, 96327328);
+                }
+            }
+
+            let lockups_bob = pallet::TokenLockerData::<Runtime>::get(&BOB);
+            for lockup in lockups_bob {
+                assert_eq!(lockup.unlocking_timestamp, 9988);
+            }
+
+            // Storage version should be V2 so no changes made
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+            run_to_block(10);
+
+            // Storage migration
+            CeresTokenLocker::on_runtime_upgrade();
+
+            let lockups_alice = pallet::TokenLockerData::<Runtime>::get(&ALICE);
+            for lockup in lockups_alice {
+                if lockup.tokens == balance!(5) {
+                    assert_eq!(lockup.unlocking_timestamp, 51970204);
+                } else if lockup.tokens == balance!(6) {
+                    assert_eq!(lockup.unlocking_timestamp, 96327328);
+                }
+            }
+
+            let lockups_bob = pallet::TokenLockerData::<Runtime>::get(&BOB);
+            for lockup in lockups_bob {
+                assert_eq!(lockup.unlocking_timestamp, 9988);
+            }
         });
     }
 }
