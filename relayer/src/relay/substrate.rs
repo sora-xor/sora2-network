@@ -187,6 +187,7 @@ impl Relay {
         &self,
         name: &str,
         call: ContractCall<SignedClientInner, ()>,
+        confirmations: usize,
     ) -> AnyResult<E> {
         debug!("Call '{}' check", name);
         call.call().await?;
@@ -195,7 +196,7 @@ impl Relay {
         let tx = call
             .send()
             .await?
-            .confirmations(self.blocks_until_finalized as usize + 1)
+            .confirmations(confirmations)
             .await?
             .expect("failed");
         debug!("Call '{}' finalized: {:?}", name, tx);
@@ -229,6 +230,7 @@ impl Relay {
             .call_with_event::<beefy_light_client::InitialVerificationSuccessfulFilter>(
                 "New signature commitment",
                 call,
+                self.blocks_until_finalized as usize + 1,
             )
             .await?;
         let call = self
@@ -238,6 +240,7 @@ impl Relay {
             .call_with_event::<beefy_light_client::FinalVerificationSuccessfulFilter>(
                 "Complete signature commitment",
                 call,
+                1,
             )
             .await?;
         self.handle_complete_commitment_success().await?;
@@ -249,7 +252,6 @@ impl Relay {
         block_number: u32,
         latest_hash: H256,
     ) -> AnyResult<()> {
-        const INDEXING_PREFIX: &'static [u8] = b"commitment";
         let block_hash = self
             .sub
             .api()
@@ -307,103 +309,94 @@ impl Relay {
             let digest_prefix = hex::decode(digest_prefix)?.into();
             let digest_suffix = hex::decode(digest_suffix)?.into();
 
-            let key = (INDEXING_PREFIX, id, messages_hash).encode();
-            if let Some(data) = self
-                .sub
-                .offchain_local_get(crate::substrate::StorageKind::Persistent, key)
-                .await?
-            {
-                let (mut call, messages_count) = match id {
-                    ChannelId::Basic => {
-                        let messages_sub = Vec::<
-                            substrate_gen::runtime::runtime_types::basic_channel::outbound::Message,
-                        >::decode(&mut &*data)?;
-                        if messages_sub
-                            .iter()
-                            .all(|message| message.nonce <= basic_nonce)
-                        {
-                            continue;
-                        }
-                        let mut messages = vec![];
-                        for message in messages_sub {
-                            messages.push(basic::Message {
-                                target: message.target,
-                                nonce: message.nonce,
-                                payload: message.payload.into(),
-                            });
-                        }
+            let (mut call, messages_count) = match id {
+                ChannelId::Basic => {
+                    let messages_sub = self.sub.basic_commitments(messages_hash).await?;
+                    if messages_sub
+                        .iter()
+                        .all(|message| message.nonce <= basic_nonce)
+                    {
+                        continue;
+                    }
+                    let mut messages = vec![];
+                    for message in messages_sub {
+                        messages.push(basic::Message {
+                            target: message.target,
+                            nonce: message.nonce,
+                            payload: message.payload.into(),
+                        });
+                    }
 
-                        let leaf_bytes = basic::LeafBytes {
-                            digest_prefix,
-                            digest_suffix,
-                            leaf_prefix: leaf_prefix.clone(),
-                        };
-                        let messages_count = messages.len();
-                        let call = self
-                            .basic_channel
+                    let leaf_bytes = basic::LeafBytes {
+                        digest_prefix,
+                        digest_suffix,
+                        leaf_prefix: leaf_prefix.clone(),
+                    };
+                    let messages_count = messages.len();
+                    let call = self
+                        .basic_channel
+                        .submit(messages, leaf_bytes, proof.clone());
+                    (call, messages_count)
+                }
+                ChannelId::Incentivized => {
+                    let messages_sub = self.sub.incentivized_commitments(messages_hash).await?;
+                    if messages_sub
+                        .iter()
+                        .all(|message| message.nonce <= incentivized_nonce)
+                    {
+                        continue;
+                    }
+                    let mut messages = vec![];
+                    for message in messages_sub {
+                        messages.push(incentivized::Message {
+                            target: message.target,
+                            nonce: message.nonce,
+                            payload: message.payload.into(),
+                            fee: message.fee,
+                        });
+                    }
+                    let leaf_bytes = incentivized::LeafBytes {
+                        digest_prefix,
+                        digest_suffix,
+                        leaf_prefix: leaf_prefix.clone(),
+                    };
+                    let messages_count = messages.len();
+                    let call =
+                        self.incentivized_channel
                             .submit(messages, leaf_bytes, proof.clone());
-                        (call, messages_count)
-                    }
-                    ChannelId::Incentivized => {
-                        let messages_sub = Vec::<substrate_gen::runtime::runtime_types::incentivized_channel::outbound::Message>::decode(&mut &*data)?;
-                        if messages_sub
-                            .iter()
-                            .all(|message| message.nonce <= incentivized_nonce)
-                        {
-                            continue;
-                        }
-                        let mut messages = vec![];
-                        for message in messages_sub {
-                            messages.push(incentivized::Message {
-                                target: message.target,
-                                nonce: message.nonce,
-                                payload: message.payload.into(),
-                                fee: message.fee,
-                            });
-                        }
-                        let leaf_bytes = incentivized::LeafBytes {
-                            digest_prefix,
-                            digest_suffix,
-                            leaf_prefix: leaf_prefix.clone(),
-                        };
-                        let messages_count = messages.len();
-                        let call =
-                            self.incentivized_channel
-                                .submit(messages, leaf_bytes, proof.clone());
-                        (call, messages_count)
-                    }
-                };
-                debug!("Fill submit messages from {:?}", id);
-                self.eth.fill_transaction(&mut call.tx, call.block).await?;
-                call.tx.set_gas(self.submit_message_gas(id, messages_count));
-                debug!("Check submit messages from {:?}", id);
-                call.call().await?;
-                self.eth.save_gas_price(&call, "submit-messages").await?;
-                debug!("Send submit messages from {:?}", id);
-                let tx = call.send().await?;
-                debug!(
-                    "Wait for confirmations submit messages from {:?}, {:?}",
-                    id, tx
-                );
-                let tx = tx.confirmations(3).await?;
-                debug!("Submit messages from {:?}: {:?}", id, tx);
-                if let Some(tx) = tx {
-                    for log in tx.logs {
-                        let raw_log = RawLog {
-                            topics: log.topics.clone(),
-                            data: log.data.to_vec(),
-                        };
-                        if let Ok(log) =
-                            <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
-                        {
-                            info!("Message dispatched: {:?}", log);
-                        } else if let Ok(log) =
-                            <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
-                                &raw_log,
-                            )
-                        {
-                            info!("Message dispatched: {:?}", log);
-                        }
+                    (call, messages_count)
+                }
+            };
+            debug!("Fill submit messages from {:?}", id);
+            self.eth.fill_transaction(&mut call.tx, call.block).await?;
+            call.tx.set_gas(self.submit_message_gas(id, messages_count));
+            debug!("Check submit messages from {:?}", id);
+            call.call().await?;
+            self.eth.save_gas_price(&call, "submit-messages").await?;
+            debug!("Send submit messages from {:?}", id);
+            let tx = call.send().await?;
+            debug!(
+                "Wait for confirmations submit messages from {:?}, {:?}",
+                id, tx
+            );
+            let tx = tx.confirmations(3).await?;
+            debug!("Submit messages from {:?}: {:?}", id, tx);
+            if let Some(tx) = tx {
+                for log in tx.logs {
+                    let raw_log = RawLog {
+                        topics: log.topics.clone(),
+                        data: log.data.to_vec(),
+                    };
+                    if let Ok(log) =
+                        <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
+                    {
+                        info!("Message dispatched: {:?}", log);
+                    } else if let Ok(log) =
+                        <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
+                            &raw_log,
+                        )
+                    {
+                        info!("Message dispatched: {:?}", log);
                     }
                 }
             }

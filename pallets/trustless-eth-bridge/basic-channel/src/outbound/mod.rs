@@ -24,14 +24,15 @@ pub use weights::WeightInfo;
 
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message {
-    network_id: EthNetworkId,
+    pub network_id: EthNetworkId,
     /// Target application on the Ethereum side.
-    target: H160,
+    pub target: H160,
     /// A nonce for replay protection and ordering.
-    nonce: u64,
+    pub nonce: u64,
     /// Payload for target application.
-    payload: Vec<u8>,
+    pub payload: Vec<u8>,
 }
 
 pub use pallet::*;
@@ -286,7 +287,7 @@ pub mod pallet {
             (sum / messages.len()).saturating_add(1)
         }
 
-        fn make_offchain_key(hash: H256) -> Vec<u8> {
+        pub fn make_offchain_key(hash: H256) -> Vec<u8> {
             (T::INDEXING_PREFIX, ChannelId::Basic, hash).encode()
         }
     }

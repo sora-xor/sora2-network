@@ -1852,10 +1852,10 @@ impl dispatch::Config for Runtime {
 }
 
 use basic_channel::{inbound as basic_channel_inbound, outbound as basic_channel_outbound};
+use bridge_types::CHANNEL_INDEXING_PREFIX;
 use incentivized_channel::{
     inbound as incentivized_channel_inbound, outbound as incentivized_channel_outbound,
 };
-const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 pub struct OutboundRouter<T>(PhantomData<T>);
 
@@ -1899,7 +1899,7 @@ impl basic_channel_inbound::Config for Runtime {
 }
 
 impl basic_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = BasicMaxMessagePayloadSize;
@@ -1932,7 +1932,7 @@ impl incentivized_channel_inbound::Config for Runtime {
 }
 
 impl incentivized_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;

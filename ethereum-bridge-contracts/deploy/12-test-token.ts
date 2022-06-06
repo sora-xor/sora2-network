@@ -116,3 +116,5 @@ module.exports = async ({
   console.log("DAI balance: ", await deployments.read("DAI", {}, "balanceOf", migrationApp.address));
   console.log("USDT balance: ", await deployments.read("USDT", {}, "balanceOf", migrationApp.address));
 };
+
+module.exports.tags = ["TestTokens"]

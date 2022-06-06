@@ -115,7 +115,7 @@ impl Relay {
         progress: TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>,
         block_number: u64,
     ) -> AnyResult<()> {
-        match progress.wait_for_finalized_success().await {
+        match progress.wait_for_in_block().await?.wait_for_success().await {
             Err(
                 subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module(
                     runtime::runtime_types::sp_runtime::ModuleError { index, error, .. },

@@ -542,6 +542,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "basic-channel-rpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "basic-channel",
+ "bridge-types",
+ "common",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-offchain",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bech32"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3596,6 +3617,7 @@ dependencies = [
  "ansi_term",
  "assert_cmd",
  "assets-rpc",
+ "basic-channel-rpc",
  "beefy-gadget",
  "beefy-gadget-rpc",
  "beefy-primitives",
@@ -3611,6 +3633,7 @@ dependencies = [
  "framenode-chain-spec",
  "framenode-runtime",
  "futures 0.3.21",
+ "incentivized-channel-rpc",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
@@ -4555,6 +4578,27 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+]
+
+[[package]]
+name = "incentivized-channel-rpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bridge-types",
+ "common",
+ "incentivized-channel",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-offchain",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -8496,6 +8540,7 @@ dependencies = [
  "assets-rpc",
  "assets-runtime-api",
  "async-trait",
+ "basic-channel-rpc",
  "beefy-gadget-rpc",
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -8513,6 +8558,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "http",
+ "incentivized-channel-rpc",
  "jsonrpsee",
  "k256",
  "keccak-hasher",

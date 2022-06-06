@@ -307,6 +307,7 @@ pub fn new_partial(
     let rpc_extensions_builder = {
         let client = client.clone();
         let pool = transaction_pool.clone();
+        let backend = backend.clone();
 
         move |deny_unsafe,
               subscription_executor|
@@ -322,7 +323,7 @@ pub fn new_partial(
                 },
             };
 
-            crate::rpc::create_full(deps).map_err(Into::into)
+            crate::rpc::create_full(deps, backend.clone()).map_err(Into::into)
         }
     };
 

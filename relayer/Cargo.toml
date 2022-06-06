@@ -61,3 +61,5 @@ k256 = "0.10.1"
 assets-rpc = { path = "../pallets/assets/rpc" }
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
+basic-channel-rpc = { path = "../pallets/trustless-eth-bridge/basic-channel/rpc" }
+incentivized-channel-rpc = { path = "../pallets/trustless-eth-bridge/incentivized-channel/rpc" }

@@ -43,3 +43,5 @@ impl From<ethabi::Error> for DecodeError {
 }
 
 pub type EthNetworkId = u32;
+
+pub const CHANNEL_INDEXING_PREFIX: &'static [u8] = b"commitment";

@@ -32,8 +32,7 @@ impl Deref for UnsignedClient {
 impl UnsignedClient {
     pub async fn new(url: Url) -> AnyResult<Self> {
         debug!("Connect to {}", url);
-        let provider =
-            Provider::<Ws>::new(Ws::connect(url).await?).interval(Duration::from_millis(100));
+        let provider = Provider::<Ws>::new(Ws::connect(url).await?);
         Ok(Self(Arc::new(provider)))
     }
 

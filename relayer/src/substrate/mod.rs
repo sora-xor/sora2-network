@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::prelude::*;
+use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use pallet_mmr_rpc::MmrApiClient;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafIndex, Proof};
@@ -80,6 +81,32 @@ impl UnsignedClient {
         Vec<AssetId>,
     > {
         self.rpc()
+    }
+
+    pub async fn basic_commitments(
+        &self,
+        hash: H256,
+    ) -> AnyResult<Vec<basic_channel_rpc::Message>> {
+        Ok(
+            basic_channel_rpc::BasicChannelAPIClient::commitment(self.rpc(), hash)
+                .await?
+                .ok_or(anyhow!(
+                    "Connect to substrate server with enabled offhcain indexing"
+                ))?,
+        )
+    }
+
+    pub async fn incentivized_commitments(
+        &self,
+        hash: H256,
+    ) -> AnyResult<Vec<incentivized_channel_rpc::Message>> {
+        Ok(
+            incentivized_channel_rpc::IncentivizedChannelAPIClient::commitment(self.rpc(), hash)
+                .await?
+                .ok_or(anyhow!(
+                    "Connect to substrate server with enabled offhcain indexing"
+                ))?,
+        )
     }
 
     pub async fn sign_with_keypair(self, key: impl Into<KeyPair>) -> AnyResult<SignedClient> {

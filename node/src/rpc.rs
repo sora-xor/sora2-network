@@ -71,8 +71,9 @@ pub struct FullDeps<C, P> {
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(
+pub fn create_full<C, P, B>(
     deps: FullDeps<C, P>,
+    backend: Arc<B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -140,6 +141,8 @@ where
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
 
     P: TransactionPool + Send + Sync + 'static,
+    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
     use beefy_gadget_rpc::{BeefyApiServer, BeefyRpcHandler};
@@ -150,6 +153,8 @@ where
     use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
     use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
     // use farming_rpc::*;
+    use basic_channel_rpc::{BasicChannelAPIServer, BasicChannelClient};
+    use incentivized_channel_rpc::{IncentivizedChannelAPIServer, IncentivizedChannelClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
@@ -189,6 +194,10 @@ where
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
+    if let Some(storage) = backend.offchain_storage() {
+        io.merge(BasicChannelClient::new(storage.clone()).into_rpc())?;
+        io.merge(IncentivizedChannelClient::new(storage).into_rpc())?;
+    }
     io.merge(VestedRewardsClient::new(client).into_rpc())?;
     Ok(io)
 }
