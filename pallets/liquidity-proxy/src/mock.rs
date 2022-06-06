@@ -114,6 +114,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub const MinimumPeriod: u64 = 5;
 }
 
 construct_runtime! {
@@ -127,6 +128,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
@@ -325,6 +327,13 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Module<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
+    type WeightInfo = ();
+}
+
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
 

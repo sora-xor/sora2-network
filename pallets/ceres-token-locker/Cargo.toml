@@ -23,6 +23,7 @@ sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 technical = { path = "../technical", default-features = false }
+pallet-timestamp = { version = "3", default-features = false }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
