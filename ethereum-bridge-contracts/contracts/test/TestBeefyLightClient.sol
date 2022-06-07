@@ -2,10 +2,9 @@
 pragma solidity =0.8.13;
 
 import "../BeefyLightClient.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestBeefyLightClient is BeefyLightClient {
-    address public deployer;
-
+contract TestBeefyLightClient is BeefyLightClient, Ownable {
     constructor(
         ValidatorRegistry _validatorRegistry,
         SimplifiedMMRVerification _mmrVerification,
@@ -16,17 +15,14 @@ contract TestBeefyLightClient is BeefyLightClient {
             _mmrVerification,
             _startingBeefyBlock
         )
-    {
-        deployer = msg.sender;
-    }
+    {}
 
     function reset(
         uint64 _startingBeefyBlock,
         bytes32 _authoritySetRoot,
         uint256 _authoritySetLen,
         uint64 _authoritySetId
-    ) public {
-        require(msg.sender == deployer, "Only deployer can reset contract");
+    ) public onlyOwner {
         latestBeefyBlock = _startingBeefyBlock;
         latestMMRRoot = bytes32(0);
         validatorRegistry.update(

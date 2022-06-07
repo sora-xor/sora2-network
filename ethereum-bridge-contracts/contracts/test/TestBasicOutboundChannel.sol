@@ -2,16 +2,12 @@
 pragma solidity =0.8.13;
 
 import "../BasicOutboundChannel.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestBasicOutboundChannel is BasicOutboundChannel {
-    address public deployer;
+contract TestBasicOutboundChannel is BasicOutboundChannel, Ownable {
+    constructor() BasicOutboundChannel() {}
 
-    constructor() BasicOutboundChannel() {
-        deployer = msg.sender;
-    }
-
-    function reset() public {
-        require(msg.sender == deployer, "Only deployer can reset contract");
+    function reset() public onlyOwner {
         nonce = 0;
     }
 }

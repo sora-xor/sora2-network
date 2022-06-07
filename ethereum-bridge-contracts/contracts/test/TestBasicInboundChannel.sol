@@ -2,18 +2,14 @@
 pragma solidity =0.8.13;
 
 import "../BasicInboundChannel.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestBasicInboundChannel is BasicInboundChannel {
-    address public deployer;
-
+contract TestBasicInboundChannel is BasicInboundChannel, Ownable {
     constructor(BeefyLightClient _beefyLightClient)
         BasicInboundChannel(_beefyLightClient)
-    {
-        deployer = msg.sender;
-    }
+    {}
 
-    function reset() public {
-        require(msg.sender == deployer, "Only deployer can reset contract");
+    function reset() public onlyOwner {
         nonce = 0;
     }
 }
