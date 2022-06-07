@@ -104,7 +104,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl crate::Config for Runtime {
-    const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
+    const SECONDS_PER_DAY: Self::Moment = 86_400;
     type Event = Event;
     type WeightInfo = ();
 }

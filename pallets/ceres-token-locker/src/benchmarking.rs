@@ -13,7 +13,6 @@ use sp_std::prelude::*;
 
 use crate::Pallet as CeresTokenLocker;
 use assets::Pallet as Assets;
-use frame_support::traits::Hooks;
 use technical::Pallet as Technical;
 
 // Support Functions
@@ -30,22 +29,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-fn run_to_block<T: Config>(n: u32) {
-    while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
-        frame_system::Pallet::<T>::set_block_number(
-            frame_system::Pallet::<T>::block_number() + 1u32.into(),
-        );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
-    }
-}
-
 benchmarks! {
     lock_tokens {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
-        let unlocking_block = current_block + 10u32.into();
+        let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
@@ -66,7 +54,7 @@ benchmarks! {
         let _ = CeresTokenLocker::<T>::lock_tokens(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
-            unlocking_block,
+            timestamp,
             locked_tokens
         );
     }
@@ -77,8 +65,7 @@ benchmarks! {
     withdraw_tokens {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
-        let unlocking_block = current_block + 10u32.into();
+        let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
@@ -100,12 +87,14 @@ benchmarks! {
         let _ = CeresTokenLocker::<T>::lock_tokens(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
-            unlocking_block,
+            timestamp,
             locked_tokens
         );
 
-        run_to_block::<T>(20);
-    }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), unlocking_block, locked_tokens)
+        pallet_timestamp::Now::<T>::put(Timestamp::<T>::get() + 14440u32.into());
+
+
+    }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), timestamp, locked_tokens)
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, locked_tokens, CERES_ASSET_ID.into()).into());
     }

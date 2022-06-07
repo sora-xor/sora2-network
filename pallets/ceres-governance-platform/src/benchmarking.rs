@@ -13,7 +13,6 @@ use sp_std::prelude::*;
 
 use crate::Pallet as CeresGovernancePlatform;
 use assets::Pallet as Assets;
-use frame_support::traits::Hooks;
 use technical::Pallet as Technical;
 
 // Support Functions
@@ -30,24 +29,14 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-fn run_to_block<T: Config>(n: u32) {
-    while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
-        frame_system::Pallet::<T>::set_block_number(
-            frame_system::Pallet::<T>::block_number() + 1u32.into(),
-        );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
-    }
-}
-
 benchmarks! {
     vote {
         let caller = alice::<T>();
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
         let number_of_votes = balance!(300);
-        let poll_start_block = frame_system::Pallet::<T>::block_number();
-        let poll_end_block = poll_start_block + 10u32.into();
+        let poll_start_timestamp = Timestamp::<T>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
         let assets_and_permissions_tech_account_id =
@@ -68,8 +57,8 @@ benchmarks! {
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
-            poll_start_block,
-            poll_end_block
+            poll_start_timestamp,
+            poll_end_timestamp
         );
     }: {
         let _ = CeresGovernancePlatform::<T>::vote(
@@ -87,20 +76,20 @@ benchmarks! {
         let caller = alice::<T>();
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
-        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
-        let poll_end_block = poll_start_block + 10u32.into();
+        let poll_start_timestamp = Timestamp::<T>::get() + 5u32.into();
+        let poll_end_timestamp = poll_start_timestamp + 10u32.into();
         frame_system::Pallet::<T>::inc_providers(&caller);
     }: {
        let _ = CeresGovernancePlatform::<T>::create_poll(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
-            poll_start_block,
-            poll_end_block
+            poll_start_timestamp,
+            poll_end_timestamp
         );
     }
     verify {
-        assert_last_event::<T>(Event::Created(caller, voting_option, poll_start_block, poll_end_block).into());
+        assert_last_event::<T>(Event::Created(caller, voting_option, poll_start_timestamp, poll_end_timestamp).into());
     }
 
    withdraw {
@@ -108,8 +97,8 @@ benchmarks! {
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
         let number_of_votes = balance!(300);
-        let poll_start_block = frame_system::Pallet::<T>::block_number();
-        let poll_end_block = poll_start_block + 10u32.into();
+        let poll_start_timestamp = Timestamp::<T>::get();
+        let poll_end_timestamp = poll_start_timestamp + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
         let assets_and_permissions_tech_account_id =
@@ -131,8 +120,8 @@ benchmarks! {
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
-            poll_start_block,
-            poll_end_block
+            poll_start_timestamp,
+            poll_end_timestamp
         );
 
         // Vote
@@ -143,7 +132,7 @@ benchmarks! {
             number_of_votes
         );
 
-        run_to_block::<T>(20);
+        pallet_timestamp::Now::<T>::put(poll_start_timestamp + 14440u32.into());
     }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, number_of_votes).into());

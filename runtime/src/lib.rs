@@ -1485,7 +1485,7 @@ parameter_types! {
 }
 
 impl ceres_launchpad::Config for Runtime {
-    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
+    const SECONDS_PER_DAY: Moment = 86_400;
     type Event = Event;
     type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }

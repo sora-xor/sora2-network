@@ -119,8 +119,8 @@ pub mod pallet {
         + ceres_token_locker::Config
         + timestamp::Config
     {
-        /// One day represented in milliseconds
-        const MILLISECONDS_PER_DAY: Self::Moment;
+        /// One day represented in seconds
+        const SECONDS_PER_DAY: Self::Moment;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -130,7 +130,7 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type Timestamp<T> = timestamp::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
@@ -753,7 +753,7 @@ pub mod pallet {
 
             // Lock liquidity
             let unlocking_liq_timestamp = current_timestamp
-                + (T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
+                + (T::SECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
             CeresLiquidityLocker::<T>::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 XOR.into(),
@@ -841,9 +841,9 @@ pub mod pallet {
 
             ensure!(!ilo_info.claimed_lp_tokens, Error::<T>::CantClaimLPTokens);
 
-            let unlocking_timestamp = ilo_info.finish_timestamp.saturating_add(
-                T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into()),
-            );
+            let unlocking_timestamp = ilo_info
+                .finish_timestamp
+                .saturating_add(T::SECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into()));
             ensure!(
                 current_timestamp >= unlocking_timestamp,
                 Error::<T>::CantClaimLPTokens
@@ -1167,8 +1167,7 @@ pub mod pallet {
                     if current_timestamp > ilo.1.end_timestamp && !ilo.1.failed && !ilo.1.succeeded
                     {
                         let finish_timestamp = ilo.1.end_timestamp
-                            + (T::MILLISECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into()))
-                                .into();
+                            + (T::SECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into())).into();
                         if current_timestamp >= finish_timestamp {
                             let mut ilo_info = <ILOs<T>>::get(&ilo.0);
                             ilo_info.failed = true;
