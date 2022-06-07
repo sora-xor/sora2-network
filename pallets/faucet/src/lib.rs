@@ -30,9 +30,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::prelude::FixedWrapper;
 use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
+use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
 
 mod benchmarking;
@@ -58,8 +60,8 @@ type WeightInfoOf<T> = <T as Config>::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-pub fn balance_limit() -> Balance {
-    balance!(6000)
+pub fn max_amount() -> FixedWrapper {
+    From::from(0.1)
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
@@ -76,7 +78,7 @@ pub mod pallet {
     use sp_core::H160;
 
     use common::AccountIdOf;
-    use rewards::{PswapFarmOwners, PswapWaifuOwners, ValOwners};
+    use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
     use super::*;
 
@@ -137,11 +139,11 @@ pub mod pallet {
             ValOwners::<T>::remove_all();
             ValOwners::<T>::insert(
                 H160::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636")),
-                balance!(111),
+                RewardInfo::from(balance!(111)),
             );
             ValOwners::<T>::insert(
                 H160::from(hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7")),
-                balance!(444),
+                RewardInfo::from(balance!(444)),
             );
 
             PswapFarmOwners::<T>::remove_all();
@@ -223,7 +225,12 @@ impl<T: Config> Pallet<T> {
         let xor = XOR.into();
         let val = VAL.into();
         let pswap = PSWAP.into();
-        if asset_id == xor || asset_id == val || asset_id == pswap {
+        let ceres = common::AssetId32::from_bytes(hex!(
+            "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+        ))
+        .into();
+
+        if asset_id == xor || asset_id == val || asset_id == pswap || asset_id == ceres {
             Ok(())
         } else {
             Err(Error::AssetNotSupported)
@@ -239,7 +246,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
         current_block_number: BlockNumberOf<T>,
     ) -> Result<(BlockNumberOf<T>, Balance), Error<T>> {
-        let balance_limit = balance_limit();
+        let balance_limit = max_amount().into_balance();
         ensure!(amount <= balance_limit, Error::AmountAboveLimit);
         if let Some((initial_block_number, taken_amount)) = Transfers::<T>::get(target, asset_id) {
             let transfer_limit_block_count = transfer_limit_block_count::<T>();

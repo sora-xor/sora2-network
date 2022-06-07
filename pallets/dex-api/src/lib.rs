@@ -30,14 +30,13 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant};
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
-use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -80,12 +79,13 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => can_exchange!(XYKPool),
-            BondingCurvePool => can_exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
+            XSTPool => can_exchange!(XSTPool),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
             MockPool3 => can_exchange!(MockLiquiditySource3),
             MockPool4 => can_exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -93,7 +93,8 @@ impl<T: Config>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
@@ -102,18 +103,20 @@ impl<T: Config>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    swap_amount,
+                    amount,
+                    deduce_fee,
                 )
             };
         }
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => quote!(XYKPool),
-            BondingCurvePool => quote!(BondingCurvePool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
+            XSTPool => quote!(XSTPool),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
             MockPool3 => quote!(MockLiquiditySource3),
             MockPool4 => quote!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -140,12 +143,77 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => exchange!(XYKPool),
-            BondingCurvePool => exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
+            XSTPool => exchange!(XSTPool),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
             MockPool3 => exchange!(MockLiquiditySource3),
             MockPool4 => exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
+
+    fn check_rewards(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! check_rewards {
+            ($source_type:ident) => {
+                T::$source_type::check_rewards(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    input_amount,
+                    output_amount,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => check_rewards!(XYKPool),
+            MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
+            XSTPool => check_rewards!(XSTPool),
+            MockPool => check_rewards!(MockLiquiditySource),
+            MockPool2 => check_rewards!(MockLiquiditySource2),
+            MockPool3 => check_rewards!(MockLiquiditySource3),
+            MockPool4 => check_rewards!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
+
+    fn quote_without_impact(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! quote_without_impact {
+            ($source_type:ident) => {
+                T::$source_type::quote_without_impact(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    deduce_fee,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => quote_without_impact!(XYKPool),
+            MulticollateralBondingCurvePool => {
+                quote_without_impact!(MulticollateralBondingCurvePool)
+            }
+            XSTPool => quote_without_impact!(XSTPool),
+            MockPool => quote_without_impact!(MockLiquiditySource),
+            MockPool2 => quote_without_impact!(MockLiquiditySource2),
+            MockPool3 => quote_without_impact!(MockLiquiditySource3),
+            MockPool4 => quote_without_impact!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 }
@@ -201,8 +269,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
-    use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -210,7 +276,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + dex_manager::Config + trading_pair::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type MockLiquiditySource: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
@@ -239,14 +304,14 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        type BondingCurvePool: LiquiditySource<
+        type MulticollateralBondingCurvePool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,
             Balance,
             DispatchError,
         >;
-        type MulticollateralBondingCurvePool: LiquiditySource<
+        type XSTPool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,
@@ -272,80 +337,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        /// Perform swap with specified parameters. Gateway for invoking liquidity source exchanges.
-        ///
-        /// - `dex_id`: ID of the exchange.
-        /// - `liquidity_source_type`: Type of liquidity source to perform swap on.
-        /// - `input_asset_id`: ID of Asset to be deposited from sender account into pool reserves.
-        /// - `output_asset_id`: ID of Asset t0 be withdrawn from pool reserves into receiver account.
-        /// - `amount`: Either amount of desired input or output tokens, determined by `swap_variant` parameter.
-        /// - `limit`: Either maximum input amount or minimum output amount tolerated for successful swap,
-        ///            determined by `swap_variant` parameter.
-        /// - `swap_variant`: Either 'WithDesiredInput' or 'WithDesiredOutput', indicates amounts purpose.
-        /// - `receiver`: Optional value, indicates AccountId for swap receiver. If not set, default is `sender`.
-        #[pallet::weight(<T as Config>::WeightInfo::swap())]
-        pub fn swap(
-            origin: OriginFor<T>,
-            dex_id: T::DEXId,
-            liquidity_source_type: LiquiditySourceType,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
-            amount: Balance,
-            limit: Balance,
-            swap_variant: SwapVariant,
-            receiver: Option<T::AccountId>,
-        ) -> DispatchResultWithPostInfo {
-            let sender = ensure_signed(origin)?;
-            let receiver = receiver.unwrap_or(sender.clone());
-            let outcome = Self::exchange(
-                &sender,
-                &receiver,
-                &LiquiditySourceId::<T::DEXId, LiquiditySourceType>::new(
-                    dex_id.clone(),
-                    liquidity_source_type.clone(),
-                ),
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.clone(), limit.clone()),
-            )?;
-            let (input_amount, output_amount) = match swap_variant {
-                SwapVariant::WithDesiredInput => (amount, outcome.amount.clone()),
-                SwapVariant::WithDesiredOutput => (outcome.amount.clone(), amount),
-            };
-            Self::deposit_event(Event::DirectExchange(
-                sender,
-                receiver,
-                dex_id,
-                liquidity_source_type,
-                input_asset_id,
-                output_asset_id,
-                input_amount,
-                output_amount,
-                outcome.fee.clone(),
-            ));
-            Ok(().into())
-        }
-    }
-
-    #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        /// Exchange of tokens has been performed
-        /// [Sender Account, Receiver Account, DEX Id, LiquiditySourceType, Input Asset Id, Output Asset Id, Input Amount, Output Amount, Fee Amount]
-        DirectExchange(
-            AccountIdOf<T>,
-            AccountIdOf<T>,
-            DexIdOf<T>,
-            LiquiditySourceType,
-            AssetIdOf<T>,
-            AssetIdOf<T>,
-            Balance,
-            Balance,
-            Balance,
-        ),
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::storage]
     pub type EnabledSourceTypes<T: Config> = StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;

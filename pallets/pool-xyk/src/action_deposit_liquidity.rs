@@ -28,35 +28,26 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
+use sp_runtime::traits::Zero;
 
 use common::prelude::{Balance, FixedWrapper};
 
-use crate::{to_balance, to_fixed_wrapper};
+use crate::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
 
-use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf, TechAssetIdOf};
+use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::{Config, Error, Module, MIN_LIQUIDITY};
 
 use crate::bounds::*;
 use crate::operations::*;
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for DepositLiquidityAction<
-        AssetIdOf<T>,
-        TechAssetIdOf<T>,
-        Balance,
-        AccountIdOf<T>,
-        TechAccountIdOf<T>,
-    >
+    for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
-        (self.source.0).amount == Bounds::Dummy
-            || (self.source.1).amount == Bounds::Dummy
-            || self.destination.amount == Bounds::Dummy
+        self.source.0.amount == Bounds::Dummy || self.source.1.amount == Bounds::Dummy
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
@@ -96,14 +87,6 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         // Check that pool account is valid.
         Module::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
 
-        let mark_asset = Module::<T>::get_marking_asset(&self.pool_account)?;
-        ensure!(
-            self.destination.asset == mark_asset,
-            Error::<T>::InvalidAssetForLiquidityMarking
-        );
-
-        let repr_k_asset_id = self.destination.asset.into();
-
         // Balance of source account for asset pair.
         let (balance_bs, balance_ts) = if abstract_checking {
             (None, None)
@@ -135,9 +118,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let mut empty_pool = false;
         if balance_bp == 0 && balance_tp == 0 {
             empty_pool = true;
-        } else if balance_bp <= 0 {
+        } else if balance_bp == 0 {
             Err(Error::<T>::PoolIsInvalid)?;
-        } else if balance_tp <= 0 {
+        } else if balance_tp == 0 {
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
@@ -148,10 +131,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         if !abstract_checking && empty_pool {
             // Convertation from `Bounds` to `Option` is used here, and it is posible that value
             // None value returned from conversion.
-            init_x = Option::<Balance>::from((self.source.0).amount)
+            init_x = Option::<Balance>::from(self.source.0.amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
-            init_y = Option::<Balance>::from((self.source.1).amount)
+            init_y = Option::<Balance>::from(self.source.1.amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
+
+            if init_x < T::MIN_XOR {
+                return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+            }
         }
 
         // FixedWrapper version of variables.
@@ -159,115 +146,65 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let fxw_balance_tp = FixedWrapper::from(balance_tp);
 
         // Product of pool pair amounts to get k value.
-        let (pool_k, fxw_pool_k) = {
+        let pool_k = {
             if empty_pool {
                 if abstract_checking {
-                    (None, None)
+                    None
                 } else {
                     let fxw_value =
                         to_fixed_wrapper!(init_x).multiply_and_sqrt(&to_fixed_wrapper!(init_y));
                     let value = to_balance!(fxw_value.clone());
-                    (Some(value), Some(fxw_value))
+                    Some(value)
                 }
             } else {
                 let fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
                 let value = to_balance!(fxw_value.clone());
-                (Some(value), Some(fxw_value))
+                Some(value)
             }
         };
 
         if !abstract_checking {
             if empty_pool {
-                match self.destination.amount {
-                    Bounds::Desired(k) => {
-                        ensure!(
-                            k == pool_k.unwrap(),
-                            Error::<T>::InvalidDepositLiquidityDestinationAmount
-                        );
-                    }
-                    _ => {
-                        self.destination.amount = Bounds::Calculated(pool_k.unwrap());
-                    }
-                }
+                self.pool_tokens = pool_k.unwrap();
             } else {
-                match (
-                    (self.source.0).amount,
-                    (self.source.1).amount,
-                    self.destination.amount,
-                ) {
-                    (ox, oy, Bounds::Desired(destination_k)) => {
-                        ensure!(destination_k > 0, Error::<T>::ZeroValueInAmountParameter);
-                        let fxw_destination_k = FixedWrapper::from(init_x);
-                        let fxw_piece_to_add = fxw_pool_k.unwrap() / fxw_destination_k;
-                        let fxw_recom_x = fxw_balance_bp.clone() / fxw_piece_to_add.clone();
-                        let fxw_recom_y = fxw_balance_tp.clone() / fxw_piece_to_add.clone();
-                        let recom_x = to_balance!(fxw_recom_x);
-                        let recom_y = to_balance!(fxw_recom_y);
-                        match ox {
-                            Bounds::Desired(x) => {
-                                if x != recom_x {
-                                    Err(Error::<T>::InvalidDepositLiquidityBasicAssetAmount)?
-                                }
-                            }
-                            bounds => {
-                                let value = to_balance!(fxw_balance_bp / fxw_piece_to_add.clone());
-                                let calc = Bounds::Calculated(value);
-                                ensure!(
-                                    bounds.meets_the_boundaries(&calc),
-                                    Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
-                                );
-                                (self.source.0).amount = calc;
-                            }
-                        }
-                        match oy {
-                            Bounds::Desired(y) => {
-                                if y != recom_y {
-                                    Err(Error::<T>::InvalidDepositLiquidityTargetAssetAmount)?
-                                }
-                            }
-                            bounds => {
-                                let value = to_balance!(fxw_balance_tp / fxw_piece_to_add);
-                                let calc = Bounds::Calculated(value);
-                                ensure!(
-                                    bounds.meets_the_boundaries(&calc),
-                                    Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
-                                );
-                                (self.source.1).amount = calc;
-                            }
-                        }
-                    }
+                match (self.source.0.amount, self.source.1.amount) {
                     (
                         Bounds::RangeFromDesiredToMin(xdes, xmin),
                         Bounds::RangeFromDesiredToMin(ydes, ymin),
-                        dest_amount,
                     ) => {
                         ensure!(
                             xdes >= xmin && ydes >= ymin,
                             Error::<T>::RangeValuesIsInvalid
                         );
 
-                        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
+                        // Adding min liquidity to pretend that initial provider has locked amount,
+                        // which actually is not reflected in total supply.
+                        let total_iss = TotalIssuances::<T>::get(&pool_account_repr_sys)
+                            .ok_or(Error::<T>::PoolIsInvalid)?;
+                        let total_iss = total_iss
+                            .checked_add(MIN_LIQUIDITY)
+                            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
 
                         let (calc_xdes, calc_ydes, calc_marker) =
                             Module::<T>::calc_deposit_liquidity_1(
                                 total_iss, balance_bp, balance_tp, xdes, ydes, xmin, ymin,
                             )?;
 
+                        let acc_already_in_pool = PoolProviders::<T>::contains_key(
+                            &pool_account_repr_sys,
+                            self.receiver_account.as_ref().unwrap(),
+                        );
+                        if !acc_already_in_pool && calc_xdes < T::MIN_XOR {
+                            return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+                        }
+
                         self.source.0.amount = Bounds::Calculated(calc_xdes);
                         self.source.1.amount = Bounds::Calculated(calc_ydes);
-
-                        match dest_amount {
-                            Bounds::Desired(_) => {
-                                return Err(Error::<T>::ThisCaseIsNotSupported.into());
-                            }
-                            _ => {
-                                self.destination.amount = Bounds::Calculated(calc_marker);
-                            }
-                        }
+                        self.pool_tokens = calc_marker;
                     }
                     // Case then no amount is specified (or something needed is not specified),
                     // impossible to decide any amounts.
-                    (_, _, _) => {
+                    _ => {
                         Err(Error::<T>::ImpossibleToDecideDepositLiquidityAmounts)?;
                     }
                 }
@@ -294,12 +231,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         if !abstract_checking {
             // Get required values, now it is always Some, it is safe to unwrap().
             let min_liquidity = self.min_liquidity.unwrap();
-            let base_amount = (self.source.0).amount.unwrap();
-            let target_amount = (self.source.1).amount.unwrap();
-            let destination_amount = self.destination.amount.unwrap();
+            let base_amount = self.source.0.amount.unwrap();
+            let target_amount = self.source.1.amount.unwrap();
             // Checking by minimum liquidity.
-            if min_liquidity > pool_k.unwrap()
-                && destination_amount < min_liquidity - pool_k.unwrap()
+            if min_liquidity > pool_k.unwrap() && self.pool_tokens < min_liquidity - pool_k.unwrap()
             {
                 Err(Error::<T>::DestinationAmountOfLiquidityIsNotLargeEnough)?;
             }
@@ -314,8 +249,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         if empty_pool {
             // Previous checks guarantee that unwrap and subtraction are safe.
-            self.destination.amount =
-                Bounds::Calculated(self.destination.amount.unwrap() - self.min_liquidity.unwrap());
+            self.pool_tokens -= self.min_liquidity.unwrap();
         }
 
         Ok(())
@@ -332,49 +266,45 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 }
 
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for DepositLiquidityAction<
-        AssetIdOf<T>,
-        TechAssetIdOf<T>,
-        Balance,
-        AccountIdOf<T>,
-        TechAccountIdOf<T>,
-    >
+    for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
         ensure!(
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
-        let asset_repr = Into::<AssetIdOf<T>>::into(self.destination.asset);
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Module::<T>::transfer_in(
-            &(self.source.0).asset,
+            &self.source.0.asset,
             &source,
             &self.pool_account,
-            (self.source.0).amount.unwrap(),
+            self.source.0.amount.unwrap(),
         )?;
         technical::Module::<T>::transfer_in(
-            &(self.source.1).asset,
+            &self.source.1.asset,
             &source,
             &self.pool_account,
-            (self.source.1).amount.unwrap(),
+            self.source.1.amount.unwrap(),
         )?;
-        assets::Module::<T>::mint_to(
-            &asset_repr,
-            &pool_account_repr_sys,
-            self.receiver_account.as_ref().unwrap(),
-            self.destination.amount.unwrap(),
-        )?;
-        let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        let receiver_account = self.receiver_account.as_ref().unwrap();
+        // Pool tokens balance is zero while minted amount will be non-zero.
+        if Module::<T>::pool_providers(&pool_account_repr_sys, receiver_account)
+            .unwrap_or(0)
+            .is_zero()
+            && !self.pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(&self.source.0.asset, &self.source.1.asset)?;
+            AccountPools::<T>::mutate(receiver_account, |set| set.insert(pair.target_asset_id));
+        }
+        Module::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
         let balance_a =
-            <assets::Module<T>>::free_balance(&(self.source.0).asset, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
         let balance_b =
-            <assets::Module<T>>::free_balance(&(self.source.1).asset, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
         Module::<T>::update_reserves(
-            &(self.source.0).asset,
-            &(self.source.1).asset,
+            &self.source.0.asset,
+            &self.source.1.asset,
             (&balance_a, &balance_b),
         );
         Ok(())

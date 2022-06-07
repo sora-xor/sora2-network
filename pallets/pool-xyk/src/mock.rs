@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as pool_xyk, Config};
-use common::prelude::Balance;
-use common::{balance, hash, DEXInfo};
+use common::prelude::{Balance, Fixed};
+use common::{balance, fixed, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -38,17 +38,18 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
-use permissions::{Scope, MANAGE_DEX, TRANSFER};
+use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;
 pub type BlockNumber = u64;
@@ -72,6 +73,8 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 parameter_type_with_key! {
@@ -91,12 +94,14 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: orml_tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -152,7 +157,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl tokens::Config for Runtime {
+impl orml_tokens::Config for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
@@ -164,7 +169,7 @@ impl tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = orml_tokens::Module<Runtime>;
     type NativeCurrency =
         BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -179,6 +184,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -188,12 +195,11 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WeightInfo = ();
+    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -205,18 +211,36 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
-    type PairSwapAction = crate::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        crate::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
@@ -228,6 +252,11 @@ pub fn ALICE() -> AccountId {
 #[allow(non_snake_case)]
 pub fn BOB() -> AccountId {
     AccountId32::from([2; 32])
+}
+
+#[allow(non_snake_case)]
+pub fn CHARLIE() -> AccountId {
+    AccountId32::from([35; 32])
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -253,11 +282,13 @@ impl Default for ExtBuilder {
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
+                (CHARLIE(), BlackPepper.into(), balance!(2000000)),
             ],
-            initial_permission_owners: vec![
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
-                (TRANSFER, Scope::Unlimited, vec![ALICE()]),
-            ],
+            initial_permission_owners: vec![(
+                MANAGE_DEX,
+                Scope::Limited(hash(&DEX_A_ID)),
+                vec![BOB()],
+            )],
             initial_permissions: vec![(BOB(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
         }
     }
@@ -275,7 +306,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
+        orml_tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

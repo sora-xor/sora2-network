@@ -34,7 +34,7 @@
 
 use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
-use common::utils::string_serialization;
+use common::utils::{string_serialization, string_serialization_opt};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
@@ -59,7 +59,7 @@ pub struct BalanceInfo<Balance> {
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct AssetInfo<AssetId, AssetSymbol, AssetName, Precision> {
+pub struct AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description> {
     #[cfg_attr(
         feature = "std",
         serde(
@@ -110,16 +110,44 @@ pub struct AssetInfo<AssetId, AssetSymbol, AssetName, Precision> {
 
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub is_mintable: bool,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "ContentSource: std::fmt::Display",
+                deserialize = "ContentSource: std::str::FromStr"
+            ),
+            with = "string_serialization_opt"
+        ),
+        serde(default)
+    )]
+    pub content_source: Option<ContentSource>,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Description: std::fmt::Display",
+                deserialize = "Description: std::str::FromStr"
+            ),
+            with = "string_serialization_opt"
+        ),
+        serde(default)
+    )]
+    pub description: Option<Description>,
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait AssetsAPI<AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision> where
+    pub trait AssetsAPI<AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision, ContentSource, Description> where
         AccountId: Codec,
         AssetId: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
         AssetSymbol: Codec + MaybeFromStr + MaybeDisplay,
         AssetName: Codec + MaybeFromStr + MaybeDisplay,
         Precision: Codec + MaybeFromStr + MaybeDisplay,
+        ContentSource: Codec + MaybeFromStr + MaybeDisplay,
+        Description: Codec + MaybeFromStr + MaybeDisplay,
     {
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
 
@@ -131,9 +159,11 @@ sp_api::decl_runtime_apis! {
 
         fn list_asset_ids() -> Vec<AssetId>;
 
-        fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
+        fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>;
 
-        fn get_asset_info(asset_id: AssetId) -> Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
+        fn get_asset_info(asset_id: AssetId) -> Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision, ContentSource, Description>>;
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource>;
     }
 }
 
@@ -142,17 +172,22 @@ mod tests {
     use super::*;
     use common::prelude::{
         AssetId32 as ConcrAssetId, AssetName as ConcrAssetName, AssetSymbol as ConcrAssetSymbol,
-        BalancePrecision as ConcrBalancePrecision, PredefinedAssetId as ConcrAssetIdUnderlying,
+        BalancePrecision as ConcrBalancePrecision, ContentSource, Description,
+        PredefinedAssetId as ConcrAssetIdUnderlying,
     };
+    use common::DEFAULT_BALANCE_PRECISION;
+
+    type AssetInfoTy = AssetInfo<
+        ConcrAssetId<ConcrAssetIdUnderlying>,
+        ConcrAssetSymbol,
+        ConcrAssetName,
+        ConcrBalancePrecision,
+        ContentSource,
+        Description,
+    >;
 
     #[test]
     fn should_serialize_and_deserialize_asset_info_properly_with_string() {
-        type AssetInfoTy = AssetInfo<
-            ConcrAssetId<ConcrAssetIdUnderlying>,
-            ConcrAssetSymbol,
-            ConcrAssetName,
-            ConcrBalancePrecision,
-        >;
         let asset_info = AssetInfoTy {
             asset_id: ConcrAssetId {
                 code: [
@@ -163,11 +198,43 @@ mod tests {
             },
             symbol: ConcrAssetSymbol(b"XOR".to_vec()),
             name: ConcrAssetName(b"SORA".to_vec()),
-            precision: 18,
+            precision: DEFAULT_BALANCE_PRECISION,
             is_mintable: true,
+            content_source: Some(ContentSource(b"none".to_vec())),
+            description: Some(Description(b"none".to_vec())),
         };
 
-        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","name":"SORA","precision":"18","is_mintable":"true"}"#;
+        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","name":"SORA","precision":"18","is_mintable":"true","content_source":"none","description":"none"}"#;
+
+        assert_eq!(serde_json::to_string(&asset_info).unwrap(), json_str);
+        assert_eq!(
+            serde_json::from_str::<AssetInfoTy>(json_str).unwrap(),
+            asset_info
+        );
+
+        // should not panic
+        serde_json::to_value(&asset_info).unwrap();
+    }
+
+    #[test]
+    fn should_serialize_and_deserialize_asset_info_properly_with_string_2() {
+        let asset_info = AssetInfoTy {
+            asset_id: ConcrAssetId {
+                code: [
+                    2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 10, 0, 11, 0, 12, 0, 13, 0, 14,
+                    0, 15, 0, 1, 0, 2, 0,
+                ],
+                phantom: Default::default(),
+            },
+            symbol: ConcrAssetSymbol(b"XOR".to_vec()),
+            name: ConcrAssetName(b"SORA".to_vec()),
+            precision: DEFAULT_BALANCE_PRECISION,
+            is_mintable: true,
+            content_source: None,
+            description: None,
+        };
+
+        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","name":"SORA","precision":"18","is_mintable":"true","content_source":null,"description":null}"#;
 
         assert_eq!(serde_json::to_string(&asset_info).unwrap(), json_str);
         assert_eq!(

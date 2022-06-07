@@ -29,20 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
-use frame_support::weights::Weight;
+use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill};
+use sp_runtime::{MultiSignature, Perbill, Percent};
 
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, OnValBurned};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -81,6 +82,11 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
+    pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
+        read: 100,
+        write: 1000,
+    };
 }
 
 construct_runtime! {
@@ -101,6 +107,12 @@ construct_runtime! {
 }
 
 impl Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 20;
+    const UPDATE_FREQUENCY: BlockNumber = 5;
+    const MAX_CHUNK_SIZE: usize = 1;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 100;
+    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type WeightInfo = ();
 }
@@ -120,7 +132,7 @@ impl frame_system::Config for Runtime {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
+    type DbWeight = DbWeight;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
@@ -137,7 +149,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -148,6 +159,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -226,18 +239,22 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }
@@ -246,7 +263,7 @@ impl ExtBuilder {
 
         TokensConfig {
             endowed_accounts: vec![
-                (account_id.clone(), VAL.into(), balance!(150)),
+                (account_id.clone(), VAL.into(), balance!(30000)),
                 (account_id.clone(), PSWAP.into(), balance!(1000)),
             ],
         }
@@ -254,17 +271,27 @@ impl ExtBuilder {
         .unwrap();
 
         TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(account_id, tech_account_id.clone())],
+            register_tech_accounts: vec![(account_id, tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         let (val_owners, pswap_farm_owners, pswap_waifu_owners) = if self.with_rewards {
             (
-                vec![(
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    balance!(111),
-                )],
+                vec![
+                    (
+                        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                        (balance!(111), balance!(1000)).into(),
+                    ),
+                    (
+                        hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                        (balance!(2888.99), balance!(20000)).into(),
+                    ),
+                    (
+                        hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                        (balance!(0.01), balance!(0.1)).into(),
+                    ),
+                ],
                 vec![(
                     hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
                     balance!(222),
@@ -273,6 +300,10 @@ impl ExtBuilder {
                     (
                         hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
                         balance!(333),
+                    ),
+                    (
+                        hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                        balance!(100),
                     ),
                     (
                         hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
@@ -288,10 +319,54 @@ impl ExtBuilder {
             val_owners,
             pswap_farm_owners,
             pswap_waifu_owners,
+            umi_nfts: vec![PSWAP.into()],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()
     }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        Rewards::on_initialize(System::block_number());
+        Rewards::on_val_burned(balance!(10));
+    }
+}
+
+pub fn unclaimed_val_data() -> Vec<(crate::EthAddress, Balance)> {
+    vec![
+        (
+            hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+            balance!(500),
+        ),
+        (
+            hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+            balance!(1000),
+        ),
+        (
+            hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+            balance!(1500),
+        ),
+        (
+            hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
+            balance!(2000),
+        ),
+        (
+            hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
+            balance!(2500),
+        ),
+        (
+            hex!("90781049bad67cb0b870bfd41da6b467d4345683").into(),
+            balance!(3000),
+        ),
+        (
+            hex!("8522d57aa68fad76c110ca6ff310dcd57071cdf6").into(),
+            balance!(3500),
+        ),
+    ]
 }

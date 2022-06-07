@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use common::prelude::Balance;
-use common::{AssetName, AssetSymbol};
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;
@@ -67,7 +67,7 @@ fn generic_pair_swap_simple() {
     let repr: AccountId = Technical::tech_account_id_to_account_id(&t01).unwrap();
     let a01 = RedPepper();
     let a02 = BlackPepper();
-    let s01 = GenericPair(GenericPairSwapActionExample {
+    let mut s01 = GenericPair(GenericPairSwapActionExample {
         give_minted: false,
         give_asset: a01,
         give_amount: 330_000u32.into(),
@@ -83,18 +83,22 @@ fn generic_pair_swap_simple() {
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
             AssetName(b"Red Pepper".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         ));
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
             repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
             AssetName(b"Black Pepper".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         ));
         assert_ok!(assets::Module::<Runtime>::mint_to(
             &RedPepper(),
@@ -124,7 +128,7 @@ fn generic_pair_swap_simple() {
             assets::Module::<Runtime>::free_balance(&a02, &repr).unwrap(),
             9000000u32.into()
         );
-        assert_ok!(Technical::create_swap(Origin::signed(get_alice()), s01));
+        Technical::create_swap(get_alice(), &mut s01).unwrap();
         assert_eq!(
             assets::Module::<Runtime>::free_balance(&a01, &get_alice()).unwrap(),
             8769000u32.into()

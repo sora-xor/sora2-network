@@ -42,24 +42,7 @@ const CUSTOM_PERMISSION: PermissionId = 10001;
 fn permission_check_passes() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        assert_ok!(Permissions::check_permission(BOB, TRANSFER));
-    });
-}
-
-#[test]
-fn permission_check_restrictive_permission_passes() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(Permissions::check_permission(BOB, TRANSFER));
-    });
-}
-
-#[test]
-fn permission_check_restrictive_permission_fails_with_forbidden_error() {
-    ExtBuilder::default().build().execute_with(|| {
-        match Permissions::check_permission(ALICE, TRANSFER) {
-            Err(Error::<Runtime>::Forbidden) => {}
-            result => panic!("{:?}", result),
-        }
+        assert_ok!(Permissions::check_permission(BOB, BURN));
     });
 }
 
@@ -78,7 +61,7 @@ fn permission_check_with_scope_passes() {
     ext.execute_with(|| {
         assert_ok!(Permissions::check_permission_with_scope(
             BOB,
-            TRANSFER,
+            INIT_DEX,
             &Scope::Unlimited,
         ));
     });
@@ -90,7 +73,7 @@ fn permission_check_restrictive_permission_with_scope_passes() {
     ext.execute_with(|| {
         match Permissions::check_permission_with_scope(
             BOB,
-            TRANSFER,
+            MINT,
             &Scope::Limited(H512::repeat_byte(1)),
         ) {
             Err(Error::<Runtime>::Forbidden) => {}
@@ -98,7 +81,7 @@ fn permission_check_restrictive_permission_with_scope_passes() {
         }
         match Permissions::check_permission_with_scope(
             ALICE,
-            TRANSFER,
+            MINT,
             &Scope::Limited(H512::repeat_byte(1)),
         ) {
             Err(Error::<Runtime>::Forbidden) => {}
@@ -113,7 +96,7 @@ fn permission_check_with_scope_fails_with_forbidden_error() {
     ext.execute_with(|| {
         match Permissions::check_permission_with_scope(
             BOB,
-            BURN,
+            SLASH,
             &Scope::Limited(H512::repeat_byte(1)),
         ) {
             Err(Error::<Runtime>::Forbidden) => {}
@@ -135,7 +118,7 @@ fn permission_grant_passes() {
 #[test]
 fn permission_grant_fails_with_permission_not_found_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::grant_permission(BOB, ALICE, BURN) {
+        match Permissions::grant_permission(BOB, ALICE, MANAGE_DEX) {
             Err(Error::<Runtime>::PermissionNotFound) => {}
             result => panic!("{:?}", result),
         }
@@ -145,7 +128,7 @@ fn permission_grant_fails_with_permission_not_found_error() {
 #[test]
 fn permission_grant_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::grant_permission(BOB, ALICE, INIT_DEX) {
+        match Permissions::grant_permission(BOB, ALICE, BURN) {
             Err(Error::<Runtime>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
         }
@@ -173,13 +156,13 @@ fn permission_grant_with_scope_multiple_times_passes() {
         assert_ok!(Permissions::grant_permission_with_scope(
             ALICE,
             JOHN,
-            TRANSFER,
+            BURN,
             Scope::Limited(H512::repeat_byte(1))
         ));
         assert_ok!(Permissions::grant_permission_with_scope(
             ALICE,
             BOB,
-            TRANSFER,
+            BURN,
             Scope::Limited(H512::repeat_byte(1))
         ));
         assert_ok!(Permissions::grant_permission_with_scope(
@@ -197,7 +180,7 @@ fn permission_grant_with_scope_fails_with_permission_not_found_error() {
         match Permissions::grant_permission_with_scope(
             BOB,
             ALICE,
-            BURN,
+            MANAGE_DEX,
             Scope::Limited(H512::repeat_byte(1)),
         ) {
             Err(Error::<Runtime>::PermissionNotFound) => {}
@@ -209,7 +192,7 @@ fn permission_grant_with_scope_fails_with_permission_not_found_error() {
 #[test]
 fn permission_grant_with_scope_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::grant_permission_with_scope(BOB, ALICE, INIT_DEX, Scope::Unlimited) {
+        match Permissions::grant_permission_with_scope(BOB, ALICE, SLASH, Scope::Unlimited) {
             Err(Error::<Runtime>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
         }
@@ -231,7 +214,7 @@ fn permission_transfer_passes() {
 #[test]
 fn permission_transfer_fails_with_permission_not_found_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::transfer_permission(BOB, ALICE, BURN, Scope::Unlimited) {
+        match Permissions::transfer_permission(BOB, ALICE, MANAGE_DEX, Scope::Unlimited) {
             Err(Error::<Runtime>::PermissionNotFound) => {}
             result => panic!("{:?}", result),
         }
@@ -241,7 +224,7 @@ fn permission_transfer_fails_with_permission_not_found_error() {
 #[test]
 fn permission_transfer_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::transfer_permission(BOB, ALICE, INIT_DEX, Scope::Unlimited) {
+        match Permissions::transfer_permission(BOB, ALICE, MINT, Scope::Unlimited) {
             Err(Error::<Runtime>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
         }
@@ -254,17 +237,17 @@ fn permission_assign_passes() {
         assert_ok!(Permissions::assign_permission(
             ALICE,
             &BOB,
-            BURN,
+            SLASH,
             Scope::Unlimited
         ));
-        assert_ok!(Permissions::check_permission(BOB, BURN));
+        assert_ok!(Permissions::check_permission(BOB, SLASH));
     });
 }
 
 #[test]
 fn permission_assign_fails_with_permission_already_exists() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::assign_permission(ALICE, &BOB, INIT_DEX, Scope::Unlimited) {
+        match Permissions::assign_permission(ALICE, &BOB, BURN, Scope::Unlimited) {
             Err(Error::<Runtime>::PermissionAlreadyExists) => {}
             result => panic!("{:?}", result),
         }
@@ -279,7 +262,6 @@ fn permission_create_passes() {
             BOB,
             CUSTOM_PERMISSION,
             Scope::Unlimited,
-            Mode::Permit
         ));
         // Verify Alice is the owner of CustomPermission
         assert_ok!(Permissions::grant_permission(
@@ -296,7 +278,7 @@ fn permission_create_passes() {
 #[test]
 fn permission_create_fails_with_permission_already_exists_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::create_permission(ALICE, BOB, INIT_DEX, Scope::Unlimited, Mode::Permit) {
+        match Permissions::create_permission(ALICE, BOB, INIT_DEX, Scope::Unlimited) {
             Err(Error::<Runtime>::PermissionAlreadyExists) => {}
             result => panic!("{:?}", result),
         }

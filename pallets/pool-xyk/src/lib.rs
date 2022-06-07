@@ -31,26 +31,30 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, Parameter};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
-use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
-use common::{
-    balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, ToFeeAccount,
+use common::prelude::{
+    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
-use orml_traits::currency::MultiCurrency;
-use permissions::{Scope, BURN, MINT};
+use common::{
+    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
+    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
+    ToFeeAccount, TradingPair,
+};
 
 mod aliases;
 use aliases::{
     AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
+use sp_std::collections::btree_set::BTreeSet;
 
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -83,16 +87,91 @@ pub trait WeightInfo {
     fn deposit_liquidity() -> Weight;
     fn withdraw_liquidity() -> Weight;
     fn initialize_pool() -> Weight;
+    fn can_exchange() -> Weight;
+    fn quote() -> Weight;
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
+    type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
+    type PoolPropertiesOutput =
+        PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
+
+    fn pool_providers(pool_account: &T::AccountId) -> Self::PoolProvidersOutput {
+        PoolProviders::<T>::iter_prefix(pool_account)
+    }
+
+    fn total_issuance(pool_account: &T::AccountId) -> Result<Balance, DispatchError> {
+        TotalIssuances::<T>::get(pool_account).ok_or(Error::<T>::PoolIsInvalid.into())
+    }
+
+    fn all_properties() -> Self::PoolPropertiesOutput {
+        Properties::<T>::iter()
+    }
+
+    fn properties_of_pool(
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Option<(T::AccountId, T::AccountId)> {
+        Properties::<T>::get(base_asset_id, target_asset_id)
+    }
+
+    fn balance_of_pool_provider(
+        pool_account: T::AccountId,
+        liquidity_provider_account: T::AccountId,
+    ) -> Option<Balance> {
+        PoolProviders::<T>::get(pool_account, liquidity_provider_account)
+    }
+
+    fn transfer_lp_tokens(
+        pool_account: T::AccountId,
+        asset_a: T::AssetId,
+        asset_b: T::AssetId,
+        base_account_id: T::AccountId,
+        target_account_id: T::AccountId,
+        pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        // Subtract lp_tokens from base_account
+        let mut result: Result<_, Error<T>> =
+            PoolProviders::<T>::mutate_exists(pool_account.clone(), base_account_id, |balance| {
+                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                let new_balance = old_balance
+                    .checked_sub(pool_tokens)
+                    .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                *balance = (new_balance != 0).then(|| new_balance);
+                Ok(())
+            });
+        result?;
+
+        // Pool tokens balance is zero while minted amount will be non-zero.
+        if PoolProviders::<T>::get(&pool_account, target_account_id.clone())
+            .unwrap_or(0)
+            .is_zero()
+            && !pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(&asset_a, &asset_b)?;
+            AccountPools::<T>::mutate(target_account_id.clone(), |set| {
+                set.insert(pair.target_asset_id)
+            });
+        }
+
+        // Add lp_tokens to target_account
+        result = PoolProviders::<T>::mutate(pool_account.clone(), target_account_id, |balance| {
+            *balance = Some(balance.unwrap_or(0) + pool_tokens);
+            Ok(())
+        });
+        result?;
+
+        Ok(())
+    }
+}
+
+impl<T: Config> Pallet<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
-        marker_asset_id: &T::AssetId,
     ) -> DispatchResult {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
@@ -114,11 +193,7 @@ impl<T: Config> Module<T> {
         Properties::<T>::insert(
             sorted_asset_a,
             sorted_asset_b,
-            (
-                reserves_account_id.clone(),
-                fees_account_id.clone(),
-                marker_asset_id.clone(),
-            ),
+            (reserves_account_id.clone(), fees_account_id.clone()),
         );
         Ok(())
     }
@@ -131,8 +206,10 @@ impl<T: Config> Module<T> {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         if base_asset_id == asset_a.clone() {
             Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         } else if base_asset_id == asset_b.clone() {
             Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
             let (pair_u, pair_v) = common::sort_with_hash_key(
@@ -141,6 +218,8 @@ impl<T: Config> Module<T> {
                 (asset_b, balance_pair.1),
             );
             Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         }
     }
 
@@ -154,21 +233,18 @@ impl<T: Config> Module<T> {
             common::TradingPair<TechAssetIdOf<T>>,
             TechAccountIdOf<T>,
             TechAccountIdOf<T>,
-            TechAssetIdOf<T>,
         ),
         DispatchError,
     > {
         let (trading_pair, tech_acc_id) =
             Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         // Function initialize_pools is usually called once, just quick check if tech
         // account is not registered is enough to do the job.
         // If function is called second time, than this is not usual case and additional checks
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
             if technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && assets::Module::<T>::ensure_asset_exists(&mark_asset.into()).is_ok()
                 && trading_pair::Module::<T>::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
@@ -183,10 +259,10 @@ impl<T: Config> Module<T> {
         }
         technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
         technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
-        Ok((trading_pair, tech_acc_id, fee_acc_id, mark_asset))
+        Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
-    fn deposit_liquidity_unchecked(
+    pub fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
         input_asset_a: AssetIdOf<T>,
@@ -205,7 +281,6 @@ impl<T: Config> Module<T> {
             input_a_desired >= input_a_min && input_b_desired >= input_b_min,
             Error::<T>::InvalidMinimumBoundValueOfBalance
         );
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action = PolySwapActionStructOf::<T>::DepositLiquidity(DepositLiquidityActionOf::<T> {
             client_account: None,
             receiver_account: None,
@@ -220,15 +295,12 @@ impl<T: Config> Module<T> {
                     amount: Bounds::<Balance>::RangeFromDesiredToMin(input_b_desired, input_b_min),
                 },
             ),
-            destination: Resource {
-                asset: mark_asset,
-                amount: Bounds::Decide,
-            },
+            pool_tokens: 0,
             min_liquidity: None,
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -246,17 +318,13 @@ impl<T: Config> Module<T> {
             output_asset_a,
             output_asset_b,
         )?;
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action =
             PolySwapActionStructOf::<T>::WithdrawLiquidity(WithdrawLiquidityActionOf::<T> {
                 client_account: None,
                 receiver_account_a: None,
                 receiver_account_b: None,
                 pool_account: tech_acc_id,
-                source: Resource {
-                    asset: mark_asset,
-                    amount: Bounds::Desired(marker_asset_desired),
-                },
+                pool_tokens: marker_asset_desired,
                 destination: ResourcePair(
                     Resource {
                         asset: output_asset_a,
@@ -270,8 +338,21 @@ impl<T: Config> Module<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
+    }
+
+    pub fn get_pool_trading_pair(
+        pool_account: &T::AccountId,
+    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_account)?;
+        match tech_acc.into() {
+            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
+                base_asset_id: trading_pair.base_asset_id.into(),
+                target_asset_id: trading_pair.target_asset_id.into(),
+            }),
+            _ => Err(Error::<T>::PoolIsInvalid.into()),
+        }
     }
 }
 
@@ -279,70 +360,77 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     for Module<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        // Function clause is used here, because in this case it is other scope and it not
-        // conflicted with bool type.
-        let res = || {
-            let tech_acc_id = T::TechAccountId::from_generic_pair(
-                "PoolXYK".into(),
-                "CanExchangeOperation".into(),
-            );
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
-                //FIXME: Use special max variable that is good for this operation.
-                desired_amount_in: balance!(0.000000001),
-                min_amount_out: 0,
-            };
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )?;
-            Ok(())
+        let base_asset_id = T::GetBaseAssetId::get();
+        let target_asset_id = if input_asset_id == &base_asset_id {
+            output_asset_id
+        } else if output_asset_id == &base_asset_id {
+            input_asset_id
+        } else {
+            return false;
         };
-        frame_support::storage::with_transaction(|| {
-            let v: DispatchResult = res();
-            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
-        })
+
+        Properties::<T>::contains_key(&base_asset_id, &target_asset_id)
     }
 
     fn quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let res = || {
-            let tech_acc_id =
-                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )
-        };
-        frame_support::storage::with_transaction(|| {
-            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
-            sp_runtime::TransactionOutcome::Rollback(v)
-        })
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        // Calculate quote.
+        match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_in,
+                    deduce_fee,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_out,
+                    deduce_fee,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+        }
     }
 
     fn exchange(
@@ -382,33 +470,137 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
+        // Clone is used here because action is used for create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
-                let mut desired_in = false;
                 let (fee, amount) = match swap_amount {
                     SwapAmount::WithDesiredInput { .. } => {
-                        desired_in = true;
                         (a.fee.unwrap(), a.destination.amount.unwrap())
                     }
                     SwapAmount::WithDesiredOutput { .. } => {
                         (a.fee.unwrap(), a.source.amount.unwrap())
                     }
                 };
-                if a.get_fee_from_destination.unwrap() && desired_in {
-                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
-                } else {
-                    Ok(common::prelude::SwapOutcome::new(amount, fee))
-                }
+                Ok(common::prelude::SwapOutcome::new(amount, fee))
             }
             _ => unreachable!("we know that always PairSwap is used"),
         };
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
+    }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        // XYK Pool has no rewards currently
+        Ok(Vec::new())
+    }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
+        let fee_fraction = if deduce_fee {
+            T::GetFee::get()
+        } else {
+            common::Fixed::default()
+        };
+        Ok(match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (output, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired input amount
+                    // y_1 = x_in * y / x
+                    // y_out = y_1 * (1 - fee)
+                    let out_with_fee =
+                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
+                    let output = FixedWrapper::from(out_with_fee.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = out_with_fee - output.clone();
+                    (output, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired input amount
+                    // x_1 = x_in * (1 - fee)
+                    // y_out = x_1 * y / x
+                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let output = input_without_fee.clone() * input_price_wrt_output;
+                    let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
+                    (output, fee_amount)
+                };
+                SwapOutcome::new(
+                    output
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (input, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired output amount:
+                    // y_1 = y_out / (1 - fee)
+                    // x_in = y_1 / y / x
+                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
+                        / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount =
+                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
+                    let input = output_with_fee / input_price_wrt_output;
+                    (input, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired output amount:
+                    // x_in = (y_out / y / x) / (1 - fee)
+                    let input_without_fee =
+                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
+                    let input = input_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = input.clone() - input_without_fee;
+                    (input, fee_amount)
+                };
+                SwapOutcome::new(
+                    input
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+        })
     }
 }
 
@@ -419,11 +611,14 @@ impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
 }
 
 pub use pallet::*;
+use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{AccountIdOf, Fixed, OnPoolCreated};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -432,8 +627,12 @@ pub mod pallet {
         + technical::Config
         + dex_manager::Config
         + trading_pair::Config
-        + pswap_distribution::Config
+        + ceres_liquidity_locker::Config
+        + demeter_farming_platform::Config
     {
+        /// The minimum amount of XOR to deposit as liquidity
+        const MIN_XOR: Balance;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -449,7 +648,9 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-
+        type GetFee: Get<Fixed>;
+        type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
+        type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -459,31 +660,22 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            match Self::storage_version() {
+                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 1,
+                    patch: 0,
+                }) => migrations::v1_2::migrate::<T>(),
+                _ => 0,
+            }
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::swap_pair())]
-        pub fn swap_pair(
-            origin: OriginFor<T>,
-            receiver: AccountIdOf<T>,
-            dex_id: DEXIdOf<T>,
-            input_asset_id: AssetIdOf<T>,
-            output_asset_id: AssetIdOf<T>,
-            swap_amount: SwapAmount<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            Module::<T>::exchange(
-                &source,
-                &receiver,
-                &dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-            )?;
-            Ok(().into())
-        }
-
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,
@@ -546,56 +738,33 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
-                let (_, tech_account_id, fees_account_id, mark_asset) =
-                    Module::<T>::initialize_pool_unchecked(
-                        source.clone(),
-                        dex_id,
-                        asset_a,
-                        asset_b,
-                    )?;
-                let mark_asset_repr: T::AssetId = mark_asset.into();
-                assets::Module::<T>::register_asset_id(
+                ensure!(
+                    assets::AssetInfos::<T>::get(asset_a).2 != 0
+                        && assets::AssetInfos::<T>::get(asset_b).2 != 0,
+                    Error::<T>::UnableToCreatePoolWithIndivisibleAssets
+                );
+                let (_, tech_account_id, fees_account_id) = Module::<T>::initialize_pool_unchecked(
                     source.clone(),
-                    mark_asset_repr,
-                    AssetSymbol(b"XYKPOOL".to_vec()),
-                    AssetName(b"XYK LP Tokens".to_vec()),
-                    18,
-                    0,
-                    true,
+                    dex_id,
+                    asset_a,
+                    asset_b,
                 )?;
                 let ta_repr =
                     technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr =
                     technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
-                // Minting permission is needed for technical account to mint markered tokens of
-                // liquidity into account who deposit liquidity.
-                permissions::Module::<T>::grant_permission_with_scope(
-                    source.clone(),
-                    ta_repr.clone(),
-                    MINT,
-                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                )?;
-                permissions::Module::<T>::grant_permission_with_scope(
-                    source,
-                    ta_repr.clone(),
-                    BURN,
-                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                )?;
                 Module::<T>::initialize_pool_properties(
                     &dex_id,
                     &asset_a,
                     &asset_b,
                     &ta_repr,
                     &fees_ta_repr,
-                    &mark_asset_repr,
                 )?;
-                pswap_distribution::Module::<T>::subscribe(
-                    fees_ta_repr,
-                    dex_id,
-                    mark_asset_repr,
-                    None,
-                )?;
-                MarkerTokensIndex::<T>::mutate(|mti| mti.insert(mark_asset_repr));
+                let (_, pool_account) =
+                    Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+                let pool_account =
+                    technical::Module::<T>::tech_account_id_to_account_id(&pool_account)?;
+                T::OnPoolCreated::on_pool_created(fees_ta_repr, dex_id, pool_account)?;
                 Self::deposit_event(Event::PoolIsInitialized(ta_repr));
                 Ok(().into())
             })
@@ -614,6 +783,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// It is impossible to calculate fee for some pair swap operation, or other operation.
         UnableToCalculateFee,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// Is is impossible to get balance.
         UnableToGetBalance,
         /// Impossible to decide asset pair amounts.
@@ -716,6 +887,21 @@ pub mod pallet {
         UnableToConvertAssetToTechAssetId,
         /// Unable to get XOR part from marker asset.
         UnableToGetXORPartFromMarkerAsset,
+        /// Pool token supply has reached limit of data type.
+        PoolTokenSupplyOverflow,
+        /// Couldn't increase reference counter for the account that adds liquidity.
+        /// It is expected to never happen because if the account has funds to add liquidity, it has a provider from balances.
+        IncRefError,
+        /// Unable to provide liquidity because its XOR part is lesser than the minimum value (0.007)
+        UnableToDepositXorLessThanMinimum,
+        /// Attempt to quote via unsupported path, i.e. both output and input tokens are not XOR.
+        UnsupportedQuotePath,
+        /// Not enough unlocked liquidity to withdraw
+        NotEnoughUnlockedLiquidity,
+        /// Cannot create a pool with indivisible assets
+        UnableToCreatePoolWithIndivisibleAssets,
+        /// Not enough liquidity out of farming to withdraw
+        NotEnoughLiquidityOutOfFarming,
     }
 
     /// Updated after last liquidity change operation.
@@ -736,12 +922,26 @@ pub mod pallet {
         ValueQuery,
     >;
 
-    /// Collection of all registered marker tokens.
+    /// Liquidity providers of particular pool.
+    /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
-    #[pallet::getter(fn marker_tokens_index)]
-    pub type MarkerTokensIndex<T: Config> = StorageValue<_, BTreeSet<T::AssetId>, ValueQuery>;
+    #[pallet::getter(fn pool_providers)]
+    pub type PoolProviders<T: Config> =
+        StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
+    /// Set of pools in which accounts have some share.
+    /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
+    #[pallet::storage]
+    #[pallet::getter(fn account_pools)]
+    pub type AccountPools<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
+
+    /// Total issuance of particular pool.
+    /// Pool account => Total issuance
+    #[pallet::storage]
+    pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
+
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<
@@ -750,6 +950,6 @@ pub mod pallet {
         T::AssetId,
         Blake2_128Concat,
         T::AssetId,
-        (T::AccountId, T::AccountId, T::AssetId),
+        (T::AccountId, T::AccountId),
     >;
 }

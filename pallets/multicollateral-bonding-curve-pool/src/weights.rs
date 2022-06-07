@@ -28,36 +28,53 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
+
 pub struct WeightInfo<T>(PhantomData<T>);
+
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn initialize_pool() -> Weight {
-        (387_780_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+        (56_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(7 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn set_reference_asset() -> Weight {
-        (210_815_000 as Weight)
+        (26_000_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
     fn set_optional_reward_multiplier() -> Weight {
-        (263_558_000 as Weight)
+        (35_000_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(5 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
-    fn claim_incentives() -> Weight {
-        (740_250_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+    fn on_initialize(n: u32) -> Weight {
+        (26_492_000 as Weight)
+            // Standard Error: 269_000
+            .saturating_add((33_780_000 as Weight).saturating_mul(n as Weight))
+            .saturating_add(T::DbWeight::get().reads(9 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn set_price_change_config() -> Weight {
+        (27_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn set_price_bias() -> Weight {
+        (26_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
 }
 
 impl crate::WeightInfo for () {
+    fn on_initialize(_elems: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
     fn initialize_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
@@ -67,7 +84,12 @@ impl crate::WeightInfo for () {
     fn set_optional_reward_multiplier() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn claim_incentives() -> Weight {
+
+    fn set_price_change_config() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn set_price_bias() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

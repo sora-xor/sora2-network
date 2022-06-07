@@ -32,7 +32,7 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::{hash, Amount, DEXInfo};
+use common::{fixed, hash, Amount, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
@@ -40,11 +40,12 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use frame_system::pallet_prelude::BlockNumberFor;
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, Percent};
 
 pub type DEXId = u32;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
@@ -71,6 +72,8 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -87,10 +90,12 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -145,6 +150,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -176,14 +183,13 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
-    type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = ();
     type WeightInfo = ();
 }
 
@@ -193,25 +199,34 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -223,6 +238,15 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {}
@@ -246,7 +270,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),

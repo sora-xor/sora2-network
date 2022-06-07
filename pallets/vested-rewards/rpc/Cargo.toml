@@ -1,0 +1,24 @@
+[package]
+name = "vested-rewards-rpc"
+version = "0.1.0"
+edition = "2018"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2" }
+jsonrpc-core = "15.0.0"
+jsonrpc-core-client = "15.0.0"
+jsonrpc-derive = "15.0.0"
+serde = { version = "1.0.101", features = ["derive"] }
+sp-api = "3"
+sp-blockchain = "3"
+sp-core = "3"
+sp-rpc = "3"
+sp-runtime = "3"
+sp-std = "3"
+
+common = { path = "../../../common" }
+vested-rewards-runtime-api = { path = "../runtime-api" }

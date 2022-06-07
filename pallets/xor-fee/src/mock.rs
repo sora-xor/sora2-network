@@ -31,11 +31,11 @@
 use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
-    Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
+    Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -44,10 +44,10 @@ use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, 
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use pallet_session::historical;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
 
 pub use crate::{self as xor_fee, Config, Module};
@@ -61,6 +61,19 @@ type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+use frame_support::sp_runtime::testing::TestSignature;
+use frame_system::offchain::{Account, AppCrypto, SigningTypes};
+use frame_system::EnsureRoot;
+use sp_core::H160;
+
+pub type Signature = TestSignature;
+
+pub struct TestAppCrypto;
+impl AppCrypto<UintAuthorityId, TestSignature> for TestAppCrypto {
+    type RuntimeAppPublic = UintAuthorityId;
+    type GenericPublic = UintAuthorityId;
+    type GenericSignature = TestSignature;
+}
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -99,6 +112,15 @@ parameter_types! {
         AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id")
     };
     pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
+    pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const EthNetworkId: <Runtime as eth_bridge::Config>::NetworkId = 0;
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
+    pub RemoveTemporaryPeerAccountId: Vec<(AccountId, H160)> = Vec::new();
+    pub const SchedulerMaxWeight: Weight = 1024;
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -130,7 +152,151 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
         XorFee: xor_fee::{Module, Call, Event<T>},
+        LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
     }
+}
+
+impl xor_fee::ExtractProxySwap for Call {
+    type DexId = DEXId;
+    type AssetId = AssetId;
+    type Amount = SwapAmount<u128>;
+
+    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
+        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            selected_source_types,
+            filter_mode,
+        )) = self
+        {
+            Some(xor_fee::SwapInfo {
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
+    }
+}
+
+impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
+    type SignatureData = ();
+
+    fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
+        unimplemented!()
+    }
+
+    fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
+    where
+        F: Fn(&Account<T>) -> TPayload,
+        TPayload: frame_system::offchain::SignedPayload<T>,
+    {
+        unimplemented!()
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+    Call: From<LocalCall>,
+{
+    fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+        call: Call,
+        _public: <Signature as Verify>::Signer,
+        account: <Runtime as frame_system::Config>::AccountId,
+        _index: <Runtime as frame_system::Config>::Index,
+    ) -> Option<(
+        Call,
+        <Extrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+    )> {
+        Some((call, (account, ())))
+    }
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+    type Public = <Signature as Verify>::Signer;
+    type Signature = Signature;
+}
+
+impl eth_bridge::Config for Runtime {
+    type Event = Event;
+    type PeerId = TestAppCrypto;
+    type Call = Call;
+    type NetworkId = u32;
+    type GetEthNetworkId = EthNetworkId;
+    type WeightInfo = ();
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
+}
+
+impl bridge_multisig::Config for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl pallet_scheduler::Config for Runtime {
+    type Event = Event;
+    type Origin = Origin;
+    type PalletsOrigin = OriginCaller;
+    type Call = Call;
+    type MaximumWeight = SchedulerMaxWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    type MaxScheduledPerBlock = ();
+    type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {
@@ -203,7 +369,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl currencies::Config for Runtime {
@@ -222,6 +387,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -240,7 +406,7 @@ impl tokens::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, XorFee>;
     type Keys = SessionKeys;
     type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
     type SessionHandler = (OtherSessionHandler,);
@@ -313,6 +479,17 @@ impl xor_fee::ApplyCustomFees<Call> for CustomFees {
     }
 }
 
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        T::notify_val_burned(amount);
+    }
+}
+
 impl Config for Runtime {
     type Event = Event;
     type XorCurrency = Balances;
@@ -324,13 +501,64 @@ impl Config for Runtime {
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
-pub struct MockLiquidityProxy;
+// Allow dead_code because we never call swap, just use its Call variant
+#[allow(dead_code)]
+#[frame_support::pallet]
+pub mod mock_liquidity_proxy {
+    use super::*;
+    use assets::AssetIdOf;
+    use common::{DexIdOf, FilterMode};
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config + assets::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        pub fn swap(
+            _origin: OriginFor<T>,
+            _dex_id: DexIdOf<T>,
+            _input_asset_id: AssetIdOf<T>,
+            _output_asset_id: AssetIdOf<T>,
+            _swap_amount: SwapAmount<Balance>,
+            _selected_source_types: Vec<LiquiditySourceType>,
+            _filter_mode: FilterMode,
+        ) -> DispatchResultWithPostInfo {
+            return Ok(().into());
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
+    pub enum Event<T: Config> {}
+
+    #[pallet::error]
+    pub enum Error<T> {}
+}
+
+type MockLiquidityProxy = mock_liquidity_proxy::Module<Runtime>;
+
+impl mock_liquidity_proxy::Config for Runtime {
+    type Event = Event;
+}
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
@@ -354,10 +582,17 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     fn quote(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+        MockLiquiditySource::quote(
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
     }
 }
 
@@ -372,6 +607,7 @@ pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
 pub const TRANSFER_AMOUNT: u64 = 69;
 pub const SORA_PARLIAMENT_ACCOUNT: u64 = 7;
+pub const EMPTY_ACCOUNT: u64 = 420;
 
 pub fn initial_balance() -> Balance {
     balance!(1000)
@@ -427,6 +663,7 @@ impl ExtBuilder {
             balances: vec![
                 (FROM_ACCOUNT, initial_balance),
                 (TO_ACCOUNT, initial_balance),
+                (EMPTY_ACCOUNT, 0),
                 (REFERRER_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT2, initial_balance),
@@ -450,10 +687,7 @@ impl ExtBuilder {
             AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: vec![(
-                xor_fee_account_id.clone(),
-                tech_account_id.clone(),
-            )],
+            register_tech_accounts: vec![(xor_fee_account_id.clone(), tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -462,7 +696,6 @@ impl ExtBuilder {
             initial_permission_owners: vec![
                 (MINT, Scope::Unlimited, vec![xor_fee_account_id]),
                 (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
-                (TRANSFER, Scope::Unlimited, vec![xor_fee_account_id]),
             ],
             initial_permissions: vec![(xor_fee_account_id, Scope::Unlimited, vec![MINT, BURN])],
         }
