@@ -303,6 +303,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                 ],
+                3,
             )
         },
         vec![],
@@ -445,6 +446,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
+                69,
             )
         },
         boot_nodes,
@@ -603,6 +605,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
+                3,
             )
         },
         vec![],
@@ -633,6 +636,7 @@ fn testnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
+    validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
     use framenode_runtime::EthAppConfig;
@@ -1018,7 +1022,7 @@ fn testnet_genesis(
                 .collect::<Vec<_>>(),
         },
         staking: StakingConfig {
-            validator_count: 69,
+            validator_count,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
