@@ -54,7 +54,7 @@ benchmarks! {
         let contract = H160::repeat_byte(6);
         let asset_name = AssetName(b"ETH".to_vec());
         let asset_symbol = AssetSymbol(b"ETH".to_vec());
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, 18, contract)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
     }

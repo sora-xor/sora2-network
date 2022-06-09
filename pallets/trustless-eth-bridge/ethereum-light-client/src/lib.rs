@@ -672,7 +672,7 @@ pub mod pallet {
                 let total_difficulty = {
                     let parent = <Headers<T>>::get(network_id, header.parent_hash)
                         .ok_or("Missing parent header")?;
-                    parent.total_difficulty + header.difficulty
+                    parent.total_difficulty.saturating_add(header.difficulty)
                 };
 
                 let block_id = insert_header_fn(&header, total_difficulty);

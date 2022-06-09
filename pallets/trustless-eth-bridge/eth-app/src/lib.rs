@@ -71,7 +71,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
-    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
+    use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
@@ -201,6 +201,7 @@ pub mod pallet {
             network_id: EthNetworkId,
             name: AssetName,
             symbol: AssetSymbol,
+            decimals: u8,
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -213,7 +214,7 @@ pub mod pallet {
                 &bridge_account,
                 symbol,
                 name,
-                DEFAULT_BALANCE_PRECISION,
+                decimals,
                 Balance::from(0u32),
                 true,
                 None,

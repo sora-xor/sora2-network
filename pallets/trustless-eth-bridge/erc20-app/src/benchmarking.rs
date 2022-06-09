@@ -94,7 +94,7 @@ benchmarks! {
         let symbol = AssetSymbol(b"ETH".to_vec());
         let name = AssetName(b"ETH".to_vec());
         assert!(!AssetsByAddresses::<T>::contains_key(network_id, address));
-    }: _(RawOrigin::Root, network_id, address, symbol, name)
+    }: _(RawOrigin::Root, network_id, address, symbol, name, 18)
     verify {
         assert!(AssetsByAddresses::<T>::contains_key(network_id, address));
     }

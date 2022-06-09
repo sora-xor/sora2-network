@@ -161,6 +161,7 @@ fn test_register_erc20_asset() {
             address,
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"ETH".to_vec()),
+            18,
         )
         .unwrap();
         assert!(AssetsByAddresses::<Test>::contains_key(network_id, address));
