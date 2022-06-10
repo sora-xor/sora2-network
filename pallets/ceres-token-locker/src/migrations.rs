@@ -1,4 +1,4 @@
-use crate::{AssetIdOf, Config, Timestamp, TokenLockInfo, Weight};
+use crate::{AssetIdOf, Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
 use common::Balance;
 use frame_support::debug;
 use frame_support::traits::Get;
@@ -7,16 +7,15 @@ use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
     debug::RuntimeLogger::init();
-
-    (0 as Weight).saturating_add(migrate_locker_data::<T>())
+    migrate_token_locker_data::<T>()
 }
 
-pub fn migrate_locker_data<T: Config>() -> Weight {
-    let mut weight: Weight = 0;
+pub fn migrate_token_locker_data<T: Config>() -> Weight {
+    let mut weight: u64 = 0;
 
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
-    crate::TokenLockerData::<T>::translate_values::<
+    TokenLockerData::<T>::translate_values::<
         Vec<TokenLockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
         _,
     >(|mut v| {
@@ -31,6 +30,7 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
                 lockups.unlocking_timestamp = current_timestamp - num_of_seconds.into();
             }
         }
+        weight += 1;
         Some(v)
     });
 
@@ -39,9 +39,5 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
         "TokenLockInfo migrated to new version with unlocking_timestamp field"
     );
 
-    // The exact weight of the StorageMap::translate_values() is unknown
-    // Since runtime upgrade is executed regardless the weight we can use approximate value
-    weight = weight.saturating_add(T::DbWeight::get().writes(1000));
-
-    weight
+    T::DbWeight::get().reads_writes(weight, weight)
 }
