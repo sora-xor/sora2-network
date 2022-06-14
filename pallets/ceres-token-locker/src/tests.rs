@@ -1,9 +1,11 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, TokenLockInfo};
-    use common::{balance, CERES_ASSET_ID};
+    use crate::{pallet, AccountIdOf, AssetIdOf, Error};
+    use common::{balance, generate_storage_instance, Balance, CERES_ASSET_ID};
+    use frame_support::pallet_prelude::StorageMap;
+    use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
-    use frame_support::{assert_err, assert_ok};
+    use frame_support::{assert_err, assert_ok, Identity};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
@@ -232,30 +234,25 @@ mod tests {
     fn token_locker_storage_migration_works() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let lock_info_a = TokenLockInfo {
-                tokens: balance!(5),
-                unlocking_block: 8660039u64,
-                unlocking_timestamp: 0u64,
-                asset_id: CERES_ASSET_ID,
-            };
+            generate_storage_instance!(CeresTokenLocker, TokenLockerData);
+            type OldLockerData = StorageMap<
+                TokenLockerDataOldInstance,
+                Identity,
+                AccountIdOf<Runtime>,
+                Vec<(Balance, BlockNumber, AssetIdOf<Runtime>)>,
+                ValueQuery,
+            >;
 
-            let lock_info_b = TokenLockInfo {
-                tokens: balance!(6),
-                unlocking_block: 16052893u64,
-                unlocking_timestamp: 0u64,
-                asset_id: CERES_ASSET_ID,
-            };
+            let mut alice_vec: Vec<(Balance, BlockNumber, AssetIdOf<Runtime>)> = Vec::new();
+            alice_vec.push((balance!(5), 8660039u64, CERES_ASSET_ID));
+            alice_vec.push((balance!(6), 16052893u64, CERES_ASSET_ID));
 
-            let lock_info_c = TokenLockInfo {
-                tokens: balance!(7),
-                unlocking_block: 3u64,
-                unlocking_timestamp: 0u64,
-                asset_id: CERES_ASSET_ID,
-            };
+            OldLockerData::insert(ALICE, alice_vec);
 
-            pallet::TokenLockerData::<Runtime>::append(&ALICE, lock_info_a);
-            pallet::TokenLockerData::<Runtime>::append(&ALICE, lock_info_b);
-            pallet::TokenLockerData::<Runtime>::append(&BOB, lock_info_c);
+            let mut bob_vec: Vec<(Balance, BlockNumber, AssetIdOf<Runtime>)> = Vec::new();
+            bob_vec.push((balance!(7), 3u64, CERES_ASSET_ID));
+
+            OldLockerData::insert(BOB, bob_vec);
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
             run_to_block(5);

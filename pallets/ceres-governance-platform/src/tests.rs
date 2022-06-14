@@ -1,9 +1,11 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, PollInfo};
-    use common::{balance, CERES_ASSET_ID};
+    use crate::{pallet, Error};
+    use common::{balance, generate_storage_instance, CERES_ASSET_ID};
+    use frame_support::pallet_prelude::StorageMap;
+    use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
-    use frame_support::{assert_err, assert_ok};
+    use frame_support::{assert_err, assert_ok, Identity};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
@@ -417,27 +419,21 @@ mod tests {
     fn governance_storage_migration_works() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            generate_storage_instance!(CeresGovernancePlatform, PollData);
+            type OldPollData = StorageMap<
+                PollDataOldInstance,
+                Identity,
+                Vec<u8>,
+                (u32, BlockNumber, BlockNumber),
+                ValueQuery,
+            >;
+
             let poll_id_a = Vec::from([1, 2, 3, 4]);
             let poll_id_b = Vec::from([1, 2, 3, 5]);
 
-            let poll_info_a = PollInfo {
-                number_of_options: 2,
-                poll_start_block: 4482112u64,
-                poll_end_block: 4496512u64,
-                poll_start_timestamp: 0u64,
-                poll_end_timestamp: 0u64,
-            };
+            OldPollData::insert(&poll_id_a, (2, 4482112u64, 4496512u64));
 
-            let poll_info_b = PollInfo {
-                number_of_options: 3,
-                poll_start_block: 529942780u64,
-                poll_end_block: 529942790u64,
-                poll_start_timestamp: 0u64,
-                poll_end_timestamp: 0u64,
-            };
-
-            pallet::PollData::<Runtime>::insert(&poll_id_a, poll_info_a);
-            pallet::PollData::<Runtime>::insert(&poll_id_b, poll_info_b);
+            OldPollData::insert(&poll_id_b, (3, 529942780u64, 529942790u64));
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
             run_to_block(5);

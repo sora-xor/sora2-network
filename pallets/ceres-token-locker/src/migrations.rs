@@ -15,24 +15,35 @@ pub fn migrate_token_locker_data<T: Config>() -> Weight {
 
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
-    TokenLockerData::<T>::translate_values::<
-        Vec<TokenLockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
-        _,
-    >(|mut v| {
-        for lockups in v.iter_mut() {
-            if lockups.unlocking_block > current_block {
-                let num_of_seconds: u32 = ((lockups.unlocking_block - current_block) * 6u32.into())
-                    .unique_saturated_into();
-                lockups.unlocking_timestamp = current_timestamp + num_of_seconds.into();
-            } else {
-                let num_of_seconds: u32 = ((current_block - lockups.unlocking_block) * 6u32.into())
-                    .unique_saturated_into();
-                lockups.unlocking_timestamp = current_timestamp - num_of_seconds.into();
-            }
-        }
-        weight += 1;
-        Some(v)
-    });
+    TokenLockerData::<T>::translate_values::<Vec<(Balance, T::BlockNumber, AssetIdOf<T>)>, _>(
+        |v| {
+            Some(
+                v.into_iter()
+                    .map(|(tokens, unlocking_block, asset_id)| {
+                        weight += 1;
+                        let unlocking_timestamp: T::Moment;
+                        if unlocking_block > current_block {
+                            let num_of_seconds: u32 = ((unlocking_block - current_block)
+                                * 6u32.into())
+                            .unique_saturated_into();
+                            unlocking_timestamp = current_timestamp + num_of_seconds.into();
+                        } else {
+                            let num_of_seconds: u32 = ((current_block - unlocking_block)
+                                * 6u32.into())
+                            .unique_saturated_into();
+                            unlocking_timestamp = current_timestamp - num_of_seconds.into();
+                        }
+
+                        TokenLockInfo {
+                            tokens,
+                            unlocking_timestamp,
+                            asset_id,
+                        }
+                    })
+                    .collect::<Vec<TokenLockInfo<Balance, T::Moment, AssetIdOf<T>>>>(),
+            )
+        },
+    );
 
     debug::info!(
         target: "runtime",

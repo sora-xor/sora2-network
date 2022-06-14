@@ -1,11 +1,14 @@
 use common::prelude::FixedWrapper;
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySourceType, ToFeeAccount,
-    DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, generate_storage_instance, AssetName, AssetSymbol, Balance, LiquiditySourceType,
+    ToFeeAccount, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_ok, Identity};
 
 use crate::mock::*;
+use crate::{AccountIdOf, AssetIdOf};
+use frame_support::pallet_prelude::StorageMap;
+use frame_support::storage::types::ValueQuery;
 use frame_support::traits::Hooks;
 
 fn preset_initial<Fun>(tests: Fun)
@@ -655,36 +658,30 @@ fn check_if_has_enough_unlocked_liquidity_false() {
 #[test]
 fn liquidity_locker_storage_migration_works() {
     preset_initial(|_dex_id| {
+        generate_storage_instance!(CeresLiquidityLocker, LockerData);
+        type OldLockerData = StorageMap<
+            LockerDataOldInstance,
+            Identity,
+            AccountIdOf<Runtime>,
+            Vec<(Balance, BlockNumber, AssetIdOf<Runtime>, AssetIdOf<Runtime>)>,
+            ValueQuery,
+        >;
+
         let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
-        let lock_info_a = ceres_liquidity_locker::LockInfo {
-            pool_tokens: balance!(5),
-            unlocking_block: 120u64,
-            unlocking_timestamp: 0u64,
-            asset_a: base_asset,
-            asset_b: target_asset,
-        };
+        let mut alice_vec: Vec<(Balance, BlockNumber, AssetIdOf<Runtime>, AssetIdOf<Runtime>)> =
+            Vec::new();
+        alice_vec.push((balance!(5), 120u64, base_asset, target_asset));
+        alice_vec.push((balance!(6), 529942780u64, base_asset, target_asset));
 
-        let lock_info_b = ceres_liquidity_locker::LockInfo {
-            pool_tokens: balance!(6),
-            unlocking_block: 529942780u64,
-            unlocking_timestamp: 0u64,
-            asset_a: base_asset,
-            asset_b: target_asset,
-        };
+        OldLockerData::insert(ALICE(), alice_vec);
 
-        let lock_info_c = ceres_liquidity_locker::LockInfo {
-            pool_tokens: balance!(7),
-            unlocking_block: 3u64,
-            unlocking_timestamp: 0u64,
-            asset_a: base_asset,
-            asset_b: target_asset,
-        };
+        let mut bob_vec: Vec<(Balance, BlockNumber, AssetIdOf<Runtime>, AssetIdOf<Runtime>)> =
+            Vec::new();
+        bob_vec.push((balance!(7), 3u64, base_asset, target_asset));
 
-        ceres_liquidity_locker::LockerData::<Runtime>::append(ALICE(), lock_info_a);
-        ceres_liquidity_locker::LockerData::<Runtime>::append(ALICE(), lock_info_b);
-        ceres_liquidity_locker::LockerData::<Runtime>::append(BOB(), lock_info_c);
+        OldLockerData::insert(BOB(), bob_vec);
 
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
         run_to_block(5);

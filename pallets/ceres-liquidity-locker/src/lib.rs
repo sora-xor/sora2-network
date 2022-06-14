@@ -19,11 +19,9 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct LockInfo<Balance, BlockNumber, Moment, AssetId> {
+pub struct LockInfo<Balance, Moment, AssetId> {
     /// Amount of locked pool tokens
     pub pool_tokens: Balance,
-    /// The time (block height) at which the tokens will be unlocked
-    pub unlocking_block: BlockNumber,
     /// The timestamp at which the tokens will be unlocked
     pub unlocking_timestamp: Moment,
     /// Base asset of locked liquidity
@@ -151,7 +149,7 @@ pub mod pallet {
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<LockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
+        Vec<LockInfo<Balance, T::Moment, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
@@ -207,7 +205,6 @@ pub mod pallet {
                 asset_a,
                 asset_b,
                 unlocking_timestamp,
-                unlocking_block: 0u32.into(),
             };
 
             // Get pool account

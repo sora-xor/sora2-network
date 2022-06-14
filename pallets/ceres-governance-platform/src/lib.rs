@@ -35,13 +35,9 @@ pub struct VotingInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PollInfo<BlockNumber, Moment> {
+pub struct PollInfo<Moment> {
     /// Number of options
     pub number_of_options: u32,
-    /// Poll start block
-    pub poll_start_block: BlockNumber,
-    /// Poll end block
-    pub poll_end_block: BlockNumber,
     /// Poll start timestamp
     pub poll_start_timestamp: Moment,
     /// Poll end timestamp
@@ -105,7 +101,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn poll_data)]
     pub type PollData<T: Config> =
-        StorageMap<_, Identity, Vec<u8>, PollInfo<T::BlockNumber, T::Moment>, ValueQuery>;
+        StorageMap<_, Identity, Vec<u8>, PollInfo<T::Moment>, ValueQuery>;
 
     #[pallet::type_value]
     pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
@@ -261,8 +257,6 @@ pub mod pallet {
 
             let poll_info = PollInfo {
                 number_of_options,
-                poll_start_block: 0u32.into(),
-                poll_end_block: 0u32.into(),
                 poll_end_timestamp,
                 poll_start_timestamp,
             };

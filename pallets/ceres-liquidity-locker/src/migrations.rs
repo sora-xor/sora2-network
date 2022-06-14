@@ -16,22 +16,33 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
     LockerData::<T>::translate_values::<
-        Vec<LockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
+        Vec<(Balance, T::BlockNumber, AssetIdOf<T>, AssetIdOf<T>)>,
         _,
-    >(|mut v| {
-        for lockups in v.iter_mut() {
-            if lockups.unlocking_block > current_block {
-                let num_of_seconds: u32 = ((lockups.unlocking_block - current_block) * 6u32.into())
-                    .unique_saturated_into();
-                lockups.unlocking_timestamp = current_timestamp + num_of_seconds.into();
-            } else {
-                let num_of_seconds: u32 = ((current_block - lockups.unlocking_block) * 6u32.into())
-                    .unique_saturated_into();
-                lockups.unlocking_timestamp = current_timestamp - num_of_seconds.into();
-            }
-        }
-        weight += 1;
-        Some(v)
+    >(|v| {
+        Some(
+            v.into_iter()
+                .map(|(pool_tokens, unlocking_block, asset_a, asset_b)| {
+                    weight += 1;
+                    let unlocking_timestamp: T::Moment;
+                    if unlocking_block > current_block {
+                        let num_of_seconds: u32 = ((unlocking_block - current_block) * 6u32.into())
+                            .unique_saturated_into();
+                        unlocking_timestamp = current_timestamp + num_of_seconds.into();
+                    } else {
+                        let num_of_seconds: u32 = ((current_block - unlocking_block) * 6u32.into())
+                            .unique_saturated_into();
+                        unlocking_timestamp = current_timestamp - num_of_seconds.into();
+                    }
+
+                    LockInfo {
+                        pool_tokens,
+                        unlocking_timestamp,
+                        asset_a,
+                        asset_b,
+                    }
+                })
+                .collect::<Vec<LockInfo<Balance, T::Moment, AssetIdOf<T>>>>(),
+        )
     });
 
     debug::info!(

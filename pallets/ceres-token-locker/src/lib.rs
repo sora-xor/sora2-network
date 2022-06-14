@@ -22,11 +22,9 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct TokenLockInfo<Balance, BlockNumber, Moment, AssetId> {
+pub struct TokenLockInfo<Balance, Moment, AssetId> {
     /// Amount of locked tokens
     pub tokens: Balance,
-    /// The time (block height) at which the tokens will be unlocked
-    pub unlocking_block: BlockNumber,
     /// The timestamp at which the tokens will be unlocked
     pub unlocking_timestamp: Moment,
     /// Locked asset id
@@ -134,7 +132,7 @@ pub mod pallet {
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<TokenLockInfo<Balance, T::BlockNumber, T::Moment, AssetIdOf<T>>>,
+        Vec<TokenLockInfo<Balance, T::Moment, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
@@ -191,7 +189,6 @@ pub mod pallet {
 
             let token_lock_info = TokenLockInfo {
                 tokens: number_of_tokens,
-                unlocking_block: 0u32.into(),
                 unlocking_timestamp,
                 asset_id,
             };
