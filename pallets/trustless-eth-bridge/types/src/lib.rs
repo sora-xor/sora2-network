@@ -7,6 +7,7 @@ pub mod ethashproof;
 pub mod header;
 pub mod log;
 mod mpt;
+pub mod network_params;
 pub mod receipt;
 pub mod traits;
 pub mod types;
@@ -42,6 +43,6 @@ impl From<ethabi::Error> for DecodeError {
     }
 }
 
-pub type EthNetworkId = u32;
+pub type EthNetworkId = U256;
 
 pub const CHANNEL_INDEXING_PREFIX: &'static [u8] = b"commitment";

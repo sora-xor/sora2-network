@@ -28,7 +28,7 @@ impl SubstrateMessagesRelay {
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {
-        let network_id = eth.inner().get_chainid().await?.as_u32() as EthNetworkId;
+        let network_id = eth.inner().get_chainid().await? as EthNetworkId;
         let basic = sub
             .api()
             .storage()

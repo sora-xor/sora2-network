@@ -9,7 +9,7 @@ use frame_system::RawOrigin;
 use sp_core::H160;
 use traits::MultiCurrency;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
 use crate::Pallet as ETHApp;

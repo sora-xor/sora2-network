@@ -13,7 +13,7 @@ use sp_std::prelude::*;
 use bridge_types::types::{ChannelId, Message, MessageId, Proof};
 use bridge_types::{Header, Log};
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as IncentivizedInboundChannel;

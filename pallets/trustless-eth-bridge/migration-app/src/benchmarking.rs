@@ -6,7 +6,7 @@ use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use sp_core::H160;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
 use crate::Pallet as MigrationApp;

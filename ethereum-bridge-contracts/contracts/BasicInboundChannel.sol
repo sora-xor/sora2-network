@@ -61,7 +61,7 @@ contract BasicInboundChannel {
         bytes32 digestHash = keccak256(
             bytes.concat(
                 _leafBytes.digestPrefix,
-                uint32(block.chainid).encode32(),
+                block.chainid,
                 bytes1(uint8(0)),
                 commitment,
                 _leafBytes.digestSuffix

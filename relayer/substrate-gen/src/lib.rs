@@ -36,6 +36,8 @@ pub mod runtime {
     use beefy_primitives::crypto::Public;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
     use bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+    #[subxt(substitute_type = "bridge_types::network_params::NetworkConfig")]
+    use bridge_types::network_params::NetworkConfig;
     #[subxt(substitute_type = "bridge_types::types::ChannelId")]
     use bridge_types::types::ChannelId;
     #[subxt(substitute_type = "bridge_types::types::Message")]

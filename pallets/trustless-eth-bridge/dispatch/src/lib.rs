@@ -37,7 +37,7 @@ where
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_origin() -> OuterOrigin {
-        OuterOrigin::from(RawOrigin(2, H160::repeat_byte(2)))
+        OuterOrigin::from(RawOrigin(2u32.into(), H160::repeat_byte(2)))
     }
 }
 
@@ -237,7 +237,7 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2, source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, &message);
 
             assert_eq!(
                 System::events(),
@@ -262,7 +262,7 @@ mod tests {
             let message: Vec<u8> = vec![1, 2, 3];
 
             System::set_block_number(1);
-            Dispatch::dispatch(2, source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, &message);
 
             assert_eq!(
                 System::events(),
@@ -286,7 +286,7 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2, source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, &message);
 
             assert_eq!(
                 System::events(),

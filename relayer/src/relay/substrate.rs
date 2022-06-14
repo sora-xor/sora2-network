@@ -81,7 +81,7 @@ impl RelayBuilder {
         let incentivized_gas_per_message =
             incentivized.max_gas_per_message().call().await?.as_u64();
         Ok(Relay {
-            chain_id: eth.inner().get_chainid().await?.as_u32(),
+            chain_id: eth.inner().get_chainid().await?,
             sub,
             eth,
             beefy,
@@ -451,8 +451,8 @@ impl Relay {
         let basic_mod = self.chain_id % basic_interval;
         let incentivized_mod = self.chain_id % incentivized_interval;
         while block_number > 0 {
-            if block_number % basic_interval == basic_mod
-                && block_number % incentivized_interval == incentivized_mod
+            if block_number % basic_interval == basic_mod.as_u32()
+                && block_number % incentivized_interval == incentivized_mod.as_u32()
                 && !self.check_new_messages(block_number - 1).await?
             {
                 break;

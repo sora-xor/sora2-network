@@ -79,13 +79,12 @@ pub mod pallet {
     /// Interval between committing messages.
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    pub(crate) type Interval<T: Config> =
-        StorageValue<_, T::BlockNumber, ValueQuery, DefaultInterval<T>>;
+    pub(crate) type Interval<T: Config> = StorageValue<_, u32, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
+    pub(crate) fn DefaultInterval<T: Config>() -> u32 {
         // TODO: Select interval
-        10u32.into()
+        10u32
     }
 
     /// Messages waiting to be committed.
@@ -124,9 +123,14 @@ pub mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut scheduled_ids = vec![];
             let interval = Self::interval();
-            let batch_id = now % interval;
+            let batch_id = now % interval.into();
             for key in MessageQueues::<T>::iter_keys() {
-                if T::BlockNumber::from(key) % interval == batch_id {
+                let rem: T::BlockNumber = key
+                    .checked_rem(interval.into())
+                    .unwrap_or_default()
+                    .as_u32()
+                    .into();
+                if rem == batch_id {
                     scheduled_ids.push(key);
                 }
             }
@@ -281,7 +285,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub fee: BalanceOf<T>,
-        pub interval: T::BlockNumber,
+        pub interval: u32,
         pub networks: Vec<(EthNetworkId, H160)>,
     }
 
@@ -290,7 +294,7 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 fee: Default::default(),
-                interval: Default::default(),
+                interval: 10,
                 networks: Default::default(),
             }
         }

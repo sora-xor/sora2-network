@@ -48,7 +48,7 @@ pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-pub const BASE_NETWORK_ID: EthNetworkId = 12123;
+pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;

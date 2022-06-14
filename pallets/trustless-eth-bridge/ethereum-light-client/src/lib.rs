@@ -86,6 +86,7 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::network_params::{NetworkConfig as EthNetworkConfig, Protocol};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -106,9 +107,6 @@ pub mod pallet {
         /// needs to have in order to be considered final.
         #[pallet::constant]
         type DescendantsUntilFinalized: Get<u8>;
-        /// Ethereum network parameters for header difficulty
-        #[pallet::constant]
-        type DifficultyConfig: Get<EthereumDifficultyConfig>;
         /// Determines whether Ethash PoW is verified for headers
         /// NOTE: Should only be false for dev
         #[pallet::constant]
@@ -150,6 +148,8 @@ pub mod pallet {
         NetworkAlreadyExists,
         /// This should never be returned - indicates a bug
         Unknown,
+        /// Unsupported consensus engine
+        ConsensusNotSupported,
     }
 
     #[pallet::hooks]
@@ -170,6 +170,11 @@ pub mod pallet {
     pub(super) type FinalizedBlock<T: Config> =
         StorageMap<_, Identity, EthNetworkId, EthereumHeaderId, OptionQuery>;
 
+    /// Network config
+    #[pallet::storage]
+    pub(super) type NetworkConfig<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, EthNetworkConfig, OptionQuery>;
+
     /// Map of imported headers by hash.
     #[pallet::storage]
     pub(super) type Headers<T: Config> = StorageDoubleMap<
@@ -189,7 +194,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub initial_networks: Vec<(EthNetworkId, EthereumHeader, U256)>,
+        pub initial_networks: Vec<(EthNetworkConfig, EthereumHeader, U256)>,
     }
 
     #[cfg(feature = "std")]
@@ -204,9 +209,10 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            for (network_id, header, difficulty) in &self.initial_networks {
+            for (network_config, header, difficulty) in &self.initial_networks {
+                NetworkConfig::<T>::insert(network_config.chain_id(), network_config);
                 Pallet::<T>::initialize_storage_inner(
-                    *network_id,
+                    network_config.chain_id(),
                     vec![header.clone()],
                     difficulty.clone(),
                     0, // descendants_until_final = 0 forces the initial header to be finalized
@@ -214,7 +220,7 @@ pub mod pallet {
                 .unwrap();
 
                 <BlocksToPrune<T>>::insert(
-                    network_id,
+                    network_config.chain_id(),
                     PruningRange {
                         oldest_unpruned_block: header.number,
                         oldest_block_to_keep: header.number,
@@ -229,15 +235,21 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_config: EthNetworkConfig,
             header: EthereumHeader,
             initial_difficulty: U256,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            let network_id = network_config.chain_id();
             ensure!(
-                <BestBlock<T>>::contains_key(network_id) == false,
+                <NetworkConfig<T>>::contains_key(network_id) == false,
                 Error::<T>::NetworkAlreadyExists
             );
+            ensure!(
+                matches!(network_config.consensus(), Protocol::Ethash),
+                Error::<T>::ConsensusNotSupported
+            );
+            NetworkConfig::<T>::insert(network_id, network_config);
             Pallet::<T>::initialize_storage_inner(
                 network_id,
                 vec![header.clone()],
@@ -256,6 +268,21 @@ pub mod pallet {
             );
             Ok(())
         }
+
+        #[pallet::weight(T::WeightInfo::register_network())]
+        pub fn update_difficulty_config(
+            origin: OriginFor<T>,
+            network_config: EthNetworkConfig,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                NetworkConfig::<T>::contains_key(network_config.chain_id()),
+                Error::<T>::NetworkNotFound
+            );
+            NetworkConfig::<T>::insert(network_config.chain_id(), network_config);
+            Ok(())
+        }
+
         /// Import a single Ethereum PoW header.
         ///
         /// Note that this extrinsic has a very high weight. The weight is affected by the
@@ -379,7 +406,9 @@ pub mod pallet {
                 header.number
             );
 
-            let difficulty_config = T::DifficultyConfig::get();
+            let difficulty_config = NetworkConfig::<T>::get(network_id)
+                .ok_or(Error::<T>::NetworkNotFound)?
+                .difficulty_config();
             let header_difficulty = calc_difficulty(&difficulty_config, header.timestamp, &parent)
                 .map_err(|_| Error::<T>::InvalidHeader)?;
             ensure!(

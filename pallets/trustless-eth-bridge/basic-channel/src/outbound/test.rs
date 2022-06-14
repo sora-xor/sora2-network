@@ -16,7 +16,7 @@ use crate::outbound as basic_outbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -85,7 +85,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, vec![Keyring::Bob.into()])],
-            interval: 1u64,
+            interval: 1u32,
         };
     config.assimilate_storage(&mut storage).unwrap();
 
