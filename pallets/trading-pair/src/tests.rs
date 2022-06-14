@@ -198,20 +198,6 @@ fn should_enable_sources_for_pair_correctly() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &KSM,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &DOT,
             LiquiditySourceType::XYKPool
         )
         .expect("Failed to query pair state."));
@@ -224,20 +210,6 @@ fn should_enable_sources_for_pair_correctly() {
         .expect("Failed to query pair state."));
 
         // enable source on one pair and check both trading pairs
-        TradingPairModule::enable_source_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &DOT,
-            LiquiditySourceType::BondingCurvePool,
-        )
-        .expect("Failed to enable source for pair.");
-        assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT)
-                .expect("Failed to list enabled sources for pair.")
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::BondingCurvePool]
-        );
         assert_eq!(
             TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
@@ -245,20 +217,6 @@ fn should_enable_sources_for_pair_correctly() {
                 .collect::<Vec<_>>(),
             vec![]
         );
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &DOT,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &KSM,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
         assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
@@ -283,36 +241,12 @@ fn should_enable_sources_for_pair_correctly() {
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT)
-                .expect("Failed to list enabled sources for pair.")
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![
-                LiquiditySourceType::XYKPool,
-                LiquiditySourceType::BondingCurvePool
-            ]
-        );
-        assert_eq!(
             TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
             vec![]
         );
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &DOT,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &KSM,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
         assert!(TradingPairModule::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
@@ -329,44 +263,6 @@ fn should_enable_sources_for_pair_correctly() {
         .expect("Failed to query pair state."));
 
         // enable another source for first trading pair
-        TradingPairModule::enable_source_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &KSM,
-            LiquiditySourceType::BondingCurvePool,
-        )
-        .expect("Failed to enable source for pair.");
-        assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT)
-                .expect("Failed to list enabled sources for pair.")
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![
-                LiquiditySourceType::XYKPool,
-                LiquiditySourceType::BondingCurvePool
-            ]
-        );
-        assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
-                .expect("Failed to list enabled sources for pair.")
-                .into_iter()
-                .collect::<Vec<_>>(),
-            vec![LiquiditySourceType::BondingCurvePool]
-        );
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &DOT,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
-            &DEX_ID,
-            &XOR,
-            &KSM,
-            LiquiditySourceType::BondingCurvePool
-        )
-        .expect("Failed to query pair state."));
         assert!(TradingPairModule::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
@@ -394,13 +290,13 @@ fn duplicate_enabled_source_should_not_fail() {
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::BondingCurvePool,
+            LiquiditySourceType::MockPool,
         ));
         assert_ok!(TradingPairModule::enable_source_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
-            LiquiditySourceType::BondingCurvePool,
+            LiquiditySourceType::MockPool,
         ));
     });
 }
@@ -416,7 +312,7 @@ fn should_not_enable_source_for_unregistered_pair() {
                 &DEX_ID,
                 &XOR,
                 &KSM,
-                LiquiditySourceType::BondingCurvePool,
+                LiquiditySourceType::MockPool,
             ),
             Error::<Runtime>::TradingPairDoesntExist
         );
@@ -452,7 +348,7 @@ fn should_fail_with_nonexistent_dex() {
                 &DEX_ID,
                 &XOR,
                 &DOT,
-                LiquiditySourceType::BondingCurvePool
+                LiquiditySourceType::MockPool
             ),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
@@ -461,7 +357,7 @@ fn should_fail_with_nonexistent_dex() {
                 &DEX_ID,
                 &XOR,
                 &DOT,
-                LiquiditySourceType::BondingCurvePool
+                LiquiditySourceType::MockPool
             ),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );

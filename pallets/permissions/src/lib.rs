@@ -53,6 +53,8 @@ use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
 
+mod migrations;
+
 #[cfg(test)]
 mod mock;
 
@@ -73,17 +75,6 @@ pub enum Scope {
     Unlimited,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[repr(u8)]
-pub enum Mode {
-    // The action associated with the permission is permitted if the account has the permission, otherwise it's forbidden
-    Permit,
-    // The action associated with the permission is forbidden if the account has the permission, otherwise it's permitted
-    Forbid,
-}
-
-pub const TRANSFER: PermissionId = 1;
 pub const MINT: PermissionId = 2;
 pub const BURN: PermissionId = 3;
 pub const SLASH: PermissionId = 4;
@@ -110,19 +101,12 @@ impl<T: Config> Pallet<T> {
         permission_id: PermissionId,
         scope: &Scope,
     ) -> Result<(), Error<T>> {
-        ensure!(
-            Modes::<T>::contains_key(permission_id),
-            Error::PermissionNotFound
-        );
-        let mode = Modes::<T>::get(permission_id);
         let mut permission_found = Self::account_has_permission(&who, scope, permission_id);
         if !permission_found && *scope != Scope::Unlimited {
             permission_found = Self::account_has_permission(&who, &Scope::Unlimited, permission_id);
         }
-        match (mode, permission_found) {
-            (Mode::Permit, true) | (Mode::Forbid, false) => Ok(()),
-            _ => Err(Error::Forbidden),
-        }
+        ensure!(permission_found, Error::Forbidden);
+        Ok(())
     }
 
     /// Method grants a permission to an Account.
@@ -178,10 +162,6 @@ impl<T: Config> Pallet<T> {
         permission_id: PermissionId,
         scope: Scope,
     ) -> Result<(), Error<T>> {
-        ensure!(
-            Modes::<T>::contains_key(&permission_id),
-            Error::PermissionNotFound
-        );
         Owners::<T>::mutate(permission_id, scope, |owners| {
             if let Some(pos) = owners.iter().position(|o| o == &who) {
                 owners[pos] = account_id.clone();
@@ -205,21 +185,17 @@ impl<T: Config> Pallet<T> {
         account_id: HolderId<T>,
         permission_id: PermissionId,
         scope: Scope,
-        mode: Mode,
     ) -> Result<(), Error<T>> {
-        ensure!(
-            !Modes::<T>::contains_key(permission_id),
-            Error::PermissionAlreadyExists
-        );
         if Permissions::<T>::iter_prefix_values(&account_id).count() == 0 {
             frame_system::Pallet::<T>::inc_consumers(&account_id)
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
         frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
-        Modes::<T>::insert(permission_id, mode);
         Owners::<T>::mutate(permission_id, scope, |owners| {
+            ensure!(owners.is_empty(), Error::<T>::PermissionAlreadyExists);
             owners.push(owner);
-        });
+            Ok(())
+        })?;
         Permissions::<T>::mutate(&account_id, scope, |permissions| {
             if let Err(index) = permissions.binary_search(&permission_id) {
                 permissions.insert(index, permission_id);
@@ -230,17 +206,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Makes `owner` be the owner of `permission_id` in `scope`.
-    /// Also, if the permission, that `permission_id` represents, has mode `Mode::Permit`, adds the permission to `holder_id`
+    /// Also, adds the permission to `holder_id`
     pub fn assign_permission(
         owner: OwnerId<T>,
         holder_id: &HolderId<T>,
         permission_id: PermissionId,
         scope: Scope,
     ) -> Result<(), Error<T>> {
-        ensure!(
-            Modes::<T>::contains_key(permission_id),
-            Error::PermissionNotFound
-        );
         frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
         let made_owner = Owners::<T>::mutate(permission_id, scope, |owners| {
             if !owners.contains(&owner) {
@@ -250,22 +222,18 @@ impl<T: Config> Pallet<T> {
                 false
             }
         });
-        let granted_permission = if let Mode::Permit = Modes::<T>::get(permission_id) {
-            if Permissions::<T>::iter_prefix_values(&holder_id).count() == 0 {
-                frame_system::Pallet::<T>::inc_consumers(&holder_id)
-                    .map_err(|_| Error::<T>::IncRefError)?;
+        if Permissions::<T>::iter_prefix_values(&holder_id).count() == 0 {
+            frame_system::Pallet::<T>::inc_consumers(&holder_id)
+                .map_err(|_| Error::<T>::IncRefError)?;
+        }
+        let granted_permission = Permissions::<T>::mutate(&holder_id, scope, |permissions| {
+            if let Err(index) = permissions.binary_search(&permission_id) {
+                permissions.insert(index, permission_id);
+                true
+            } else {
+                false
             }
-            Permissions::<T>::mutate(&holder_id, scope, |permissions| {
-                if let Err(index) = permissions.binary_search(&permission_id) {
-                    permissions.insert(index, permission_id);
-                    true
-                } else {
-                    false
-                }
-            })
-        } else {
-            false
-        };
+        });
         if made_owner || granted_permission {
             Ok(())
         } else {
@@ -289,6 +257,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -302,7 +271,14 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            match Self::storage_version() {
+                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                _ => 0,
+            }
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}
@@ -329,7 +305,7 @@ pub mod pallet {
         PermissionNotOwned,
         /// Permission already exists in the system.
         PermissionAlreadyExists,
-        /// The account either doesn't have the permission or has the restriction.
+        /// The account either doesn't have the permission.
         Forbidden,
         /// Increment account reference error.
         IncRefError,
@@ -345,15 +321,6 @@ pub mod pallet {
         Vec<OwnerId<T>>,
         ValueQuery,
     >;
-
-    #[pallet::type_value]
-    pub fn DefaultForModes() -> Mode {
-        Mode::Permit
-    }
-
-    #[pallet::storage]
-    pub type Modes<T: Config> =
-        StorageMap<_, Blake2_256, PermissionId, Mode, ValueQuery, DefaultForModes>;
 
     #[pallet::storage]
     pub type Permissions<T: Config> = StorageDoubleMap<
@@ -393,26 +360,6 @@ pub mod pallet {
                     }
                     Owners::<T>::insert(permission, scope, owners);
                 });
-
-            [
-                (TRANSFER, Mode::Forbid),
-                (MINT, Mode::Permit),
-                (BURN, Mode::Permit),
-                (SLASH, Mode::Permit),
-                (INIT_DEX, Mode::Permit),
-                (MANAGE_DEX, Mode::Permit),
-                (CREATE_FARM, Mode::Permit),
-                (CHECK_FARM, Mode::Permit),
-                (LOCK_TO_FARM, Mode::Permit),
-                (UNLOCK_FROM_FARM, Mode::Permit),
-                (CLAIM_FROM_FARM, Mode::Permit),
-                (GET_FARM_INFO, Mode::Permit),
-                (GET_FARMER_INFO, Mode::Permit),
-            ]
-            .iter()
-            .for_each(|(permission, mode)| {
-                Modes::<T>::insert(permission, mode);
-            });
 
             self.initial_permissions
                 .iter()

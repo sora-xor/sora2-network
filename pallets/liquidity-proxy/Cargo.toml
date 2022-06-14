@@ -26,6 +26,8 @@ assets = { path = "../assets", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
@@ -35,6 +37,11 @@ dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
+vested-rewards = { path = "../vested-rewards" }
+pool-xyk = { path = "../pool-xyk" }
+pswap-distribution = { path = "../pswap-distribution" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+
 
 [features]
 default = ['std']

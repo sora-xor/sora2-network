@@ -1,0 +1,75 @@
+[package]
+edition = '2018'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+name = 'vested-rewards'
+version = '1.2.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+assets = { path = "../assets", default-features = false }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+common = { path = "../../common", default-features = false }
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+hex = { version = "0.4", default-features = false, features = ["serde"] }
+hex-literal = "0.3"
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
+serde = { version = "1.0", features = ["derive"], default-features = false }
+serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+technical = { path = "../technical", optional =  true, default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+traits = { version = "0.4", package = "orml-traits", default-features = false }
+
+[dev-dependencies]
+pallet-balances = { version = "3"}
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
+dex-manager = { path = "../dex-manager" }
+permissions = { path = "../permissions" }
+trading-pair = { path = "../trading-pair" }
+pool-xyk = { path = "../pool-xyk" }
+pswap-distribution = { path = "../pswap-distribution" }
+technical = { path = "../technical" }
+liquidity-proxy = { path = "../liquidity-proxy" }
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'currencies/std',
+    'frame-support/std',
+    'frame-system/std',
+    'hex/std',
+    'multicollateral-bonding-curve-pool/std',
+    'serde/std',
+    'serde_bytes/std',
+    'serde_json/std',
+    'sp-core/std',
+    'sp-io/std',
+    'sp-runtime/std',
+    'sp-std/std',
+    'tokens/std',
+    'traits/std',
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "technical",
+]
+private-net = []

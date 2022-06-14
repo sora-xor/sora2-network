@@ -44,13 +44,9 @@ use std::sync::Arc;
 pub use rewards_runtime_api::{BalanceInfo, RewardsAPI as RewardsRuntimeAPI};
 
 #[rpc]
-pub trait RewardsAPI<BlockHash, EthereumAddress, VecBalanceInfo> {
+pub trait RewardsAPI<BlockHash, EthAddress, VecBalanceInfo> {
     #[rpc(name = "rewards_claimables")]
-    fn claimables(
-        &self,
-        eth_address: EthereumAddress,
-        at: Option<BlockHash>,
-    ) -> Result<VecBalanceInfo>;
+    fn claimables(&self, eth_address: EthAddress, at: Option<BlockHash>) -> Result<VecBalanceInfo>;
 }
 
 pub struct RewardsClient<C, B> {
@@ -68,20 +64,20 @@ impl<C, B> RewardsClient<C, B> {
     }
 }
 
-impl<C, Block, EthereumAddress, Balance>
-    RewardsAPI<<Block as BlockT>::Hash, EthereumAddress, Vec<BalanceInfo<Balance>>>
+impl<C, Block, EthAddress, Balance>
+    RewardsAPI<<Block as BlockT>::Hash, EthAddress, Vec<BalanceInfo<Balance>>>
     for RewardsClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: RewardsRuntimeAPI<Block, EthereumAddress, Balance>,
-    EthereumAddress: Codec,
+    C::Api: RewardsRuntimeAPI<Block, EthAddress, Balance>,
+    EthAddress: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
 {
     fn claimables(
         &self,
-        eth_address: EthereumAddress,
+        eth_address: EthAddress,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();

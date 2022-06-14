@@ -63,7 +63,7 @@ construct_runtime! {
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -102,6 +102,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetTeamReservesAccountId: AccountId = 3000u128;
 }
 
 impl crate::Config for Runtime {
@@ -112,6 +113,8 @@ impl crate::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 

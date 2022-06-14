@@ -53,7 +53,7 @@ mod tests;
 pub mod weights;
 
 use common::prelude::Balance;
-use common::VAL;
+use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, Weight};
@@ -274,7 +274,17 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), DispatchError> {
         if let Some(balance) = Balances::<T>::take(iroha_address) {
             if !balance.is_zero() {
-                assets::Pallet::<T>::mint_to(&VAL.into(), &Account::<T>::get(), account, balance)?;
+                let eth_bridge_tech_account_id = <T>::TechAccountId::from_generic_pair(
+                    eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+                    eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
+                );
+
+                technical::Module::<T>::transfer_out(
+                    &VAL.into(),
+                    &eth_bridge_tech_account_id,
+                    account,
+                    balance,
+                )?;
             }
         }
         Ok(())
@@ -289,7 +299,7 @@ impl<T: Config> Pallet<T> {
             // Free up memory
             Referrers::<T>::remove(iroha_address);
             if let Some(referrer) = MigratedAccounts::<T>::get(&referrer) {
-                referral_system::Pallet::<T>::set_referrer_to(&account, referrer)
+                referrals::Pallet::<T>::set_referrer_to(&account, referrer)
                     .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
             } else {
                 PendingReferrals::<T>::mutate(&referrer, |referrals| {
@@ -300,7 +310,7 @@ impl<T: Config> Pallet<T> {
         // Migrate pending referrals to their referrer
         let referrals = PendingReferrals::<T>::take(iroha_address);
         for referral in &referrals {
-            referral_system::Pallet::<T>::set_referrer_to(referral, account.clone())
+            referrals::Pallet::<T>::set_referrer_to(referral, account.clone())
                 .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
         }
         Ok(())
@@ -318,7 +328,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_multisig::Config + referral_system::Config + technical::Config
+        frame_system::Config + pallet_multisig::Config + referrals::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type WeightInfo: WeightInfo;

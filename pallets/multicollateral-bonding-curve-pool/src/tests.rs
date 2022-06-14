@@ -30,21 +30,46 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, Error};
+    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, DistributionAccount, Error, RETRY_DISTRIBUTION_FREQUENCY};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter,
+        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, LiquiditySourceFilter,
+        DEFAULT_BALANCE_PRECISION,
     };
-    use pswap_distribution::OnPswapBurned;
+    use hex_literal::hex;
+    use frame_support::traits::OnInitialize;
     use liquidity_proxy::LiquidityProxyTrait;
-    use frame_support::{assert_err, assert_noop, assert_ok};
+    use frame_support::{assert_err, assert_noop};
     use frame_support::storage::{with_transaction, TransactionOutcome};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
-    use orml_traits::MultiCurrency;
 
     type MBCPool = Module<Runtime>;
+
+    fn ensure_distribution_accounts_balances(distribution_accounts: DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>, balances: Vec<Balance>) {
+        let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
+        for (account, balance) in distribution_accounts_array
+            .to_vec()
+            .into_iter()
+            .zip(balances)
+        {
+            match account {
+                DistributionAccount::Account(account_id) => {
+                    assert_eq!(
+                        Assets::total_balance(&XOR, &account_id).unwrap(),
+                        balance,
+                    );
+                }
+                DistributionAccount::TechAccount(account_id) => {
+                    assert_eq!(
+                        Technical::total_balance(&XOR, &account_id).unwrap(),
+                        balance,
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn should_calculate_price() {
@@ -60,24 +85,24 @@ mod tests {
             assert_eq!(
                 MBCPool::buy_function(&XOR, Fixed::ZERO)
                     .expect("failed to calculate buy price"),
-                    fixed!(536.574420344053851907)
+                    fixed!(536.575170537791384625)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(1151397.348365215316854563)
+                fixed!(1151398.853267396927121364)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(1151397.348365215316854563)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(99999.999999999999999958) // TODO: try to improve precision
+                fixed!(99999.877292895570947223) // TODO: try to improve precision
             );
 
             // base case for sell with empty reserves
             assert_eq!(
                 MBCPool::sell_function(&XOR, Fixed::ZERO)
                     .expect("failed to calculate sell price"),
-                    fixed!(429.259536275243081525)
+                    fixed!(429.2601364302331077)
             );
             assert_noop!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000))),
@@ -93,12 +118,12 @@ mod tests {
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(50000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(15287.903511880099065528)
+                fixed!(15287.882675656841911345)
             );
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(15287.903511880099065528)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(49999.999999999999999999) // TODO: improve precision
+                fixed!(50000.025554804518660908) // TODO: improve precision
             );
         });
     }
@@ -110,7 +135,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()) ,DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             // add some reserves
             MBCPool::exchange(&alice, &alice, &DEXId::Polkaswap, &VAL, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
@@ -186,7 +211,9 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<
-        DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>>,
+        DistributionAccounts<DistributionAccountData<DistributionAccount<
+            <Runtime as frame_system::Config>::AccountId,
+            <Runtime as technical::Config>::TechAccountId>>>,
         DispatchError,
     > {
         let bonding_curve_tech_account_id = TechAccountId::Pure(
@@ -198,6 +225,8 @@ mod tests {
         for (asset_id, balance) in initial_reserves {
             Technical::mint(&asset_id, &bonding_curve_tech_account_id, balance)?;
         }
+        let initial_price: Fixed = fixed!(200);
+        crate::InitialPrice::<Runtime>::put(initial_price);
 
         let val_holders_coefficient = fixed_wrapper!(0.5);
         let val_holders_xor_alloc_coeff = val_holders_coefficient.clone() * fixed_wrapper!(0.9);
@@ -220,45 +249,42 @@ mod tests {
         );
 
         let xor_allocation = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"xor_allocation".to_vec()),
-            ),
+            )),
             val_holders_xor_alloc_coeff.get().unwrap(),
         );
         let sora_citizens = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"sora_citizens".to_vec()),
-            ),
+            )),
             projects_sora_citizens_coeff.get().unwrap(),
         );
         let stores_and_shops = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"stores_and_shops".to_vec()),
-            ),
+            )),
             projects_stores_and_shops_coeff.get().unwrap(),
         );
         let parliament_and_development = DistributionAccountData::new(
-            TechAccountId::Pure(
-                DEXId::Polkaswap,
-                TechPurpose::Identifier(b"parliament_and_development".to_vec()),
-            ),
+            DistributionAccount::Account(hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into()),
             projects_parliament_and_development_coeff.get().unwrap(),
         );
         let projects = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"projects".to_vec()),
-            ),
+            )),
             projects_other_coeff.get().unwrap(),
         );
         let val_holders = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"val_holders".to_vec()),
-            ),
+            )),
             val_holders_buy_back_coefficient.get().unwrap(),
         );
         let accounts = DistributionAccounts::<_> {
@@ -269,8 +295,13 @@ mod tests {
             projects,
             val_holders,
         };
-        for tech_account in &accounts.xor_distribution_accounts_as_array() {
-            Technical::register_tech_account_id((*tech_account).clone())?;
+        for account in &accounts.xor_distribution_accounts_as_array() {
+            match account {
+                DistributionAccount::Account(_) => continue,
+                DistributionAccount::TechAccount(account) => {
+                    Technical::register_tech_account_id(account.clone())?;
+                }
+            }
         }
         MBCPool::set_distribution_accounts(accounts.clone());
         Ok(accounts)
@@ -285,16 +316,16 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
-            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
-            let _distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
@@ -331,12 +362,15 @@ mod tests {
     #[test]
     fn should_exchange_with_nearly_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, balance!(10000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
+            let initial_price: Fixed = fixed!(200);
+            crate::InitialPrice::<Runtime>::put(initial_price);
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
@@ -345,10 +379,9 @@ mod tests {
                 - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, SwapAmount::with_desired_input(pool_reference_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
-            let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
             let alice = &alice();
             assert_eq!(
                 MBCPool::exchange(
@@ -360,25 +393,14 @@ mod tests {
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
             );
-            let balances: Vec<Balance> = vec![
-                balance!(248.404415987068580219),
-                balance!(2.760049066522984224),
-                balance!(11.040196266091936898),
-                balance!(13.800245332614921123),
-                balance!(248.404415987068580219),
-            ];
-            for (account_id, balance) in distribution_accounts_array
-                .to_vec()
-                .into_iter()
-                .zip(balances)
-            {
-                assert_eq!(
-                    Technical::total_balance(&XOR, &account_id).unwrap(),
-                    balance,
-                );
-            }
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(2.760801517613789357),
+                balance!(11.043206070455157431),
+                balance!(13.804007588068946789),
+                balance!(248.472136585241042209),
+            ]);
             assert_eq!(
                 MBCPool::exchange(
                     alice,
@@ -390,7 +412,7 @@ mod tests {
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4365.335149368998667748),
+                    balance!(4366.523658759765819497),
                     balance!(3.000000000000000000)
                 )
             );
@@ -400,25 +422,27 @@ mod tests {
     #[test]
     fn should_exchange_with_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, balance!(10000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
+            let initial_price: Fixed = fixed!(200);
+            crate::InitialPrice::<Runtime>::put(initial_price);
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let pool_reference_amount =
                 FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, SwapAmount::with_desired_input(pool_reference_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
 
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
-            let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
-
             let alice = &alice();
             assert_eq!(
                 MBCPool::exchange(
@@ -430,25 +454,14 @@ mod tests {
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
             );
-            let balances: Vec<Balance> = vec![
-                balance!(248.404415987068580219),
-                balance!(2.760049066522984224),
-                balance!(11.040196266091936898),
-                balance!(13.800245332614921123),
-                balance!(248.404415987068580219),
-            ];
-            for (account_id, balance) in distribution_accounts_array
-                .to_vec()
-                .into_iter()
-                .zip(balances)
-            {
-                assert_eq!(
-                    Technical::total_balance(&XOR, &account_id).unwrap(),
-                    balance,
-                );
-            }
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(2.760801517613789357),
+                balance!(11.043206070455157431),
+                balance!(13.804007588068946789),
+                balance!(248.472136585241042209),
+            ]);
             assert_eq!(
                 MBCPool::exchange(
                     alice,
@@ -460,7 +473,7 @@ mod tests {
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4365.335415603766574971),
+                    balance!(4366.523925066825637517),
                     balance!(3.000000000000000000)
                 )
             );
@@ -470,15 +483,16 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let alice = &alice();
 
@@ -506,10 +520,10 @@ mod tests {
                 0,
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
-            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -564,10 +578,11 @@ mod tests {
     #[test]
     fn should_set_new_reference_token() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -580,8 +595,9 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
-                )
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true,
+            )
                 .unwrap();
 
             MBCPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
@@ -590,7 +606,50 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true,
+            )
+                .unwrap();
+
+            assert_ne!(price_a, price_b);
+        });
+    }
+
+    #[test]
+    fn should_set_price_bias() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            let price_a = MBCPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
+                )
+                .unwrap();
+
+            MBCPool::set_price_bias(Origin::root(), balance!(123)).expect("Failed to set price bias");
+            assert_eq!(MBCPool::initial_price(), FixedWrapper::from(balance!(123)).get().unwrap());
+
+
+            let price_b = MBCPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
                 )
                 .unwrap();
 
@@ -599,12 +658,123 @@ mod tests {
     }
 
     #[test]
-    fn similar_returns_should_be_identical() {
+    fn should_set_price_change_config() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
             (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            let price_a = MBCPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
+                )
+                .unwrap();
+
+            MBCPool::set_price_change_config(Origin::root(), balance!(12), balance!(2543)).expect("Failed to set price bias");
+
+            assert_eq!(MBCPool::price_change_rate(), FixedWrapper::from(balance!(12)).get().unwrap());
+            assert_eq!(MBCPool::price_change_step(), FixedWrapper::from(balance!(2543)).get().unwrap());
+
+            let price_b = MBCPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &VAL,
+                    &XOR,
+                    QuoteAmount::with_desired_output(balance!(1)),
+                    true
+                )
+                .unwrap();
+
+            assert_ne!(price_a, price_b);
+        });
+    }
+
+    #[test]
+    fn test_deducing_fee() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            let amount: Balance = balance!(2000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount.clone()),
+                true,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
+            assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705206));
+
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount.clone()),
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_b.amount, quote_outcome_a.amount + quote_outcome_a.fee);
+            assert_eq!(quote_outcome_b.fee, balance!(0));
+
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount.clone()),
+                true,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_a.amount, balance!(11088.209839932824950839));
+            assert_eq!(quote_outcome_a.fee, balance!(6.018054162487462387));
+
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount.clone()),
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_b.amount, balance!(11054.854916282129860020));
+            assert_eq!(quote_outcome_b.fee, balance!(0));
+        })
+    }
+
+    #[test]
+    fn similar_returns_should_be_identical() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -619,7 +789,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_a = MBCPool::exchange(
@@ -643,7 +814,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_b = MBCPool::exchange(
@@ -667,7 +839,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_c = MBCPool::exchange(
@@ -691,7 +864,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_d = MBCPool::exchange(
@@ -714,11 +888,12 @@ mod tests {
     #[test]
     fn should_receive_pswap_reward() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
+            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -756,111 +931,17 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(228.572321318250000000));
-        });
-    }
-
-    #[test]
-    fn multiple_users_should_be_able_to_claim_rewards() {
-        let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
-        ])
-        .build();
-        ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-            let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
-            MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
-            Assets::transfer(Origin::signed(alice()), DAI, bob(), balance!(50000)).unwrap();
-            Currencies::deposit(PSWAP, &incentives_account(), balance!(250000)).unwrap();
-
-            // performing exchanges which are eligible for rewards
-            MBCPool::exchange(
-                &alice(),
-                &alice(),
-                &DEXId::Polkaswap.into(),
-                &DAI,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(100000), Balance::zero()),
-            )
-            .unwrap();
-            MBCPool::exchange(
-                &bob(),
-                &bob(),
-                &DEXId::Polkaswap.into(),
-                &DAI,
-                &XOR,
-                SwapAmount::with_desired_input(balance!(50000), Balance::zero()),
-            )
-            .unwrap();
-
-            // trying to claim with limit of 0
-            assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
-            assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
-            assert_noop!(MBCPool::claim_incentives(Origin::signed(alice())), Error::<Runtime>::NothingToClaim);
-            assert_noop!(MBCPool::claim_incentives(Origin::signed(bob())), Error::<Runtime>::NothingToClaim);
-            assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
-            assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
-
-            // limit is updated via PSWAP burn
-            let (limit_alice, owned_alice) = MBCPool::rewards(&alice());
-            let (limit_bob, owned_bob) = MBCPool::rewards(&bob());
-            assert!(limit_alice.is_zero());
-            assert!(limit_bob.is_zero());
-            assert!(!owned_alice.is_zero());
-            assert!(!owned_bob.is_zero());
-            let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
-            let remint_info = pswap_distribution::PswapRemintInfo {
-                vesting: vesting_amount,
-                ..Default::default()
-            };
-            MBCPool::on_pswap_burned(remint_info);
-            let (limit_alice, _) = MBCPool::rewards(&alice());
-            let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(11422.243536166374999999));
-            assert_eq!(limit_bob, balance!(5709.365922728499999999));
-
-            // claiming incentives partially
-            assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
-            assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
-            let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
-            let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(11422.243536166375000001));
-            assert_eq!(remaining_owned_bob, balance!(5709.365922728500000001));
-            assert!(limit_alice.is_zero());
-            assert!(limit_bob.is_zero());
-            assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
-            assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
-
-            // claiming remainder
-            let remint_info = pswap_distribution::PswapRemintInfo {
-                vesting: vesting_amount + balance!(100),
-                ..Default::default()
-            };
-            MBCPool::on_pswap_burned(remint_info);
-            assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
-            assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
-            let (_, empty_owned_alice) = MBCPool::rewards(&alice());
-            let (_, empty_owned_bob) = MBCPool::rewards(&bob());
-            assert!(empty_owned_alice.is_zero());
-            assert!(empty_owned_bob.is_zero());
-            assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice);
-            assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob);
+            assert_eq!(owned, balance!(6099.239593179625249492));
         });
     }
 
     #[test]
     fn should_calculate_ideal_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -879,18 +960,19 @@ mod tests {
             let ideal_reserves = MBCPool::ideal_reserves_reference_price(Fixed::ZERO).unwrap();
 
             // actual amount should match to 80% of buy amount
-            assert_eq!((FixedWrapper::from(buy_amount) * fixed_wrapper!(0.8)).into_balance(), ideal_reserves);
+            assert_eq!(buy_amount, ideal_reserves);
         });
     }
 
     #[test]
     fn should_calculate_actual_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -927,7 +1009,7 @@ mod tests {
 
             let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
             let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
-            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, SwapAmount::with_desired_input(val_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap.into())).unwrap().amount;
+            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
             // compare values, also deduce 20% which are distributed and not stored in reserves
@@ -939,10 +1021,11 @@ mod tests {
     #[test]
     fn fees_for_equivalent_trades_should_match() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -966,14 +1049,16 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             let price_b = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(price_a.amount.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(price_a.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
@@ -984,14 +1069,16 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                QuoteAmount::with_desired_output(balance!(100)),
+                true,
             )
             .unwrap();
             let price_d = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(price_c.amount.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(price_c.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
@@ -1020,11 +1107,12 @@ mod tests {
     #[test]
     fn fee_penalties_should_be_applied() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), DAI, balance!(20000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), DAI, balance!(20000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -1054,7 +1142,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(9.3));
@@ -1076,7 +1165,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(6.3));
@@ -1098,7 +1188,8 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(3.3));
@@ -1110,17 +1201,18 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &DAI,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+                SwapAmount::with_desired_input(balance!(4000000), Balance::zero()),
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(125254.015350097078608660));
+            assert_eq!(xor_supply, balance!(128633.975165230400026502));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(1.3));
@@ -1132,17 +1224,18 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &DAI,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+                SwapAmount::with_desired_input(balance!(7000000), Balance::zero()),
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(135309.331316886815237511));
+            assert_eq!(xor_supply, balance!(151530.994236602104652386));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(0.3));
@@ -1152,11 +1245,12 @@ mod tests {
     #[test]
     fn sequential_rewards_adequacy_check() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), DAI, balance!(2000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
+            (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), DAI, balance!(2000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
         ext.execute_with(|| {
@@ -1172,10 +1266,10 @@ mod tests {
             assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
             // initial XOR price is $264
             let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(Default::default()).unwrap().into();
-            assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(264.712041884816753926));
+            assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
-                MockDEXApi::quote(&PSWAP, &DAI, SwapAmount::with_desired_input(balance!(1), balance!(0)), MBCPool::self_excluding_filter()).unwrap().amount,
+                MockDEXApi::quote(&PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter(),true).unwrap().amount,
                 balance!(10.173469387755102041)
             );
 
@@ -1191,7 +1285,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(596.264779217750000000));
+            assert_eq!(owned_1, balance!(21036.472370353787480367));
 
             MBCPool::exchange(
                 &alice(),
@@ -1205,7 +1299,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(5961.194964287000000000));
+            assert_eq!(owned_2 - owned_1, balance!(210336.209418679523304856));
 
             MBCPool::exchange(
                 &alice(),
@@ -1219,7 +1313,814 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(581729.830227598000000000));
+            assert_eq!(owned_3 - owned_2, balance!(20769070.485987076318293437));
+        });
+    }
+
+    #[test]
+    fn distribution_passes_on_first_attempt() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(10000),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized with enough funds
+            MockDEXApi::init().unwrap();
+            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // check pending list and reserves before trade
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0),
+                balance!(0),
+                balance!(0),
+                balance!(0),
+            ]);
+
+            // perform buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(275.621555395065931189), balance!(0.003009027081243731))
+            );
+
+            // check pending list and free reserves account
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(0.002747946907288807),
+                balance!(0.010991787629155229),
+                balance!(0.013739734536444036),
+                balance!(0.247315221655992660),
+            ]);
+        })
+    }
+
+    #[test]
+    fn distribution_fails_on_first_attempt() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(10000),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized without funds
+            MockDEXApi::init_without_reserves().unwrap();
+            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // check pending list and reserves before trade
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+
+            // perform buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+            );
+
+            // check pending list and free reserves account
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
+
+            // attempt for distribution, still not enough reserves
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            assert_eq!(free_reserves_balance_2, free_reserves_balance);
+
+            // exchange becomes possible for stored free reserves
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+
+            // actual accounts check before distribution
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0),
+                balance!(0),
+                balance!(0),
+                balance!(0),
+            ]);
+
+            // attempt for distribution before retry period
+            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY - 1).into());
+            let free_reserves_balance_3 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            assert_eq!(free_reserves_balance_3, free_reserves_balance);
+
+            // successful attempt for distribution
+            MBCPool::on_initialize((RETRY_DISTRIBUTION_FREQUENCY * 2).into());
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+
+            // actual accounts check after distribution
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(0.002000003750968687),
+                balance!(0.008000015003874750),
+                balance!(0.010000018754843438),
+                balance!(0.180000337587181890),
+            ]);
+        })
+    }
+
+    #[test]
+    fn multiple_pending_distributions_are_executed() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(10000),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized without funds
+            MockDEXApi::init_without_reserves().unwrap();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // check pending list and reserves before trade
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+
+            // perform buy on tbc multiple times
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+            );
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731))
+            );
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731))
+            );
+
+            // check pending list and reserves after trade
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            let expected_balances = [balance!(40.120436328358829805), balance!(40.120586367106336349), balance!(40.120736405853842892)];
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, expected_balances[0]), (USDT, expected_balances[1]), (USDT, expected_balances[2])]);
+            assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
+
+            // exchange becomes available
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance, balance!(0));
+        })
+    }
+
+    #[test]
+    fn large_pending_amount_dont_interfere_new_trades() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(999999999999999),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // perform large buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074))
+            );
+
+            // check that failed distribution was postponed
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance)]);
+            assert_eq!(free_reserves_balance, balance!(757963514388.523634623811432620));
+
+            // attempt for distribution
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance_2)]);
+            assert_eq!(free_reserves_balance_2, free_reserves_balance);
+
+            // another exchange with reasonable amount
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119))
+            );
+
+            // second distribution was successful, pending list didn't change
+            let free_reserves_balance_3 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance_3)]);
+            assert_eq!(free_reserves_balance_3, free_reserves_balance_2);
+        })
+    }
+
+    #[test]
+    fn multiple_pending_distributions_with_large_request_dont_interfere_when_exchange_becomes_available() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(999999999999999),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized without funds
+            MockDEXApi::init_without_reserves().unwrap();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // perform large buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074))
+            );
+
+            // another exchange with reasonable amount, still current market can't handle it
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119))
+            );
+
+            // attempt for distribution
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            let expected_balances = [balance!(756463126913.458198980300901028), balance!(1504400.263624851428814147)];
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, expected_balances[0]), (USDT, expected_balances[1])]);
+            assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
+
+            // funds are added and one of exchanges becomes available, unavailable is left as pending
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, expected_balances[0])]);
+            assert_eq!(free_reserves_balance, expected_balances[0]);
+        })
+    }
+
+    #[test]
+    fn xor_exchange_passes_but_val_exchange_fails_reserves_are_reverted() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(10000),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized without funds
+            MockDEXApi::init_without_reserves().unwrap();
+            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            // perform buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+            );
+
+            // check pending list and free reserves account
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
+
+            // exchange becomes possible, but not for val, so second part of distribution fails
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(0)), (USDT, balance!(1000000))]).unwrap();
+
+            // check pending list
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+
+            // val buy back and burn failed so exchanged xor is reverted
+            assert_eq!(free_reserves_balance_2, free_reserves_balance);
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0),
+                balance!(0),
+                balance!(0),
+                balance!(0),
+            ]);
+
+            // another buy is performed
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731))
+            );
+
+            // there are two pending distributions
+            let free_reserves_balance_3 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            let second_pending_balance = balance!(55.124461117760692833);
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance), (USDT, second_pending_balance)]);
+            assert_eq!(free_reserves_balance_3, free_reserves_balance + second_pending_balance);
+
+            // exchange becomes possible, but val is enough only to fulfill one of pending distributions
+            MockDEXApi::add_reserves(vec![(VAL, balance!(0.4))]).unwrap();
+
+            // val is not enough for one of distributions, it's still present
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_4 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, second_pending_balance)]);
+            assert_eq!(free_reserves_balance_4, second_pending_balance);
+
+            // check distribution accounts
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0.002000003750968687),
+                balance!(0.008000015003874750),
+                balance!(0.010000018754843438),
+                balance!(0.180000337587181890),
+            ]);
+
+            // enough val is added to fulfill second exchange
+            MockDEXApi::add_reserves(vec![(VAL, balance!(1))]).unwrap();
+
+            // second pending distribution is performed
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_5 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance_5, balance!(0));
+
+            // check distribution accounts
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(0.004747958137689057),
+                balance!(0.018991832550756232),
+                balance!(0.023739790688445290),
+                balance!(0.427316232392015238),
+            ]);
+        })
+    }
+
+    #[test]
+    fn rewards_for_small_values() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (alice(), XOR, balance!(6000000000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init_without_reserves().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+        })
+    }
+
+    #[test]
+    fn price_without_impact_small_amount() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(2000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_a = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
+            assert_eq!(quote_without_impact_a.amount, balance!(361.728370440936309235));
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(200);
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_b = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_b.amount, balance!(1107.192203724646374582));
+            assert_eq!(quote_without_impact_b.amount, balance!(1106.890317630040503506));
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(1);
+            let quote_outcome_c = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_c = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_c.amount, balance!(3.999482655569353236));
+            assert_eq!(quote_without_impact_c.amount, balance!(4.005928040448516546));
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(1);
+            let quote_outcome_d = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_d = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_d.amount, balance!(0.249731351108007183));
+            assert_eq!(quote_without_impact_d.amount, balance!(0.249630724163152921));
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        });
+    }
+
+    #[test]
+    fn price_without_impact_large_amount() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+                
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), VAL, balance!(200000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(70000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_a = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_a.amount, balance!(12448.948798121038075579));
+            assert_eq!(quote_without_impact_a.amount, balance!(12660.492965432770823211));
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(14000);
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_b = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_b.amount, balance!(81508.213505580992099145));
+            assert_eq!(quote_without_impact_b.amount, balance!(80028.971642012224670009));
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(7000);
+            let quote_outcome_c = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_c = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_c.amount, balance!(25316.104888559067751287));
+            assert_eq!(quote_without_impact_c.amount, balance!(31999.826368133346115316));
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(7000);
+            let quote_outcome_d = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
+            )
+            .unwrap();
+            let quote_without_impact_d = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_d.amount, balance!(1681.732720328623106894));
+            assert_eq!(quote_without_impact_d.amount, balance!(1558.966302104893601417));
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
         });
     }
 }

@@ -32,20 +32,21 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed,
-    FromGenericPair,
+    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{AccountId32, Perbill};
+use sp_runtime::{AccountId32, Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -58,27 +59,43 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId {
-    AccountId32::from([1u8; 32])
+    AccountId32::from([10u8; 32])
+}
+
+pub fn bob() -> AccountId {
+    AccountId32::from([11u8; 32])
+}
+
+pub fn eve() -> AccountId {
+    AccountId32::from([12u8; 32])
 }
 
 pub fn fees_account_a() -> AccountId {
-    AccountId32::from([2u8; 32])
+    AccountId32::from([20u8; 32])
 }
 
 pub fn fees_account_b() -> AccountId {
-    AccountId32::from([3u8; 32])
+    AccountId32::from([21u8; 32])
 }
 
 pub fn liquidity_provider_a() -> AccountId {
-    AccountId32::from([4u8; 32])
+    AccountId32::from([30u8; 32])
 }
 
 pub fn liquidity_provider_b() -> AccountId {
-    AccountId32::from([5u8; 32])
+    AccountId32::from([31u8; 32])
 }
 
 pub fn liquidity_provider_c() -> AccountId {
-    AccountId32::from([6u8; 32])
+    AccountId32::from([32u8; 32])
+}
+
+pub fn pool_account_a() -> AccountId {
+    AccountId32::from([11u8; 32])
+}
+
+pub fn pool_account_b() -> AccountId {
+    AccountId32::from([12u8; 32])
 }
 
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
@@ -114,8 +131,9 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -133,6 +151,10 @@ construct_runtime! {
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
+        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -162,6 +184,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -173,6 +196,7 @@ impl Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
 }
 
 impl tokens::Config for Runtime {
@@ -206,6 +230,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -230,11 +256,47 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
-    type WeightInfo = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl dex_manager::Config for Runtime {}
+
+impl trading_pair::Config for Runtime {
+    type Event = Event;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
@@ -246,10 +308,12 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    subscribed_accounts: Vec<(AccountId, (DEXId, AssetId, BlockNumber, BlockNumber))>,
+    subscribed_accounts: Vec<(AccountId, (DEXId, AccountId, BlockNumber, BlockNumber))>,
     burn_info: (Fixed, Fixed, Fixed),
 }
 
@@ -262,9 +326,11 @@ impl ExtBuilder {
                 alice(),
                 AssetSymbol(b"POOL".to_vec()),
                 AssetName(b"Pool Token".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                None,
+                None,
             )],
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
@@ -285,9 +351,11 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
@@ -297,24 +365,30 @@ impl ExtBuilder {
                     10,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenAId::get(),
                     alice(),
                     AssetSymbol(b"POOLA".to_vec()),
                     AssetName(b"Pool A".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenBId::get(),
                     alice(),
                     AssetSymbol(b"POOLB".to_vec()),
                     AssetName(b"Pool B".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
             initial_permission_owners: vec![],
@@ -324,8 +398,8 @@ impl ExtBuilder {
                 vec![permissions::MINT, permissions::BURN],
             )],
             subscribed_accounts: vec![
-                (fees_account_a(), (DEX_A_ID, PoolTokenAId::get(), 5, 0)),
-                (fees_account_b(), (DEX_A_ID, PoolTokenBId::get(), 7, 0)),
+                (fees_account_a(), (DEX_A_ID, pool_account_a(), 5, 0)),
+                (fees_account_b(), (DEX_A_ID, pool_account_b(), 7, 0)),
             ],
             burn_info: (fixed!(0.1), fixed!(0.10), fixed!(0.40)),
         }
@@ -337,12 +411,6 @@ impl Default for ExtBuilder {
         ExtBuilder::with_accounts(vec![
             (fees_account_a(), common::XOR.into(), balance!(1)),
             (fees_account_a(), common::PSWAP.into(), balance!(6)),
-            (liquidity_provider_a(), PoolTokenAId::get(), balance!(3)),
-            (liquidity_provider_b(), PoolTokenAId::get(), balance!(2)),
-            (liquidity_provider_c(), PoolTokenAId::get(), balance!(1)),
-            (liquidity_provider_a(), PoolTokenBId::get(), balance!(10)),
-            (liquidity_provider_b(), PoolTokenBId::get(), balance!(10)),
-            (liquidity_provider_c(), PoolTokenBId::get(), balance!(10)),
         ])
     }
 }
@@ -359,6 +427,9 @@ impl ExtBuilder {
                 (alice(), 0),
                 (fees_account_a(), 0),
                 (fees_account_b(), 0),
+                (liquidity_provider_a(), 0),
+                (liquidity_provider_b(), 0),
+                (liquidity_provider_c(), 0),
                 (GetPswapDistributionAccountId::get(), 0),
                 (GetParliamentAccountId::get(), 0),
             ])

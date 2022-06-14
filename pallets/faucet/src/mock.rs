@@ -28,11 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as faucet, Config};
+use crate::{self as faucet, max_amount, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -43,7 +44,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -82,6 +83,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
 }
 
 construct_runtime! {
@@ -133,6 +135,12 @@ impl frame_system::Config for Runtime {
 }
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 20;
+    const UPDATE_FREQUENCY: BlockNumber = 5;
+    const MAX_CHUNK_SIZE: usize = 1;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 100;
+    const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type WeightInfo = ();
 }
@@ -144,7 +152,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -155,6 +162,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -208,7 +217,13 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(9000)), (alice(), balance!(0))],
+            balances: vec![
+                (
+                    account_id.clone(),
+                    (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+                ),
+                (alice(), balance!(0)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -230,18 +245,22 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }
@@ -249,13 +268,17 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(9000))],
+            endowed_accounts: vec![(
+                account_id.clone(),
+                VAL.into(),
+                (max_amount() * FixedWrapper::from(1.5)).into_balance(),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(account_id, tech_account_id.clone())],
+            register_tech_accounts: vec![(account_id, tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

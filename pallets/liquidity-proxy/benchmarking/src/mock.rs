@@ -32,21 +32,25 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount};
 use common::{
-    fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
-    FromGenericPair, LiquiditySourceType, TechPurpose,
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, ContentSource,
+    DEXInfo, Description, Fixed, FromGenericPair, LiquiditySourceFilter, LiquiditySourceType,
+    PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION,
 };
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::{construct_runtime, parameter_types};
-use multicollateral_bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use frame_system::pallet_prelude::BlockNumberFor;
+use multicollateral_bonding_curve_pool::{
+    DistributionAccount, DistributionAccountData, DistributionAccounts,
+};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, DispatchError, DispatchResult, Percent};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -88,6 +92,12 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -105,11 +115,15 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Module, Call, Config, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -144,8 +158,10 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
-    type PrimaryMarket = ();
+    type PrimaryMarketTBC = ();
+    type PrimaryMarketXST = ();
     type SecondaryMarket = ();
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -174,6 +190,8 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -224,9 +242,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WeightInfo = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl permissions::Config for Runtime {
@@ -234,13 +250,12 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_api::Config for Runtime {
-    type Event = Event;
     type MockLiquiditySource = ();
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
-    type BondingCurvePool = ();
+    type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type WeightInfo = ();
 }
@@ -251,21 +266,54 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl pool_xyk::Config for Runtime {
+impl demeter_farming_platform::Config for Runtime {
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
-fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
+fn bonding_curve_distribution_accounts() -> DistributionAccounts<
+    DistributionAccountData<
+        DistributionAccount<
+            <Runtime as frame_system::Config>::AccountId,
+            <Runtime as technical::Config>::TechAccountId,
+        >,
+    >,
+> {
     use common::fixed_wrapper;
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
@@ -279,30 +327,44 @@ fn bonding_curve_distribution_accounts(
     let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
 
     let xor_allocation = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"xor_allocation".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"xor_allocation".to_vec()),
+        )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"sora_citizens".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"sora_citizens".to_vec()),
+        )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"stores_and_shops".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"stores_and_shops".to_vec()),
+        )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
-        TechAccountId::Pure(
-            0u32,
-            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+        DistributionAccount::Account(
+            hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into(),
         ),
         projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"projects".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"projects".to_vec()),
+        )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"val_holders".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"val_holders".to_vec()),
+        )),
         val_holders_buy_back_coefficient.get().unwrap(),
     );
     DistributionAccounts::<_> {
@@ -344,6 +406,46 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetMbcFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcFreeReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+}
+
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
+            input_asset_id,
+            output_asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
+            LiquiditySourceFilter::with_allowed(
+                0u32,
+                [LiquiditySourceType::XYKPool].iter().cloned().collect(),
+            ),
+            true,
+        );
+        Ok(res?.amount)
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -351,10 +453,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = MockPriceTools;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
@@ -366,6 +471,13 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
 impl Config for Runtime {}
@@ -384,6 +496,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
 }
 
@@ -398,7 +512,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),
@@ -436,9 +549,11 @@ impl Default for ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(350000),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::DOT.into(),
@@ -448,33 +563,41 @@ impl Default for ExtBuilder {
                     10,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::USDT.into(),
                     alice(),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }
@@ -489,23 +612,29 @@ impl ExtBuilder {
 
         let accounts = bonding_curve_distribution_accounts();
         let mut tech_accounts = self.tech_accounts.clone();
-        tech_accounts.push((
-            Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
-            accounts.val_holders.account_id.clone(),
-        ));
-        for tech_account in &accounts.xor_distribution_accounts_as_array() {
-            tech_accounts.push((
-                Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
-                (*tech_account).to_owned(),
-            ));
+        for account in &accounts.accounts() {
+            match account {
+                DistributionAccount::Account(_) => continue,
+                DistributionAccount::TechAccount(account_id) => {
+                    tech_accounts.push((
+                        Technical::tech_account_id_to_account_id(&account_id).unwrap(),
+                        account_id.clone(),
+                    ));
+                }
+            }
         }
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
                 (alice(), 0),
                 (
-                    Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id)
-                        .unwrap(),
+                    if let DistributionAccount::TechAccount(account_id) =
+                        &accounts.val_holders.account
+                    {
+                        Technical::tech_account_id_to_account_id(account_id).unwrap()
+                    } else {
+                        panic!("not a tech account")
+                    },
                     0,
                 ),
                 (GetMbcReservesAccountId::get(), 0),
@@ -536,7 +665,7 @@ impl ExtBuilder {
         .unwrap();
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -549,12 +678,34 @@ impl ExtBuilder {
         )
         .unwrap();
 
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: VAL.into(),
+                    },
+                ),
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: PSWAP.into(),
+                    },
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
             distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
-            initial_collateral_assets: Default::default(),
+            initial_collateral_assets: vec![VAL.into()],
+            free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

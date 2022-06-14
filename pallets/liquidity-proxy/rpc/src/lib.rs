@@ -75,6 +75,15 @@ pub trait LiquidityProxyAPI<
         output_asset_id: AssetId,
         at: Option<BlockHash>,
     ) -> Result<bool>;
+
+    #[rpc(name = "liquidityProxy_listEnabledSourcesForPath")]
+    fn list_enabled_sources_for_path(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<BlockHash>,
+    ) -> Result<Vec<LiquiditySourceType>>;
 }
 
 pub struct LiquidityProxyClient<C, B> {
@@ -101,7 +110,7 @@ impl<C, Block, DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, Filter
         SwapVariant,
         LiquiditySourceType,
         FilterMode,
-        Option<SwapOutcomeInfo<Balance>>,
+        Option<SwapOutcomeInfo<Balance, AssetId>>,
     > for LiquidityProxyClient<C, Block>
 where
     Block: BlockT,
@@ -117,7 +126,7 @@ where
         FilterMode,
     >,
     DEXId: Codec,
-    AssetId: Codec,
+    AssetId: Codec + MaybeFromStr + MaybeDisplay,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
@@ -133,7 +142,7 @@ where
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<SwapOutcomeInfo<Balance>>> {
+    ) -> Result<Option<SwapOutcomeInfo<Balance, AssetId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
@@ -172,6 +181,26 @@ where
             .map_err(|e| RpcError {
                 code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
                 message: "Unable to query path availability.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+    }
+
+    fn list_enabled_sources_for_path(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<LiquiditySourceType>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.list_enabled_sources_for_path(&at, dex_id, input_asset_id, output_asset_id)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to query sources for path.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
     }

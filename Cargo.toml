@@ -3,19 +3,100 @@ jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new
 jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 
+fixed-hash = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std" }
+
 # The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
 thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", branch = "patch-1.0.1" }
+
+frame-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-benchmarking-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-executive = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-support = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-system = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-system-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+frame-system-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-balances = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-collective = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-democracy = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-elections-phragmen = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-identity = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-im-online = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-membership = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-multisig = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-offences = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-randomness-collective-flip = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-scheduler = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-sudo = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-transaction-payment = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-transaction-payment-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+pallet-utility = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-basic-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-chain-spec = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-client-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-consensus-slots = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-executor = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-informant = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-network = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-rpc-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-service = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sc-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-application-crypto = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-arithmetic = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-block-builder = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-blockchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-core = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-inherents = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-io = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-keystore = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-npos-elections = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-npos-elections-compact = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-offchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-runtime = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-runtime-interface = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-staking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-std = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-storage = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-trie = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+sp-version = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+substrate-frame-rpc-system =  { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
 
 [workspace]
 members = [
     "runtime",
     "common",
     "pallets/assets",
+    "pallets/ceres-governance-platform",
+    "pallets/ceres-liquidity-locker",
+    "pallets/demeter-farming-platform",
     "pallets/permissions",
     "pallets/trading-pair",
     "pallets/dex-manager",
     "pallets/dex-api",
     "pallets/farming",
+    "pallets/ceres-staking",
+    "pallets/ceres-token-locker",
     "pallets/faucet",
     "pallets/iroha-migration",
     "pallets/liquidity-proxy",
@@ -24,13 +105,16 @@ members = [
     "pallets/pool-xyk",
     "pallets/rewards",
     "pallets/xor-fee",
-    "pallets/referral-system",
-    "pallets/bonding-curve-pool",
+    "pallets/referrals",
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
+    "pallets/vested-rewards",
+    "pallets/xst",
+    "pallets/price-tools",
     "node/",
 ]
+
 resolver = "2"
 
 [profile.release]
