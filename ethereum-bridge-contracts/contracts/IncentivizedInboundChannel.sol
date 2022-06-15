@@ -84,7 +84,7 @@ contract IncentivizedInboundChannel is AccessControl {
         bytes32 digestHash = keccak256(
             bytes.concat(
                 _leafBytes.digestPrefix,
-                block.chainid,
+                block.chainid.encode256(),
                 bytes1(uint8(1)),
                 commitment,
                 _leafBytes.digestSuffix

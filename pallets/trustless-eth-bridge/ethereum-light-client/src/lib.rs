@@ -86,7 +86,7 @@ pub mod pallet {
 
     use super::*;
 
-    use bridge_types::network_params::{NetworkConfig as EthNetworkConfig, Protocol};
+    use bridge_types::network_params::{Consensus, NetworkConfig as EthNetworkConfig};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -246,7 +246,7 @@ pub mod pallet {
                 Error::<T>::NetworkAlreadyExists
             );
             ensure!(
-                matches!(network_config.consensus(), Protocol::Ethash),
+                matches!(network_config.consensus(), Consensus::Ethash { .. }),
                 Error::<T>::ConsensusNotSupported
             );
             NetworkConfig::<T>::insert(network_id, network_config);
@@ -406,9 +406,16 @@ pub mod pallet {
                 header.number
             );
 
-            let difficulty_config = NetworkConfig::<T>::get(network_id)
-                .ok_or(Error::<T>::NetworkNotFound)?
-                .difficulty_config();
+            let difficulty_config = if let Consensus::Ethash { difficulty_config } =
+                NetworkConfig::<T>::get(network_id)
+                    .ok_or(Error::<T>::NetworkNotFound)?
+                    .consensus()
+            {
+                difficulty_config
+            } else {
+                return Err(Error::<T>::ConsensusNotSupported.into());
+            };
+
             let header_difficulty = calc_difficulty(&difficulty_config, header.timestamp, &parent)
                 .map_err(|_| Error::<T>::InvalidHeader)?;
             ensure!(

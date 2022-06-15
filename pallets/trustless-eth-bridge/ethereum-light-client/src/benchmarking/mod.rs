@@ -18,16 +18,16 @@ mod data;
 const RESERVED_FOR_PRUNING: usize = HEADERS_TO_PRUNE_IN_SINGLE_IMPORT as usize;
 
 fn get_best_block<T: Config>() -> (EthereumHeaderId, U256) {
-    <BestBlock<T>>::get(EthNetworkConfig::Sepolia.chain_id()).unwrap()
+    <BestBlock<T>>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap()
 }
 
 fn get_blocks_to_prune<T: Config>() -> PruningRange {
-    <BlocksToPrune<T>>::get(EthNetworkConfig::Sepolia.chain_id()).unwrap()
+    <BlocksToPrune<T>>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap()
 }
 
 fn set_blocks_to_prune<T: Config>(oldest_unpruned: u64, oldest_to_keep: u64) {
     <BlocksToPrune<T>>::insert(
-        EthNetworkConfig::Sepolia.chain_id(),
+        EthNetworkConfig::Mainnet.chain_id(),
         PruningRange {
             oldest_unpruned_block: oldest_unpruned,
             oldest_block_to_keep: oldest_to_keep,
@@ -36,9 +36,9 @@ fn set_blocks_to_prune<T: Config>(oldest_unpruned: u64, oldest_to_keep: u64) {
 }
 
 fn assert_header_pruned<T: Config>(hash: H256, number: u64) {
-    assert!(Headers::<T>::get(EthNetworkConfig::Sepolia.chain_id(), hash).is_none());
+    assert!(Headers::<T>::get(EthNetworkConfig::Mainnet.chain_id(), hash).is_none());
 
-    let hashes_at_number = <HeadersByNumber<T>>::get(EthNetworkConfig::Sepolia.chain_id(), number);
+    let hashes_at_number = <HeadersByNumber<T>>::get(EthNetworkConfig::Mainnet.chain_id(), number);
     assert!(hashes_at_number.is_none() || !hashes_at_number.unwrap().contains(&hash),);
 }
 
@@ -63,9 +63,9 @@ benchmarks! {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
-        NetworkConfig::<T>::insert(EthNetworkConfig::Sepolia.chain_id(), EthNetworkConfig::Sepolia);
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            EthNetworkConfig::Sepolia.chain_id(),
+            EthNetworkConfig::Mainnet.chain_id(),
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -76,7 +76,7 @@ benchmarks! {
             headers[next_finalized_idx].number,
         );
 
-    }: _(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Sepolia.chain_id(), header, header_proof)
+    }: _(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Mainnet.chain_id(), header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -125,8 +125,9 @@ benchmarks! {
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            EthNetworkConfig::Sepolia.chain_id(),
+            EthNetworkConfig::Mainnet.chain_id(),
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -137,7 +138,7 @@ benchmarks! {
             headers[finalized_idx].number,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Sepolia.chain_id(), header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Mainnet.chain_id(), header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -177,8 +178,9 @@ benchmarks! {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            EthNetworkConfig::Sepolia.chain_id(),
+            EthNetworkConfig::Mainnet.chain_id(),
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -189,7 +191,7 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Sepolia.chain_id(),header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Mainnet.chain_id(),header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -231,8 +233,9 @@ benchmarks! {
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            EthNetworkConfig::Sepolia.chain_id(),
+            EthNetworkConfig::Mainnet.chain_id(),
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -243,7 +246,7 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Sepolia.chain_id(),header, header_proof)
+    }: import_header(RawOrigin::Signed(caller.clone()), EthNetworkConfig::Mainnet.chain_id(),header, header_proof)
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -270,12 +273,12 @@ benchmarks! {
         let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
         let next_tip_idx = next_finalized_idx + descendants_until_final as usize;
         let headers = data::headers_11963025_to_11963069();
-    }: _(RawOrigin::Root, EthNetworkConfig::Sepolia, headers[next_tip_idx-1].clone(), U256::zero())
+    }: _(RawOrigin::Root, EthNetworkConfig::Mainnet, headers[next_tip_idx-1].clone(), U256::zero())
     verify {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
         let caller: T::AccountId = whitelisted_caller();
-        assert_ok!(EthereumLightClient::<T>::import_header(RawOrigin::Signed(caller.clone()).into(), EthNetworkConfig::Sepolia.chain_id(), header, header_proof));
+        assert_ok!(EthereumLightClient::<T>::import_header(RawOrigin::Signed(caller.clone()).into(), EthNetworkConfig::Mainnet.chain_id(), header, header_proof));
     }
 
     impl_benchmark_test_suite!(

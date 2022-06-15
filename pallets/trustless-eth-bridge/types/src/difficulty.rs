@@ -59,6 +59,36 @@ impl DifficultyConfig {
             None
         }
     }
+
+    pub fn mainnet() -> Self {
+        DifficultyConfig {
+            byzantium_fork_block: 4_370_000,
+            constantinople_fork_block: 7_280_000,
+            muir_glacier_fork_block: 9_200_000,
+            london_fork_block: 12_965_000,
+            arrow_glacier_fork_block: 13_773_000,
+        }
+    }
+
+    pub fn ropsten() -> Self {
+        DifficultyConfig {
+            byzantium_fork_block: 1_700_000,
+            constantinople_fork_block: 4_230_000,
+            muir_glacier_fork_block: 7_117_117,
+            london_fork_block: 10_499_401,
+            arrow_glacier_fork_block: u64::max_value(),
+        }
+    }
+
+    pub fn sepolia() -> Self {
+        DifficultyConfig {
+            byzantium_fork_block: 0,
+            constantinople_fork_block: 0,
+            muir_glacier_fork_block: 0,
+            london_fork_block: 0,
+            arrow_glacier_fork_block: u64::max_value(),
+        }
+    }
 }
 
 /// This difficulty calculation follows Byzantium rules (https://eips.ethereum.org/EIPS/eip-649)
@@ -106,9 +136,6 @@ pub fn calc_difficulty(
 
 #[cfg(test)]
 mod tests {
-
-    use crate::network_params::NetworkConfig;
-
     use super::*;
     use ethereum_types::H256;
     use serde::{Deserialize, Deserializer};
@@ -263,13 +290,13 @@ mod tests {
 
     #[test]
     fn mainnet_difficulty_calc_is_correct() {
-        let mainnet_config = NetworkConfig::Mainnet.difficulty_config();
+        let mainnet_config = DifficultyConfig::mainnet();
         test_difficulty!("difficultyMainNetwork.json", mainnet_config);
     }
 
     #[test]
     fn ropsten_difficulty_calc_is_correct() {
-        let ropsten_config = NetworkConfig::Ropsten.difficulty_config();
+        let ropsten_config = DifficultyConfig::ropsten();
         test_difficulty!("difficultyRopsten.json", ropsten_config);
     }
 }
