@@ -1106,6 +1106,7 @@ dependencies = [
  "num-traits",
  "orml-currencies",
  "orml-traits",
+ "pallet-timestamp",
  "parity-scale-codec",
  "paste",
  "rustc-hex",

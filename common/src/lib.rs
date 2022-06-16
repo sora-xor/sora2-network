@@ -54,6 +54,7 @@ pub mod weights;
 
 use codec::Encode;
 use sp_core::hash::H512;
+use sp_runtime::traits::UniqueSaturatedInto;
 use sp_runtime::TransactionOutcome;
 
 pub use traits::Config;
@@ -163,5 +164,24 @@ impl IsRepresentation for AccountId32 {
     fn is_representation(&self) -> bool {
         let b: [u8; 32] = self.clone().into();
         b[0..16] == TECH_ACCOUNT_MAGIC_PREFIX
+    }
+}
+
+type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+type MomentOf<T> = <T as pallet_timestamp::Config>::Moment;
+/// Converts block_number to timestamp
+pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(
+    unlocking_block: BlockNumberOf<T>,
+    current_block: BlockNumberOf<T>,
+    current_timestamp: MomentOf<T>,
+) -> MomentOf<T> {
+    if unlocking_block > current_block {
+        let num_of_seconds: u32 =
+            ((unlocking_block - current_block) * 6u32.into()).unique_saturated_into();
+        current_timestamp + num_of_seconds.into()
+    } else {
+        let num_of_seconds: u32 =
+            ((current_block - unlocking_block) * 6u32.into()).unique_saturated_into();
+        current_timestamp - num_of_seconds.into()
     }
 }

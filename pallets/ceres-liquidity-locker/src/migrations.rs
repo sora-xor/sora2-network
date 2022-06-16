@@ -1,8 +1,7 @@
 use crate::{AssetIdOf, Config, LockInfo, LockerData, Timestamp, Weight};
-use common::Balance;
+use common::{convert_block_number_to_timestamp, Balance};
 use frame_support::debug;
 use frame_support::traits::Get;
-use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
@@ -23,16 +22,11 @@ pub fn migrate_locker_data<T: Config>() -> Weight {
             v.into_iter()
                 .map(|(pool_tokens, unlocking_block, asset_a, asset_b)| {
                     weight += 1;
-                    let unlocking_timestamp: T::Moment;
-                    if unlocking_block > current_block {
-                        let num_of_seconds: u32 = ((unlocking_block - current_block) * 6u32.into())
-                            .unique_saturated_into();
-                        unlocking_timestamp = current_timestamp + num_of_seconds.into();
-                    } else {
-                        let num_of_seconds: u32 = ((current_block - unlocking_block) * 6u32.into())
-                            .unique_saturated_into();
-                        unlocking_timestamp = current_timestamp - num_of_seconds.into();
-                    }
+                    let unlocking_timestamp = convert_block_number_to_timestamp::<T>(
+                        unlocking_block,
+                        current_block,
+                        current_timestamp,
+                    );
 
                     LockInfo {
                         pool_tokens,
