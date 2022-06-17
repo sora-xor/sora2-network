@@ -32,6 +32,7 @@ sp-std = { version = "3", default-features = false }
 technical = { path = "../technical", optional =  true, default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
+pallet-timestamp = { version = "3", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "3"}

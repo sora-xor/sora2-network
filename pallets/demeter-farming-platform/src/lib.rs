@@ -9,7 +9,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::Balance;
+use common::{Balance, DemeterFarmingPallet};
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
@@ -61,6 +61,7 @@ pub struct UserInfo<AssetId> {
     pub rewards: Balance,
 }
 
+use frame_support::dispatch::DispatchError;
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -391,9 +392,12 @@ pub mod pallet {
                 let pool_account = T::XYKPool::properties_of_pool(XOR.into(), pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
-                let lp_tokens =
+                let mut lp_tokens =
                     T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                         .unwrap_or(0);
+                if lp_tokens < user_info.pooled_tokens {
+                    lp_tokens = user_info.pooled_tokens;
+                }
                 ensure!(
                     pooled_tokens <= lp_tokens - user_info.pooled_tokens,
                     Error::<T>::InsufficientLPTokens
@@ -414,6 +418,30 @@ pub mod pallet {
                         FeeAccount::<T>::get(),
                         fee,
                     )?;
+
+                    lp_tokens =
+                        T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                            .unwrap_or(0);
+                }
+
+                // Handle total LP changed in other XOR/pool_asset farming pools
+                for u_info in user_infos.iter_mut() {
+                    if u_info.pool_asset == pool_asset
+                        && u_info.reward_asset != reward_asset
+                        && u_info.is_farm
+                    {
+                        if u_info.pooled_tokens > lp_tokens {
+                            let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
+                            u_info.pooled_tokens = lp_tokens;
+                            let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
+                            for p_info in pool_data.iter_mut() {
+                                if !p_info.is_removed && p_info.is_farm == is_farm {
+                                    p_info.total_tokens_in_pool -= pool_tokens_diff;
+                                }
+                            }
+                            <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
+                        }
+                    }
                 }
             }
 
@@ -427,11 +455,11 @@ pub mod pallet {
                         u_info.pooled_tokens += pooled_tokens;
                     }
                 }
-                <UserInfos<T>>::insert(&user, user_infos);
             } else {
                 user_info.pooled_tokens += pooled_tokens;
-                <UserInfos<T>>::append(&user, user_info);
+                user_infos.push(user_info);
             }
+            <UserInfos<T>>::insert(&user, user_infos);
 
             // Update pool info
             for p_info in pool_infos.iter_mut() {
@@ -1059,5 +1087,33 @@ pub mod pallet {
 
             return free_pool_tokens == pool_tokens || free_pool_tokens >= withdrawing_amount;
         }
+    }
+}
+
+impl<T: Config> DemeterFarmingPallet<T::AccountId, T::AssetId> for Pallet<T> {
+    fn update_pool_tokens(
+        user: T::AccountId,
+        pool_tokens: Balance,
+        pool_asset: T::AssetId,
+    ) -> Result<(), DispatchError> {
+        let mut user_infos = <UserInfos<T>>::get(&user);
+        for u_info in user_infos.iter_mut() {
+            if u_info.pool_asset == pool_asset && u_info.is_farm {
+                if u_info.pooled_tokens > pool_tokens {
+                    let pool_tokens_diff = u_info.pooled_tokens - pool_tokens;
+                    u_info.pooled_tokens = pool_tokens;
+                    let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
+                    for p_info in pool_data.iter_mut() {
+                        if !p_info.is_removed && p_info.is_farm {
+                            p_info.total_tokens_in_pool -= pool_tokens_diff;
+                        }
+                    }
+                    <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
+                }
+            }
+        }
+        <UserInfos<T>>::insert(user, user_infos);
+
+        Ok(())
     }
 }

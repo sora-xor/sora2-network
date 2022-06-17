@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod migrations;
 pub mod weights;
 
 mod benchmarking;
@@ -21,26 +22,36 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct TokenLockInfo<Balance, BlockNumber, AssetId> {
+pub struct TokenLockInfo<Balance, Moment, AssetId> {
     /// Amount of locked tokens
     pub tokens: Balance,
-    /// The time (block height) at which the tokens will be unlocked
-    pub unlocking_block: BlockNumber,
+    /// The timestamp at which the tokens will be unlocked
+    pub unlocking_timestamp: Moment,
     /// Locked asset id
     pub asset_id: AssetId,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{TokenLockInfo, WeightInfo};
+    use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     use common::balance;
     use common::prelude::{Balance, FixedWrapper};
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
+    use pallet_timestamp as timestamp;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
     use sp_std::vec::Vec;
@@ -48,7 +59,9 @@ pub mod pallet {
     const PALLET_ID: ModuleId = ModuleId(*b"crstlock");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -60,8 +73,9 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -92,6 +106,17 @@ pub mod pallet {
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
     #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
+    #[pallet::type_value]
     pub fn DefaultForFeeAmount<T: Config>() -> Balance {
         balance!(0.005)
     }
@@ -107,12 +132,12 @@ pub mod pallet {
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<TokenLockInfo<Balance, T::BlockNumber, AssetIdOf<T>>>,
+        Vec<TokenLockInfo<Balance, T::Moment, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::Moment = "Moment")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Funds Locked [who, amount, asset]
@@ -129,8 +154,8 @@ pub mod pallet {
         InvalidNumberOfTokens,
         /// Unauthorized access
         Unauthorized,
-        /// Block number in past,
-        InvalidUnlockingBlock,
+        /// Unlocking date cannot be in past
+        InvalidUnlockingTimestamp,
         /// Not enough funds
         NotEnoughFunds,
         /// Tokens not unlocked yet
@@ -146,7 +171,7 @@ pub mod pallet {
         pub fn lock_tokens(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            unlocking_block: T::BlockNumber,
+            unlocking_timestamp: T::Moment,
             number_of_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -155,16 +180,16 @@ pub mod pallet {
                 Error::<T>::InvalidNumberOfTokens
             );
 
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
+            // Get current timestamp
+            let current_timestamp = Timestamp::<T>::get();
             ensure!(
-                unlocking_block > current_block,
-                Error::<T>::InvalidUnlockingBlock
+                unlocking_timestamp > current_timestamp,
+                Error::<T>::InvalidUnlockingTimestamp
             );
 
             let token_lock_info = TokenLockInfo {
                 tokens: number_of_tokens,
-                unlocking_block,
+                unlocking_timestamp,
                 asset_id,
             };
 
@@ -199,7 +224,7 @@ pub mod pallet {
         pub fn withdraw_tokens(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            unlocking_block: T::BlockNumber,
+            unlocking_timestamp: T::Moment,
             number_of_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -208,15 +233,18 @@ pub mod pallet {
                 Error::<T>::InvalidNumberOfTokens
             );
 
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
-            ensure!(unlocking_block < current_block, Error::<T>::NotUnlockedYet);
+            // Get current timestamp
+            let current_timestamp = Timestamp::<T>::get();
+            ensure!(
+                unlocking_timestamp < current_timestamp,
+                Error::<T>::NotUnlockedYet
+            );
 
             let mut token_lock_info_vec = <TokenLockerData<T>>::get(&user);
             let mut idx = 0;
             let mut exist = false;
             for (index, lock) in token_lock_info_vec.iter().enumerate() {
-                if lock.unlocking_block == unlocking_block
+                if lock.unlocking_timestamp == unlocking_timestamp
                     && lock.asset_id == asset_id
                     && lock.tokens == number_of_tokens
                 {
@@ -262,7 +290,17 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
