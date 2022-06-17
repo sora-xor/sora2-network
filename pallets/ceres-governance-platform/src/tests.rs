@@ -435,34 +435,34 @@ mod tests {
 
             OldPollData::insert(&poll_id_b, (3, 529942780u64, 529942790u64));
 
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000000);
             run_to_block(5);
 
             // Storage migration
             CeresGovernancePlatform::on_runtime_upgrade();
 
             let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
-            assert_eq!(poll_a.poll_start_timestamp, 26902642);
-            assert_eq!(poll_a.poll_end_timestamp, 26989042);
+            assert_eq!(poll_a.poll_start_timestamp, 26902642000);
+            assert_eq!(poll_a.poll_end_timestamp, 26989042000);
 
             let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
-            assert_eq!(poll_b.poll_start_timestamp, 3179666650);
-            assert_eq!(poll_b.poll_end_timestamp, 3179666710);
+            assert_eq!(poll_b.poll_start_timestamp, 3179666650000);
+            assert_eq!(poll_b.poll_end_timestamp, 3179666710000);
 
             // Storage version should be V2 so no changes made
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000000);
             run_to_block(10);
 
             // Storage migration
             CeresGovernancePlatform::on_runtime_upgrade();
 
             let poll_a = pallet::PollData::<Runtime>::get(&poll_id_a);
-            assert_eq!(poll_a.poll_start_timestamp, 26902642);
-            assert_eq!(poll_a.poll_end_timestamp, 26989042);
+            assert_eq!(poll_a.poll_start_timestamp, 26902642000);
+            assert_eq!(poll_a.poll_end_timestamp, 26989042000);
 
             let poll_b = pallet::PollData::<Runtime>::get(&poll_id_b);
-            assert_eq!(poll_b.poll_start_timestamp, 3179666650);
-            assert_eq!(poll_b.poll_end_timestamp, 3179666710);
+            assert_eq!(poll_b.poll_start_timestamp, 3179666650000);
+            assert_eq!(poll_b.poll_end_timestamp, 3179666710000);
         });
     }
 }

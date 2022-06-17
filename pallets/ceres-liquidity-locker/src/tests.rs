@@ -683,7 +683,7 @@ fn liquidity_locker_storage_migration_works() {
 
         OldLockerData::insert(BOB(), bob_vec);
 
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000000);
         run_to_block(5);
 
         // Storage migration
@@ -692,19 +692,19 @@ fn liquidity_locker_storage_migration_works() {
         let lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
         for lockup in lockups_alice {
             if lockup.pool_tokens == balance!(5) {
-                assert_eq!(lockup.unlocking_timestamp, 10690);
+                assert_eq!(lockup.unlocking_timestamp, 10690000);
             } else if lockup.pool_tokens == balance!(6) {
-                assert_eq!(lockup.unlocking_timestamp, 3179666650);
+                assert_eq!(lockup.unlocking_timestamp, 3179666650000);
             }
         }
 
         let lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
         for lockup in lockups_bob {
-            assert_eq!(lockup.unlocking_timestamp, 9988);
+            assert_eq!(lockup.unlocking_timestamp, 9988000);
         }
 
         // Storage version should be V2 so no changes made
-        pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000000);
         run_to_block(10);
 
         // Storage migration
@@ -713,15 +713,15 @@ fn liquidity_locker_storage_migration_works() {
         let lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
         for lockup in lockups_alice {
             if lockup.pool_tokens == balance!(5) {
-                assert_eq!(lockup.unlocking_timestamp, 10690);
+                assert_eq!(lockup.unlocking_timestamp, 10690000);
             } else if lockup.pool_tokens == balance!(6) {
-                assert_eq!(lockup.unlocking_timestamp, 3179666650);
+                assert_eq!(lockup.unlocking_timestamp, 3179666650000);
             }
         }
 
         let lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
         for lockup in lockups_bob {
-            assert_eq!(lockup.unlocking_timestamp, 9988);
+            assert_eq!(lockup.unlocking_timestamp, 9988000);
         }
     });
 }

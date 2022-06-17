@@ -2715,7 +2715,7 @@ mod tests {
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
-                .saturating_add(86_400u64.saturating_mul(ilo_info.lockup_days.into()));
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
@@ -2779,7 +2779,7 @@ mod tests {
 
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
-                .saturating_add(86_400u64.saturating_mul(ilo_info.lockup_days.into()));
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
@@ -2860,7 +2860,7 @@ mod tests {
 
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
-                .saturating_add(86_400u64.saturating_mul(ilo_info.lockup_days.into()));
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
@@ -3001,7 +3001,9 @@ mod tests {
                 funds_to_contribute
             ));
 
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 15 * 86_400u64);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(
+                current_timestamp + 15 * 86_400_000u64,
+            );
             run_to_block(300000);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);

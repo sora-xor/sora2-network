@@ -254,7 +254,7 @@ mod tests {
 
             OldLockerData::insert(BOB, bob_vec);
 
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(10000000);
             run_to_block(5);
 
             // Storage migration
@@ -263,19 +263,19 @@ mod tests {
             let lockups_alice = pallet::TokenLockerData::<Runtime>::get(&ALICE);
             for lockup in lockups_alice {
                 if lockup.tokens == balance!(5) {
-                    assert_eq!(lockup.unlocking_timestamp, 51970204);
+                    assert_eq!(lockup.unlocking_timestamp, 51970204000);
                 } else if lockup.tokens == balance!(6) {
-                    assert_eq!(lockup.unlocking_timestamp, 96327328);
+                    assert_eq!(lockup.unlocking_timestamp, 96327328000);
                 }
             }
 
             let lockups_bob = pallet::TokenLockerData::<Runtime>::get(&BOB);
             for lockup in lockups_bob {
-                assert_eq!(lockup.unlocking_timestamp, 9988);
+                assert_eq!(lockup.unlocking_timestamp, 9988000);
             }
 
             // Storage version should be V2 so no changes made
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(11000000);
             run_to_block(10);
 
             // Storage migration
@@ -284,15 +284,15 @@ mod tests {
             let lockups_alice = pallet::TokenLockerData::<Runtime>::get(&ALICE);
             for lockup in lockups_alice {
                 if lockup.tokens == balance!(5) {
-                    assert_eq!(lockup.unlocking_timestamp, 51970204);
+                    assert_eq!(lockup.unlocking_timestamp, 51970204000);
                 } else if lockup.tokens == balance!(6) {
-                    assert_eq!(lockup.unlocking_timestamp, 96327328);
+                    assert_eq!(lockup.unlocking_timestamp, 96327328000);
                 }
             }
 
             let lockups_bob = pallet::TokenLockerData::<Runtime>::get(&BOB);
             for lockup in lockups_bob {
-                assert_eq!(lockup.unlocking_timestamp, 9988);
+                assert_eq!(lockup.unlocking_timestamp, 9988000);
             }
         });
     }
