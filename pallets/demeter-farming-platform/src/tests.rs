@@ -2196,26 +2196,138 @@ mod tests {
     #[test]
     fn check_if_has_enough_liquidity_out_of_farming_true() {
         preset_initial(|| {
-            let xor: AssetId = XOR.into();
-            let ceres: AssetId = CERES_ASSET_ID.into();
+            let pool_asset = XOR;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                pool_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                pool_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core
+            ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE),
                 DEX_A_ID.into(),
-                xor,
-                ceres,
+                pool_asset,
+                reward_asset,
                 balance!(500),
                 balance!(700),
                 balance!(500),
                 balance!(700),
             ));
 
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    pool_asset,
+                    reward_asset,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let pool_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens
+            ));
+
+            let pooled_tokens = (FixedWrapper::from(pool_tokens)
+                * FixedWrapper::from(balance!(0.96)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                pool_asset,
+                is_farm,
+                pooled_tokens
+            ));
+
+            let mut pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
+                / FixedWrapper::from(balance!(2)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                pooled_tokens_to_withdraw,
+                is_farm
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
+                Origin::signed(ALICE),
+                reward_asset,
+                pool_asset,
+                pooled_tokens_to_withdraw,
+                is_farm
+            ));
+
+            pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
+                / FixedWrapper::from(balance!(3)))
+            .try_into_balance()
+            .unwrap_or(0);
+
             assert_eq!(
                 demeter_farming_platform::Pallet::<Runtime>::check_if_has_enough_liquidity_out_of_farming(
                     &ALICE,
-                    xor,
-                    ceres,
-                    balance!(0.3),
+                    pool_asset,
+                    reward_asset,
+                    pooled_tokens_to_withdraw,
                 ),
                 true
             );

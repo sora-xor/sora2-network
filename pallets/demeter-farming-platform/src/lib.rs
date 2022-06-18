@@ -1075,17 +1075,19 @@ pub mod pallet {
                 return false;
             }
 
-            let mut free_pool_tokens = pool_tokens;
+            let mut pooled_tokens = balance!(0);
             let user_infos = <UserInfos<T>>::get(&user);
             for user_info in user_infos {
                 if user_info.pool_asset == asset_b && user_info.is_farm {
-                    free_pool_tokens = free_pool_tokens
-                        .checked_sub(user_info.pooled_tokens)
-                        .unwrap_or(0);
+                    if pooled_tokens < user_info.pooled_tokens {
+                        pooled_tokens = user_info.pooled_tokens;
+                    }
                 }
             }
 
-            return free_pool_tokens == pool_tokens || free_pool_tokens >= withdrawing_amount;
+            let free_pool_tokens = pool_tokens.checked_sub(pooled_tokens).unwrap_or(0);
+
+            return pooled_tokens == balance!(0) || free_pool_tokens >= withdrawing_amount;
         }
     }
 }
