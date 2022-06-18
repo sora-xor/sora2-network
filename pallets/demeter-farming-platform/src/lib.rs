@@ -1087,7 +1087,7 @@ pub mod pallet {
 
             let free_pool_tokens = pool_tokens.checked_sub(pooled_tokens).unwrap_or(0);
 
-            return pooled_tokens == balance!(0) || free_pool_tokens >= withdrawing_amount;
+            pooled_tokens == balance!(0) || free_pool_tokens >= withdrawing_amount
         }
     }
 }
