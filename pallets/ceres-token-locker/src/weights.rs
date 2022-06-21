@@ -8,17 +8,17 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn lock_tokens() -> Weight {
-        (338_600_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(8 as Weight))
+        (129_400_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(9 as Weight))
             .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
     fn withdraw_tokens() -> Weight {
-        (197_300_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+        (86_900_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
             .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn change_fee() -> Weight {
-        (54_300_000 as Weight)
+        (28_000_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(1 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
