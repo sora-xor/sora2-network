@@ -8,7 +8,7 @@ use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-/// Ethash Params. See https://eth.wiki/en/concepts/ethash/ethash
+/// Ethash Params. See https://ethereum.org/en/developers/docs/consensus-mechanisms/pow/mining-algorithms/ethash
 /// Blocks per epoch
 pub const EPOCH_LENGTH: u64 = 30000;
 /// Etchash have increased epoch length
