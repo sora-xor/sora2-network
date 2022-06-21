@@ -13,6 +13,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 pallet-session = { version = "3", default-features = false }
@@ -22,30 +23,39 @@ sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
+smallvec = "1.5.0"
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
-referrals = { path = "../referrals", default-features = false }
+
 eth-bridge = { path = "../eth-bridge", default-features = false }
+referrals = { path = "../referrals", default-features = false }
+
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0", optional = true }
+sp-core = { version = "3", default-features = false, optional = true }
+permissions = { path = "../permissions", default-features = false, optional = true }
+pool-xyk = { path = "../pool-xyk", default-features = false, optional = true }
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies" }
 pallet-balances = { version = "3", default-features = false }
-pallet-session = { version = "3", default-features = false }
 pallet-timestamp = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0" }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig" }
 pallet-scheduler = { version = "3" }
 
 common = { path = "../../common", features = ["test"] }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-permissions = { path = "../permissions" }
+permissions = { path = "../permissions", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
@@ -58,11 +68,31 @@ std = [
     "frame-system/std",
     "pallet-session/std",
     "pallet-transaction-payment/std",
-    "serde",
+    "serde/std",
     "sp-arithmetic/std",
     "sp-runtime/std",
     "sp-staking/std",
     "sp-std/std",
     "traits/std",
+    "assets/std",
+    "common/std",
+    "liquidity-proxy/std",
+
     "eth-bridge/std",
+    "referrals/std",
+
+    "pallet-staking?/std",
+    "sp-core?/std",
+    "permissions?/std",
+    "pool-xyk?/std",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "pallet-staking",
+    "sp-core",
+    "permissions",
+    "pool-xyk",
 ]

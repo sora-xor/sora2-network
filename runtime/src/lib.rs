@@ -82,7 +82,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
@@ -95,7 +95,6 @@ use traits::parameter_type_with_key;
 // A few exports that help ease life for downstream crates.
 pub use common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
-    WeightToFixedFee,
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
@@ -890,14 +889,12 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
-pub struct ExtrinsicsFlatFees;
-
-// Flat fees implementation for the selected extrinsics.
-// Returns a value if the extirnsic is subject to manual fee adjustment
-// and `None` otherwise
-impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
+// Multiplied flat fees implementation for the selected extrinsics.
+// Returns a value (* multiplier) if the extrinsic is subject to manual fee
+// adjustment and `None` otherwise
+impl<T> xor_fee::ApplyCustomFees<Call> for xor_fee::Pallet<T> {
     fn compute_fee(call: &Call) -> Option<Balance> {
-        match call {
+        let result = match call {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
@@ -913,7 +910,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::TradingPair(..)
             | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
-        }
+        };
+        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
     }
 }
 
@@ -1064,10 +1062,11 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
-    type CustomFees = ExtrinsicsFlatFees;
+    type CustomFees = XorFee;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WeightInfo = xor_fee::weights::WeightInfo<Runtime>;
     type WithdrawFee = WithdrawFee;
 }
 
@@ -1093,7 +1092,7 @@ impl Convert<Multiplier, Multiplier> for ConstantFeeMultiplier {
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
     type TransactionByteFee = TransactionByteFee;
-    type WeightToFee = WeightToFixedFee;
+    type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
@@ -1239,6 +1238,7 @@ impl eth_bridge::Config for Runtime {
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
+    type WeightToFee = XorFee;
 }
 
 #[cfg(feature = "private-net")]
@@ -2234,14 +2234,12 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
-            use xor_fee_benchmarking::Module as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
-            impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2276,7 +2274,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
