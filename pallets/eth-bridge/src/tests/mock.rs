@@ -41,7 +41,7 @@ use crate::{
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
 };
 use codec::{Codec, Decode, Encode};
-use common::mock::ExistentialDeposits;
+use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
     Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
@@ -410,6 +410,7 @@ impl crate::Config for Runtime {
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
+    type WeightToFee = WeightToFixedFee;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
