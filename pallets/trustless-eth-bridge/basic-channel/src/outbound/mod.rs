@@ -105,10 +105,11 @@ pub mod pallet {
     /// Interval between commitments
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    pub(super) type Interval<T: Config> = StorageValue<_, u32, ValueQuery, DefaultInterval<T>>;
+    pub(super) type Interval<T: Config> =
+        StorageValue<_, T::BlockNumber, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> u32 {
+    pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
         // TODO: Select interval
         10u32.into()
     }
@@ -128,14 +129,14 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub networks: Vec<(EthNetworkId, Vec<AccountIdOf<T>>)>,
-        pub interval: u32,
+        pub interval: T::BlockNumber,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                interval: 10,
+                interval: 10u32.into(),
                 networks: Default::default(),
             }
         }
@@ -162,15 +163,15 @@ pub mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut scheduled_ids = vec![];
             let interval = Self::interval();
-            let batch_id = now % interval.into();
-            for key in MessageQueue::<T>::iter_keys() {
-                let rem: T::BlockNumber = key
-                    .checked_rem(interval.into())
+            let batch_id = now % interval;
+            for chain_id in MessageQueue::<T>::iter_keys() {
+                let chain_id_rem: T::BlockNumber = chain_id
+                    .checked_rem(u32::MAX.into())
                     .unwrap_or_default()
                     .as_u32()
                     .into();
-                if rem == batch_id {
-                    scheduled_ids.push(key);
+                if chain_id_rem % interval == batch_id {
+                    scheduled_ids.push(chain_id);
                 }
             }
             let mut weight = Default::default();

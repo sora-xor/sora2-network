@@ -79,12 +79,13 @@ pub mod pallet {
     /// Interval between committing messages.
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    pub(crate) type Interval<T: Config> = StorageValue<_, u32, ValueQuery, DefaultInterval<T>>;
+    pub(crate) type Interval<T: Config> =
+        StorageValue<_, T::BlockNumber, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> u32 {
+    pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
         // TODO: Select interval
-        10u32
+        10u32.into()
     }
 
     /// Messages waiting to be committed.
@@ -123,15 +124,15 @@ pub mod pallet {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut scheduled_ids = vec![];
             let interval = Self::interval();
-            let batch_id = now % interval.into();
-            for key in MessageQueues::<T>::iter_keys() {
-                let rem: T::BlockNumber = key
-                    .checked_rem(interval.into())
+            let batch_id = now % interval;
+            for chain_id in MessageQueues::<T>::iter_keys() {
+                let chain_id_rem: T::BlockNumber = chain_id
+                    .checked_rem(u32::MAX.into())
                     .unwrap_or_default()
                     .as_u32()
                     .into();
-                if rem == batch_id {
-                    scheduled_ids.push(key);
+                if chain_id_rem % interval == batch_id {
+                    scheduled_ids.push(chain_id);
                 }
             }
             let mut weight = Default::default();
@@ -285,7 +286,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub fee: BalanceOf<T>,
-        pub interval: u32,
+        pub interval: T::BlockNumber,
         pub networks: Vec<(EthNetworkId, H160)>,
     }
 
@@ -294,7 +295,7 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 fee: Default::default(),
-                interval: 10,
+                interval: 10u32.into(),
                 networks: Default::default(),
             }
         }

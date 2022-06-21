@@ -45,7 +45,8 @@ benchmarks! {
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
 
-        Interval::<T>::put(10u32);
+        let interval: T::BlockNumber = 10u32.into();
+        Interval::<T>::put(interval);
         let block_number: T::BlockNumber = 12u32.into();
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }

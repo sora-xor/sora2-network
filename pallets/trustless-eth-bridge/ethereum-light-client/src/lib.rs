@@ -269,7 +269,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(T::WeightInfo::register_network())]
+        #[pallet::weight(T::WeightInfo::update_difficulty_config())]
         pub fn update_difficulty_config(
             origin: OriginFor<T>,
             network_config: EthNetworkConfig,

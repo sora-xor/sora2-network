@@ -85,7 +85,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, vec![Keyring::Bob.into()])],
-            interval: 1u32,
+            interval: 1u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
 

@@ -198,7 +198,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
-            interval: 10u32,
+            interval: 10u32.into(),
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();

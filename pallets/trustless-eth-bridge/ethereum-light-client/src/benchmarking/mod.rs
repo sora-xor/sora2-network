@@ -281,6 +281,22 @@ benchmarks! {
         assert_ok!(EthereumLightClient::<T>::import_header(RawOrigin::Signed(caller.clone()).into(), EthNetworkConfig::Mainnet.chain_id(), header, header_proof));
     }
 
+    update_difficulty_config {
+        let descendants_until_final = T::DescendantsUntilFinalized::get();
+
+        let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
+        let next_tip_idx = next_finalized_idx + descendants_until_final as usize;
+        let headers = data::headers_11963025_to_11963069();
+        EthereumLightClient::<T>::register_network(RawOrigin::Root.into(), EthNetworkConfig::Mainnet, headers[next_tip_idx-1].clone(), U256::zero()).unwrap();
+        let network_config = EthNetworkConfig::Custom {
+            chain_id: EthNetworkConfig::Mainnet.chain_id(),
+            consensus: EthNetworkConfig::Ropsten.consensus(),
+        };
+    }: _(RawOrigin::Root, network_config)
+    verify {
+        assert_eq!(crate::NetworkConfig::<T>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap().consensus(), network_config.consensus());
+    }
+
     impl_benchmark_test_suite!(
         EthereumLightClient,
         crate::mock::new_tester::<crate::mock::mock_verifier_with_pow::Test>(),
