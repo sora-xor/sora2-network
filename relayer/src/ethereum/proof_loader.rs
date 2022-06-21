@@ -3,14 +3,27 @@ use std::sync::Arc;
 
 use super::ethashproof::cache::DatasetMerkleTreeCache;
 use super::receipt::BlockWithReceipts;
-use super::EPOCH_LENGTH;
 use crate::prelude::*;
-use bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+use bridge_types::ethashproof::{calc_seedhash, DoubleNodeWithMerkleProof};
 use bridge_types::Header;
 use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
+
+pub fn get_verification_indices(
+    epoch_length: usize,
+    epoch: usize,
+    header_hash: H256,
+    nonce: U64,
+) -> [usize; ethash::ACCESSES] {
+    let cache_size = ethash::get_cache_size(epoch);
+    let mut cache = vec![0u8; cache_size];
+    let seed = calc_seedhash(epoch_length, epoch);
+    ethash::make_cache(&mut cache[..], seed);
+    let full_size = ethash::get_full_size(epoch);
+    ethash::hashimoto_light_indices(header_hash, nonce, full_size, &cache[..])
+}
 
 #[derive(Debug, Clone)]
 pub struct ProofLoader {
@@ -40,17 +53,20 @@ impl ProofLoader {
 
     pub async fn header_proof(
         &self,
+        epoch_length: usize,
         header: Header,
         nonce: U64,
     ) -> AnyResult<Vec<DoubleNodeWithMerkleProof>> {
         let mut res = vec![];
-        let epoch = (header.number / EPOCH_LENGTH) as usize;
-        let cache = self.get_cache(epoch).await?;
+        let epoch = header.number as usize / epoch_length;
+        let cache = self.get_cache(epoch_length, epoch).await?;
         let start = Instant::now();
-        let indexes = ethash::get_verification_indices(epoch, header.compute_partial_hash(), nonce);
+        let indexes =
+            get_verification_indices(epoch_length, epoch, header.compute_partial_hash(), nonce);
         let mut futures = FuturesOrdered::new();
         for index in indexes {
             futures.push(super::ethashproof::dag_merkle_root::calculate_proof(
+                epoch_length,
                 epoch,
                 index as u32,
                 &cache,
@@ -68,13 +84,23 @@ impl ProofLoader {
         Ok(res)
     }
 
-    async fn get_cache(&self, epoch: usize) -> AnyResult<Arc<DatasetMerkleTreeCache>> {
+    async fn get_cache(
+        &self,
+        epoch_length: usize,
+        epoch: usize,
+    ) -> AnyResult<Arc<DatasetMerkleTreeCache>> {
         let mut lock = self.cache.lock().await;
         if let Some(cache) = lock.get(&epoch).cloned() {
             return Ok(cache);
         }
         let cache = Arc::new(
-            DatasetMerkleTreeCache::get_cache(self.data_dir(), self.cache_dir(), epoch).await?,
+            DatasetMerkleTreeCache::get_cache(
+                self.data_dir(),
+                self.cache_dir(),
+                epoch_length,
+                epoch,
+            )
+            .await?,
         );
         lock.put(epoch, cache.clone());
         Ok(cache)

@@ -1,7 +1,7 @@
 //! EthereumLightClient pallet benchmarking
 use super::*;
 
-use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;

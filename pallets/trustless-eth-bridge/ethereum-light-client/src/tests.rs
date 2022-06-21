@@ -4,7 +4,7 @@ use crate::mock::{
     log_payload, message_with_receipt_proof, new_tester, new_tester_with_config,
     receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
 };
-use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::traits::Verifier as VerifierConfig;
 use bridge_types::U256;
 

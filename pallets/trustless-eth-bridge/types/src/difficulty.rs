@@ -8,6 +8,13 @@ use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+/// Ethash Params. See https://eth.wiki/en/concepts/ethash/ethash
+/// Blocks per epoch
+pub const EPOCH_LENGTH: u64 = 30000;
+/// Etchash have increased epoch length
+/// https://ecips.ethereumclassic.org/ECIPs/ecip-1099
+pub const ETCHASH_EPOCH_LENGTH: u64 = 60000;
+
 const DIFFICULTY_BOUND_DIVISOR: u32 = 11; // right-shifts equivalent to division by 2048
 const EXP_DIFFICULTY_PERIOD: u64 = 100000;
 const MINIMUM_DIFFICULTY: u32 = 131072;
@@ -26,11 +33,12 @@ pub enum BombDelay {
     ArrowGlacier = 10700000,
 }
 
-/// Describes when hard forks occurred that affect difficulty calculations. These
+/// Describes when hard forks occurred in Etheerum Mainnet based networks
+/// that affect difficulty calculations. These
 /// values are network-specific.
 #[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DifficultyConfig {
+pub struct ForkConfig {
     // Block number on which Byzantium (EIP-649) rules activated
     pub byzantium_fork_block: u64,
     // Block number on which Constantinople (EIP-1234) rules activated
@@ -43,7 +51,7 @@ pub struct DifficultyConfig {
     pub arrow_glacier_fork_block: u64,
 }
 
-impl DifficultyConfig {
+impl ForkConfig {
     pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
         if block_number >= self.arrow_glacier_fork_block {
             Some(BombDelay::ArrowGlacier)
@@ -61,7 +69,7 @@ impl DifficultyConfig {
     }
 
     pub fn mainnet() -> Self {
-        DifficultyConfig {
+        ForkConfig {
             byzantium_fork_block: 4_370_000,
             constantinople_fork_block: 7_280_000,
             muir_glacier_fork_block: 9_200_000,
@@ -71,7 +79,7 @@ impl DifficultyConfig {
     }
 
     pub fn ropsten() -> Self {
-        DifficultyConfig {
+        ForkConfig {
             byzantium_fork_block: 1_700_000,
             constantinople_fork_block: 4_230_000,
             muir_glacier_fork_block: 7_117_117,
@@ -81,7 +89,7 @@ impl DifficultyConfig {
     }
 
     pub fn sepolia() -> Self {
-        DifficultyConfig {
+        ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
@@ -89,19 +97,70 @@ impl DifficultyConfig {
             arrow_glacier_fork_block: u64::max_value(),
         }
     }
+
+    pub fn calc_difficulty(&self, time: u64, parent: &Header) -> Result<U256, &'static str> {
+        let bomb_delay = self
+            .bomb_delay(parent.number + 1)
+            .ok_or("Cannot calculate difficulty for block number prior to Byzantium")?;
+
+        calc_difficulty(Some(bomb_delay as u64), time, parent)
+    }
+
+    pub fn epoch_length(&self) -> u64 {
+        EPOCH_LENGTH
+    }
+}
+
+/// Describes when hard forks occurred in Ethereum Classic based networks
+/// that affect difficulty calculations. These
+/// values are network-specific.
+#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct ClassicForkConfig {
+    // https://ecips.ethereumclassic.org/ECIPs/ecip-1041
+    ecip1041_block: u64,
+    // https://ecips.ethereumclassic.org/ECIPs/ecip-1099
+    ecip1099_block: u64,
+}
+
+impl ClassicForkConfig {
+    pub fn classic() -> Self {
+        ClassicForkConfig {
+            ecip1041_block: 5_900_000,
+            ecip1099_block: 11_700_000,
+        }
+    }
+
+    pub fn mordor() -> Self {
+        ClassicForkConfig {
+            ecip1041_block: 0,
+            ecip1099_block: 2_520_000,
+        }
+    }
+
+    pub fn calc_difficulty(&self, time: u64, parent: &Header) -> Result<U256, &'static str> {
+        if parent.number < self.ecip1041_block {
+            return Err("Cannot calculate difficulty for block number prior to ECIP1041");
+        }
+        calc_difficulty(None, time, parent)
+    }
+
+    pub fn calc_epoch_length(&self, block_number: u64) -> u64 {
+        if block_number < self.ecip1099_block {
+            EPOCH_LENGTH
+        } else {
+            ETCHASH_EPOCH_LENGTH
+        }
+    }
 }
 
 /// This difficulty calculation follows Byzantium rules (https://eips.ethereum.org/EIPS/eip-649)
 /// and shouldn't be used to calculate difficulty prior to the Byzantium fork.
 pub fn calc_difficulty(
-    config: &DifficultyConfig,
+    bomb_delay: Option<u64>,
     time: u64,
     parent: &Header,
 ) -> Result<U256, &'static str> {
-    let bomb_delay = config
-        .bomb_delay(parent.number + 1)
-        .ok_or("Cannot calculate difficulty for block number prior to Byzantium")?;
-
     let block_time_div_9: i64 = time
         .checked_sub(parent.timestamp)
         .ok_or("Invalid block time")
@@ -122,13 +181,15 @@ pub fn calc_difficulty(
 
     difficulty_without_exp = difficulty_without_exp.max(MINIMUM_DIFFICULTY.into());
 
-    // Subtract 1 less since we're using the parent block
-    let fake_block_number = parent.number.saturating_sub(bomb_delay as u64 - 1);
-    let period_count = fake_block_number / EXP_DIFFICULTY_PERIOD;
+    if let Some(bomb_delay) = bomb_delay {
+        // Subtract 1 less since we're using the parent block
+        let fake_block_number = parent.number.saturating_sub(bomb_delay as u64 - 1);
+        let period_count = fake_block_number / EXP_DIFFICULTY_PERIOD;
 
-    // If period_count < 2, exp is fractional and we can skip adding it
-    if period_count >= 2 {
-        return Ok(difficulty_without_exp + U256::from(2).pow((period_count - 2).into()));
+        // If period_count < 2, exp is fractional and we can skip adding it
+        if period_count >= 2 {
+            return Ok(difficulty_without_exp + U256::from(2).pow((period_count - 2).into()));
+        }
     }
 
     Ok(difficulty_without_exp)
@@ -222,7 +283,7 @@ mod tests {
                 parent.difficulty = test_case.parent_difficulty;
                 parent.ommers_hash = test_case.parent_uncles;
 
-                let difficulty = calc_difficulty(&$config, test_case.current_timestamp, &parent);
+                let difficulty = $config.calc_difficulty(test_case.current_timestamp, &parent);
                 if $config.byzantium_fork_block > test_case.current_block_number {
                     assert_eq!(
                         difficulty,
@@ -246,7 +307,7 @@ mod tests {
 
     #[test]
     fn byzantium_difficulty_calc_is_correct() {
-        let all_blocks_are_byzantium = DifficultyConfig {
+        let all_blocks_are_byzantium = ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: u64::max_value(),
             muir_glacier_fork_block: u64::max_value(),
@@ -258,7 +319,7 @@ mod tests {
 
     #[test]
     fn constantinople_difficulty_calc_is_correct() {
-        let all_blocks_are_constantinople = DifficultyConfig {
+        let all_blocks_are_constantinople = ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
             muir_glacier_fork_block: u64::max_value(),
@@ -273,7 +334,7 @@ mod tests {
 
     #[test]
     fn muir_glacier_difficulty_calc_is_correct() {
-        let all_blocks_are_muir_glacier = DifficultyConfig {
+        let all_blocks_are_muir_glacier = ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
@@ -290,13 +351,13 @@ mod tests {
 
     #[test]
     fn mainnet_difficulty_calc_is_correct() {
-        let mainnet_config = DifficultyConfig::mainnet();
+        let mainnet_config = ForkConfig::mainnet();
         test_difficulty!("difficultyMainNetwork.json", mainnet_config);
     }
 
     #[test]
     fn ropsten_difficulty_calc_is_correct() {
-        let ropsten_config = DifficultyConfig::ropsten();
+        let ropsten_config = ForkConfig::ropsten();
         test_difficulty!("difficultyRopsten.json", ropsten_config);
     }
 }

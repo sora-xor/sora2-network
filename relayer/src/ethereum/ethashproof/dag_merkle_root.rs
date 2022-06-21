@@ -40,11 +40,12 @@ async fn process_during_read(
 }
 
 pub async fn calculate_dataset_merkle_root(
+    epoch_length: usize,
     epoch: usize,
     data_dir: impl AsRef<Path>,
     cache_dir: impl AsRef<Path>,
 ) -> anyhow::Result<H128> {
-    super::cache::make_dag(epoch, data_dir.as_ref()).context("make dag")?;
+    super::cache::make_dag(epoch_length, epoch, data_dir.as_ref()).context("make dag")?;
 
     let mut dt = MerkleTree::new();
     let full_size = get_full_size(epoch);
@@ -60,7 +61,7 @@ pub async fn calculate_dataset_merkle_root(
         }
     }
     dt.register_index(indices);
-    let path = dag_path(epoch, data_dir.as_ref());
+    let path = dag_path(epoch_length, epoch, data_dir.as_ref());
     process_during_read(&mut dt, path, 0, full_size_128 as u32, true)
         .await
         .context("read dataset")?;
@@ -70,6 +71,7 @@ pub async fn calculate_dataset_merkle_root(
         proofs.push(proof[(branch_depth as usize - CACHE_LEVEL as usize)..].to_vec());
     }
     let cache = DatasetMerkleTreeCache {
+        epoch_length: epoch_length as u64,
         epoch: epoch as u64,
         proof_length: branch_depth as u64,
         cache_length: CACHE_LEVEL,
@@ -81,6 +83,7 @@ pub async fn calculate_dataset_merkle_root(
 }
 
 pub async fn calculate_proof(
+    epoch_length: usize,
     epoch: usize,
     index: u32,
     cache: &DatasetMerkleTreeCache,
@@ -93,7 +96,7 @@ pub async fn calculate_proof(
     let live_level = branch_depth - CACHE_LEVEL as u32;
     let subtree_start = index >> live_level << live_level;
     dt.register_index(vec![index - subtree_start]);
-    let path = dag_path(epoch, data_dir.as_ref());
+    let path = dag_path(epoch_length, epoch, data_dir.as_ref());
     process_during_read(
         &mut dt,
         path,

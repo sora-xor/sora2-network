@@ -20,6 +20,8 @@ pub struct SubstrateMessagesRelay {
     latest_basic_block: u64,
     latest_incentivized_block: u64,
     proof_loader: ProofLoader,
+    disable_basic: bool,
+    disable_incentivized: bool,
 }
 
 impl SubstrateMessagesRelay {
@@ -27,6 +29,8 @@ impl SubstrateMessagesRelay {
         sub: SubSignedClient,
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
+        disable_basic: bool,
+        disable_incentivized: bool,
     ) -> AnyResult<Self> {
         let network_id = eth.inner().get_chainid().await? as EthNetworkId;
         let basic = sub
@@ -52,6 +56,8 @@ impl SubstrateMessagesRelay {
             network_id,
             basic,
             incentivized,
+            disable_basic,
+            disable_incentivized,
         })
     }
 
@@ -225,6 +231,10 @@ impl SubstrateMessagesRelay {
     }
 
     pub async fn run(mut self) -> AnyResult<()> {
+        if self.disable_basic && self.disable_incentivized {
+            return Ok(());
+        }
+
         let current_eth_block = self
             .sub
             .api()
@@ -237,13 +247,18 @@ impl SubstrateMessagesRelay {
         self.latest_basic_block = current_eth_block.saturating_sub(BLOCKS_TO_INITIAL_SEARCH);
         self.latest_incentivized_block = current_eth_block.saturating_sub(BLOCKS_TO_INITIAL_SEARCH);
         loop {
-            debug!("Handle basic messages");
-            if let Err(err) = self.handle_basic_messages().await {
-                warn!("Failed to handle basic messages: {}", err);
+            if !self.disable_basic {
+                debug!("Handle basic messages");
+                if let Err(err) = self.handle_basic_messages().await {
+                    warn!("Failed to handle basic messages: {}", err);
+                }
             }
-            debug!("Handle inventivized messages");
-            if let Err(err) = self.handle_incentivized_messages().await {
-                warn!("Failed to handle incentivized messages: {}", err);
+
+            if !self.disable_incentivized {
+                debug!("Handle inventivized messages");
+                if let Err(err) = self.handle_incentivized_messages().await {
+                    warn!("Failed to handle incentivized messages: {}", err);
+                }
             }
             tokio::time::sleep(Duration::from_secs(10)).await;
         }
