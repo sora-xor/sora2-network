@@ -136,7 +136,7 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                interval: Default::default(),
+                interval: 10u32.into(),
                 networks: Default::default(),
             }
         }
@@ -164,9 +164,14 @@ pub mod pallet {
             let mut scheduled_ids = vec![];
             let interval = Self::interval();
             let batch_id = now % interval;
-            for key in MessageQueue::<T>::iter_keys() {
-                if T::BlockNumber::from(key) % interval == batch_id {
-                    scheduled_ids.push(key);
+            for chain_id in MessageQueue::<T>::iter_keys() {
+                let chain_id_rem: T::BlockNumber = chain_id
+                    .checked_rem(u32::MAX.into())
+                    .unwrap_or_default()
+                    .as_u32()
+                    .into();
+                if chain_id_rem % interval == batch_id {
+                    scheduled_ids.push(chain_id);
                 }
             }
             let mut weight = Default::default();

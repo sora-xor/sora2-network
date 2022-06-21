@@ -21,7 +21,7 @@ impl Relay {
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {
-        let chain_id = eth.get_chainid().await?.as_u32();
+        let chain_id = eth.get_chainid().await?;
         Ok(Self {
             sub,
             eth,

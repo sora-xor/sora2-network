@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use super::*;
 use crate::ethereum::make_header;
 use crate::prelude::*;
+use bridge_types::network_params::NetworkConfig;
 use bridge_types::H160;
 use clap::*;
 use ethers::prelude::Middleware;
@@ -14,6 +17,21 @@ pub(crate) struct Command {
     eth_app: H160,
     #[clap(long)]
     migration_app: Option<H160>,
+    #[clap(subcommand)]
+    network: Network,
+}
+
+#[derive(Subcommand, Clone, Debug)]
+enum Network {
+    Mainnet,
+    Ropsten,
+    Sepolia,
+    Rinkeby,
+    Goerli,
+    Custom {
+        #[clap(long)]
+        path: PathBuf,
+    },
 }
 
 impl Command {
@@ -25,7 +43,25 @@ impl Command {
         let basic_outbound_channel = eth_app.channels(0).call().await?.1;
         let incentivized_outbound_channel = eth_app.channels(1).call().await?.1;
 
-        let network_id = eth.get_chainid().await?.as_u32();
+        let network_id = eth.get_chainid().await?;
+        let network_config = match &self.network {
+            Network::Mainnet => NetworkConfig::Mainnet,
+            Network::Ropsten => NetworkConfig::Ropsten,
+            Network::Sepolia => NetworkConfig::Sepolia,
+            Network::Rinkeby => NetworkConfig::Rinkeby,
+            Network::Goerli => NetworkConfig::Goerli,
+            Network::Custom { path } => {
+                let bytes = std::fs::read(path)?;
+                serde_json::de::from_slice(&bytes)?
+            }
+        };
+        if network_id != network_config.chain_id() {
+            return Err(anyhow!(
+                "Wrong ethereum node chain id, expected {}, actual {}",
+                network_config.chain_id(),
+                network_id
+            ));
+        }
         let number = eth.get_block_number().await? - self.descendants_until_final;
         let block = eth.get_block(number).await?.expect("block not found");
         let header = make_header(block);
@@ -38,7 +74,7 @@ impl Command {
                 runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
                     runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
                         header,
-                        network_id,
+                        network_config,
                         initial_difficulty: Default::default(),
                     },
                 ),

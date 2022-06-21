@@ -5,6 +5,9 @@ use sp_std::convert::TryFrom;
 
 use codec::{Decode, Encode};
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 const DIFFICULTY_BOUND_DIVISOR: u32 = 11; // right-shifts equivalent to division by 2048
 const EXP_DIFFICULTY_PERIOD: u64 = 100000;
 const MINIMUM_DIFFICULTY: u32 = 131072;
@@ -19,11 +22,14 @@ pub enum BombDelay {
     MuirGlacier = 9000000,
     // See https://eips.ethereum.org/EIPS/eip-3554
     London = 9700000,
+    // See https://eips.ethereum.org/EIPS/eip-4345
+    ArrowGlacier = 10700000,
 }
 
 /// Describes when hard forks occurred that affect difficulty calculations. These
 /// values are network-specific.
 #[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DifficultyConfig {
     // Block number on which Byzantium (EIP-649) rules activated
     pub byzantium_fork_block: u64,
@@ -33,49 +39,55 @@ pub struct DifficultyConfig {
     pub muir_glacier_fork_block: u64,
     // Block number on which London (EIP-3554) activated
     pub london_fork_block: u64,
+    // Block number on which ArrowGlacier (EIP-4345) activated
+    pub arrow_glacier_fork_block: u64,
 }
 
 impl DifficultyConfig {
-    // Correct block numbers for mainnet and various testnets can be found here:
-    // https://github.com/ethereum/go-ethereum/blob/498458b4102c0d32d7453035a115e6b9df5e485d/params/config.go#L55-L258
-    pub const fn mainnet() -> Self {
-        DifficultyConfig {
-            byzantium_fork_block: 4370000,
-            constantinople_fork_block: 7280000,
-            muir_glacier_fork_block: 9200000,
-            london_fork_block: 12965000,
+    pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
+        if block_number >= self.arrow_glacier_fork_block {
+            Some(BombDelay::ArrowGlacier)
+        } else if block_number >= self.london_fork_block {
+            Some(BombDelay::London)
+        } else if block_number >= self.muir_glacier_fork_block {
+            Some(BombDelay::MuirGlacier)
+        } else if block_number >= self.constantinople_fork_block {
+            Some(BombDelay::Constantinople)
+        } else if block_number >= self.byzantium_fork_block {
+            Some(BombDelay::Byzantium)
+        } else {
+            None
         }
     }
 
-    pub const fn ropsten() -> Self {
+    pub fn mainnet() -> Self {
         DifficultyConfig {
-            byzantium_fork_block: 1700000,
-            constantinople_fork_block: 4230000,
-            muir_glacier_fork_block: 7117117,
-            london_fork_block: 10499401,
+            byzantium_fork_block: 4_370_000,
+            constantinople_fork_block: 7_280_000,
+            muir_glacier_fork_block: 9_200_000,
+            london_fork_block: 12_965_000,
+            arrow_glacier_fork_block: 13_773_000,
         }
     }
 
-    pub const fn testnet() -> Self {
+    pub fn ropsten() -> Self {
+        DifficultyConfig {
+            byzantium_fork_block: 1_700_000,
+            constantinople_fork_block: 4_230_000,
+            muir_glacier_fork_block: 7_117_117,
+            london_fork_block: 10_499_401,
+            arrow_glacier_fork_block: u64::max_value(),
+        }
+    }
+
+    pub fn sepolia() -> Self {
         DifficultyConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
-            london_fork_block: 10000000,
+            london_fork_block: 0,
+            arrow_glacier_fork_block: u64::max_value(),
         }
-    }
-
-    pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
-        if block_number >= self.london_fork_block {
-            return Some(BombDelay::London);
-        } else if block_number >= self.muir_glacier_fork_block {
-            return Some(BombDelay::MuirGlacier);
-        } else if block_number >= self.constantinople_fork_block {
-            return Some(BombDelay::Constantinople);
-        } else if block_number >= self.byzantium_fork_block {
-            return Some(BombDelay::Byzantium);
-        }
-        None
     }
 }
 
@@ -124,7 +136,6 @@ pub fn calc_difficulty(
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use ethereum_types::H256;
     use serde::{Deserialize, Deserializer};
@@ -240,6 +251,7 @@ mod tests {
             constantinople_fork_block: u64::max_value(),
             muir_glacier_fork_block: u64::max_value(),
             london_fork_block: u64::max_value(),
+            arrow_glacier_fork_block: u64::max_value(),
         };
         test_difficulty!("difficultyByzantium.json", all_blocks_are_byzantium);
     }
@@ -251,6 +263,7 @@ mod tests {
             constantinople_fork_block: 0,
             muir_glacier_fork_block: u64::max_value(),
             london_fork_block: u64::max_value(),
+            arrow_glacier_fork_block: u64::max_value(),
         };
         test_difficulty!(
             "difficultyConstantinople.json",
@@ -265,6 +278,7 @@ mod tests {
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
             london_fork_block: u64::max_value(),
+            arrow_glacier_fork_block: u64::max_value(),
         };
         test_difficulty!("difficultyEIP2384.json", all_blocks_are_muir_glacier);
         test_difficulty!("difficultyEIP2384_random.json", all_blocks_are_muir_glacier);

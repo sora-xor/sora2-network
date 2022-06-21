@@ -1,6 +1,7 @@
 // Mock runtime
 #![cfg(test)]
-use crate::{EthashProofData, EthereumDifficultyConfig, EthereumHeader};
+use crate::{EthashProofData, EthereumHeader};
+use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
 use bridge_types::test_utils::BlockWithProofs;
 use bridge_types::types::{Message, Proof};
 use frame_support::parameter_types;
@@ -71,14 +72,12 @@ pub mod mock_verifier {
 
     parameter_types! {
         pub const DescendantsUntilFinalized: u8 = 2;
-        pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
         pub const VerifyPoW: bool = false;
     }
 
     impl verifier::Config for Test {
         type Event = Event;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
-        type DifficultyConfig = DifficultyConfig;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
     }
@@ -131,14 +130,12 @@ pub mod mock_verifier_with_pow {
 
     parameter_types! {
         pub const DescendantsUntilFinalized: u8 = 2;
-        pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
         pub const VerifyPoW: bool = true;
     }
 
     impl verifier::Config for Test {
         type Event = Event;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
-        type DifficultyConfig = DifficultyConfig;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
     }
@@ -261,7 +258,11 @@ pub fn log_payload() -> Vec<u8> {
 
 pub fn new_tester<T: crate::Config>() -> sp_io::TestExternalities {
     new_tester_with_config::<T>(crate::GenesisConfig {
-        initial_networks: vec![(1, genesis_ethereum_header(), 0.into())],
+        initial_networks: vec![(
+            EthNetworkConfig::Ropsten,
+            genesis_ethereum_header(),
+            0u32.into(),
+        )],
     })
 }
 

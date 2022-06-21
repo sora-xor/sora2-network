@@ -20,7 +20,7 @@ use crate::outbound as incentivized_outbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["4130819912a398f4eb84e7f16ed443232ba638b5"];
 
 frame_support::construct_runtime!(
@@ -198,7 +198,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
-            interval: 10u64,
+            interval: 10u32.into(),
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();

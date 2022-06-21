@@ -24,7 +24,7 @@ impl Command {
         let eth = args.get_signed_ethereum().await?;
         let sub = args.get_unsigned_substrate().await?;
         let recipient: [u8; 32] = *self.recipient.as_ref();
-        let network_id = eth.get_chainid().await?.as_u32();
+        let network_id = eth.get_chainid().await?;
         let (eth_app_address, eth_asset) = sub
             .api()
             .storage()

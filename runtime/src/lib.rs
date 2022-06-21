@@ -1944,14 +1944,12 @@ impl incentivized_channel_outbound::Config for Runtime {
 
 parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
-    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::testnet();
     pub const VerifyPoW: bool = true;
 }
 
 impl ethereum_light_client::Config for Runtime {
     type Event = Event;
     type DescendantsUntilFinalized = DescendantsUntilFinalized;
-    type DifficultyConfig = DifficultyConfig;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
 }

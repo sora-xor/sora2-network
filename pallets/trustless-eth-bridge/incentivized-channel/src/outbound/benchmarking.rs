@@ -6,7 +6,7 @@ use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use sp_core::U256;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as IncentivizedOutboundChannel;
@@ -29,7 +29,7 @@ benchmarks! {
             });
         }
 
-        let block_number = T::BlockNumber::from(BASE_NETWORK_ID) % Interval::<T>::get();
+        let block_number = 0u32.into();
 
     }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number) }
     verify {
@@ -48,7 +48,8 @@ benchmarks! {
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
 
-        Interval::<T>::put::<T::BlockNumber>(10u32.into());
+        let interval: T::BlockNumber = 10u32.into();
+        Interval::<T>::put(interval);
         let block_number: T::BlockNumber = 12u32.into();
 
     }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number) }
@@ -63,7 +64,7 @@ benchmarks! {
 
         let block_number = Interval::<T>::get();
 
-    }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number) }
+    }: { IncentivizedOutboundChannel::<T>::on_initialize(block_number.into()) }
 
     // Benchmark `set_fee` under worst case conditions:
     // * The origin is authorized, i.e. equals SetFeeOrigin

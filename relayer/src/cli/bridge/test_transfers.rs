@@ -24,7 +24,7 @@ impl Command {
         let mut stats = HashMap::<AssetId, Stats>::new();
         let eth = args.get_signed_ethereum().await?;
         let sub = args.get_signed_substrate().await?;
-        let network_id = eth.get_chainid().await?.as_u32();
+        let network_id = eth.get_chainid().await?;
 
         let sidechain_app = sub
             .api()
