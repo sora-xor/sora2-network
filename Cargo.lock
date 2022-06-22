@@ -2677,7 +2677,6 @@ dependencies = [
  "vested-rewards",
  "vested-rewards-runtime-api",
  "xor-fee",
- "xor-fee-benchmarking",
  "xst",
 ]
 
@@ -10359,9 +10358,12 @@ name = "xor-fee"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
+ "demeter-farming-platform",
  "dex-manager",
  "eth-bridge",
+ "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "liquidity-proxy",
@@ -10378,8 +10380,11 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "referrals",
  "serde",
+ "smallvec 1.6.1",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -10388,24 +10393,6 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
-]
-
-[[package]]
-name = "xor-fee-benchmarking"
-version = "0.1.0"
-dependencies = [
- "assets",
- "common",
- "frame-benchmarking 3.1.0",
- "frame-support",
- "frame-system",
- "pallet-staking",
- "parity-scale-codec",
- "permissions",
- "pool-xyk",
- "sp-core",
- "sp-std",
- "xor-fee",
 ]
 
 [[package]]
