@@ -39,7 +39,7 @@ use crate::{
 };
 use alloc::collections::BTreeSet;
 use codec::{Decode, Encode};
-use common::prelude::{Balance, WeightToFixedFee};
+use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::{AssetName, AssetSymbol, BalancePrecision};
@@ -266,7 +266,7 @@ pub struct IncomingTransfer<T: Config> {
 impl<T: Config> IncomingTransfer<T> {
     pub fn fee_amount() -> Balance {
         let weight = <T as Config>::WeightInfo::request_from_sidechain();
-        WeightToFixedFee::calc(&weight)
+        <T as Config>::WeightToFee::calc(&weight)
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
