@@ -29,12 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as referrals; // for construct_runtime
-use crate::Config;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL,
+    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -49,15 +47,14 @@ use sp_runtime::{self, Perbill};
 type DEXId = common::DEXId;
 type AccountId = u64;
 type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+// type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+// type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
 pub const REFERRALS_RESERVES_ACC: AccountId = 22;
 
