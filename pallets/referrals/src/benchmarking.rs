@@ -81,3 +81,31 @@ benchmarks! {
         assert_eq!(Referrers::<T>::get(&alice), Some(bob));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock::{self, Runtime};
+    use frame_support::assert_ok;
+
+    #[test]
+    fn test_benchmarks_reserve() {
+        mock::test_ext().execute_with(|| {
+            assert_ok!(test_benchmark_reserve::<Runtime>());
+        });
+    }
+
+    #[test]
+    fn test_benchmarks_set_referrer() {
+        mock::test_ext().execute_with(|| {
+            assert_ok!(test_benchmark_set_referrer::<Runtime>());
+        });
+    }
+
+    #[test]
+    fn test_benchmarks_unreserve() {
+        mock::test_ext().execute_with(|| {
+            assert_ok!(test_benchmark_unreserve::<Runtime>());
+        });
+    }
+}
