@@ -38,7 +38,6 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-// use permissions::{Scope, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -47,8 +46,6 @@ use sp_runtime::{self, Perbill};
 type DEXId = common::DEXId;
 type AccountId = u64;
 type BlockNumber = u64;
-// type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-// type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
