@@ -308,7 +308,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_to_balance) + balance!(1)
+            Into::<u128>::into(initial_to_balance) + balance!(100)
         );
     }
 
@@ -411,7 +411,7 @@ mod tests {
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());
-            // assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
+            assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_input_secondary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());

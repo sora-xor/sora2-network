@@ -310,6 +310,9 @@ mod tests {
             assert_ok!(test_benchmark_initialize_pool::<Runtime>());
             assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
             assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+            assert_ok!(test_benchmark_set_price_bias::<Runtime>());
+            assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
+            assert_ok!(test_benchmark_on_initialize::<Runtime>());
         });
     }
 }
