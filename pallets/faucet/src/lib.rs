@@ -142,7 +142,7 @@ pub mod pallet {
 
         #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]
         pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ValOwners::<T>::remove_all(None);
+            common::storage_remove_all!(ValOwners::<T>);
             ValOwners::<T>::insert(
                 H160::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636")),
                 RewardInfo::from(balance!(111)),
@@ -152,7 +152,7 @@ pub mod pallet {
                 RewardInfo::from(balance!(444)),
             );
 
-            PswapFarmOwners::<T>::remove_all(None);
+            common::storage_remove_all!(PswapFarmOwners::<T>);
             PswapFarmOwners::<T>::insert(
                 H160::from(hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB")),
                 balance!(222),
@@ -162,7 +162,7 @@ pub mod pallet {
                 balance!(555),
             );
 
-            PswapWaifuOwners::<T>::remove_all(None);
+            common::storage_remove_all!(PswapWaifuOwners::<T>);
             PswapWaifuOwners::<T>::insert(
                 H160::from(hex!("886021F300dC809269CFC758A2364a2baF63af0c")),
                 balance!(333),

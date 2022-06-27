@@ -2,7 +2,7 @@ use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, 
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::{AssetKind, ChannelId};
 use common::{balance, AssetName, AssetSymbol, ETH, XOR};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_ok;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 use traits::MultiCurrency;
@@ -110,17 +110,29 @@ fn should_not_burn_on_commitment_failure() {
             .unwrap();
         }
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             Erc20App::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
                 ChannelId::Incentivized,
                 asset_id,
                 recipient.clone(),
-                amount
+                amount,
             ),
             incentivized_channel::outbound::Error::<Test>::QueueSizeLimitReached
         );
+        // let call = crate::mock::Call::Erc20App(crate::Call::<Test>::burn {
+        //     network_id: BASE_NETWORK_ID,
+        //     channel_id: ChannelId::Incentivized,
+        //     asset_id,
+        //     recipient: recipient.clone(),
+        //     amount,
+        // });
+
+        // common::assert_noop_transactional!(
+        //     call.dispatch(Origin::signed(sender.clone())),
+        //     incentivized_channel::outbound::Error::<Test>::QueueSizeLimitReached
+        // );
     });
 }
 

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::balance;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_ok;
 
 use crate::mock::*;
 use crate::*;
@@ -151,7 +151,7 @@ fn transfer_passes_after_limit_is_reset() {
 #[test]
 fn transfer_fails_with_asset_not_supported() {
     ExtBuilder::build().execute_with(|| {
-        assert_noop!(
+        common::assert_noop_transactional!(
             Pallet::transfer(
                 Origin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
@@ -172,7 +172,7 @@ fn transfer_fails_with_amount_above_limit() {
             bob(),
             max_amount().into_balance(),
         ));
-        assert_noop!(
+        common::assert_noop_transactional!(
             Pallet::transfer(
                 Origin::signed(alice()),
                 XOR,
@@ -193,7 +193,7 @@ fn transfer_fails_with_not_enough_reserves() {
             bob(),
             max_amount().into_balance()
         ));
-        assert_noop!(
+        common::assert_noop_transactional!(
             Pallet::transfer(
                 Origin::signed(bob()),
                 XOR,

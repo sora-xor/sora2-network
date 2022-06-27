@@ -132,25 +132,28 @@ pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
 mod tests {
     use super::super::balance;
     use super::*;
-    use frame_support::weights::Weight;
+    use frame_support::weights::{Weight, WeightToFee};
 
     type Fee = WeightToFixedFee;
 
     #[test]
     fn weight_to_fixed_fee_works() {
-        assert_eq!(Fee::calc(&100_000_000_000), balance!(0.7));
-        assert_eq!(Fee::calc(&500_000_000), balance!(0.0035));
-        assert_eq!(Fee::calc(&72_000_000), balance!(0.000504));
-        assert_eq!(Fee::calc(&210_200_000_000), balance!(1.4714));
+        assert_eq!(Fee::weight_to_fee(&100_000_000_000), balance!(0.7));
+        assert_eq!(Fee::weight_to_fee(&500_000_000), balance!(0.0035));
+        assert_eq!(Fee::weight_to_fee(&72_000_000), balance!(0.000504));
+        assert_eq!(Fee::weight_to_fee(&210_200_000_000), balance!(1.4714));
     }
 
     #[test]
     fn weight_to_fixed_fee_does_not_underflow() {
-        assert_eq!(Fee::calc(&0), 0);
+        assert_eq!(Fee::weight_to_fee(&0), 0);
     }
 
     #[test]
     fn weight_to_fixed_fee_does_not_overflow() {
-        assert_eq!(Fee::calc(&Weight::max_value()), 129127208515966861305000000);
+        assert_eq!(
+            Fee::weight_to_fee(&Weight::max_value()),
+            129127208515966861305000000
+        );
     }
 }

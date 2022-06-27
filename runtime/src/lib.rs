@@ -68,7 +68,7 @@ use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EnsureOneOf, OnRuntimeUpgrade};
+use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use hex_literal::hex;
@@ -183,20 +183,20 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
-type MoreThanHalfCouncil = EnsureOneOf<
+type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type AtLeastHalfCouncil = EnsureOneOf<
+type AtLeastHalfCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>,
     EnsureRoot<AccountId>,
 >;
-type AtLeastTwoThirdsCouncil = EnsureOneOf<
+type AtLeastTwoThirdsCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     EnsureRoot<AccountId>,
 >;
 
-type SlashCancelOrigin = EnsureOneOf<
+type SlashCancelOrigin = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
 >;
@@ -431,11 +431,11 @@ impl pallet_democracy::Config for Runtime {
     type ExternalDefaultOrigin = AtLeastHalfCouncil;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
-    type FastTrackOrigin = EnsureOneOf<
+    type FastTrackOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type InstantOrigin = EnsureOneOf<
+    type InstantOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;
@@ -565,6 +565,7 @@ parameter_types! {
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type MultiCurrency = Tokens;
+    type CurrencyBalance = Balance;
     type ValTokenId = GetValAssetId;
     type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
@@ -585,6 +586,7 @@ impl pallet_staking::Config for Runtime {
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
     type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type OnStakerSlash = ();
     type WeightInfo = ();
 }
 
@@ -650,6 +652,28 @@ impl onchain::Config for OnChainSeqPhragmen {
     type WeightInfo = ();
 }
 
+impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
+    type AccountId = AccountId;
+    type MaxLength = OffchainSolutionLengthLimit;
+    type MaxWeight = OffchainSolutionWeightLimit;
+    type Solution = NposCompactSolution24;
+    type MaxVotesPerVoter = <
+		<Self as pallet_election_provider_multi_phase::Config>::DataProvider
+		as
+		frame_election_provider_support::ElectionDataProvider
+	>::MaxVotesPerVoter;
+
+    // The unsigned submissions have to respect the weight of the submit_unsigned call, thus their
+    // weight estimate function is wired to this call's weight.
+    fn solution_weight(v: u32, t: u32, a: u32, d: u32) -> Weight {
+        <
+			<Self as pallet_election_provider_multi_phase::Config>::WeightInfo
+			as
+			pallet_election_provider_multi_phase::WeightInfo
+		>::submit_unsigned(v, t, a, d)
+    }
+}
+
 impl pallet_election_provider_multi_phase::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
@@ -661,18 +685,17 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type SignedDepositBase = SignedDepositBase;
     type SignedDepositByte = SignedDepositByte;
     type SignedDepositWeight = ();
-    type SignedMaxWeight = Self::MinerMaxWeight;
+    type SignedMaxWeight =
+        <Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+    type MinerConfig = Self;
     type SlashHandler = (); // burn slashes
     type RewardHandler = (); // nothing to do upon rewards
     type SignedPhase = SignedPhase;
     type BetterUnsignedThreshold = BetterUnsignedThreshold;
     type BetterSignedThreshold = ();
-    type MinerMaxWeight = OffchainSolutionWeightLimit; // For now use the one from staking.
-    type MinerMaxLength = OffchainSolutionLengthLimit;
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
     type DataProvider = Staking;
-    type Solution = NposCompactSolution24;
     type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
     type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -681,7 +704,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
         (),
     >;
     type BenchmarkingConfig = ElectionBenchmarkConfig;
-    type ForceOrigin = EnsureOneOf<
+    type ForceOrigin = EitherOfDiverse<
         EnsureRoot<AccountId>,
         pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     >;
@@ -779,6 +802,8 @@ impl tokens::Config for Runtime {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -1729,6 +1754,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
+    type MaxAuthorities = MaxAuthorities;
 }
 
 impl pallet_mmr::Config for Runtime {

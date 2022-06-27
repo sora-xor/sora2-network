@@ -34,7 +34,7 @@ mod tests {
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
     use common::{AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR};
-    use frame_support::{assert_err, assert_noop, assert_ok};
+    use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
 
@@ -100,7 +100,7 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::register_asset_id(
                     ALICE,
                     XOR,
@@ -285,11 +285,11 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
@@ -412,15 +412,15 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -450,21 +450,21 @@ mod tests {
             assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::set_non_mintable_from(&XOR, &BOB),
                 Error::<Runtime>::InvalidAssetOwner
             );
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -489,7 +489,7 @@ mod tests {
                 None,
             ));
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::set_non_mintable_from(&XOR, &ALICE),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -543,7 +543,7 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
                 permissions::Error::<Runtime>::Forbidden
             );

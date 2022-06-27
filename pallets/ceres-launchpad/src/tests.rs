@@ -1018,7 +1018,7 @@ mod tests {
                 balance!(4297)
             );
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1813,7 +1813,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1867,7 +1867,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1999,7 +1999,7 @@ mod tests {
             .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -2140,7 +2140,7 @@ mod tests {
             .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -2788,7 +2788,7 @@ mod tests {
 
             ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             let pool_account =
                 pool_xyk::Pallet::<Runtime>::properties_of_pool(XOR.into(), CERES_ASSET_ID.into())
                     .expect("Pool doesn't exist")
@@ -2935,7 +2935,7 @@ mod tests {
 
             run_to_block(20000);
 
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             let share = FixedWrapper::from(1.00).get().unwrap();
             ShareholderAccounts::<Runtime>::mutate(&pallet_account, |current| {
                 *current = current.saturating_add(share)
@@ -3002,7 +3002,7 @@ mod tests {
             run_to_block(300000);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
-            let pallet_account = PalletId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),

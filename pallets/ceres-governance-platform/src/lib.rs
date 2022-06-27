@@ -50,7 +50,7 @@ pub mod pallet {
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
-    use frame_support::{transactional, PalletId};
+    use frame_support::PalletId;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
@@ -130,7 +130,6 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Voting for option
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -293,7 +292,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
     }
 }

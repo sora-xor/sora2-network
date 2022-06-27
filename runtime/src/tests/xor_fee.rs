@@ -43,7 +43,7 @@ use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
-use frame_support::weights::WeightToFeePolynomial;
+use frame_support::weights::WeightToFee;
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
@@ -274,10 +274,11 @@ fn custom_fees_work() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let base_fee =
-            WeightToFixedFee::calc(&BlockWeights::get().get(dispatch_info.class).base_extrinsic);
-        let len_fee = LengthToFee::calc(&(len as Weight));
-        let weight_fee = WeightToFixedFee::calc(&MOCK_WEIGHT);
+        let base_fee = WeightToFixedFee::weight_to_fee(
+            &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
+        );
+        let len_fee = LengthToFee::weight_to_fee(&(len as Weight));
+        let weight_fee = WeightToFixedFee::weight_to_fee(&MOCK_WEIGHT);
 
         // A ten-fold extrinsic; fee is 0.007 XOR
         let calls: Vec<<Runtime as frame_system::Config>::Call> = vec![

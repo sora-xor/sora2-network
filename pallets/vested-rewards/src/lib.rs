@@ -41,9 +41,9 @@ use common::{
     XSTUSD,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use frame_support::{fail, transactional};
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -437,7 +437,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
         #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
-        #[transactional]
+
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
@@ -445,7 +445,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
-        #[transactional]
+
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -470,7 +470,7 @@ pub mod pallet {
 
         /// Allow/disallow a market making pair.
         #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
-        #[transactional]
+
         pub fn set_asset_pair(
             origin: OriginFor<T>,
             from_asset_id: T::AssetId,

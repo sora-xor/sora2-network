@@ -294,7 +294,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let governance = PalletId(*b"ceresgov").into_account();
+            let governance = PalletId(*b"ceresgov").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &governance)
                     .expect("Failed to query free balance."),
@@ -402,7 +402,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let governance = PalletId(*b"ceresgov").into_account();
+            let governance = PalletId(*b"ceresgov").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &governance)
                     .expect("Failed to query free balance."),

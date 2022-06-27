@@ -402,6 +402,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl pallet_session::Config for Runtime {
