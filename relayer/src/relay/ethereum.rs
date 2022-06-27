@@ -1,10 +1,13 @@
 use crate::ethereum::make_header;
 use crate::ethereum::proof_loader::ProofLoader;
 use crate::prelude::*;
-use bridge_types::EthNetworkId;
+use bridge_types::{network_config::Consensus, EthNetworkId};
 use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
-use substrate_gen::{runtime, DefaultConfig};
+use substrate_gen::{
+    runtime::{self},
+    DefaultConfig,
+};
 use subxt::TransactionProgress;
 
 #[derive(Clone)]
@@ -13,6 +16,7 @@ pub struct Relay {
     eth: EthUnsignedClient,
     proof_loader: ProofLoader,
     chain_id: EthNetworkId,
+    consensus: Consensus,
 }
 
 impl Relay {
@@ -22,11 +26,20 @@ impl Relay {
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {
         let chain_id = eth.get_chainid().await?;
+        let consensus = sub
+            .api()
+            .storage()
+            .ethereum_light_client()
+            .network_config(false, &chain_id, None)
+            .await?
+            .ok_or(anyhow!("Network is not registered"))?
+            .consensus();
         Ok(Self {
             sub,
             eth,
             chain_id,
             proof_loader,
+            consensus,
         })
     }
 
@@ -168,9 +181,10 @@ impl Relay {
         if let Ok(Some(_)) = has_block {
             return Ok(None);
         }
+        let epoch_length = self.consensus.calc_epoch_length(header.number);
         let proof = self
             .proof_loader
-            .header_proof(header.clone(), nonce)
+            .header_proof(epoch_length, header.clone(), nonce)
             .await
             .context("generate header proof")?;
         let result = self

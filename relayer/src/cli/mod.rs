@@ -1,4 +1,5 @@
 mod bridge;
+mod calc_dag_roots;
 mod error;
 mod fetch_ethereum_header;
 mod mint_test_token;
@@ -50,6 +51,7 @@ enum Commands {
     Bridge(bridge::Commands),
     #[clap(subcommand)]
     OldBridge(old_bridge::Commands),
+    CalcDagRoots(calc_dag_roots::Command),
 }
 
 impl Commands {
@@ -60,6 +62,7 @@ impl Commands {
             Self::MintTestToken(cmd) => cmd.run().await,
             Self::Bridge(cmd) => cmd.run().await,
             Self::OldBridge(cmd) => cmd.run().await,
+            Self::CalcDagRoots(cmd) => cmd.run().await,
         }
     }
 }

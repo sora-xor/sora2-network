@@ -1,7 +1,9 @@
 pub mod ethashproof;
 pub mod proof_loader;
+pub mod provider;
 pub mod receipt;
 
+use crate::ethereum::provider::UniversalClient;
 use crate::prelude::*;
 use bridge_types::Header;
 pub use ethers::core::k256::ecdsa::SigningKey;
@@ -11,13 +13,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-pub const EPOCH_LENGTH: u64 = 30000;
-
 pub type EthWallet = Wallet<SigningKey>;
 
 pub type SignedClientInner = SignerMiddleware<UnsignedClientInner, EthWallet>;
 
-pub type UnsignedClientInner = Provider<Ws>;
+pub type UnsignedClientInner = Provider<UniversalClient>;
 
 #[derive(Clone, Debug)]
 pub struct UnsignedClient(Arc<UnsignedClientInner>);
@@ -32,7 +32,7 @@ impl Deref for UnsignedClient {
 impl UnsignedClient {
     pub async fn new(url: Url) -> AnyResult<Self> {
         debug!("Connect to {}", url);
-        let provider = Provider::<Ws>::new(Ws::connect(url).await?);
+        let provider = Provider::new(UniversalClient::new(url).await?);
         Ok(Self(Arc::new(provider)))
     }
 
@@ -69,7 +69,7 @@ impl SignedClient {
     pub async fn new(url: Url, key: SigningKey) -> AnyResult<Self> {
         debug!("Connect to {}", url);
         let provider =
-            Provider::<Ws>::new(Ws::connect(url).await?).interval(Duration::from_millis(100));
+            Provider::new(UniversalClient::new(url).await?).interval(Duration::from_millis(100));
         let wallet = Wallet::from(key);
         let chain_id = provider.get_chainid().await?;
         let wallet = wallet.with_chain_id(chain_id.as_u64());

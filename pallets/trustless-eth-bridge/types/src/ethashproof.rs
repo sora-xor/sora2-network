@@ -7,17 +7,28 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 use sp_std::vec;
 
+use crate::difficulty::EPOCH_LENGTH;
+use crate::difficulty::ETCHASH_EPOCH_LENGTH;
+use crate::ethashdata::ETCHASH_DAGS_MERKLE_ROOTS;
+use crate::ethashdata::ETCHASH_DAGS_START_EPOCH;
 pub use crate::ethashdata::{DAGS_MERKLE_ROOTS, DAGS_START_EPOCH};
 
-/// Ethash Params. See https://eth.wiki/en/concepts/ethash/ethash
-/// Blocks per epoch
-const EPOCH_LENGTH: u64 = 30000;
 /// Width of mix
 const MIX_BYTES: usize = 128;
 /// Hash length in bytes
 const HASH_BYTES: usize = 64;
 /// Numver of accesses in hashimoto loop
 const ACCESSES: usize = 64;
+
+pub fn calc_seedhash(epoch_length: u64, epoch: u64) -> H256 {
+    // https://github.com/etclabscore/core-geth/blob/e9c80612e0628980e746cc2de6c45c5441f10f65/consensus/ethash/algorithm.go#L143
+    let epoch = if epoch_length != EPOCH_LENGTH {
+        (epoch_length * epoch + 1) / EPOCH_LENGTH
+    } else {
+        epoch
+    };
+    ethash::get_seedhash(epoch as usize)
+}
 
 #[derive(Default, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct DoubleNodeWithMerkleProof {
@@ -75,23 +86,30 @@ pub struct EthashCache {
     /// (timestamp, epoch) of the most recently accessed caches, ordered from least to most recent
     recently_accessed_epochs: Vec<(u64, u64)>,
     /// Cache data generator
-    cache_gen_fn: fn(usize) -> Vec<u8>,
+    cache_gen_fn: fn(u64, u64) -> Vec<u8>,
+    /// Epoch length
+    epoch_length: u64,
 }
 
 impl EthashCache {
-    pub fn new(max: usize) -> EthashCache {
+    pub fn new(epoch_length: u64, max: usize) -> EthashCache {
         assert!(max > 0);
         EthashCache {
             max_capacity: max,
             caches_by_epoch: BTreeMap::new(),
             recently_accessed_epochs: Vec::with_capacity(max),
             cache_gen_fn: Self::get_cache_for_epoch,
+            epoch_length,
         }
     }
 
     /// For tests to override the cache data generator
-    pub fn with_generator(max: usize, cache_gen_fn: fn(usize) -> Vec<u8>) -> EthashCache {
-        let mut cache = EthashCache::new(max);
+    pub fn with_generator(
+        epoch_length: u64,
+        max: usize,
+        cache_gen_fn: fn(u64, u64) -> Vec<u8>,
+    ) -> EthashCache {
+        let mut cache = EthashCache::new(epoch_length, max);
         cache.cache_gen_fn = cache_gen_fn;
         cache
     }
@@ -115,16 +133,16 @@ impl EthashCache {
             }
             let cache_gen_fn = self.cache_gen_fn;
             self.caches_by_epoch
-                .insert(epoch, cache_gen_fn(epoch as usize));
+                .insert(epoch, cache_gen_fn(self.epoch_length, epoch));
         }
 
         self.recently_accessed_epochs.sort();
         self.caches_by_epoch.get(&epoch).unwrap()
     }
 
-    fn get_cache_for_epoch(epoch: usize) -> Vec<u8> {
-        let seed = ethash::get_seedhash(epoch);
-        let cache_size = ethash::get_cache_size(epoch);
+    fn get_cache_for_epoch(epoch_length: u64, epoch: u64) -> Vec<u8> {
+        let seed = calc_seedhash(epoch_length, epoch);
+        let cache_size = ethash::get_cache_size(epoch as usize);
         let mut data = vec![0; cache_size];
         ethash::make_cache(data.as_mut_slice(), seed);
         data
@@ -139,28 +157,45 @@ pub enum Error {
     InvalidMerkleProof,
     // The number of nodes with proof don't match the expected number of DAG nodes
     UnexpectedNumberOfNodes,
+    // Epoch length is not supported
+    IncorrectEpochLength,
 }
 
 pub struct EthashProver {
     /// A LRU cache of DAG caches
     dags_cache: Option<EthashCache>,
+    epoch_length: u64,
 }
 
 impl EthashProver {
-    pub fn new() -> Self {
-        Self { dags_cache: None }
-    }
-
-    pub fn with_hashimoto_light(max_cache_entries: usize) -> Self {
+    pub fn new(epoch_length: u64) -> Self {
         Self {
-            dags_cache: Some(EthashCache::new(max_cache_entries)),
+            dags_cache: None,
+            epoch_length,
         }
     }
 
-    fn dag_merkle_root(&self, epoch: u64) -> Option<H128> {
-        DAGS_MERKLE_ROOTS
-            .get((epoch - DAGS_START_EPOCH) as usize)
-            .map(|x| H128::from(x))
+    pub fn with_hashimoto_light(epoch_length: u64, max_cache_entries: usize) -> Self {
+        Self {
+            dags_cache: Some(EthashCache::new(epoch_length, max_cache_entries)),
+            epoch_length,
+        }
+    }
+
+    fn dag_merkle_root(&self, epoch_length: u64, epoch: u64) -> Result<H128, Error> {
+        if epoch_length == EPOCH_LENGTH {
+            DAGS_MERKLE_ROOTS
+                .get((epoch - DAGS_START_EPOCH) as usize)
+                .map(|x| H128::from(x))
+                .ok_or(Error::EpochOutOfRange)
+        } else if epoch_length == ETCHASH_EPOCH_LENGTH {
+            ETCHASH_DAGS_MERKLE_ROOTS
+                .get((epoch - ETCHASH_DAGS_START_EPOCH) as usize)
+                .map(|x| H128::from(x))
+                .ok_or(Error::EpochOutOfRange)
+        } else {
+            Err(Error::IncorrectEpochLength)
+        }
     }
 
     // Adapted fro https://github.com/near/rainbow-bridge/blob/3fcdfbc6c0011f0e1507956a81c820616fb963b4/contracts/near/eth-client/src/lib.rs#L363
@@ -177,9 +212,9 @@ impl EthashProver {
             return Err(Error::UnexpectedNumberOfNodes);
         }
 
-        let epoch = header_number / EPOCH_LENGTH;
+        let epoch = header_number / self.epoch_length;
         // Reuse single Merkle root across all the proofs
-        let merkle_root = self.dag_merkle_root(epoch).ok_or(Error::EpochOutOfRange)?;
+        let merkle_root = self.dag_merkle_root(self.epoch_length, epoch)?;
         let full_size = ethash::get_full_size(epoch as usize);
 
         // Boxed index since ethash::hashimoto gets Fn, but not FnMut
@@ -230,7 +265,7 @@ impl EthashProver {
         nonce: H64,
         header_number: u64,
     ) -> (H256, H256) {
-        let epoch = header_number / EPOCH_LENGTH;
+        let epoch = header_number / self.epoch_length;
         let cache = match self.dags_cache {
             Some(ref mut c) => c.get(epoch, header_number),
             None => panic!("EthashProver wasn't configured with hashimoto light cache"),
@@ -243,6 +278,7 @@ impl EthashProver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::difficulty::EPOCH_LENGTH;
     use crate::test_utils::BlockWithProofs;
     use hex_literal::hex;
     use rand::Rng;
@@ -256,7 +292,7 @@ mod tests {
 
     #[test]
     fn cache_removes_oldest_at_capacity() {
-        let mut cache = EthashCache::with_generator(1, |_| Vec::new());
+        let mut cache = EthashCache::with_generator(EPOCH_LENGTH, 1, |_, _| Vec::new());
         cache.get(10, 1);
         cache.get(20, 2);
         assert_eq!(cache.caches_by_epoch.len(), 1);
@@ -267,7 +303,7 @@ mod tests {
 
     #[test]
     fn cache_retrieves_existing_and_updates_timestamp() {
-        let mut cache = EthashCache::with_generator(2, |_| {
+        let mut cache = EthashCache::with_generator(EPOCH_LENGTH, 2, |_, _| {
             let mut rng = rand::thread_rng();
             vec![rng.gen()]
         });
@@ -290,7 +326,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
 
-        let mut prover = EthashProver::with_hashimoto_light(1);
+        let mut prover = EthashProver::with_hashimoto_light(EPOCH_LENGTH, 1);
         let (mix_hash, _) =
             prover.hashimoto_light(header_partial_hash, header_nonce, header_number);
         assert_eq!(mix_hash, header_mix_hash);
@@ -307,7 +343,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("65e12eec23fe6555e6bcdb47aa25269ae106e5f16b54e1e92dcee25e1c8ad037").into();
 
-        let (mix_hash, _) = EthashProver::new()
+        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -330,7 +366,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
 
-        let (mix_hash, _) = EthashProver::new()
+        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -353,7 +389,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("0363fe29940988ca043713840ac911b32f2acb4d010e55963f2d201d79f9ab57").into();
 
-        let (mix_hash, _) = EthashProver::new()
+        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -374,7 +410,7 @@ mod tests {
         let header_nonce: H64 = hex!("2e9344e0cbde83ce").into();
         let mut proofs = block_with_proofs
             .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values);
-        let prover = EthashProver::new();
+        let prover = EthashProver::new(EPOCH_LENGTH);
 
         assert_eq!(
             prover.hashimoto_merkle(header_partial_hash, header_nonce, 30000000, &proofs),

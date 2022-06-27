@@ -38,8 +38,7 @@ use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use bridge_types::difficulty::calc_difficulty;
-pub use bridge_types::difficulty::DifficultyConfig as EthereumDifficultyConfig;
+pub use bridge_types::difficulty::ForkConfig as EthereumDifficultyConfig;
 use bridge_types::ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, EthashProver};
 use bridge_types::traits::Verifier;
 use bridge_types::types::{Message, Proof};
@@ -86,7 +85,7 @@ pub mod pallet {
 
     use super::*;
 
-    use bridge_types::network_params::{Consensus, NetworkConfig as EthNetworkConfig};
+    use bridge_types::network_config::{Consensus, NetworkConfig as EthNetworkConfig};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -246,7 +245,10 @@ pub mod pallet {
                 Error::<T>::NetworkAlreadyExists
             );
             ensure!(
-                matches!(network_config.consensus(), Consensus::Ethash { .. }),
+                matches!(
+                    network_config.consensus(),
+                    Consensus::Ethash { .. } | Consensus::Etchash { .. }
+                ),
                 Error::<T>::ConsensusNotSupported
             );
             NetworkConfig::<T>::insert(network_id, network_config);
@@ -406,18 +408,28 @@ pub mod pallet {
                 header.number
             );
 
-            let difficulty_config = if let Consensus::Ethash { difficulty_config } =
-                NetworkConfig::<T>::get(network_id)
-                    .ok_or(Error::<T>::NetworkNotFound)?
-                    .consensus()
-            {
-                difficulty_config
-            } else {
-                return Err(Error::<T>::ConsensusNotSupported.into());
-            };
+            let consensus = NetworkConfig::<T>::get(network_id)
+                .ok_or(Error::<T>::NetworkNotFound)?
+                .consensus();
 
-            let header_difficulty = calc_difficulty(&difficulty_config, header.timestamp, &parent)
-                .map_err(|_| Error::<T>::InvalidHeader)?;
+            let header_difficulty = match consensus {
+                Consensus::Ethash { fork_config } => {
+                    fork_config.calc_difficulty(header.timestamp, &parent)
+                }
+                Consensus::Etchash { fork_config } => {
+                    fork_config.calc_difficulty(header.timestamp, &parent)
+                }
+                _ => return Err(Error::<T>::ConsensusNotSupported.into()),
+            }
+            .map_err(|err| {
+                log::debug!(
+                    target: "ethereum-light-client",
+                    "Header {} failed difficulty calculation: {}",
+                    header.number, err
+                );
+                Error::<T>::InvalidHeader
+            })?;
+
             ensure!(
                 header.difficulty == header_difficulty,
                 Error::<T>::InvalidHeader,
@@ -431,14 +443,21 @@ pub mod pallet {
 
             let header_mix_hash = header.mix_hash().ok_or(Error::<T>::InvalidHeader)?;
             let header_nonce = header.nonce().ok_or(Error::<T>::InvalidHeader)?;
-            let (mix_hash, result) = EthashProver::new()
+            let (mix_hash, result) = EthashProver::new(consensus.calc_epoch_length(header.number))
                 .hashimoto_merkle(
                     header.compute_partial_hash(),
                     header_nonce,
                     header.number,
                     proof,
                 )
-                .map_err(|_| Error::<T>::InvalidHeader)?;
+                .map_err(|err| {
+                    log::debug!(
+                        target: "ethereum-light-client",
+                        "Header {} failed PoW calculation: {:?}",
+                        header.number, err
+                    );
+                    Error::<T>::InvalidHeader
+                })?;
 
             log::trace!(
                 target: "ethereum-light-client",

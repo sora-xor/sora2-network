@@ -7,7 +7,7 @@ pub mod ethashproof;
 pub mod header;
 pub mod log;
 mod mpt;
-pub mod network_params;
+pub mod network_config;
 pub mod receipt;
 pub mod traits;
 pub mod types;
