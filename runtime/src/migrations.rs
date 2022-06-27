@@ -1,0 +1,222 @@
+use crate::constants::BABE_GENESIS_EPOCH_CONFIG;
+use crate::*;
+use frame_support::traits::OnRuntimeUpgrade;
+use frame_support::traits::PalletInfo;
+
+pub type Migrations = (
+    ElectionsPhragmenPrefixMigration,
+    BabeConfigMigration,
+    StakingV6Migration,
+    SystemDualRefToTripleRefMigration,
+    OffencesUpdateMigration,
+    GrandpaStoragePrefixMigration,
+    StakingV7Migration,
+    TechnicalMembershipStoragePrefixMigration,
+    CouncilStoragePrefixMigration,
+    TechnicalCommitteeStoragePrefixMigration,
+    MigratePalletVersionToStorageVersion,
+    StakingV8Migration,
+    HistoricalStoragePrefixMigration,
+    SchedulerV3Migration,
+    ElectionsPhragmenV5Migration,
+    StakingV9Migration,
+    AddTrustlessBridgeTechnical,
+);
+
+/// https://github.com/paritytech/substrate/pull/8044
+pub struct ElectionsPhragmenPrefixMigration;
+
+impl OnRuntimeUpgrade for ElectionsPhragmenPrefixMigration {
+    fn on_runtime_upgrade() -> Weight {
+        let name = <Runtime as frame_system::Config>::PalletInfo::name::<ElectionsPhragmen>()
+            .expect(
+                "elections phragmen is part of pallets in construct_runtime, so it has a name; qed",
+            );
+        pallet_elections_phragmen::migrations::v4::migrate::<Runtime, _>(name)
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8072
+pub struct BabeConfigMigration;
+
+impl pallet_babe::migrations::BabePalletPrefix for Runtime {
+    fn pallet_prefix() -> &'static str {
+        let name = <Runtime as frame_system::Config>::PalletInfo::name::<Babe>()
+            .expect("babe is part of pallets in construct_runtime, so it has a name; qed");
+        name
+    }
+}
+
+impl OnRuntimeUpgrade for BabeConfigMigration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_babe::migrations::add_epoch_configuration::<Runtime>(BABE_GENESIS_EPOCH_CONFIG)
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8113
+pub struct StakingV6Migration;
+
+impl OnRuntimeUpgrade for StakingV6Migration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_staking::migrations::v6::migrate::<Runtime>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8221
+pub struct SystemDualRefToTripleRefMigration;
+
+impl frame_system::migrations::V2ToV3 for SystemDualRefToTripleRefMigration {
+    type Pallet = System;
+    type AccountId = <Runtime as frame_system::Config>::AccountId;
+    type Index = <Runtime as frame_system::Config>::Index;
+    type AccountData = <Runtime as frame_system::Config>::AccountData;
+}
+
+impl OnRuntimeUpgrade for SystemDualRefToTripleRefMigration {
+    fn on_runtime_upgrade() -> Weight {
+        frame_system::migrations::migrate_from_dual_to_triple_ref_count::<Self, Runtime>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8414
+pub struct OffencesUpdateMigration;
+
+impl OnRuntimeUpgrade for OffencesUpdateMigration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_offences::migration::remove_deferred_storage::<Runtime>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8724
+pub struct GrandpaStoragePrefixMigration;
+
+impl OnRuntimeUpgrade for GrandpaStoragePrefixMigration {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        let name = <Runtime as frame_system::Config>::PalletInfo::name::<Grandpa>()
+            .expect("grandpa is part of pallets in construct_runtime, so it has a name; qed");
+        pallet_grandpa::migrations::v4::migrate::<Runtime, _>(name)
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/8920
+pub struct StakingV7Migration;
+
+impl OnRuntimeUpgrade for StakingV7Migration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_staking::migrations::v7::migrate::<Runtime>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/9080
+pub struct TechnicalMembershipStoragePrefixMigration;
+
+const TECHNICAL_MEMBERSHIP_OLD_PREFIX: &str = "Instance1Membership";
+
+impl OnRuntimeUpgrade for TechnicalMembershipStoragePrefixMigration {
+    fn on_runtime_upgrade() -> Weight {
+        let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalMembership>()
+            .expect("TechnicalMembership is part of runtime, so it has a name; qed");
+        pallet_membership::migrations::v4::migrate::<Runtime, TechnicalMembership, _>(
+            TECHNICAL_MEMBERSHIP_OLD_PREFIX,
+            name,
+        )
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/9115
+pub struct CouncilStoragePrefixMigration;
+
+const COUNCIL_OLD_PREFIX: &str = "Instance1Collective";
+
+impl OnRuntimeUpgrade for CouncilStoragePrefixMigration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_collective::migrations::v4::migrate::<Runtime, Council, _>(COUNCIL_OLD_PREFIX)
+    }
+}
+
+pub struct TechnicalCommitteeStoragePrefixMigration;
+
+const TECHNICAL_COMMITTEE_OLD_PREFIX: &str = "Instance2Collective";
+
+impl OnRuntimeUpgrade for TechnicalCommitteeStoragePrefixMigration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_collective::migrations::v4::migrate::<Runtime, TechnicalCommittee, _>(
+            TECHNICAL_COMMITTEE_OLD_PREFIX,
+        )
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/9165
+/// Migrate from `PalletVersion` to the new `StorageVersion`
+pub struct MigratePalletVersionToStorageVersion;
+
+impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        frame_support::migrations::migrate_from_pallet_version_to_storage_version::<
+            AllPalletsWithSystem,
+        >(&RocksDbWeight::get());
+        <Runtime as frame_system::Config>::BlockWeights::get().max_block
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/9507
+pub struct StakingV8Migration;
+
+impl OnRuntimeUpgrade for StakingV8Migration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_staking::migrations::v8::migrate::<Runtime>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/9878
+pub struct HistoricalStoragePrefixMigration;
+
+impl OnRuntimeUpgrade for HistoricalStoragePrefixMigration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_session::migrations::v1::migrate::<Runtime, Historical>()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/10356
+pub struct SchedulerV3Migration;
+
+impl OnRuntimeUpgrade for SchedulerV3Migration {
+    fn on_runtime_upgrade() -> Weight {
+        Scheduler::migrate_v2_to_v3()
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/10649
+pub struct ElectionsPhragmenV5Migration;
+
+impl OnRuntimeUpgrade for ElectionsPhragmenV5Migration {
+    fn on_runtime_upgrade() -> Weight {
+        // TODO: Find affected accounts and migrate them.
+        pallet_elections_phragmen::migrations::v5::migrate::<Runtime>(Default::default())
+    }
+}
+
+/// https://github.com/paritytech/substrate/pull/10821
+pub struct StakingV9Migration;
+
+impl OnRuntimeUpgrade for StakingV9Migration {
+    fn on_runtime_upgrade() -> Weight {
+        pallet_staking::migrations::v9::InjectValidatorsIntoVoterList::<Runtime>::on_runtime_upgrade(
+        )
+    }
+}
+
+pub struct AddTrustlessBridgeTechnical;
+
+impl OnRuntimeUpgrade for AddTrustlessBridgeTechnical {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        let _ = Technical::register_tech_account_id_if_not_exist(
+            &GetTrustlessBridgeTechAccountId::get(),
+        );
+        let _ = Technical::register_tech_account_id_if_not_exist(
+            &GetTrustlessBridgeFeesTechAccountId::get(),
+        );
+        let _ = Technical::register_tech_account_id_if_not_exist(&GetTreasuryTechAccountId::get());
+        RocksDbWeight::get().reads_writes(6, 6)
+    }
+}
