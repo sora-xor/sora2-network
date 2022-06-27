@@ -1,6 +1,24 @@
+#[derive(Debug)]
 pub struct Proof<T> {
     pub order: u64,
     pub items: Vec<T>,
+}
+
+impl<T: Clone> Proof<T> {
+    pub fn root(&self, hash: impl Fn(T, T) -> T, node_hash: T) -> T {
+        let mut current_hash = node_hash;
+
+        for (i, item) in self.items.iter().cloned().enumerate() {
+            let is_sibling_left = (self.order >> i) & 1 == 1;
+
+            if is_sibling_left {
+                current_hash = hash(item, current_hash);
+            } else {
+                current_hash = hash(current_hash, item);
+            }
+        }
+        current_hash
+    }
 }
 
 pub fn leaf_index_to_pos(index: u64) -> u64 {

@@ -7,9 +7,10 @@ use codec::Encode;
 use ethereum_gen::{beefy_light_client, ValidatorProof};
 use ethers::prelude::*;
 use ethers::utils::keccak256;
+use subxt::sp_core::Hasher;
 use subxt::sp_runtime::traits::Convert;
 
-use super::simplified_proof::convert_to_simplified_mmr_proof;
+use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
 
 pub struct BeefyHasher;
 
@@ -17,6 +18,13 @@ impl beefy_merkle_tree::Hasher for BeefyHasher {
     fn hash(data: &[u8]) -> Hash {
         keccak256(data)
     }
+}
+
+#[derive(Debug)]
+pub struct MmrPayload {
+    pub prefix: Vec<u8>,
+    pub mmr_root: H256,
+    pub suffix: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -29,13 +37,14 @@ pub struct BeefyJustification {
     pub validators: Vec<H160>,
     pub block_hash: H256,
     pub leaf_proof: LeafProof,
+    pub simplified_proof: Proof<H256>,
+    pub payload: MmrPayload,
 }
 
 impl BeefyJustification {
     pub async fn create(
         sub: SubUnsignedClient,
         commitment: BeefySignedCommitment,
-        beefy_start_block: u32,
     ) -> AnyResult<Self> {
         let SignedCommitment {
             commitment,
@@ -61,10 +70,9 @@ impl BeefyJustification {
             .collect();
         let block_hash = sub.block_hash(Some(commitment.block_number)).await?;
 
-        let leaf_index = commitment.block_number - beefy_start_block - 1;
-        let leaf_proof = sub
-            .mmr_generate_proof(leaf_index as u64, Some(block_hash))
-            .await?;
+        let payload = Self::get_payload(&commitment).ok_or(anyhow!("Payload is not supported"))?;
+        let (leaf_proof, simplified_proof) =
+            Self::find_mmr_proof(&sub, &commitment, payload.mmr_root).await?;
 
         Ok(Self {
             commitment,
@@ -75,20 +83,57 @@ impl BeefyJustification {
             validators,
             block_hash,
             leaf_proof,
+            simplified_proof,
+            payload,
         })
     }
 
-    pub fn is_supported(&self) -> bool {
-        self.get_payload().is_some()
+    pub async fn find_mmr_proof(
+        sub: &SubUnsignedClient,
+        commitment: &BeefyCommitment,
+        root: H256,
+    ) -> AnyResult<(LeafProof, Proof<H256>)> {
+        for block_number in (commitment.block_number - 5..=commitment.block_number + 1).rev() {
+            let block_hash = sub.block_hash(Some(block_number)).await?;
+            let leaf_count = sub
+                .api()
+                .storage()
+                .mmr()
+                .number_of_leaves(false, Some(block_hash))
+                .await?;
+            let leaf_index = leaf_count - 1;
+            let leaf_proof = sub.mmr_generate_proof(leaf_index, Some(block_hash)).await?;
+            let hashed_leaf = leaf_proof
+                .leaf
+                .using_encoded(|e| subxt::sp_runtime::traits::Keccak256::hash(e));
+            let proof = convert_to_simplified_mmr_proof(
+                leaf_proof.proof.leaf_index,
+                leaf_proof.proof.leaf_count,
+                leaf_proof.proof.items.clone(),
+            );
+            let computed_root = proof.root(
+                |a, b| {
+                    let res = [a.as_bytes(), b.as_bytes()].concat();
+                    subxt::sp_runtime::traits::Keccak256::hash(&res)
+                },
+                hashed_leaf,
+            );
+            if computed_root != root {
+                warn!("MMR root mismatch: {:?} != {:?}", root, computed_root);
+                continue;
+            }
+            return Ok((leaf_proof, proof));
+        }
+        return Err(anyhow!("Could not find MMR proof"));
     }
 
-    pub fn get_payload(&self) -> Option<(Vec<u8>, [u8; 32], Vec<u8>)> {
-        self.commitment
+    pub fn get_payload(commitment: &BeefyCommitment) -> Option<MmrPayload> {
+        commitment
             .payload
             .get_raw(&beefy_primitives::known_payload_ids::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
             .and_then(|mmr_root: [u8; 32]| {
-                let payload = hex::encode(self.commitment.payload.encode());
+                let payload = hex::encode(commitment.payload.encode());
                 let mmr_root_with_id = hex::encode(
                     (
                         beefy_primitives::known_payload_ids::MMR_ROOT_ID,
@@ -103,11 +148,11 @@ impl BeefyJustification {
                 } else {
                     payload.split_once(&mmr_root_with_id)?
                 };
-                Some((
-                    hex::decode(prefix).expect("should be ok"),
-                    mmr_root,
-                    hex::decode(suffix).expect("should be ok"),
-                ))
+                Some(MmrPayload {
+                    prefix: hex::decode(prefix).expect("should be ok"),
+                    mmr_root: mmr_root.into(),
+                    suffix: hex::decode(suffix).expect("should be ok"),
+                })
             })
     }
 
@@ -159,7 +204,7 @@ impl BeefyJustification {
         beefy_light_client::BeefyMMRLeaf,
         beefy_light_client::SimplifiedMMRProof,
     )> {
-        let LeafProof { leaf, proof, .. } = self.leaf_proof.clone();
+        let LeafProof { leaf, .. } = self.leaf_proof.clone();
         let (major, minor) = leaf.version.split();
         let leaf_version = (major << 5) + minor;
         let mmr_leaf = beefy_light_client::BeefyMMRLeaf {
@@ -172,11 +217,9 @@ impl BeefyJustification {
             digest_hash: leaf.leaf_extra.0,
         };
 
-        let proof =
-            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, proof.items);
         let proof = beefy_light_client::SimplifiedMMRProof {
-            merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
-            merkle_proof_order_bit_field: proof.order,
+            merkle_proof_items: self.simplified_proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_order_bit_field: self.simplified_proof.order,
         };
         Ok((mmr_leaf, proof))
     }
