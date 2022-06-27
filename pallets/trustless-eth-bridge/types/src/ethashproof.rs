@@ -20,15 +20,14 @@ const HASH_BYTES: usize = 64;
 /// Numver of accesses in hashimoto loop
 const ACCESSES: usize = 64;
 
-pub fn calc_seedhash(epoch_length: usize, epoch: usize) -> H256 {
+pub fn calc_seedhash(epoch_length: u64, epoch: u64) -> H256 {
     // https://github.com/etclabscore/core-geth/blob/e9c80612e0628980e746cc2de6c45c5441f10f65/consensus/ethash/algorithm.go#L143
-    let seed = if epoch_length as u64 != EPOCH_LENGTH {
-        let epoch = (epoch_length as u64 * epoch as u64 + 1) / EPOCH_LENGTH;
-        ethash::get_seedhash(epoch as usize)
+    let epoch = if epoch_length != EPOCH_LENGTH {
+        (epoch_length * epoch + 1) / EPOCH_LENGTH
     } else {
-        ethash::get_seedhash(epoch)
+        epoch
     };
-    seed
+    ethash::get_seedhash(epoch as usize)
 }
 
 #[derive(Default, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
@@ -87,13 +86,13 @@ pub struct EthashCache {
     /// (timestamp, epoch) of the most recently accessed caches, ordered from least to most recent
     recently_accessed_epochs: Vec<(u64, u64)>,
     /// Cache data generator
-    cache_gen_fn: fn(usize, usize) -> Vec<u8>,
+    cache_gen_fn: fn(u64, u64) -> Vec<u8>,
     /// Epoch length
-    epoch_length: usize,
+    epoch_length: u64,
 }
 
 impl EthashCache {
-    pub fn new(epoch_length: usize, max: usize) -> EthashCache {
+    pub fn new(epoch_length: u64, max: usize) -> EthashCache {
         assert!(max > 0);
         EthashCache {
             max_capacity: max,
@@ -106,9 +105,9 @@ impl EthashCache {
 
     /// For tests to override the cache data generator
     pub fn with_generator(
-        epoch_length: usize,
+        epoch_length: u64,
         max: usize,
-        cache_gen_fn: fn(usize, usize) -> Vec<u8>,
+        cache_gen_fn: fn(u64, u64) -> Vec<u8>,
     ) -> EthashCache {
         let mut cache = EthashCache::new(epoch_length, max);
         cache.cache_gen_fn = cache_gen_fn;
@@ -133,19 +132,17 @@ impl EthashCache {
                 self.recently_accessed_epochs.push((timestamp, epoch));
             }
             let cache_gen_fn = self.cache_gen_fn;
-            self.caches_by_epoch.insert(
-                epoch,
-                cache_gen_fn(self.epoch_length as usize, epoch as usize),
-            );
+            self.caches_by_epoch
+                .insert(epoch, cache_gen_fn(self.epoch_length, epoch));
         }
 
         self.recently_accessed_epochs.sort();
         self.caches_by_epoch.get(&epoch).unwrap()
     }
 
-    fn get_cache_for_epoch(epoch_length: usize, epoch: usize) -> Vec<u8> {
+    fn get_cache_for_epoch(epoch_length: u64, epoch: u64) -> Vec<u8> {
         let seed = calc_seedhash(epoch_length, epoch);
-        let cache_size = ethash::get_cache_size(epoch);
+        let cache_size = ethash::get_cache_size(epoch as usize);
         let mut data = vec![0; cache_size];
         ethash::make_cache(data.as_mut_slice(), seed);
         data
@@ -160,6 +157,8 @@ pub enum Error {
     InvalidMerkleProof,
     // The number of nodes with proof don't match the expected number of DAG nodes
     UnexpectedNumberOfNodes,
+    // Epoch length is not supported
+    IncorrectEpochLength,
 }
 
 pub struct EthashProver {
@@ -178,22 +177,24 @@ impl EthashProver {
 
     pub fn with_hashimoto_light(epoch_length: u64, max_cache_entries: usize) -> Self {
         Self {
-            dags_cache: Some(EthashCache::new(epoch_length as usize, max_cache_entries)),
+            dags_cache: Some(EthashCache::new(epoch_length, max_cache_entries)),
             epoch_length,
         }
     }
 
-    fn dag_merkle_root(&self, epoch_length: u64, epoch: u64) -> Option<H128> {
+    fn dag_merkle_root(&self, epoch_length: u64, epoch: u64) -> Result<H128, Error> {
         if epoch_length == EPOCH_LENGTH {
             DAGS_MERKLE_ROOTS
                 .get((epoch - DAGS_START_EPOCH) as usize)
                 .map(|x| H128::from(x))
+                .ok_or(Error::EpochOutOfRange)
         } else if epoch_length == ETCHASH_EPOCH_LENGTH {
             ETCHASH_DAGS_MERKLE_ROOTS
                 .get((epoch - ETCHASH_DAGS_START_EPOCH) as usize)
                 .map(|x| H128::from(x))
+                .ok_or(Error::EpochOutOfRange)
         } else {
-            None
+            Err(Error::IncorrectEpochLength)
         }
     }
 
@@ -213,9 +214,7 @@ impl EthashProver {
 
         let epoch = header_number / self.epoch_length;
         // Reuse single Merkle root across all the proofs
-        let merkle_root = self
-            .dag_merkle_root(self.epoch_length, epoch)
-            .ok_or(Error::EpochOutOfRange)?;
+        let merkle_root = self.dag_merkle_root(self.epoch_length, epoch)?;
         let full_size = ethash::get_full_size(epoch as usize);
 
         // Boxed index since ethash::hashimoto gets Fn, but not FnMut
@@ -293,7 +292,7 @@ mod tests {
 
     #[test]
     fn cache_removes_oldest_at_capacity() {
-        let mut cache = EthashCache::with_generator(EPOCH_LENGTH as usize, 1, |_, _| Vec::new());
+        let mut cache = EthashCache::with_generator(EPOCH_LENGTH, 1, |_, _| Vec::new());
         cache.get(10, 1);
         cache.get(20, 2);
         assert_eq!(cache.caches_by_epoch.len(), 1);
@@ -304,7 +303,7 @@ mod tests {
 
     #[test]
     fn cache_retrieves_existing_and_updates_timestamp() {
-        let mut cache = EthashCache::with_generator(EPOCH_LENGTH as usize, 2, |_, _| {
+        let mut cache = EthashCache::with_generator(EPOCH_LENGTH, 2, |_, _| {
             let mut rng = rand::thread_rng();
             vec![rng.gen()]
         });

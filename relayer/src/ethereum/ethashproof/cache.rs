@@ -25,7 +25,7 @@ impl DatasetMerkleTreeCache {
     pub fn save(&self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         debug!("Save cache at {:?}", path.as_ref());
         std::fs::create_dir_all(path.as_ref()).context("create dir")?;
-        let path = Self::cache_path(path, self.epoch_length as usize, self.epoch as usize);
+        let path = Self::cache_path(path, self.epoch_length, self.epoch);
         let file = std::fs::OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -36,7 +36,7 @@ impl DatasetMerkleTreeCache {
         Ok(())
     }
 
-    pub fn load(path: impl AsRef<Path>, epoch_length: usize, epoch: usize) -> anyhow::Result<Self> {
+    pub fn load(path: impl AsRef<Path>, epoch_length: u64, epoch: u64) -> anyhow::Result<Self> {
         let file = std::fs::OpenOptions::new()
             .read(true)
             .open(Self::cache_path(path, epoch_length, epoch))?;
@@ -44,7 +44,7 @@ impl DatasetMerkleTreeCache {
         Ok(res)
     }
 
-    fn cache_path(path: impl AsRef<Path>, epoch_length: usize, epoch: usize) -> PathBuf {
+    fn cache_path(path: impl AsRef<Path>, epoch_length: u64, epoch: u64) -> PathBuf {
         path.as_ref()
             .join(format!("{}-{}.json", epoch, epoch_length))
     }
@@ -52,8 +52,8 @@ impl DatasetMerkleTreeCache {
     pub async fn get_cache(
         data_dir: impl AsRef<Path>,
         cache_dir: impl AsRef<Path>,
-        epoch_length: usize,
-        epoch: usize,
+        epoch_length: u64,
+        epoch: u64,
     ) -> anyhow::Result<Self> {
         let path = Self::cache_path(cache_dir.as_ref(), epoch_length, epoch);
         if !path.exists() {
@@ -70,15 +70,15 @@ impl DatasetMerkleTreeCache {
     }
 }
 
-pub fn make_dag(epoch_length: usize, epoch: usize, dir: impl AsRef<Path>) -> anyhow::Result<()> {
+pub fn make_dag(epoch_length: u64, epoch: u64, dir: impl AsRef<Path>) -> anyhow::Result<()> {
     info!("Make dag for {} epoch in {:?}", epoch, dir.as_ref());
     let path = dag_path(epoch_length, epoch, &dir);
     if path.exists() {
         debug!("DAG path {:?} already exists", path);
         return Ok(());
     }
-    let cache_size = get_cache_size(epoch);
-    let data_size = get_full_size(epoch);
+    let cache_size = get_cache_size(epoch as usize);
+    let data_size = get_full_size(epoch as usize);
     let seed = calc_seedhash(epoch_length, epoch);
     debug!(
         "cache_size: {}, data_size: {}, seed: {}",
@@ -98,7 +98,7 @@ pub fn make_dag(epoch_length: usize, epoch: usize, dir: impl AsRef<Path>) -> any
     Ok(())
 }
 
-pub fn dag_path(epoch_length: usize, epoch: usize, dir: impl AsRef<Path>) -> PathBuf {
+pub fn dag_path(epoch_length: u64, epoch: u64, dir: impl AsRef<Path>) -> PathBuf {
     let seed = calc_seedhash(epoch_length, epoch);
     dir.as_ref().join(format!(
         "full-R23-{}-{}-{}",

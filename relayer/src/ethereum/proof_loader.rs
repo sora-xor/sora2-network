@@ -12,23 +12,23 @@ use tokio::sync::Mutex;
 use tokio::time::Instant;
 
 pub fn get_verification_indices(
-    epoch_length: usize,
-    epoch: usize,
+    epoch_length: u64,
+    epoch: u64,
     header_hash: H256,
     nonce: U64,
 ) -> [usize; ethash::ACCESSES] {
-    let cache_size = ethash::get_cache_size(epoch);
+    let cache_size = ethash::get_cache_size(epoch as usize);
     let mut cache = vec![0u8; cache_size];
     let seed = calc_seedhash(epoch_length, epoch);
     ethash::make_cache(&mut cache[..], seed);
-    let full_size = ethash::get_full_size(epoch);
+    let full_size = ethash::get_full_size(epoch as usize);
     ethash::hashimoto_light_indices(header_hash, nonce, full_size, &cache[..])
 }
 
 #[derive(Debug, Clone)]
 pub struct ProofLoader {
     base_dir: PathBuf,
-    cache: Arc<Mutex<lru::LruCache<usize, Arc<DatasetMerkleTreeCache>>>>,
+    cache: Arc<Mutex<lru::LruCache<u64, Arc<DatasetMerkleTreeCache>>>>,
     receipts: Arc<Mutex<lru::LruCache<H256, BlockWithReceipts>>>,
     eth: EthUnsignedClient,
 }
@@ -53,12 +53,12 @@ impl ProofLoader {
 
     pub async fn header_proof(
         &self,
-        epoch_length: usize,
+        epoch_length: u64,
         header: Header,
         nonce: U64,
     ) -> AnyResult<Vec<DoubleNodeWithMerkleProof>> {
         let mut res = vec![];
-        let epoch = header.number as usize / epoch_length;
+        let epoch = header.number / epoch_length;
         let cache = self.get_cache(epoch_length, epoch).await?;
         let start = Instant::now();
         let indexes =
@@ -86,8 +86,8 @@ impl ProofLoader {
 
     async fn get_cache(
         &self,
-        epoch_length: usize,
-        epoch: usize,
+        epoch_length: u64,
+        epoch: u64,
     ) -> AnyResult<Arc<DatasetMerkleTreeCache>> {
         let mut lock = self.cache.lock().await;
         if let Some(cache) = lock.get(&epoch).cloned() {

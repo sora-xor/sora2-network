@@ -12,16 +12,16 @@ use rayon::slice::ParallelSlice;
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
     #[clap(long, short)]
-    start: usize,
+    start: u64,
     #[clap(long, short)]
-    epochs: usize,
+    epochs: u64,
     #[clap(long, short)]
-    length: usize,
+    length: u64,
 }
 
-fn calc_dataset_root(epoch: usize, epoch_length: usize) -> H128 {
-    let cache_size = get_cache_size(epoch);
-    let data_size = get_full_size(epoch);
+fn calc_dataset_root(epoch: u64, epoch_length: u64) -> H128 {
+    let cache_size = get_cache_size(epoch as usize);
+    let data_size = get_full_size(epoch as usize);
     let seed = calc_seedhash(epoch_length, epoch);
     debug!(
         "cache_size: {}, data_size: {}, seed: {}, epoch: {}, epoch_length: {}",

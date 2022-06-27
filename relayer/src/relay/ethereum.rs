@@ -181,7 +181,7 @@ impl Relay {
         if let Ok(Some(_)) = has_block {
             return Ok(None);
         }
-        let epoch_length = self.consensus.calc_epoch_length(header.number) as usize;
+        let epoch_length = self.consensus.calc_epoch_length(header.number);
         let proof = self
             .proof_loader
             .header_proof(epoch_length, header.clone(), nonce)
