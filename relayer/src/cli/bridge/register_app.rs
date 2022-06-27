@@ -1,12 +1,19 @@
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use bridge_types::H160;
-use clap::*;
-use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
+#[derive(Args, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    #[clap(subcommand)]
+    apps: App,
+}
+
 #[derive(Subcommand, Debug)]
-pub(crate) enum Commands {
+pub(crate) enum App {
     ERC20App {
         #[clap(long)]
         contract: H160,
@@ -17,19 +24,19 @@ pub(crate) enum Commands {
     },
 }
 
-impl Commands {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
-        let call = match self {
-            Self::ERC20App { contract } => {
+        let call = match &self.apps {
+            App::ERC20App { contract } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_erc20_app {
                     network_id,
                     contract: *contract,
                 }
             }
-            Self::NativeApp { contract } => {
+            App::NativeApp { contract } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_app {
                     network_id,
                     contract: *contract,

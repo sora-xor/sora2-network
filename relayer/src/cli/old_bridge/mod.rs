@@ -23,15 +23,15 @@ pub enum Commands {
 }
 
 impl Commands {
-    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+    pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Self::DumpAssets(cmd) => cmd.run(args).await,
-            Self::Relay(cmd) => cmd.run(args).await,
-            Self::SendToSora(cmd) => cmd.run(args).await,
-            Self::RegisterAssets(cmd) => cmd.run(args).await,
-            Self::RegisterBridge(cmd) => cmd.run(args).await,
-            Self::Migrate(cmd) => cmd.run(args).await,
-            Self::PrepareForMigration(cmd) => cmd.run(args).await,
+            Self::DumpAssets(cmd) => cmd.run().await,
+            Self::Relay(cmd) => cmd.run().await,
+            Self::SendToSora(cmd) => cmd.run().await,
+            Self::RegisterAssets(cmd) => cmd.run().await,
+            Self::RegisterBridge(cmd) => cmd.run().await,
+            Self::Migrate(cmd) => cmd.run().await,
+            Self::PrepareForMigration(cmd) => cmd.run().await,
         }
     }
 }

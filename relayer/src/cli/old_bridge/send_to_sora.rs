@@ -1,10 +1,11 @@
 use crate::cli::prelude::*;
 use crate::substrate::{AccountId, AssetId};
 use bridge_types::H160;
-use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(short, long)]
     contract: H160,
     #[clap(short, long)]
@@ -22,8 +23,8 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_signed_ethereum().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_signed_ethereum().await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(self.contract, eth.inner());
         let to: &[u8] = self.to.as_ref();
         let to: [u8; 32] = to.to_vec().try_into().unwrap();

@@ -1,11 +1,12 @@
-use std::path::PathBuf;
-
 use super::AssetInfo;
 use crate::cli::prelude::*;
 use bridge_types::H160;
+use std::path::PathBuf;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
     #[clap(short, long)]
     network: u32,
     #[clap(short, long)]
@@ -15,8 +16,8 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
 
         let file = std::fs::OpenOptions::new().read(true).open(&self.input)?;
         let infos: Vec<AssetInfo> = serde_json::from_reader(file)?;

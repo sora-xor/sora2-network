@@ -1,10 +1,11 @@
-use bridge_types::H160;
-
 use crate::cli::prelude::*;
 use crate::substrate::AccountId;
+use bridge_types::H160;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
     #[clap(short, long)]
     network: u32,
     #[clap(short, long)]
@@ -14,8 +15,8 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
 
         sub.api()
             .tx()

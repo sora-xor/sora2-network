@@ -1,16 +1,16 @@
-use std::path::PathBuf;
-
-use super::*;
+use crate::cli::prelude::*;
 use crate::ethereum::make_header;
-use crate::prelude::*;
 use bridge_types::network_params::NetworkConfig;
 use bridge_types::H160;
-use clap::*;
-use ethers::prelude::Middleware;
+use std::path::PathBuf;
 use substrate_gen::runtime;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(long, short)]
     descendants_until_final: u64,
     #[clap(long)]
@@ -35,9 +35,9 @@ enum Network {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
 
         let eth_app = ethereum_gen::ETHApp::new(self.eth_app, eth.inner());
         let basic_outbound_channel = eth_app.channels(0).call().await?.1;

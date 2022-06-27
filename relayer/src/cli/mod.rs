@@ -16,14 +16,28 @@ use clap::*;
 #[clap(version, author)]
 pub struct Cli {
     #[clap(flatten)]
-    base_args: BaseArgs,
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    #[clap(long, global = true)]
+    substrate_key: Option<String>,
+    #[clap(long, global = true)]
+    substrate_key_file: Option<String>,
+    #[clap(long, global = true)]
+    substrate_url: Option<String>,
+    #[clap(long, global = true)]
+    ethereum_key: Option<String>,
+    #[clap(long, global = true)]
+    ethereum_key_file: Option<String>,
+    #[clap(long, global = true)]
+    ethereum_url: Option<Url>,
     #[clap(subcommand)]
     commands: Commands,
 }
 
 impl Cli {
     pub async fn run(&self) -> AnyResult<()> {
-        self.commands.run(&self.base_args).await
+        self.commands.run().await
     }
 }
 
@@ -39,13 +53,13 @@ enum Commands {
 }
 
 impl Commands {
-    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+    pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Self::SubscribeBeefy(cmd) => cmd.run(args).await,
-            Self::FetchEthereumHeader(cmd) => cmd.run(args).await,
-            Self::MintTestToken(cmd) => cmd.run(args).await,
-            Self::Bridge(cmd) => cmd.run(args).await,
-            Self::OldBridge(cmd) => cmd.run(args).await,
+            Self::SubscribeBeefy(cmd) => cmd.run().await,
+            Self::FetchEthereumHeader(cmd) => cmd.run().await,
+            Self::MintTestToken(cmd) => cmd.run().await,
+            Self::Bridge(cmd) => cmd.run().await,
+            Self::OldBridge(cmd) => cmd.run().await,
         }
     }
 }
@@ -54,4 +68,5 @@ pub mod prelude {
     pub use crate::cli::utils::*;
     pub use crate::prelude::*;
     pub use clap::*;
+    pub use ethers::providers::Middleware;
 }
