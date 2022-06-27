@@ -92,19 +92,7 @@ mod tests {
     fn test_benchmarks_reserve() {
         mock::test_ext().execute_with(|| {
             assert_ok!(test_benchmark_reserve::<Runtime>());
-        });
-    }
-
-    #[test]
-    fn test_benchmarks_set_referrer() {
-        mock::test_ext().execute_with(|| {
             assert_ok!(test_benchmark_set_referrer::<Runtime>());
-        });
-    }
-
-    #[test]
-    fn test_benchmarks_unreserve() {
-        mock::test_ext().execute_with(|| {
             assert_ok!(test_benchmark_unreserve::<Runtime>());
         });
     }
