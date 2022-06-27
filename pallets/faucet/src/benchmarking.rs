@@ -32,7 +32,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::{Config, Event, Module, Pallet};
+use super::{Call, Config, Event, Module, Pallet};
 
 use codec::Decode;
 use frame_benchmarking::{benchmarks, Zero};
@@ -41,7 +41,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use common::eth::EthAddress;
-use common::{AssetName, AssetSymbol, Balance, XOR};
+use common::{balance, AssetName, AssetSymbol, Balance, XOR};
 use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
 use assets::Pallet as Assets;
@@ -113,6 +113,13 @@ benchmarks! {
     }: {
         Pallet::<T>::reset_rewards(caller_origin)?;
     }
+
+    update_limit {
+        let new_limit = balance!(1);
+    }: _(RawOrigin::Root, new_limit)
+    verify {
+        assert_eq!(Module::<T>::transfer_limit(), new_limit)
+    }
 }
 
 #[cfg(test)]
@@ -127,6 +134,7 @@ mod tests {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(test_benchmark_transfer::<Runtime>());
             assert_ok!(test_benchmark_reset_rewards::<Runtime>());
+            assert_ok!(test_benchmark_update_limit::<Runtime>());
         });
     }
 }
