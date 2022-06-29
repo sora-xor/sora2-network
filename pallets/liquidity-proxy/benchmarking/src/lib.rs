@@ -300,7 +300,7 @@ benchmarks! {
             DEX.into(),
             from_asset.clone(),
             to_asset.clone(),
-            SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
+            SwapAmount::with_desired_output(balance!(1), balance!(10000000)),
             [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
             FilterMode::AllowSelected
         ).unwrap();
@@ -308,7 +308,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_to_balance) + balance!(100)
+            Into::<u128>::into(initial_to_balance) + balance!(1)
         );
     }
 
