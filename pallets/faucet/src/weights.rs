@@ -72,6 +72,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn reset_rewards() -> Weight {
         (32_479_000 as Weight).saturating_add(T::DbWeight::get().writes(9 as Weight))
     }
+    // Benchmarked separately
+    fn update_limit() -> Weight {
+        (38_352_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -80,6 +84,9 @@ impl crate::WeightInfo for () {
     }
 
     fn reset_rewards() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn update_limit() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
