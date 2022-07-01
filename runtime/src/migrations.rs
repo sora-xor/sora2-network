@@ -28,6 +28,7 @@ pub struct ElectionsPhragmenPrefixMigration;
 
 impl OnRuntimeUpgrade for ElectionsPhragmenPrefixMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration ElectionsPhragmenPrefixMigration");
         let name = <Runtime as frame_system::Config>::PalletInfo::name::<ElectionsPhragmen>()
             .expect(
                 "elections phragmen is part of pallets in construct_runtime, so it has a name; qed",
@@ -49,6 +50,7 @@ impl pallet_babe::migrations::BabePalletPrefix for Runtime {
 
 impl OnRuntimeUpgrade for BabeConfigMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration BabeConfigMigration");
         pallet_babe::migrations::add_epoch_configuration::<Runtime>(BABE_GENESIS_EPOCH_CONFIG)
     }
 }
@@ -58,6 +60,7 @@ pub struct StakingV6Migration;
 
 impl OnRuntimeUpgrade for StakingV6Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration StakingV6Migration");
         pallet_staking::migrations::v6::migrate::<Runtime>()
     }
 }
@@ -74,6 +77,7 @@ impl frame_system::migrations::V2ToV3 for SystemDualRefToTripleRefMigration {
 
 impl OnRuntimeUpgrade for SystemDualRefToTripleRefMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration SystemDualRefToTripleRefMigration");
         frame_system::migrations::migrate_from_dual_to_triple_ref_count::<Self, Runtime>()
     }
 }
@@ -83,6 +87,7 @@ pub struct OffencesUpdateMigration;
 
 impl OnRuntimeUpgrade for OffencesUpdateMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration OffencesUpdateMigration");
         pallet_offences::migration::remove_deferred_storage::<Runtime>()
     }
 }
@@ -92,6 +97,7 @@ pub struct GrandpaStoragePrefixMigration;
 
 impl OnRuntimeUpgrade for GrandpaStoragePrefixMigration {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        frame_support::log::warn!("Run migration GrandpaStoragePrefixMigration");
         let name = <Runtime as frame_system::Config>::PalletInfo::name::<Grandpa>()
             .expect("grandpa is part of pallets in construct_runtime, so it has a name; qed");
         pallet_grandpa::migrations::v4::migrate::<Runtime, _>(name)
@@ -103,6 +109,7 @@ pub struct StakingV7Migration;
 
 impl OnRuntimeUpgrade for StakingV7Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration StakingV7Migration");
         pallet_staking::migrations::v7::migrate::<Runtime>()
     }
 }
@@ -114,6 +121,7 @@ const TECHNICAL_MEMBERSHIP_OLD_PREFIX: &str = "Instance1Membership";
 
 impl OnRuntimeUpgrade for TechnicalMembershipStoragePrefixMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration TechnicalMembershipStoragePrefixMigration");
         let name = <Runtime as frame_system::Config>::PalletInfo::name::<TechnicalMembership>()
             .expect("TechnicalMembership is part of runtime, so it has a name; qed");
         pallet_membership::migrations::v4::migrate::<Runtime, TechnicalMembership, _>(
@@ -130,6 +138,7 @@ const COUNCIL_OLD_PREFIX: &str = "Instance1Collective";
 
 impl OnRuntimeUpgrade for CouncilStoragePrefixMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration CouncilStoragePrefixMigration");
         pallet_collective::migrations::v4::migrate::<Runtime, Council, _>(COUNCIL_OLD_PREFIX)
     }
 }
@@ -140,6 +149,7 @@ const TECHNICAL_COMMITTEE_OLD_PREFIX: &str = "Instance2Collective";
 
 impl OnRuntimeUpgrade for TechnicalCommitteeStoragePrefixMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration TechnicalCommitteeStoragePrefixMigration");
         pallet_collective::migrations::v4::migrate::<Runtime, TechnicalCommittee, _>(
             TECHNICAL_COMMITTEE_OLD_PREFIX,
         )
@@ -152,6 +162,7 @@ pub struct MigratePalletVersionToStorageVersion;
 
 impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        frame_support::log::warn!("Run migration MigratePalletVersionToStorageVersion");
         frame_support::migrations::migrate_from_pallet_version_to_storage_version::<
             AllPalletsWithSystem,
         >(&RocksDbWeight::get());
@@ -164,6 +175,7 @@ pub struct StakingV8Migration;
 
 impl OnRuntimeUpgrade for StakingV8Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration StakingV8Migration");
         pallet_staking::migrations::v8::migrate::<Runtime>()
     }
 }
@@ -173,6 +185,7 @@ pub struct HistoricalStoragePrefixMigration;
 
 impl OnRuntimeUpgrade for HistoricalStoragePrefixMigration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration HistoricalStoragePrefixMigration");
         pallet_session::migrations::v1::migrate::<Runtime, Historical>()
     }
 }
@@ -182,6 +195,7 @@ pub struct SchedulerV3Migration;
 
 impl OnRuntimeUpgrade for SchedulerV3Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration SchedulerV3Migration");
         Scheduler::migrate_v2_to_v3()
     }
 }
@@ -191,6 +205,7 @@ pub struct ElectionsPhragmenV5Migration;
 
 impl OnRuntimeUpgrade for ElectionsPhragmenV5Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration ElectionsPhragmenV5Migration");
         // TODO: Find affected accounts and migrate them.
         pallet_elections_phragmen::migrations::v5::migrate::<Runtime>(Default::default())
     }
@@ -201,6 +216,7 @@ pub struct StakingV9Migration;
 
 impl OnRuntimeUpgrade for StakingV9Migration {
     fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration StakingV9Migration");
         pallet_staking::migrations::v9::InjectValidatorsIntoVoterList::<Runtime>::on_runtime_upgrade(
         )
     }
@@ -210,6 +226,7 @@ pub struct AddTrustlessBridgeTechnical;
 
 impl OnRuntimeUpgrade for AddTrustlessBridgeTechnical {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        frame_support::log::warn!("Run migration AddTrustlessBridgeTechnical");
         let _ = Technical::register_tech_account_id_if_not_exist(
             &GetTrustlessBridgeTechAccountId::get(),
         );
