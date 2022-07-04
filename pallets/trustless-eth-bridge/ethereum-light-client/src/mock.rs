@@ -1,7 +1,7 @@
 // Mock runtime
 #![cfg(test)]
 use crate::{EthashProofData, EthereumHeader};
-use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::test_utils::BlockWithProofs;
 use bridge_types::types::{Message, Proof};
 use frame_support::parameter_types;

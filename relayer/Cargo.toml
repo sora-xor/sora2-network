@@ -9,9 +9,9 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
-ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "37f3df5234b248630d96a4b130a7f99db0ff3c6a", features = [
-    "ws",
-    "rustls",
+ethers = { git = "https://github.com/vovac12/ethers-rs", branch = "polkadot-v0.9.25", features = [
+  "ws",
+  "rustls",
 ] }
 common = { path = "../common" }
 subxt = { git = "https://github.com/vovac12/subxt", branch = "polkadot-v0.9.25" }
@@ -25,7 +25,7 @@ jsonrpsee = { version = "0.14", features = [
     "http-client",
 ] }
 clap = { git = "https://github.com/clap-rs/clap", rev = "56ed9981", features = [
-    "derive",
+  "derive",
 ] }
 async-trait = "0.1.56"
 rlp = "0.5.1"
@@ -35,7 +35,7 @@ keccak-hasher = "0.15.3"
 hex = "0.4.3"
 hex-literal = "0.3.4"
 futures = "0.3.17"
-ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25-no-std", default-features = false }
+ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25", default-features = false }
 log = "0.4.14"
 env_logger = "0.9.0"
 sha3 = { version = "0.10.0" }
@@ -52,8 +52,8 @@ pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch =
 sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
-    "derive",
-    "chain-error",
+  "derive",
+  "chain-error",
 ] }
 thiserror = "1.0.30"
 lru = "0.7.2"
