@@ -115,7 +115,7 @@ pub use common::{
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
-pub use ethereum_light_client::{EthereumDifficultyConfig, EthereumHeader};
+pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
