@@ -304,12 +304,16 @@ mod tests {
     use frame_support::assert_ok;
 
     #[test]
-    #[ignore]
     fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-            assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
-            assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
-        });
+        ExtBuilder::bench_init()
+            .build_for_benchmarks()
+            .execute_with(|| {
+                assert_ok!(test_benchmark_initialize_pool::<Runtime>());
+                assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
+                assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+                assert_ok!(test_benchmark_set_price_bias::<Runtime>());
+                assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
+                assert_ok!(test_benchmark_on_initialize::<Runtime>());
+            });
     }
 }

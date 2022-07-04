@@ -282,6 +282,9 @@ mod tests {
             assert_ok!(test_benchmark_deposit_liquidity::<Runtime>());
             assert_ok!(test_benchmark_withdraw_liquidity::<Runtime>());
             assert_ok!(test_benchmark_initialize_pool::<Runtime>());
+            assert_ok!(test_benchmark_can_exchange::<Runtime>());
+            assert_ok!(test_benchmark_quote::<Runtime>());
+            assert_ok!(test_benchmark_swap_pair::<Runtime>());
         });
     }
 }

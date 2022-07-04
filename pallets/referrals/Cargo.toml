@@ -29,6 +29,9 @@ pallet-balances = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
+currencies = { version = "0.4", package = "orml-currencies" }
+tokens = { version = "0.4", package = "orml-tokens" }
+permissions = { path = "../permissions" }
 
 [features]
 default = ["std"]

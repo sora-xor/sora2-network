@@ -300,7 +300,7 @@ benchmarks! {
             DEX.into(),
             from_asset.clone(),
             to_asset.clone(),
-            SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
+            SwapAmount::with_desired_output(balance!(1), balance!(10000000)),
             [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
             FilterMode::AllowSelected
         ).unwrap();
@@ -411,7 +411,7 @@ mod tests {
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());
-            // assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
+            assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_input_secondary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
