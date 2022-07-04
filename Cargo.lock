@@ -876,7 +876,7 @@ dependencies = [
  "common",
  "enum-iterator",
  "ethabi 17.1.0",
- "ethash",
+ "ethash 0.6.0",
  "ethbloom 0.12.1",
  "ethereum-types 0.13.1",
  "frame-support",
@@ -2813,6 +2813,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethash"
+version = "0.6.0"
+source = "git+https://github.com/vovac12/ethash?branch=polkadot-v0.9.22-pow-prevalidate#a25c41d16c231bded237a3fd7f7500166688b2fa"
+dependencies = [
+ "byteorder",
+ "ethereum-types 0.13.1",
+ "rlp 0.5.1",
+ "sha3 0.10.1",
+]
+
+[[package]]
 name = "ethbloom"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2855,7 +2866,7 @@ name = "ethereum-light-client"
 version = "0.1.1"
 dependencies = [
  "bridge-types",
- "ethash",
+ "ethash 0.5.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -2869,6 +2880,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -8550,7 +8562,7 @@ dependencies = [
  "env_logger 0.9.0",
  "eth-bridge",
  "eth_trie",
- "ethash",
+ "ethash 0.6.0",
  "ethereum-gen",
  "ethereum-types 0.13.1",
  "ethers",
@@ -8574,7 +8586,9 @@ dependencies = [
  "sha1",
  "sha2 0.10.2",
  "sha3 0.10.1",
+ "sp-core",
  "sp-mmr-primitives",
+ "sp-runtime",
  "substrate-gen",
  "subxt",
  "thiserror",
@@ -12077,9 +12091,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.3",
- "rand 0.8.5",
+ "rand 0.4.6",
  "static_assertions",
 ]
 

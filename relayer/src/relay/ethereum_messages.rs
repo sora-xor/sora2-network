@@ -73,6 +73,7 @@ impl SubstrateMessagesRelay {
             .ok_or(anyhow!("Network is not registered"))?
             .number;
         if current_eth_block < self.latest_basic_block {
+            debug!("Skip handling basic messages, current block number is less than latest basic {} < {}", current_eth_block, self.latest_basic_block);
             return Ok(());
         }
         let filter = Filter::new()
@@ -152,6 +153,7 @@ impl SubstrateMessagesRelay {
             .ok_or(anyhow!("Network is not registered"))?
             .number;
         if current_eth_block < self.latest_incentivized_block {
+            debug!("Skip handling incentivized messages, current block number is less than latest basic {} < {}", current_eth_block, self.latest_basic_block);
             return Ok(());
         }
         let filter = Filter::new()

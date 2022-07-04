@@ -1,3 +1,4 @@
+use bridge_types::ethashproof::MixNonce;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
@@ -974,6 +975,41 @@ pub fn headers_11963025_to_11963069() -> Vec<EthereumHeader> {
 		},
 	]
 }
+
+pub fn header_mix_nonce(hash: H256) -> Option<MixNonce> {
+    let mut data = match hash.as_bytes() {
+        hex!("d9b1938b61813fde7cfe2cd957fd031655a527186140f3f2328e74afdb3cd598") => {
+            &RAW_MIX_11963035[..]
+        }
+        hex!("3ed36d8242ac3bff178ed1c76a9c7fc95c78a626b90b52dc60af218850a2af01") => {
+            &RAW_MIX_11963036[..]
+        }
+        hex!("84b31d182372d5bd320c3a4c76faf722d9278a41296f59b3e8286bf696312925") => {
+            &RAW_MIX_11963043[..]
+        }
+        hex!("f65cce2b6380b2e7e651bac8f2b982a9e05aa63c77aa07df6b6b203af5e1fa87") => {
+            &RAW_MIX_11963069[..]
+        }
+        _ => return None,
+    };
+    Decode::decode(&mut data).ok()
+}
+
+/// Hash = 0xd9b1938b61813fde7cfe2cd957fd031655a527186140f3f2328e74afdb3cd598
+const RAW_MIX_11963035: [u8; 32] =
+    hex!("a34fc4fbb7e5096c12c13af97aaa5beae78996f5b3699b3e2930e4869fca46e9");
+
+// Hash = 0x3ed36d8242ac3bff178ed1c76a9c7fc95c78a626b90b52dc60af218850a2af01
+const RAW_MIX_11963036: [u8; 32] =
+    hex!("9dcab7f66fb206bb075c8c8375c894f47c74a40cb4d8511c954d1627eb9e8a49");
+
+// Hash = 0x84b31d182372d5bd320c3a4c76faf722d9278a41296f59b3e8286bf696312925
+const RAW_MIX_11963043: [u8; 32] =
+    hex!("fddb3803d75b91f2960e524069d7177d459b9ae76c157edc3e76b1111d63d0e6");
+
+/// Hash = 0xf65cce2b6380b2e7e651bac8f2b982a9e05aa63c77aa07df6b6b203af5e1fa87
+const RAW_MIX_11963069: [u8; 32] =
+    hex!("e89dc02ea00e8753760a704c3e942f1dc814141b5762af8eaa2e13b5db1b065e");
 
 pub fn header_proof(hash: H256) -> Option<Vec<EthashProofData>> {
     let mut data = match hash.as_bytes() {

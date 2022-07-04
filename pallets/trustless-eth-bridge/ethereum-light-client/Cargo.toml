@@ -34,6 +34,7 @@ ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.22
 [dev-dependencies]
 bridge-types = { path = "../types", features = ["test"] }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
+sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
 hex-literal = { version = "0.3.1" }
 serde_json = "1.0"
 
