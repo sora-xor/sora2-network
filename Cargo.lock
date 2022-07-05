@@ -2722,7 +2722,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "13.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#4838f889d78d86e5fa14af2f24104c268e404cc3"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
 dependencies = [
  "anyhow",
  "ethereum-types 0.13.1",
@@ -2753,12 +2753,12 @@ dependencies = [
 [[package]]
 name = "ethabi-contract"
 version = "11.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#4838f889d78d86e5fa14af2f24104c268e404cc3"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
 
 [[package]]
 name = "ethabi-derive"
 version = "13.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#4838f889d78d86e5fa14af2f24104c268e404cc3"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
 dependencies = [
  "anyhow",
  "ethabi 13.0.0",
@@ -3816,7 +3816,6 @@ dependencies = [
  "vested-rewards",
  "vested-rewards-runtime-api",
  "xor-fee",
- "xor-fee-benchmarking",
  "xst",
 ]
 
@@ -6581,9 +6580,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.12.0"
+version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
+checksum = "ac8b1a9b2518dc799a2271eff1688707eb315f0d4697aa6b0871369ca4c4da55"
 
 [[package]]
 name = "opaque-debug"
@@ -12342,7 +12341,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vested-rewards"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "assets",
  "ceres-liquidity-locker",
@@ -13055,9 +13054,13 @@ name = "xor-fee"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
+ "demeter-farming-platform",
  "dex-manager",
  "eth-bridge",
+ "frame-benchmarking",
+ "frame-election-provider-support",
  "frame-support",
  "frame-system",
  "liquidity-proxy",
@@ -13074,9 +13077,12 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "referrals",
  "scale-info",
  "serde",
+ "smallvec 1.9.0",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -13085,25 +13091,6 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
-]
-
-[[package]]
-name = "xor-fee-benchmarking"
-version = "0.1.0"
-dependencies = [
- "assets",
- "common",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-staking",
- "parity-scale-codec",
- "permissions",
- "pool-xyk",
- "scale-info",
- "sp-core",
- "sp-std",
- "xor-fee",
 ]
 
 [[package]]

@@ -340,6 +340,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
@@ -387,6 +388,8 @@ pub mod pallet {
 
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
+
+        type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
 
     /// The current storage version.
