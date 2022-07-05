@@ -295,21 +295,31 @@ benchmarks! {
         assert_last_event::<T>(Event::PriceBiasChanged(balance!(253)).into());
         assert_eq!(InitialPrice::<T>::get(), FixedWrapper::from(balance!(253)).get().unwrap());
     }
+
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::bench_init().build_for_benchmarks(),
+        crate::mock::Runtime
+    );
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::mock::{ExtBuilder, Runtime};
+//     use frame_support::assert_ok;
 
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_initialize_pool());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_set_reference_asset());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_set_optional_reward_multiplier());
-        });
-    }
-}
+//     #[test]
+//     fn test_benchmarks() {
+//         ExtBuilder::bench_init()
+//             .build_for_benchmarks()
+//             .execute_with(|| {
+//                 assert_ok!(test_benchmark_initialize_pool::<Runtime>());
+//                 assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
+//                 assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+//                 assert_ok!(test_benchmark_set_price_bias::<Runtime>());
+//                 assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
+//                 assert_ok!(test_benchmark_on_initialize::<Runtime>());
+//             });
+//     }
+// }
