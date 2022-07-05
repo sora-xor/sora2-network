@@ -88,7 +88,7 @@ use sp_runtime::traits::{
     SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
-    TransactionPriority, TransactionSource, TransactionValidity,
+    TransactionLongevity, TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
@@ -1853,7 +1853,6 @@ impl demeter_farming_platform::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 parameter_types! {
-    pub const UnsignedPriority: u64 = 100;
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
@@ -1971,6 +1970,11 @@ impl incentivized_channel_outbound::Config for Runtime {
 parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
     pub const VerifyPoW: bool = true;
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    // We don't want to have not relevant imports be stuck in transaction pool
+    // for too long
+    pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
 }
 
 impl ethereum_light_client::Config for Runtime {
@@ -1978,6 +1982,10 @@ impl ethereum_light_client::Config for Runtime {
     type DescendantsUntilFinalized = DescendantsUntilFinalized;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
+    type UnsignedPriority = EthereumLightClientPriority;
+    type UnsignedLongevity = EthereumLightClientLongevity;
+    type ImportSignature = Signature;
+    type Submitter = <Signature as Verify>::Signer;
 }
 
 pub struct ChannelAppRegistry;
@@ -2102,7 +2110,7 @@ construct_runtime! {
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,

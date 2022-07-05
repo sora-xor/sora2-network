@@ -7,6 +7,9 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 use sp_std::vec;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 use crate::difficulty::EPOCH_LENGTH;
 use crate::difficulty::ETCHASH_EPOCH_LENGTH;
 use crate::ethashdata::ETCHASH_DAGS_MERKLE_ROOTS;
@@ -73,6 +76,20 @@ impl DoubleNodeWithMerkleProof {
             }
         }
         Ok(leaf)
+    }
+}
+
+#[derive(Default, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct MixNonce([u8; MIX_BYTES / 4]);
+
+impl MixNonce {
+    pub fn as_bytes(&self) -> &[u8; MIX_BYTES / 4] {
+        &self.0
+    }
+
+    pub fn into_bytes(self) -> [u8; MIX_BYTES / 4] {
+        self.0
     }
 }
 
@@ -198,14 +215,14 @@ impl EthashProver {
         }
     }
 
-    // Adapted fro https://github.com/near/rainbow-bridge/blob/3fcdfbc6c0011f0e1507956a81c820616fb963b4/contracts/near/eth-client/src/lib.rs#L363
+    // Adapted from https://github.com/near/rainbow-bridge/blob/3fcdfbc6c0011f0e1507956a81c820616fb963b4/contracts/near/eth-client/src/lib.rs#L363
     pub fn hashimoto_merkle(
         &self,
         header_hash: H256,
         nonce: H64,
         header_number: u64,
         nodes: &[DoubleNodeWithMerkleProof],
-    ) -> Result<(H256, H256), Error> {
+    ) -> Result<(MixNonce, H256), Error> {
         // Check that we have the expected number of nodes with proofs
         const MIXHASHES: usize = MIX_BYTES / HASH_BYTES;
         if nodes.len() != MIXHASHES * ACCESSES / 2 {
@@ -222,7 +239,7 @@ impl EthashProver {
         // Flag for whether the proof is valid
         let success = RefCell::new(true);
 
-        let (cmix, result) = ethash::hashimoto_with_hasher(
+        let (mix, result) = ethash::hashimoto_with_hasher(
             header_hash,
             nonce,
             full_size,
@@ -254,7 +271,7 @@ impl EthashProver {
         );
 
         match success.into_inner() {
-            true => Ok((cmix.into(), result)),
+            true => Ok((MixNonce(mix), result)),
             false => Err(Error::InvalidMerkleProof),
         }
     }
@@ -264,16 +281,31 @@ impl EthashProver {
         header_hash: H256,
         nonce: H64,
         header_number: u64,
-    ) -> (H256, H256) {
+    ) -> (MixNonce, H256) {
         let epoch = header_number / self.epoch_length;
         let cache = match self.dags_cache {
             Some(ref mut c) => c.get(epoch, header_number),
             None => panic!("EthashProver wasn't configured with hashimoto light cache"),
         };
         let full_size = ethash::get_full_size(epoch as usize);
-        let (cmix, result) =
+        let (mix, result) =
             ethash::hashimoto_light(header_hash, nonce, full_size, cache.as_slice());
-        (cmix.into(), result)
+        (MixNonce(mix), result)
+    }
+
+    pub fn hashimoto_pre_validate(
+        &self,
+        header_hash: H256,
+        nonce: H64,
+        mix_nonce: &MixNonce,
+    ) -> H256 {
+        ethash::hashimoto_pre_validate_with_hasher(
+            header_hash,
+            nonce,
+            mix_nonce.as_bytes(),
+            keccak_256,
+            keccak_512,
+        )
     }
 }
 
@@ -345,7 +377,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("65e12eec23fe6555e6bcdb47aa25269ae106e5f16b54e1e92dcee25e1c8ad037").into();
 
-        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
+        let (mix, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -354,7 +386,7 @@ mod tests {
                     .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
             )
             .unwrap();
-        assert_eq!(header_mix_hash, mix_hash);
+        assert_eq!(header_mix_hash, H256::from(mix.as_bytes()));
     }
 
     #[test]
@@ -368,7 +400,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
 
-        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
+        let (mix, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -377,7 +409,7 @@ mod tests {
                     .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
             )
             .unwrap();
-        assert_eq!(header_mix_hash, mix_hash);
+        assert_eq!(header_mix_hash, H256::from(mix.as_bytes()));
     }
 
     #[test]
@@ -391,7 +423,7 @@ mod tests {
         let header_mix_hash: H256 =
             hex!("0363fe29940988ca043713840ac911b32f2acb4d010e55963f2d201d79f9ab57").into();
 
-        let (mix_hash, _) = EthashProver::new(EPOCH_LENGTH)
+        let (mix, _) = EthashProver::new(EPOCH_LENGTH)
             .hashimoto_merkle(
                 header_partial_hash,
                 header_nonce,
@@ -400,7 +432,7 @@ mod tests {
                     .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
             )
             .unwrap();
-        assert_eq!(header_mix_hash, mix_hash);
+        assert_eq!(header_mix_hash, H256::from(mix.as_bytes()));
     }
 
     #[test]

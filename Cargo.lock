@@ -2837,6 +2837,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -6580,9 +6581,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.12.1"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac8b1a9b2518dc799a2271eff1688707eb315f0d4697aa6b0871369ca4c4da55"
+checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
 
 [[package]]
 name = "opaque-debug"
@@ -8081,9 +8082,9 @@ dependencies = [
 
 [[package]]
 name = "psm"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "871372391786ccec00d3c5d3d6608905b3d4db263639cfe075d3b60a736d115a"
+checksum = "accd89aa18fbf9533a581355a22438101fe9c2ed8c9e2f0dcf520552a3afddf2"
 dependencies = [
  "cc",
 ]
@@ -8637,7 +8638,9 @@ dependencies = [
  "sha1 0.6.1",
  "sha2 0.10.2",
  "sha3 0.10.1",
+ "sp-core",
  "sp-mmr-primitives",
+ "sp-runtime",
  "substrate-gen",
  "subxt",
  "thiserror",
@@ -13028,7 +13031,7 @@ dependencies = [
 [[package]]
 name = "xcm"
 version = "0.9.25"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.25#70fb1e02f23fcd167d78c6588e93e39776d3e3b6"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.25#5174e9ae75b6843ecc460dfaa15f5851230638b8"
 dependencies = [
  "derivative",
  "impl-trait-for-tuples",
@@ -13041,7 +13044,7 @@ dependencies = [
 [[package]]
 name = "xcm-procedural"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.25#70fb1e02f23fcd167d78c6588e93e39776d3e3b6"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.25#5174e9ae75b6843ecc460dfaa15f5851230638b8"
 dependencies = [
  "Inflector",
  "proc-macro2",
