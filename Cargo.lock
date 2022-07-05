@@ -2722,7 +2722,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "13.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#b58178e665b0c833bbb45b753454dccd8b0f27dd"
 dependencies = [
  "anyhow",
  "ethereum-types 0.13.1",
@@ -2753,12 +2753,12 @@ dependencies = [
 [[package]]
 name = "ethabi-contract"
 version = "11.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#b58178e665b0c833bbb45b753454dccd8b0f27dd"
 
 [[package]]
 name = "ethabi-derive"
 version = "13.0.0"
-source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#71b529be04204259d402fbf8bb6f4f4706251213"
+source = "git+https://github.com/vovac12/ethabi.git?branch=polkadot-v0.9.25#b58178e665b0c833bbb45b753454dccd8b0f27dd"
 dependencies = [
  "anyhow",
  "ethabi 13.0.0",
