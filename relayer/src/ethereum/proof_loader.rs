@@ -16,7 +16,7 @@ pub fn get_verification_indices(
     epoch_length: u64,
     epoch: u64,
     header_hash: H256,
-    nonce: U64,
+    nonce: H64,
 ) -> [usize; ethash::ACCESSES] {
     let cache_size = ethash::get_cache_size(epoch as usize);
     let mut cache = vec![0u8; cache_size];
@@ -58,7 +58,7 @@ impl ProofLoader {
         &self,
         epoch_length: u64,
         header: Header,
-        nonce: U64,
+        nonce: H64,
     ) -> AnyResult<(Vec<DoubleNodeWithMerkleProof>, MixNonce)> {
         let mut res = vec![];
         let epoch = header.number / epoch_length;
@@ -91,7 +91,7 @@ impl ProofLoader {
         let cache_ethash = self.get_cache_ethash(epoch as usize).await;
         let (mix_nonce, _) = ethash::hashimoto_light(
             header.compute_partial_hash(),
-            H64::from_low_u64_be(nonce.as_u64()),
+            nonce,
             ethash::get_full_size(epoch as usize),
             &cache_ethash,
         );

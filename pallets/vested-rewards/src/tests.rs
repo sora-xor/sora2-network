@@ -38,7 +38,6 @@ use common::{
     balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
     ETH, PSWAP, XOR, XSTUSD,
 };
-use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
 use frame_support::traits::OnInitialize;
 use std::convert::TryFrom;
@@ -201,7 +200,7 @@ fn should_update_market_making_pairs_correctly() {
 
         let origin = Origin::none();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, true),
             DispatchError::BadOrigin
         );
@@ -213,14 +212,14 @@ fn should_update_market_making_pairs_correctly() {
         assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
 
         // we already have this pair, so it should return an error
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), XOR, ETH, true),
             Error::<Runtime>::MarketMakingPairAlreadyAllowed
         );
 
         let origin = Origin::none();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false),
             DispatchError::BadOrigin
         );
@@ -230,7 +229,7 @@ fn should_update_market_making_pairs_correctly() {
         VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false).unwrap();
 
         // we don't have this pair anymore, so it should return an error
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin, ETH, XOR, false),
             Error::<Runtime>::MarketMakingPairAlreadyDisallowed
         );
@@ -267,7 +266,7 @@ fn can_claim_crowdloan_reward() {
             Origin::root(),
             tech_account,
             PSWAP.into(),
-            balance!(1000) as <Runtime as tokens::Config>::Amount,
+            balance!(1000000) as <Runtime as tokens::Config>::Amount,
         )
         .unwrap();
 
@@ -277,7 +276,7 @@ fn can_claim_crowdloan_reward() {
         ][..];
         let account =
             <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-        let pswap_reward = Fixed::try_from(100).unwrap();
+        let pswap_reward = Fixed::try_from(60000).unwrap();
 
         CrowdloanRewards::<Runtime>::insert(
             &account,
@@ -298,17 +297,17 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
+
+        // second claim for the same period doesn't change the balance
 
         crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
             .unwrap();
 
-        // second claim for the same period doesn't change the balance
-
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
 
@@ -323,7 +322,7 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            99999999999999999999,
+            59999999999999999999832,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
     });
@@ -372,7 +371,7 @@ fn crowdloan_reward_period_is_whole_days() {
             .unwrap();
 
         assert_eq!(
-            943396226415094339,
+            943396226415094338,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
 
@@ -382,7 +381,7 @@ fn crowdloan_reward_period_is_whole_days() {
             .unwrap();
 
         assert_eq!(
-            1257861635220125785,
+            1257861635220125784,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
     });
@@ -682,7 +681,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             Assets::free_balance(&PSWAP, &alice()).unwrap(),
             balance!(60)
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -745,7 +744,7 @@ fn some_rewards_reserves_are_depleted() {
                     .collect(),
             }
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -765,7 +764,7 @@ fn all_rewards_reserves_are_depleted() {
             vesting: balance!(40),
             ..Default::default()
         });
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -810,12 +809,12 @@ fn claiming_without_rewards() {
                 rewards: Default::default(),
             }
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
         VestedRewards::add_tbc_reward(&bob(), balance!(10)).expect("Failed to add reward.");
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::ClaimLimitExceeded
         );
@@ -1239,15 +1238,15 @@ fn distributing_with_no_accounts_is_postponed() {
             VestedRewards::on_initialize(block_n.into());
         }
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::NothingToClaim
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(eve())),
             Error::<Runtime>::NothingToClaim
         );

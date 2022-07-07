@@ -21,8 +21,7 @@ use crate::{
     BestBlock, Call, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers,
     HeadersByNumber, PruningRange,
 };
-
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_ok};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::ValidateUnsigned;
 use sp_runtime::{MultiSignature, MultiSigner};
@@ -371,7 +370,7 @@ fn it_rejects_wrong_signature() {
         // We call pre_dispatch here because signature verification
         // is performed only there; we don't do it second time in
         // extrinsic itself
-        assert_noop!(
+        frame_support::assert_noop!(
             Verifier::pre_dispatch(&Call::import_header {
                 network_id,
                 header: child.clone(),
@@ -768,7 +767,7 @@ fn test_register_network() {
 #[test]
 fn test_register_network_exists() {
     new_tester::<Test>().execute_with(|| {
-        assert_noop!(
+        common::assert_noop_transactional!(
             Verifier::register_network(
                 Origin::root(),
                 EthNetworkConfig::Ropsten,

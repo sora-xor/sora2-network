@@ -221,7 +221,7 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let reward_asset = CERES_ASSET_ID;
         let is_farm = false;
-        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account();
+        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account_truncating();
 
         setup_benchmark_assets_only::<T>()?;
 
@@ -295,7 +295,7 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = false;
         let reward_asset = CERES_ASSET_ID;
-        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account();
+        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account_truncating();
 
         setup_benchmark_assets_only::<T>()?;
 

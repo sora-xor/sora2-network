@@ -27,64 +27,63 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-use crate::{self as dex_manager, Config};
+#![allow(dead_code)]
+use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, fixed_from_basis_points, AssetId32, DEXInfo, Fixed, DOT, XOR};
+use common::{
+    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
+};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{ConstU32, Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
-use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{self, Perbill};
 
-pub type AccountId = u128;
-pub type BlockNumber = u64;
-pub type Amount = i128;
-pub type DEXId = u32;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+type DEXId = common::DEXId;
+type AccountId = u64;
+type BlockNumber = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const DEX_A_ID: DEXId = 1;
-pub const DEX_B_ID: DEXId = 2;
+pub const MINTING_ACCOUNT: AccountId = 4;
+pub const REFERRALS_RESERVES_ACC: AccountId = 22;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 1;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-    pub GetTeamReservesAccountId: AccountId = 3000u128;
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
+    pub const ExistentialDeposit: u128 = 0;
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
+    pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
-construct_runtime! {
+construct_runtime!(
     pub enum Runtime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
-        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Referrals: referrals::{Pallet, Call, Storage, Config<T>},
     }
-}
+);
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
@@ -110,44 +109,15 @@ impl frame_system::Config for Runtime {
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
     type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<65536>;
-}
-
-impl Config for Runtime {}
-
-impl tokens::Config for Runtime {
-    type Event = Event;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Config>::AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl permissions::Config for Runtime {
-    type Event = Event;
-}
-
-impl currencies::Config for Runtime {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
-    type WeightInfo = ();
+    type MaxConsumers = ConstU32<65536>;
 }
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = u64;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
+    type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
@@ -160,6 +130,19 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+impl permissions::Config for Runtime {
+    type Event = Event;
+}
+
+// Required by assets::Config
+impl currencies::Config for Runtime {
+    type MultiCurrency = Tokens;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+
+// Required by currencies::Config
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type Event = Event;
@@ -172,52 +155,66 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
-pub struct ExtBuilder {
-    pub initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
-    pub endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
-    pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+impl tokens::Config for Runtime {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type DustRemovalWhitelist = Everything;
 }
 
-impl Default for ExtBuilder {
-    fn default() -> Self {
-        Self {
-            initial_dex_list: Vec::new(),
-            endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
-                (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
-            ],
-            initial_permission_owners: Vec::new(),
-            initial_permissions: Vec::new(),
-        }
-    }
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = ();
 }
 
-impl ExtBuilder {
-    pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
-
-        crate::GenesisConfig::<Runtime> {
-            dex_list: self.initial_dex_list,
-        }
-        .assimilate_storage(&mut t)
+pub fn test_ext() -> sp_io::TestExternalities {
+    let mut t = frame_system::GenesisConfig::default()
+        .build_storage::<Runtime>()
         .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            balances: self.endowed_accounts,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        permissions::GenesisConfig::<Runtime> {
-            initial_permission_owners: self.initial_permission_owners,
-            initial_permissions: self.initial_permissions,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        t.into()
+    pallet_balances::GenesisConfig::<Runtime> {
+        balances: vec![
+            (ALICE, 0u128.into()),
+            (BOB, 0u128.into()),
+            (MINTING_ACCOUNT, 0u128.into()),
+        ],
     }
+    .assimilate_storage(&mut t)
+    .unwrap();
+
+    assets::GenesisConfig::<Runtime> {
+        endowed_assets: vec![(
+            VAL,
+            ALICE,
+            AssetSymbol(b"VAL".to_vec()),
+            AssetName(b"SORA Validator Token".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        )],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+
+    tokens::GenesisConfig::<Runtime> {
+        balances: vec![
+            (ALICE, VAL, 100000u128.into()),
+            (BOB, VAL, 1000000u128.into()),
+        ],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+
+    t.into()
 }

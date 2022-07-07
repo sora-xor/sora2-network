@@ -234,7 +234,6 @@ impl<T: Config> OnValBurned for Pallet<T> {
 pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
-    use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use secp256k1::util::SIGNATURE_SIZE;
     use secp256k1::{RecoveryId, Signature};
@@ -336,7 +335,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim the reward with signature.
         #[pallet::weight(WeightInfoOf::<T>::claim())]
-        #[transactional]
+
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
             let account_id = ensure_signed(origin)?;
             ensure!(
@@ -403,7 +402,7 @@ pub mod pallet {
         /// Finalize the update of unclaimed VAL data in storage
         /// Add addresses, who will receive UMI NFT rewards.
         #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
-        #[transactional]
+
         pub fn add_umi_nft_receivers(
             origin: OriginFor<T>,
             receivers: Vec<EthAddress>,

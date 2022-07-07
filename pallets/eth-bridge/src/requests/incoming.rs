@@ -39,7 +39,7 @@ use crate::{
 };
 use alloc::collections::BTreeSet;
 use codec::{Decode, Encode};
-use common::prelude::{Balance, WeightToFixedFee};
+use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::{AssetName, AssetSymbol, BalancePrecision};
@@ -48,7 +48,7 @@ use frame_support::debug;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
-use frame_support::weights::WeightToFeePolynomial;
+use frame_support::weights::WeightToFee;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -282,7 +282,7 @@ pub struct IncomingTransfer<T: Config> {
 impl<T: Config> IncomingTransfer<T> {
     pub fn fee_amount() -> Balance {
         let weight = <T as Config>::WeightInfo::request_from_sidechain();
-        WeightToFixedFee::calc(&weight)
+        <T as Config>::WeightToFee::weight_to_fee(&weight)
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {

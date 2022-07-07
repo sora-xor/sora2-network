@@ -36,14 +36,14 @@ use crate::{
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
-use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount, WeightToFixedFee};
+use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
 use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::unsigned::TransactionValidityError;
-use frame_support::weights::WeightToFeePolynomial;
+use frame_support::weights::WeightToFee as WeightToFeeTrait;
 use frame_system::EventRecord;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
@@ -51,12 +51,13 @@ use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
 use referrals::ReferrerBalances;
 use sp_runtime::traits::SignedExtension;
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 use xor_fee::{LiquidityInfo, XorToVal};
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
+type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 
 const MOCK_WEIGHT: Weight = 600_000_000;
 
@@ -111,16 +112,24 @@ fn increase_balance(target: AccountId, asset: AssetId, balance: Balance) {
     ));
 }
 
+fn set_weight_to_fee_multiplier(mul: u64) {
+    // Set WeightToFee multiplier to one to not affect the test
+    assert_ok!(XorFee::update_multiplier(
+        Origin::root(),
+        FixedU128::saturating_from_integer(mul)
+    ));
+}
+
 #[test]
 fn referrer_gets_bonus_from_tx_fee() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         System::on_finalize(System::block_number());
         System::set_block_number(System::block_number() + 1);
         System::on_initialize(System::block_number());
         give_xor_initial_balance(alice());
         give_xor_initial_balance(charlie());
         Referrals::set_referrer_to(&alice(), charlie()).unwrap();
-
         let call: &<Runtime as frame_system::Config>::Call =
             &Call::Assets(assets::Call::transfer {
                 asset_id: VAL.into(),
@@ -187,6 +196,7 @@ fn notify_val_burned_works() {
         .init();
 
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
 
         Staking::on_finalize(0);
@@ -269,15 +279,17 @@ fn notify_val_burned_works() {
 #[test]
 fn custom_fees_work() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
         give_xor_initial_balance(bob());
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let base_fee =
-            WeightToFixedFee::calc(&BlockWeights::get().get(dispatch_info.class).base_extrinsic);
-        let len_fee = LengthToFee::calc(&(len as Weight));
-        let weight_fee = WeightToFixedFee::calc(&MOCK_WEIGHT);
+        let base_fee = WeightToFee::weight_to_fee(
+            &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
+        );
+        let len_fee = LengthToFee::weight_to_fee(&(len as Weight));
+        let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
 
         // A ten-fold extrinsic; fee is 0.007 XOR
         let calls: Vec<<Runtime as frame_system::Config>::Call> = vec![
@@ -374,8 +386,134 @@ fn custom_fees_work() {
 }
 
 #[test]
+fn custom_fees_multiplied() {
+    ext().execute_with(|| {
+        let multiplier = 3;
+        set_weight_to_fee_multiplier(multiplier);
+        let multiplier: u128 = multiplier.into();
+
+        give_xor_initial_balance(alice());
+        give_xor_initial_balance(bob());
+
+        let len = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+
+        // A ten-fold extrinsic; fee is (0.007 * multiplier) XOR
+        let calls: Vec<<Runtime as frame_system::Config>::Call> = vec![
+            Call::Assets(assets::Call::register {
+                symbol: AssetSymbol(b"ALIC".to_vec()),
+                name: AssetName(b"ALICE".to_vec()),
+                initial_supply: balance!(0),
+                is_mintable: true,
+                is_indivisible: false,
+                opt_content_src: None,
+                opt_desc: None,
+            }),
+            Call::VestedRewards(vested_rewards::Call::claim_rewards {}),
+        ];
+
+        let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        for call in calls {
+            let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+                .pre_dispatch(&alice(), &call, &dispatch_info, len)
+                .unwrap();
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * BIG_FEE;
+            let result = balance_after_fee_withdrawal.clone().into_balance();
+            assert_eq!(Balances::free_balance(alice()), result);
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            assert_eq!(Balances::free_balance(alice()), result);
+        }
+
+        // A normal extrinsic; fee is (0.0007 * multiplier) XOR
+        let call: &<Runtime as frame_system::Config>::Call = &Call::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+            .pre_dispatch(&alice(), call, &dispatch_info, len)
+            .unwrap();
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * SMALL_FEE;
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+    });
+}
+
+#[test]
+fn normal_fees_multiplied() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(3);
+        give_xor_initial_balance(alice());
+        give_xor_initial_balance(bob());
+
+        let len = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let base_fee = WeightToFee::weight_to_fee(
+            &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
+        );
+        let len_fee = len as u128 * LengthToFee::weight_to_fee(&(len as Weight));
+        let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
+
+        let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        // An extrinsic without custom fee adjustment
+        let call: &<Runtime as frame_system::Config>::Call =
+            &Call::Balances(pallet_balances::Call::transfer {
+                dest: bob(),
+                value: TRANSFER_AMOUNT,
+            });
+
+        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+            .pre_dispatch(&alice(), call, &dispatch_info, len)
+            .unwrap();
+        let balance_after_fee_withdrawal =
+            FixedWrapper::from(balance_after_fee_withdrawal) - base_fee - len_fee - weight_fee;
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+    });
+}
+
+#[test]
 fn refund_if_pays_no_works() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
 
         let tech_account_id = GetXorFeeAccountId::get();
@@ -421,6 +559,7 @@ fn refund_if_pays_no_works() {
 #[test]
 fn actual_weight_is_ignored_works() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
 
         let len = 10;
@@ -546,6 +685,7 @@ fn fee_payment_regular_swap() {
 #[test]
 fn fee_payment_postponed_swap() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         increase_balance(alice(), VAL.into(), balance!(1000));
 
         increase_balance(bob(), XOR.into(), balance!(1000));
@@ -592,6 +732,7 @@ fn fee_payment_postponed_swap() {
 #[test]
 fn fee_payment_postponed_swap_transfer() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         increase_balance(alice(), VAL.into(), balance!(1000));
 
         increase_balance(bob(), XOR.into(), balance!(1000));
@@ -663,6 +804,7 @@ fn fee_payment_should_not_postpone() {
 #[test]
 fn withdraw_fee_set_referrer() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         increase_balance(bob(), XOR.into(), balance!(1000));
 
         Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
@@ -711,6 +853,7 @@ fn withdraw_fee_set_referrer_already() {
 #[test]
 fn withdraw_fee_set_referrer_already2() {
     ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
         Referrals::set_referrer_to(&alice(), bob()).unwrap();
 
         increase_balance(alice(), XOR.into(), balance!(1));

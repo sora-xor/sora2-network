@@ -33,6 +33,9 @@
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[cfg(test)]
+mod mock;
+
 pub mod weights;
 
 use common::Balance;

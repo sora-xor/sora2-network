@@ -33,7 +33,7 @@
 macro_rules! assert_noop_msg {
     ( $x:expr, $msg:expr ) => {
         let h = frame_support::storage_root(frame_support::StateVersion::V1);
-        if let Err(e) = $x {
+        if let Err(e) = $crate::with_transaction(|| $x) {
             if let frame_support::dispatch::DispatchError::Module(sp_runtime::ModuleError {
                 message,
                 ..

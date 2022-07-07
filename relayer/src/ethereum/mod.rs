@@ -114,14 +114,7 @@ impl SignedClient {
 
 pub fn make_header(block: Block<H256>) -> Header {
     let mix_hash_rlp = rlp::encode(&block.mix_hash.unwrap_or_default());
-    let nonce_rlp = rlp::encode(
-        &block
-            .nonce
-            .unwrap_or_default()
-            .as_u64()
-            .to_be_bytes()
-            .as_ref(),
-    );
+    let nonce_rlp = rlp::encode(&block.nonce.unwrap_or_default());
     Header {
         parent_hash: block.parent_hash,
         timestamp: block.timestamp.as_u64(),

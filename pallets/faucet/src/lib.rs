@@ -30,7 +30,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::FixedWrapper;
 use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
@@ -49,6 +48,7 @@ pub mod weights;
 pub trait WeightInfo {
     fn transfer() -> Weight;
     fn reset_rewards() -> Weight;
+    fn update_limit() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -59,10 +59,8 @@ type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-
-pub fn max_amount() -> FixedWrapper {
-    From::from(0.1)
-}
+// Value to at least have enough funds for updating the limit
+pub const DEFAULT_LIMIT: Balance = balance!(5);
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
     14400u32.into()
@@ -142,7 +140,7 @@ pub mod pallet {
 
         #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]
         pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ValOwners::<T>::remove_all(None);
+            common::storage_remove_all!(ValOwners::<T>);
             ValOwners::<T>::insert(
                 H160::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636")),
                 RewardInfo::from(balance!(111)),
@@ -152,7 +150,7 @@ pub mod pallet {
                 RewardInfo::from(balance!(444)),
             );
 
-            PswapFarmOwners::<T>::remove_all(None);
+            common::storage_remove_all!(PswapFarmOwners::<T>);
             PswapFarmOwners::<T>::insert(
                 H160::from(hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB")),
                 balance!(222),
@@ -162,12 +160,23 @@ pub mod pallet {
                 balance!(555),
             );
 
-            PswapWaifuOwners::<T>::remove_all(None);
+            common::storage_remove_all!(PswapWaifuOwners::<T>);
             PswapWaifuOwners::<T>::insert(
                 H160::from(hex!("886021F300dC809269CFC758A2364a2baF63af0c")),
                 balance!(333),
             );
 
+            Ok(().into())
+        }
+
+        #[pallet::weight((WeightInfoOf::<T>::update_limit(), Pays::No))]
+        pub fn update_limit(
+            origin: OriginFor<T>,
+            new_limit: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            TransferLimit::<T>::set(new_limit);
+            Self::deposit_event(Event::LimitUpdated(new_limit));
             Ok(().into())
         }
     }
@@ -177,6 +186,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         // The amount is transferred to the account. [account, amount]
         Transferred(AccountIdOf<T>, Balance),
+        // Limit on transfer updated. [new_limit]
+        LimitUpdated(Balance),
     }
 
     #[pallet::error]
@@ -202,6 +213,16 @@ pub mod pallet {
         T::AssetId,
         (BlockNumberOf<T>, Balance),
     >;
+
+    #[pallet::type_value]
+    pub fn DefaultForTransferLimit<T: Config>() -> Balance {
+        DEFAULT_LIMIT
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn transfer_limit)]
+    pub(super) type TransferLimit<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultForTransferLimit<T>>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -251,7 +272,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
         current_block_number: BlockNumberOf<T>,
     ) -> Result<(BlockNumberOf<T>, Balance), Error<T>> {
-        let balance_limit = max_amount().into_balance();
+        let balance_limit = Self::transfer_limit();
         ensure!(amount <= balance_limit, Error::AmountAboveLimit);
         if let Some((initial_block_number, taken_amount)) = Transfers::<T>::get(target, asset_id) {
             let transfer_limit_block_count = transfer_limit_block_count::<T>();

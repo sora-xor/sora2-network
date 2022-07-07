@@ -239,7 +239,7 @@ impl EthashProver {
         // Flag for whether the proof is valid
         let success = RefCell::new(true);
 
-        let results = ethash::hashimoto_with_hasher(
+        let (mix, result) = ethash::hashimoto_with_hasher(
             header_hash,
             nonce,
             full_size,
@@ -271,7 +271,7 @@ impl EthashProver {
         );
 
         match success.into_inner() {
-            true => Ok((MixNonce(results.0), results.1)),
+            true => Ok((MixNonce(mix), result)),
             false => Err(Error::InvalidMerkleProof),
         }
     }

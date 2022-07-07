@@ -68,7 +68,7 @@ use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EnsureOneOf, OnRuntimeUpgrade};
+use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use hex_literal::hex;
@@ -92,7 +92,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    DispatchResult, MultiSignature, Perbill, Percent, Perquintill,
+    DispatchResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -106,7 +106,6 @@ use traits::parameter_type_with_key;
 // A few exports that help ease life for downstream crates.
 pub use common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
-    WeightToFixedFee,
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
@@ -183,20 +182,20 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
-type MoreThanHalfCouncil = EnsureOneOf<
+type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type AtLeastHalfCouncil = EnsureOneOf<
+type AtLeastHalfCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>,
     EnsureRoot<AccountId>,
 >;
-type AtLeastTwoThirdsCouncil = EnsureOneOf<
+type AtLeastTwoThirdsCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     EnsureRoot<AccountId>,
 >;
 
-type SlashCancelOrigin = EnsureOneOf<
+type SlashCancelOrigin = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
 >;
@@ -431,11 +430,11 @@ impl pallet_democracy::Config for Runtime {
     type ExternalDefaultOrigin = AtLeastHalfCouncil;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
-    type FastTrackOrigin = EnsureOneOf<
+    type FastTrackOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type InstantOrigin = EnsureOneOf<
+    type InstantOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;
@@ -565,6 +564,7 @@ parameter_types! {
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type MultiCurrency = Tokens;
+    type CurrencyBalance = Balance;
     type ValTokenId = GetValAssetId;
     type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
@@ -585,6 +585,7 @@ impl pallet_staking::Config for Runtime {
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
     type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type OnStakerSlash = ();
     type WeightInfo = ();
 }
 
@@ -650,6 +651,28 @@ impl onchain::Config for OnChainSeqPhragmen {
     type WeightInfo = ();
 }
 
+impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
+    type AccountId = AccountId;
+    type MaxLength = OffchainSolutionLengthLimit;
+    type MaxWeight = OffchainSolutionWeightLimit;
+    type Solution = NposCompactSolution24;
+    type MaxVotesPerVoter = <
+		<Self as pallet_election_provider_multi_phase::Config>::DataProvider
+		as
+		frame_election_provider_support::ElectionDataProvider
+	>::MaxVotesPerVoter;
+
+    // The unsigned submissions have to respect the weight of the submit_unsigned call, thus their
+    // weight estimate function is wired to this call's weight.
+    fn solution_weight(v: u32, t: u32, a: u32, d: u32) -> Weight {
+        <
+			<Self as pallet_election_provider_multi_phase::Config>::WeightInfo
+			as
+			pallet_election_provider_multi_phase::WeightInfo
+		>::submit_unsigned(v, t, a, d)
+    }
+}
+
 impl pallet_election_provider_multi_phase::Config for Runtime {
     type Event = Event;
     type Currency = Balances;
@@ -661,18 +684,17 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type SignedDepositBase = SignedDepositBase;
     type SignedDepositByte = SignedDepositByte;
     type SignedDepositWeight = ();
-    type SignedMaxWeight = Self::MinerMaxWeight;
+    type SignedMaxWeight =
+        <Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+    type MinerConfig = Self;
     type SlashHandler = (); // burn slashes
     type RewardHandler = (); // nothing to do upon rewards
     type SignedPhase = SignedPhase;
     type BetterUnsignedThreshold = BetterUnsignedThreshold;
     type BetterSignedThreshold = ();
-    type MinerMaxWeight = OffchainSolutionWeightLimit; // For now use the one from staking.
-    type MinerMaxLength = OffchainSolutionLengthLimit;
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
     type DataProvider = Staking;
-    type Solution = NposCompactSolution24;
     type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
     type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -681,7 +703,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
         (),
     >;
     type BenchmarkingConfig = ElectionBenchmarkConfig;
-    type ForceOrigin = EnsureOneOf<
+    type ForceOrigin = EitherOfDiverse<
         EnsureRoot<AccountId>,
         pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     >;
@@ -779,6 +801,8 @@ impl tokens::Config for Runtime {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -1076,19 +1100,17 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
-pub struct ExtrinsicsFlatFees;
-
-// Flat fees implementation for the selected extrinsics.
-// Returns a value if the extirnsic is subject to manual fee adjustment
-// and `None` otherwise
-impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
+// Multiplied flat fees implementation for the selected extrinsics.
+// Returns a value (* multiplier) if the extrinsic is subject to manual fee
+// adjustment and `None` otherwise
+impl<T> xor_fee::ApplyCustomFees<Call> for xor_fee::Pallet<T> {
     fn compute_fee(call: &Call) -> Option<Balance> {
-        match call {
+        let result = match call {
             Call::Assets(assets::Call::register { .. })
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | Call::Rewards(rewards::Call::claim { .. }) => Some(balance!(0.007)),
-            Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
+            | Call::Rewards(rewards::Call::claim { .. })
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -1099,7 +1121,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::TradingPair(..)
             | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
-        }
+        };
+        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
     }
 }
 
@@ -1256,10 +1279,11 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
-    type CustomFees = ExtrinsicsFlatFees;
+    type CustomFees = XorFee;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WeightInfo = xor_fee::weights::WeightInfo<Runtime>;
     type WithdrawFee = WithdrawFee;
 }
 
@@ -1288,7 +1312,7 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
-    type WeightToFee = WeightToFixedFee;
+    type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
     type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
@@ -1437,6 +1461,7 @@ impl eth_bridge::Config for Runtime {
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
+    type WeightToFee = XorFee;
 }
 
 #[cfg(feature = "private-net")]
@@ -1729,6 +1754,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
+    type MaxAuthorities = MaxAuthorities;
 }
 
 impl pallet_mmr::Config for Runtime {
@@ -2855,7 +2881,6 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
-            use xor_fee_benchmarking::Pallet as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
 
             let mut list = Vec::<BenchmarkList>::new();
@@ -2874,7 +2899,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, eth_bridge, EthBridge);
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
-            list_benchmark!(list, extra, xor_fee, XorFeeBench::<Runtime>);
+            list_benchmark!(list, extra, xor_fee, XorFee);
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
@@ -2893,14 +2918,12 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
-            use xor_fee_benchmarking::Pallet as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
-            impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2935,8 +2958,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);

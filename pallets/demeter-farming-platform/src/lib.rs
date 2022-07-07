@@ -69,7 +69,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
-    use frame_support::{transactional, PalletId};
+    use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
@@ -322,7 +322,7 @@ pub mod pallet {
         }
 
         /// Deposit to pool
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
@@ -452,7 +452,7 @@ pub mod pallet {
         }
 
         /// Get rewards
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
@@ -528,7 +528,7 @@ pub mod pallet {
         }
 
         /// Withdraw
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
@@ -877,7 +877,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
 
         fn mint_deo() {

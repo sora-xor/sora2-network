@@ -525,7 +525,7 @@ benchmarks! {
         run_to_block::<T>(20000);
 
         let share = FixedWrapper::from(1.00).get().unwrap();
-        let pallet_account: AccountIdOf<T> = PalletId(*b"crslaunc").into_account();
+        let pallet_account: AccountIdOf<T> = PalletId(*b"crslaunc").into_account_truncating();
         ShareholderAccounts::<T>::mutate(&pallet_account, |current| {
             *current = current.saturating_add(share)
         });
