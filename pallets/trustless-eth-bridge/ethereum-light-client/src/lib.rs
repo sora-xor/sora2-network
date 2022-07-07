@@ -410,6 +410,8 @@ pub mod pallet {
                 Error::<T>::Unknown => 12,
                 Error::<T>::ConsensusNotSupported => 13,
                 Error::<T>::InvalidSignature => 14,
+                Error::<T>::DifficultyTooLow => 15,
+                Error::<T>::NetworkStateInvalid => 16,
                 // Everything points to unreachable-ness (e.g. substrate macro definitions)
                 // https://github.com/paritytech/substrate/blob/158cdfd1a43a122f8cfbf70473fcd54a3b418f3d/frame/support/procedural/src/pallet/expand/call.rs#L235
                 Error::<T>::__Ignore(_, _) => unreachable!(),
@@ -656,7 +658,7 @@ pub mod pallet {
         fn validate_header_difficulty(
             network_id: EthNetworkId,
             new_header: &EthereumHeader,
-        ) -> DispatchResult {
+        ) -> Result<(), Error<T>> {
             let check_block_number_prev = match new_header
                 .number
                 .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER + 1)
@@ -720,7 +722,7 @@ pub mod pallet {
         pub fn validate_header_difficulty_test(
             network_id: EthNetworkId,
             new_header: &EthereumHeader,
-        ) -> DispatchResult {
+        ) -> Result<(), Error<T>> {
             Self::validate_header_difficulty(network_id, new_header)
         }
 
