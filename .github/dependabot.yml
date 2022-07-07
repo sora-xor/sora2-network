@@ -11,4 +11,4 @@ updates:
       interval: "weekly"
       day: "thursday"
       time: "9:00"
-open-pull-requests-limit: 0
+    open-pull-requests-limit: 0
