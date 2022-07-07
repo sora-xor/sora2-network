@@ -5,7 +5,7 @@ use common::mock::ExistentialDeposits;
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_core::{H160, H256};
@@ -20,7 +20,7 @@ use crate::outbound as incentivized_outbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["4130819912a398f4eb84e7f16ed443232ba638b5"];
 
 frame_support::construct_runtime!(
@@ -110,6 +110,8 @@ impl tokens::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -198,7 +200,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
-            interval: 10u64,
+            interval: 10u32.into(),
             fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
@@ -293,7 +295,7 @@ fn test_submit_not_enough_funds() {
 
         Assets::mint_to(&XOR, &who, &who, 50u32.into()).unwrap();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -325,7 +327,7 @@ fn test_submit_exceeds_queue_limit() {
             .unwrap()
         });
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -341,7 +343,7 @@ fn test_submit_exceeds_queue_limit() {
 fn test_set_fee_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedOutboundChannel::set_fee(Origin::signed(bob), 1000u32.into()),
             DispatchError::BadOrigin
         );
@@ -357,7 +359,7 @@ fn test_submit_exceeds_payload_limit() {
         let max_payload_bytes = MaxMessagePayloadSize::get();
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -376,7 +378,7 @@ fn test_submit_fails_on_nonce_overflow() {
         let who: AccountId = Keyring::Bob.into();
 
         <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,

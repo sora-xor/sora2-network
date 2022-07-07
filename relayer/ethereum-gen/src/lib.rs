@@ -32,6 +32,15 @@ ethers::contract::abigen!(
     TestToken,
     "src/bytes/TestToken.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
+    Bridge,
+    "src/bytes/Bridge.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
+    Master,
+    "src/bytes/Master.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
+    MigrationApp,
+    "src/bytes/MigrationApp.abi.json",
+    event_derives (serde::Deserialize, serde::Serialize);
 );
 
 // Re-export modules, because it's private
@@ -70,4 +79,24 @@ pub mod sidechain_app {
 
 pub mod validator_registry {
     pub use crate::validatorregistry_mod::*;
+}
+
+pub mod eth_bridge {
+    pub use crate::bridge_mod::*;
+}
+
+pub mod ierc20 {
+    pub use crate::ierc20metadata_mod::*;
+}
+
+pub mod master {
+    pub use crate::master_mod::*;
+}
+
+pub mod test_token {
+    pub use crate::testtoken_mod::*;
+}
+
+pub mod migration_app {
+    pub use crate::migrationapp_mod::*;
 }

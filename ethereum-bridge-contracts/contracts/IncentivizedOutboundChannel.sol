@@ -81,6 +81,7 @@ contract IncentivizedOutboundChannel is
             isOperatorFor(msg.sender, feePayer),
             "Caller is not an operator for fee payer"
         );
+        // TODO: implement fees
         // require(msg.value >= _fee, "Not enough fee");
         nonce = nonce + 1;
         emit Message(msg.sender, nonce, _fee, payload);

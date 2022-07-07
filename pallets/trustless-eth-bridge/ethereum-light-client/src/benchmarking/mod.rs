@@ -1,16 +1,19 @@
 //! EthereumLightClient pallet benchmarking
 use super::*;
 
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use bridge_types::import_digest;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
+use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
+use frame_support::dispatch::UnfilteredDispatchable;
+use frame_support::unsigned::ValidateUnsigned;
 use frame_system::RawOrigin;
+use sp_core::sr25519::{Public, Signature};
+use sp_runtime::transaction_validity::TransactionSource;
 
-#[allow(unused_imports)]
 use crate::Pallet as EthereumLightClient;
 
 mod data;
-
-const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 /// The index up until which headers are reserved for pruning. The header at
 /// `data::headers_11963025_to_11963069()[RESERVED_FOR_PRUNING]` is specially
@@ -19,16 +22,16 @@ const BASE_NETWORK_ID: EthNetworkId = 12123;
 const RESERVED_FOR_PRUNING: usize = HEADERS_TO_PRUNE_IN_SINGLE_IMPORT as usize;
 
 fn get_best_block<T: Config>() -> (EthereumHeaderId, U256) {
-    <BestBlock<T>>::get(BASE_NETWORK_ID).unwrap()
+    <BestBlock<T>>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap()
 }
 
 fn get_blocks_to_prune<T: Config>() -> PruningRange {
-    <BlocksToPrune<T>>::get(BASE_NETWORK_ID).unwrap()
+    <BlocksToPrune<T>>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap()
 }
 
 fn set_blocks_to_prune<T: Config>(oldest_unpruned: u64, oldest_to_keep: u64) {
     <BlocksToPrune<T>>::insert(
-        BASE_NETWORK_ID,
+        EthNetworkConfig::Mainnet.chain_id(),
         PruningRange {
             oldest_unpruned_block: oldest_unpruned,
             oldest_block_to_keep: oldest_to_keep,
@@ -37,16 +40,41 @@ fn set_blocks_to_prune<T: Config>(oldest_unpruned: u64, oldest_to_keep: u64) {
 }
 
 fn assert_header_pruned<T: Config>(hash: H256, number: u64) {
-    assert!(Headers::<T>::get(BASE_NETWORK_ID, hash).is_none());
+    assert!(Headers::<T>::get(EthNetworkConfig::Mainnet.chain_id(), hash).is_none());
 
-    let hashes_at_number = <HeadersByNumber<T>>::get(BASE_NETWORK_ID, number);
+    let hashes_at_number = <HeadersByNumber<T>>::get(EthNetworkConfig::Mainnet.chain_id(), number);
     assert!(hashes_at_number.is_none() || !hashes_at_number.unwrap().contains(&hash),);
 }
 
+fn digest_signature<T: crate::Config>(
+    signer: &Public,
+    network_id: &EthNetworkId,
+    header: &EthereumHeader,
+) -> Signature {
+    sp_io::crypto::sr25519_sign(123.into(), signer, &import_digest(network_id, header)[..]).unwrap()
+}
+
+/// Calls validate_unsigned and dispatches the call. We need to count
+/// both steps as the weight should represent actual computations
+/// happened.
+fn validate_dispatch<T: crate::Config>(call: Call<T>) -> Result<(), &'static str> {
+    EthereumLightClient::<T>::validate_unsigned(TransactionSource::InBlock, &call)
+        .map_err(|e| -> &'static str { e.into() })?;
+    <Call<T> as Decode>::decode(&mut &*call.encode())
+        .expect("Should be decoded fine, encoding is just above")
+        .dispatch_bypass_filter(RawOrigin::None.into())?;
+    Ok(())
+}
+
 benchmarks! {
+    where_clause {
+        where
+            <T as pallet::Config>::Submitter: From<Public>,
+            <T as pallet::Config>::ImportSignature: From<Signature>,
+    }
     // Benchmark `import_header` extrinsic under worst case conditions:
     // * Import will set a new best block.
-    // * Import will set a new finalized header.
+    // * Import will set a new finalized header.s
     // * Import will iterate over the max value of DescendantsUntilFinalized headers
     //   in the chain.
     // * Import will prune HEADERS_TO_PRUNE_IN_SINGLE_IMPORT headers.
@@ -54,8 +82,11 @@ benchmarks! {
     //   number of HeaderByNumber::take calls.
     // * The last pruned header will have siblings that we don't prune and have to
     //   re-insert using <HeadersByNumber<T>>::insert.
-    import_header {
-        let caller: T::AccountId = whitelisted_caller();
+    validate_unsigned_then_import_header {
+        // We don't care about security but just about calculation time
+        let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
         let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
@@ -63,9 +94,11 @@ benchmarks! {
         let headers = data::headers_11963025_to_11963069();
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
+        let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            BASE_NETWORK_ID,
+            EthNetworkConfig::Mainnet.chain_id(),
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -75,8 +108,15 @@ benchmarks! {
             headers[0].number,
             headers[next_finalized_idx].number,
         );
-
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, header, header_proof)
+        let call = Call::<T>::import_header {
+            network_id: EthNetworkConfig::Mainnet.chain_id(),
+            header: header.clone(),
+            proof: header_proof,
+            mix_nonce: header_mix_nonce,
+            submitter: caller,
+            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+        };
+    }: { validate_dispatch(call)? }
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -111,7 +151,9 @@ benchmarks! {
     // * The last pruned header will have siblings that we don't prune and have to
     //   re-insert using <HeadersByNumber<T>>::insert.
     import_header_not_new_finalized_with_max_prune {
-        let caller: T::AccountId = whitelisted_caller();
+        let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
         let finalized_idx = RESERVED_FOR_PRUNING + 1;
@@ -119,14 +161,16 @@ benchmarks! {
         let headers = data::headers_11963025_to_11963069();
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
+        let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
         let mut header_sibling = header.clone();
         header_sibling.difficulty -= 1u32.into();
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            BASE_NETWORK_ID,
+            EthNetworkConfig::Mainnet.chain_id(),
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -137,7 +181,15 @@ benchmarks! {
             headers[finalized_idx].number,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, header, header_proof)
+        let call = Call::<T>::import_header {
+            network_id: EthNetworkConfig::Mainnet.chain_id(),
+            header: header.clone(),
+            proof: header_proof,
+            mix_nonce: header_mix_nonce,
+            submitter: caller,
+            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+        };
+    }: { validate_dispatch(call)? }
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -168,7 +220,9 @@ benchmarks! {
     //   in the chain.
     // * Import will prune a single old header with no siblings.
     import_header_new_finalized_with_single_prune {
-        let caller: T::AccountId = whitelisted_caller();
+        let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
         let finalized_idx = RESERVED_FOR_PRUNING + 1;
@@ -176,9 +230,11 @@ benchmarks! {
         let headers = data::headers_11963025_to_11963069();
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
+        let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            BASE_NETWORK_ID,
+            EthNetworkConfig::Mainnet.chain_id(),
             headers[0..next_tip_idx].to_vec(),
             U256::zero(),
             descendants_until_final,
@@ -189,7 +245,15 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,header, header_proof)
+        let call = Call::<T>::import_header {
+            network_id: EthNetworkConfig::Mainnet.chain_id(),
+            header: header.clone(),
+            proof: header_proof,
+            mix_nonce: header_mix_nonce,
+            submitter: caller,
+            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+        };
+    }: { validate_dispatch(call)? }
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -217,7 +281,9 @@ benchmarks! {
     //   in the chain.
     // * Import will prune a single old header with no siblings.
     import_header_not_new_finalized_with_single_prune {
-        let caller: T::AccountId = whitelisted_caller();
+        let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
         let finalized_idx = RESERVED_FOR_PRUNING + 1;
@@ -225,14 +291,16 @@ benchmarks! {
         let headers = data::headers_11963025_to_11963069();
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
+        let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
         let mut header_sibling = header.clone();
         header_sibling.difficulty -= 1u32.into();
         let mut init_headers = headers[0..next_tip_idx].to_vec();
         init_headers.append(&mut vec![header_sibling]);
 
+        NetworkConfig::<T>::insert(EthNetworkConfig::Mainnet.chain_id(), EthNetworkConfig::Mainnet);
         EthereumLightClient::<T>::initialize_storage_inner(
-            BASE_NETWORK_ID,
+            EthNetworkConfig::Mainnet.chain_id(),
             init_headers,
             U256::zero(),
             descendants_until_final,
@@ -243,7 +311,15 @@ benchmarks! {
             headers[0].number + 1,
         );
 
-    }: import_header(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,header, header_proof)
+        let call = Call::<T>::import_header {
+            network_id: EthNetworkConfig::Mainnet.chain_id(),
+            header: header.clone(),
+            proof: header_proof,
+            mix_nonce: header_mix_nonce,
+            submitter: caller,
+            signature: <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+        };
+    }: { validate_dispatch(call)? }
     verify {
         // Check that the best header has been updated
         let best = &headers[next_tip_idx];
@@ -270,17 +346,45 @@ benchmarks! {
         let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
         let next_tip_idx = next_finalized_idx + descendants_until_final as usize;
         let headers = data::headers_11963025_to_11963069();
-    }: _(RawOrigin::Root, 12, headers[next_tip_idx-1].clone(), U256::zero())
+    }: _(RawOrigin::Root, EthNetworkConfig::Mainnet, headers[next_tip_idx-1].clone(), U256::zero())
     verify {
         let header = headers[next_tip_idx].clone();
         let header_proof = data::header_proof(header.compute_hash()).unwrap();
-        let caller: T::AccountId = whitelisted_caller();
-        assert_ok!(EthereumLightClient::<T>::import_header(RawOrigin::Signed(caller.clone()).into(), 12, header, header_proof));
-    }
-}
+        let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
-impl_benchmark_test_suite!(
-    EthereumLightClient,
-    crate::mock::new_tester::<crate::mock::mock_verifier_with_pow::Test>(),
-    crate::mock::mock_verifier_with_pow::Test,
-);
+        let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+
+        assert_ok!(EthereumLightClient::<T>::import_header(
+            RawOrigin::None.into(),
+            EthNetworkConfig::Mainnet.chain_id(),
+            header.clone(),
+            header_proof,
+            header_mix_nonce,
+            caller,
+            <T as pallet::Config>::ImportSignature::from(digest_signature::<T>(&caller_public, &EthNetworkConfig::Mainnet.chain_id(), &header))
+        ));
+    }
+
+    update_difficulty_config {
+        let descendants_until_final = T::DescendantsUntilFinalized::get();
+
+        let next_finalized_idx = RESERVED_FOR_PRUNING + 1;
+        let next_tip_idx = next_finalized_idx + descendants_until_final as usize;
+        let headers = data::headers_11963025_to_11963069();
+        EthereumLightClient::<T>::register_network(RawOrigin::Root.into(), EthNetworkConfig::Mainnet, headers[next_tip_idx-1].clone(), U256::zero()).unwrap();
+        let network_config = EthNetworkConfig::Custom {
+            chain_id: EthNetworkConfig::Mainnet.chain_id(),
+            consensus: EthNetworkConfig::Ropsten.consensus(),
+        };
+    }: _(RawOrigin::Root, network_config)
+    verify {
+        assert_eq!(crate::NetworkConfig::<T>::get(EthNetworkConfig::Mainnet.chain_id()).unwrap().consensus(), network_config.consensus());
+    }
+
+    impl_benchmark_test_suite!(
+        EthereumLightClient,
+        crate::mock::new_tester::<crate::mock::mock_verifier_with_pow::Test>(),
+        crate::mock::mock_verifier_with_pow::Test,
+    );
+}

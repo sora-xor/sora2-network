@@ -20,6 +20,8 @@ pub struct SubstrateMessagesRelay {
     latest_basic_block: u64,
     latest_incentivized_block: u64,
     proof_loader: ProofLoader,
+    disable_basic: bool,
+    disable_incentivized: bool,
 }
 
 impl SubstrateMessagesRelay {
@@ -27,20 +29,22 @@ impl SubstrateMessagesRelay {
         sub: SubSignedClient,
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
+        disable_basic: bool,
+        disable_incentivized: bool,
     ) -> AnyResult<Self> {
-        let network_id = eth.inner().get_chainid().await?.as_u32() as EthNetworkId;
+        let network_id = eth.inner().get_chainid().await? as EthNetworkId;
         let basic = sub
             .api()
             .storage()
             .basic_inbound_channel()
-            .channel_addresses(&network_id, None)
+            .channel_addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Channel is not registered"))?;
         let incentivized = sub
             .api()
             .storage()
             .incentivized_inbound_channel()
-            .channel_addresses(&network_id, None)
+            .channel_addresses(false, &network_id, None)
             .await?
             .ok_or(anyhow::anyhow!("Channel is not registered"))?;
         Ok(Self {
@@ -52,6 +56,8 @@ impl SubstrateMessagesRelay {
             network_id,
             basic,
             incentivized,
+            disable_basic,
+            disable_incentivized,
         })
     }
 
@@ -62,11 +68,12 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
         if current_eth_block < self.latest_basic_block {
+            debug!("Skip handling basic messages, current block number is less than latest basic {} < {}", current_eth_block, self.latest_basic_block);
             return Ok(());
         }
         let filter = Filter::new()
@@ -79,7 +86,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .basic_inbound_channel()
-            .channel_nonces(&self.network_id, None)
+            .channel_nonces(false, &self.network_id, None)
             .await?;
         debug!(
             "Basic: Found {} events from {} to {}",
@@ -113,7 +120,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .basic_inbound_channel()
-                        .submit(self.network_id, message)
+                        .submit(false, self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()
@@ -141,11 +148,12 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
         if current_eth_block < self.latest_incentivized_block {
+            debug!("Skip handling incentivized messages, current block number is less than latest basic {} < {}", current_eth_block, self.latest_basic_block);
             return Ok(());
         }
         let filter = Filter::new()
@@ -158,7 +166,7 @@ impl SubstrateMessagesRelay {
             .api()
             .storage()
             .incentivized_inbound_channel()
-            .channel_nonces(&self.network_id, None)
+            .channel_nonces(false, &self.network_id, None)
             .await?;
         debug!(
             "Incentivized: Found {} events from {} to {}",
@@ -190,7 +198,7 @@ impl SubstrateMessagesRelay {
                         .api()
                         .tx()
                         .incentivized_inbound_channel()
-                        .submit(self.network_id, message)
+                        .submit(false, self.network_id, message)?
                         .sign_and_submit_then_watch_default(&self.sub)
                         .await?
                         .wait_for_in_block()
@@ -225,25 +233,34 @@ impl SubstrateMessagesRelay {
     }
 
     pub async fn run(mut self) -> AnyResult<()> {
+        if self.disable_basic && self.disable_incentivized {
+            return Ok(());
+        }
+
         let current_eth_block = self
             .sub
             .api()
             .storage()
             .ethereum_light_client()
-            .finalized_block(&self.network_id, None)
+            .finalized_block(false, &self.network_id, None)
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
         self.latest_basic_block = current_eth_block.saturating_sub(BLOCKS_TO_INITIAL_SEARCH);
         self.latest_incentivized_block = current_eth_block.saturating_sub(BLOCKS_TO_INITIAL_SEARCH);
         loop {
-            debug!("Handle basic messages");
-            if let Err(err) = self.handle_basic_messages().await {
-                warn!("Failed to handle basic messages: {}", err);
+            if !self.disable_basic {
+                debug!("Handle basic messages");
+                if let Err(err) = self.handle_basic_messages().await {
+                    warn!("Failed to handle basic messages: {}", err);
+                }
             }
-            debug!("Handle inventivized messages");
-            if let Err(err) = self.handle_incentivized_messages().await {
-                warn!("Failed to handle incentivized messages: {}", err);
+
+            if !self.disable_incentivized {
+                debug!("Handle inventivized messages");
+                if let Err(err) = self.handle_incentivized_messages().await {
+                    warn!("Failed to handle incentivized messages: {}", err);
+                }
             }
             tokio::time::sleep(Duration::from_secs(10)).await;
         }

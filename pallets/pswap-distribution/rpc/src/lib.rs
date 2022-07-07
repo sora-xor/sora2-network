@@ -30,9 +30,11 @@
 
 use codec::Codec;
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult as Result},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -44,9 +46,9 @@ use std::sync::Arc;
 use pswap_distribution_runtime_api::BalanceInfo;
 pub use pswap_distribution_runtime_api::PswapDistributionAPI as PswapDistributionRuntimeAPI;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait PswapDistributionAPI<BlockHash, AccountId, BalanceInfo> {
-    #[rpc(name = "pswapDistribution_claimableAmount")]
+    #[method(name = "pswapDistribution_claimableAmount")]
     fn claimable_amount(&self, account_id: AccountId, at: Option<BlockHash>)
         -> Result<BalanceInfo>;
 }
@@ -67,7 +69,7 @@ impl<C, B> PswapDistributionClient<C, B> {
 }
 
 impl<C, Block, AccountId, Balance>
-    PswapDistributionAPI<<Block as BlockT>::Hash, AccountId, BalanceInfo<Balance>>
+    PswapDistributionAPIServer<<Block as BlockT>::Hash, AccountId, BalanceInfo<Balance>>
     for PswapDistributionClient<C, Block>
 where
     Block: BlockT,
@@ -87,10 +89,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.claimable_amount(&at, account_id).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get claimable PSWAP amount.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.claimable_amount(&at, account_id)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

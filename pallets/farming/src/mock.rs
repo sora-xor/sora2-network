@@ -217,6 +217,8 @@ impl tokens::Config for Runtime {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 

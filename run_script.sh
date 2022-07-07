@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 binary="./target/debug/framenode"
 
@@ -26,7 +26,8 @@ EOF
 `
 eval "$getopt_code"
 
-export RUST_LOG="beefy=info,ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
+#export RUST_LOG="beefy=info,ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
+export RUST_LOG="info"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`
@@ -75,10 +76,10 @@ do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
-		sh -c "$binary --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
-	        sleep 40
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+	        # sleep 40
 	else
-		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/10001/p2p/`cat $localid` 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	port="$newport"

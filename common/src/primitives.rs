@@ -946,6 +946,14 @@ impl From<InvokeRPCError> for i64 {
     }
 }
 
+impl From<InvokeRPCError> for i32 {
+    fn from(item: InvokeRPCError) -> i32 {
+        match item {
+            InvokeRPCError::RuntimeError => 1,
+        }
+    }
+}
+
 /// Reason for particular reward during swap.
 #[derive(
     Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug, scale_info::TypeInfo,

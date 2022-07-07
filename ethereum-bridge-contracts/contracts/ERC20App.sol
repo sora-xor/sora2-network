@@ -3,18 +3,19 @@ pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
+import "./IAssetRegister.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract ERC20App is AccessControl {
+contract ERC20App is AccessControl, IAssetRegister {
     using ScaleCodec for uint256;
-
-    mapping(address => uint256) public balances;
+    using SafeERC20 for IERC20;
 
     mapping(address => bool) public tokens;
 
@@ -44,7 +45,11 @@ contract ERC20App is AccessControl {
     bytes32 public constant INBOUND_CHANNEL_ROLE =
         keccak256("INBOUND_CHANNEL_ROLE");
 
-    constructor(Channel memory _basic, Channel memory _incentivized) {
+    constructor(
+        Channel memory _basic,
+        Channel memory _incentivized,
+        address migrationApp
+    ) {
         Channel storage c1 = channels[ChannelId.Basic];
         c1.inbound = _basic.inbound;
         c1.outbound = _basic.outbound;
@@ -55,6 +60,7 @@ contract ERC20App is AccessControl {
 
         _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
         _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
+        _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
@@ -69,22 +75,25 @@ contract ERC20App is AccessControl {
                 _channelId == ChannelId.Incentivized,
             "Invalid channel ID"
         );
+        IERC20 token = IERC20(_token);
+        uint256 beforeBalance = token.balanceOf(address(this));
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 transferredAmount = token.balanceOf(address(this)) -
+            beforeBalance;
 
-        balances[_token] = balances[_token] + _amount;
+        emit Locked(_token, msg.sender, _recipient, transferredAmount);
 
-        emit Locked(_token, msg.sender, _recipient, _amount);
-
-        bytes memory call = encodeCall(_token, msg.sender, _recipient, _amount);
+        bytes memory call = encodeCall(
+            _token,
+            msg.sender,
+            _recipient,
+            transferredAmount
+        );
 
         OutboundChannel channel = OutboundChannel(
             channels[_channelId].outbound
         );
         channel.submit(msg.sender, call);
-
-        require(
-            IERC20(_token).transferFrom(msg.sender, address(this), _amount),
-            "Contract token allowances insufficient to complete this lock request"
-        );
     }
 
     function unlock(
@@ -94,17 +103,7 @@ contract ERC20App is AccessControl {
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
         require(tokens[_token], "Token is not registered");
-        require(_amount > 0, "Must unlock a positive amount");
-        require(
-            _amount <= balances[_token],
-            "ERC20 token balances insufficient to fulfill the unlock request"
-        );
-
-        balances[_token] = balances[_token] - _amount;
-        require(
-            IERC20(_token).transfer(_recipient, _amount),
-            "ERC20 token transfer failed"
-        );
+        IERC20(_token).safeTransfer(_recipient, _amount);
         emit Unlocked(_token, _sender, _recipient, _amount);
     }
 
@@ -132,6 +131,14 @@ contract ERC20App is AccessControl {
      */
     function registerAsset(address token)
         public
+        onlyRole(INBOUND_CHANNEL_ROLE)
+    {
+        tokens[token] = true;
+    }
+
+    function registerExistingAsset(address token)
+        public
+        override
         onlyRole(INBOUND_CHANNEL_ROLE)
     {
         tokens[token] = true;

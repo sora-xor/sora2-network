@@ -1,12 +1,14 @@
 // Mock runtime
 #![cfg(test)]
-use crate::{EthashProofData, EthereumDifficultyConfig, EthereumHeader};
+use crate::{EthashProofData, EthereumHeader};
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::test_utils::BlockWithProofs;
 use bridge_types::types::{Message, Proof};
 use frame_support::parameter_types;
 use frame_support::traits::GenesisBuild;
 use frame_system as system;
 use sp_core::H256;
+use sp_keystore::{testing::KeyStore, KeystoreExt};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
@@ -38,7 +40,7 @@ pub mod mock_verifier {
             UncheckedExtrinsic = UncheckedExtrinsic,
         {
             System: frame_system::{Pallet, Call, Storage, Event<T>},
-            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>},
+            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
         }
     );
 
@@ -71,16 +73,18 @@ pub mod mock_verifier {
 
     parameter_types! {
         pub const DescendantsUntilFinalized: u8 = 2;
-        pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
         pub const VerifyPoW: bool = false;
     }
 
     impl verifier::Config for Test {
         type Event = Event;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
-        type DifficultyConfig = DifficultyConfig;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
+        type UnsignedPriority = frame_support::traits::ConstU64<100>;
+        type UnsignedLongevity = frame_support::traits::ConstU64<100>;
+        type ImportSignature = Signature;
+        type Submitter = <Signature as Verify>::Signer;
     }
 }
 
@@ -131,16 +135,18 @@ pub mod mock_verifier_with_pow {
 
     parameter_types! {
         pub const DescendantsUntilFinalized: u8 = 2;
-        pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
         pub const VerifyPoW: bool = true;
     }
 
     impl verifier::Config for Test {
         type Event = Event;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
-        type DifficultyConfig = DifficultyConfig;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
+        type UnsignedPriority = frame_support::traits::ConstU64<100>;
+        type UnsignedLongevity = frame_support::traits::ConstU64<100>;
+        type ImportSignature = Signature;
+        type Submitter = <Signature as Verify>::Signer;
     }
 }
 
@@ -204,6 +210,14 @@ pub fn ethereum_header_proof_from_file(block_num: u64, suffix: &str) -> Vec<Etha
         .to_double_node_with_merkle_proof_vec(EthashProofData::from_values)
 }
 
+pub fn ethereum_header_mix_nonce_from_file(
+    block_num: u64,
+    suffix: &str,
+) -> bridge_types::ethashproof::MixNonce {
+    let filepath = fixture_path(&format!("{}{}_mix_nonce.json", block_num, suffix));
+    serde_json::from_reader(File::open(&filepath).unwrap()).unwrap()
+}
+
 pub fn message_with_receipt_proof(
     payload: Vec<u8>,
     block_hash: H256,
@@ -261,7 +275,11 @@ pub fn log_payload() -> Vec<u8> {
 
 pub fn new_tester<T: crate::Config>() -> sp_io::TestExternalities {
     new_tester_with_config::<T>(crate::GenesisConfig {
-        initial_networks: vec![(1, genesis_ethereum_header(), 0.into())],
+        initial_networks: vec![(
+            EthNetworkConfig::Ropsten,
+            genesis_ethereum_header(),
+            0u32.into(),
+        )],
     })
 }
 
@@ -274,7 +292,9 @@ pub fn new_tester_with_config<T: crate::Config>(
 
     GenesisBuild::<T>::assimilate_storage(&config, &mut storage).unwrap();
 
-    let ext: sp_io::TestExternalities = storage.into();
+    let keystore = KeyStore::new();
+    let mut ext: sp_io::TestExternalities = storage.into();
+    ext.register_extension(KeystoreExt(std::sync::Arc::new(keystore)));
     //ext.execute_with(|| <frame_system::Module<T>>::set_block_number();
     ext
 }

@@ -31,9 +31,14 @@
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchError;
+use frame_support::weights::{
+    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+};
 use orml_traits::parameter_type_with_key;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use smallvec::smallvec;
+use sp_arithmetic::Perbill;
 use sp_runtime::AccountId32;
 use sp_std::convert::TryFrom;
 
@@ -133,6 +138,21 @@ where
 impl From<PredefinedAssetId> for TechAssetId<ComicAssetId> {
     fn from(asset_id: PredefinedAssetId) -> Self {
         TechAssetId::Wrapped(ComicAssetId::from(asset_id))
+    }
+}
+
+pub struct WeightToFixedFee;
+
+impl WeightToFeePolynomial for WeightToFixedFee {
+    type Balance = Balance;
+
+    fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
+        smallvec!(WeightToFeeCoefficient {
+            coeff_integer: 7_000_000,
+            coeff_frac: Perbill::zero(),
+            negative: false,
+            degree: 1,
+        })
     }
 }
 

@@ -2,7 +2,7 @@ use super::*;
 
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
@@ -16,7 +16,7 @@ use crate::outbound as basic_outbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -85,7 +85,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
             networks: vec![(BASE_NETWORK_ID, vec![Keyring::Bob.into()])],
-            interval: 1u64,
+            interval: 1u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
 
@@ -136,7 +136,7 @@ fn test_submit_exceeds_queue_limit() {
             .unwrap()
         });
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::submit(
                 &RawOrigin::Signed(who.clone()),
                 BASE_NETWORK_ID,
@@ -157,7 +157,7 @@ fn test_submit_exceeds_payload_limit() {
         let max_payload_bytes = MaxMessagePayloadSize::get();
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -176,7 +176,7 @@ fn test_submit_fails_on_nonce_overflow() {
         let who: AccountId = Keyring::Bob.into();
 
         <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -194,7 +194,7 @@ fn test_submit_fails_not_authorized() {
         let target = H160::zero();
         let who: AccountId = Keyring::Charlie.into();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -211,7 +211,7 @@ fn test_register_operator_unauthorized() {
     new_tester().execute_with(|| {
         let dave: AccountId = Keyring::Dave.into();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::register_operator(
                 Origin::signed(dave),
                 BASE_NETWORK_ID,
@@ -242,7 +242,7 @@ fn test_submit_with_wrong_network_id() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             BasicOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID + 1,

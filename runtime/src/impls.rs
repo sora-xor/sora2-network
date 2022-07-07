@@ -236,7 +236,7 @@ mod test {
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, 1_459_875_000_001_u64);
+            assert_eq!(actual, 1_459_913_702_001_u64);
             assert!(actual > MAX_WEIGHT);
         }
 

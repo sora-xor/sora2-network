@@ -8,7 +8,7 @@ use frame_system::RawOrigin;
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BasicOutboundChannel;
 
-const BASE_NETWORK_ID: EthNetworkId = 0;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
@@ -29,7 +29,7 @@ benchmarks! {
 
         let block_number = Interval::<T>::get();
 
-    }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
+    }: { BasicOutboundChannel::<T>::on_initialize(block_number.into()) }
     verify {
         assert_eq!(<MessageQueue<T>>::get(BASE_NETWORK_ID).len(), 0);
     }
@@ -45,7 +45,8 @@ benchmarks! {
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
 
-        Interval::<T>::put::<T::BlockNumber>(10u32.into());
+        let interval: T::BlockNumber = 10u32.into();
+        Interval::<T>::put(interval);
         let block_number: T::BlockNumber = 12u32.into();
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
@@ -60,7 +61,7 @@ benchmarks! {
 
         let block_number = Interval::<T>::get();
 
-    }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
+    }: { BasicOutboundChannel::<T>::on_initialize(block_number.into()) }
 
     register_operator {
         let operator: T::AccountId = frame_benchmarking::account("operator", 11, 11);

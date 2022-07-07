@@ -3,7 +3,7 @@ use currencies::BasicCurrencyAdapter;
 
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_err, assert_noop, assert_ok, parameter_types};
+use frame_support::{assert_err, assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
@@ -28,7 +28,7 @@ use crate::inbound as incentivized_inbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -122,6 +122,8 @@ impl tokens::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -367,7 +369,7 @@ fn test_submit_with_invalid_source_channel() {
                 data: Default::default(),
             },
         };
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidSourceChannel
         );
@@ -440,7 +442,7 @@ fn test_submit_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
         );
@@ -476,7 +478,7 @@ fn test_handle_fee() {
 fn test_set_reward_fraction_not_authorized() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedInboundChannel::set_reward_fraction(
                 Origin::signed(bob),
                 Perbill::from_percent(60)
@@ -501,7 +503,7 @@ fn test_submit_with_invalid_network_id() {
                 data: Default::default(),
             },
         };
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedInboundChannel::submit(
                 origin.clone(),
                 BASE_NETWORK_ID + 1,
@@ -531,7 +533,7 @@ fn test_register_channel() {
 #[test]
 fn test_register_existing_channel() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
-        assert_noop!(
+        common::assert_noop_transactional!(
             IncentivizedInboundChannel::register_channel(
                 Origin::root(),
                 BASE_NETWORK_ID,

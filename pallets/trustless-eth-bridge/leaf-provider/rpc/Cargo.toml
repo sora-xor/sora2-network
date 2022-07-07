@@ -10,16 +10,14 @@ repository = 'https://github.com/sora-xor/sora2-network'
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-jsonrpc-core = "18.0.0"
-jsonrpc-core-client = "18.0.0"
-jsonrpc-derive = "18.0.0"
+jsonrpsee = { version = "0.14", features = ["server", "macros"] }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 
 leaf-provider-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../../common" }

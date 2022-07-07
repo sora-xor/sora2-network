@@ -242,27 +242,27 @@ pub fn dev_net_coded() -> ChainSpec {
                         hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
                         hex!("031b4b72dc354abf2efa3ba17d27907a0ef73de252719e8b5953f568a86eca9a18"),
                     ),
-                    authority_keys_from_public_keys(
-                        hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
-                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
-                        hex!("03cafa6f45bfad692c66ff5b8b3f24f826802f4dd863b31821fc05832cad3e8389"),
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
-                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
-                        hex!("0249197248076adbd30b1e162c6ec6517ed552b1f63f1f102efa6fc57c892d4f03"),
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
-                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
-                        hex!("026b0e88acde2c1e83b22c1638bd41d4c70464e6b9dc2434a731adc97f3d16c677"),
-                    ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
+                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                    //     hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
+                    //     hex!("03cafa6f45bfad692c66ff5b8b3f24f826802f4dd863b31821fc05832cad3e8389"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
+                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                    //     hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
+                    //     hex!("0249197248076adbd30b1e162c6ec6517ed552b1f63f1f102efa6fc57c892d4f03"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
+                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                    //     hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
+                    //     hex!("026b0e88acde2c1e83b22c1638bd41d4c70464e6b9dc2434a731adc97f3d16c677"),
+                    // ),
                 ],
                 vec![
                     hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
@@ -274,6 +274,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 ],
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
@@ -302,6 +303,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                 ],
+                3,
             )
         },
         vec![],
@@ -341,6 +343,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                 MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWGXhnvgvUwbU831p19sy2gEdPbusN1B8P8ShuKi4JfLDH").unwrap(),
                 MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31333/p2p/12D3KooWBwZmMTKQ37dEKAR3oxcuH9YFpzUdGRTbQcKgXLEmyhob").unwrap(),
                 MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31334/p2p/12D3KooWExRdWV2CAF8oEyMYiXc9NABu8mmYLdXLtTNjjt1WjqAC").unwrap(),
+                MultiaddrWithPeerId::from_str("/dns/s3.stg1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWCN5ZRsK9FekLLD7vSkyoh99bXZ9uXgLpd7zEVWmD5ySH").unwrap(),
             ]
         )
     };
@@ -402,24 +405,19 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                         hex!("02b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                     ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
-                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                    //     hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
-                    // ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
-                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                    //     hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
-                    // ),
                     authority_keys_from_public_keys(
-                        hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d"),
-                        hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
-                        hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
-                        hex!("d4d791cf11cecc39805499e534ab8c07366f444f0efd6d73731f2e3555cbc2d9"),
-                        hex!("02d4d791cf11cecc39805499e534ab8c07366f444f0efd6d73731f2e3555cbc2d9"),
+                        hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
+                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                        hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
+                        hex!("0204bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
+                        hex!("02c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
                     ),
                 ],
                 vec![],
@@ -448,6 +446,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
+                69,
             )
         },
         boot_nodes,
@@ -606,6 +605,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
+                3,
             )
         },
         vec![],
@@ -636,6 +636,7 @@ fn testnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
+    validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
     use framenode_runtime::EthAppConfig;
@@ -967,6 +968,7 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        migration_app: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
@@ -1020,7 +1022,7 @@ fn testnet_genesis(
                 .collect::<Vec<_>>(),
         },
         staking: StakingConfig {
-            validator_count: 69,
+            validator_count,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()

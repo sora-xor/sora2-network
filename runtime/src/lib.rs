@@ -51,14 +51,14 @@ use bridge_types::types::ChannelId;
 use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, ETH};
+use common::{AssetId32, Description, PredefinedAssetId, XOR};
 use constants::currency::deposit;
 use constants::time::*;
 use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
-#[cfg(all(feature = "std", feature = "wasm-build"))]
+#[cfg(all(feature = "std", feature = "build-wasm-binary"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
@@ -68,14 +68,13 @@ use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EnsureOneOf, OnRuntimeUpgrade};
+use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use pallet_mmr_primitives as mmr;
 use pallet_session::historical as pallet_session_historical;
 use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
@@ -83,16 +82,17 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Encode, OpaqueMetadata, H160, U256};
+use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
-    TransactionPriority, TransactionSource, TransactionValidity,
+    TransactionLongevity, TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    DispatchResult, MultiSignature, Perbill, Percent, Perquintill,
+    DispatchResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -106,7 +106,6 @@ use traits::parameter_type_with_key;
 // A few exports that help ease life for downstream crates.
 pub use common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
-    WeightToFixedFee,
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
@@ -115,7 +114,7 @@ pub use common::{
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
-pub use ethereum_light_client::{EthereumDifficultyConfig, EthereumHeader};
+pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -183,20 +182,20 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
-type MoreThanHalfCouncil = EnsureOneOf<
+type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type AtLeastHalfCouncil = EnsureOneOf<
+type AtLeastHalfCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>,
     EnsureRoot<AccountId>,
 >;
-type AtLeastTwoThirdsCouncil = EnsureOneOf<
+type AtLeastTwoThirdsCouncil = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     EnsureRoot<AccountId>,
 >;
 
-type SlashCancelOrigin = EnsureOneOf<
+type SlashCancelOrigin = EitherOfDiverse<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
 >;
@@ -232,10 +231,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 33,
+    spec_version: 35,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 33,
+    transaction_version: 35,
     state_version: 0,
 };
 
@@ -376,7 +375,7 @@ impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type DisabledValidators = ();
+    type DisabledValidators = Session;
     type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
         KeyTypeId,
         pallet_babe::AuthorityId,
@@ -431,11 +430,11 @@ impl pallet_democracy::Config for Runtime {
     type ExternalDefaultOrigin = AtLeastHalfCouncil;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
-    type FastTrackOrigin = EnsureOneOf<
+    type FastTrackOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type InstantOrigin = EnsureOneOf<
+    type InstantOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;
@@ -565,6 +564,7 @@ parameter_types! {
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type MultiCurrency = Tokens;
+    type CurrencyBalance = Balance;
     type ValTokenId = GetValAssetId;
     type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
@@ -585,6 +585,7 @@ impl pallet_staking::Config for Runtime {
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
     type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type OnStakerSlash = ();
     type WeightInfo = ();
 }
 
@@ -610,10 +611,12 @@ parameter_types! {
 
     // signed config
     pub const SignedMaxSubmissions: u32 = 16;
+    pub const SignedMaxRefunds: u32 = 16 / 4;
     pub const SignedDepositBase: Balance = deposit(2, 0);
     pub const SignedDepositByte: Balance = deposit(0, 10) / 1024;
     pub SignedRewardBase: Balance =  constants::currency::UNITS / 10;
     pub SolutionImprovementThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
+    pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
 
     // 1 hour session, 15 minutes unsigned phase, 8 offchain executions.
     pub OffchainRepeat: BlockNumber = UnsignedPhase::get() / 8;
@@ -641,10 +644,33 @@ generate_solution_type!(
 pub type OnChainAccuracy = sp_runtime::Perbill;
 
 pub struct OnChainSeqPhragmen;
-impl onchain::ExecutionConfig for OnChainSeqPhragmen {
+impl onchain::Config for OnChainSeqPhragmen {
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
     type DataProvider = Staking;
+    type WeightInfo = ();
+}
+
+impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
+    type AccountId = AccountId;
+    type MaxLength = OffchainSolutionLengthLimit;
+    type MaxWeight = OffchainSolutionWeightLimit;
+    type Solution = NposCompactSolution24;
+    type MaxVotesPerVoter = <
+		<Self as pallet_election_provider_multi_phase::Config>::DataProvider
+		as
+		frame_election_provider_support::ElectionDataProvider
+	>::MaxVotesPerVoter;
+
+    // The unsigned submissions have to respect the weight of the submit_unsigned call, thus their
+    // weight estimate function is wired to this call's weight.
+    fn solution_weight(v: u32, t: u32, a: u32, d: u32) -> Weight {
+        <
+			<Self as pallet_election_provider_multi_phase::Config>::WeightInfo
+			as
+			pallet_election_provider_multi_phase::WeightInfo
+		>::submit_unsigned(v, t, a, d)
+    }
 }
 
 impl pallet_election_provider_multi_phase::Config for Runtime {
@@ -653,21 +679,22 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type EstimateCallFee = TransactionPayment;
     type UnsignedPhase = UnsignedPhase;
     type SignedMaxSubmissions = SignedMaxSubmissions;
+    type SignedMaxRefunds = SignedMaxRefunds;
     type SignedRewardBase = SignedRewardBase;
     type SignedDepositBase = SignedDepositBase;
     type SignedDepositByte = SignedDepositByte;
     type SignedDepositWeight = ();
-    type SignedMaxWeight = Self::MinerMaxWeight;
+    type SignedMaxWeight =
+        <Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+    type MinerConfig = Self;
     type SlashHandler = (); // burn slashes
     type RewardHandler = (); // nothing to do upon rewards
     type SignedPhase = SignedPhase;
-    type SolutionImprovementThreshold = SolutionImprovementThreshold;
-    type MinerMaxWeight = OffchainSolutionWeightLimit; // For now use the one from staking.
-    type MinerMaxLength = OffchainSolutionLengthLimit;
+    type BetterUnsignedThreshold = BetterUnsignedThreshold;
+    type BetterSignedThreshold = ();
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
     type DataProvider = Staking;
-    type Solution = NposCompactSolution24;
     type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
     type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -676,7 +703,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
         (),
     >;
     type BenchmarkingConfig = ElectionBenchmarkConfig;
-    type ForceOrigin = EnsureOneOf<
+    type ForceOrigin = EitherOfDiverse<
         EnsureRoot<AccountId>,
         pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     >;
@@ -774,6 +801,8 @@ impl tokens::Config for Runtime {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -1071,19 +1100,17 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
-pub struct ExtrinsicsFlatFees;
-
-// Flat fees implementation for the selected extrinsics.
-// Returns a value if the extirnsic is subject to manual fee adjustment
-// and `None` otherwise
-impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
+// Multiplied flat fees implementation for the selected extrinsics.
+// Returns a value (* multiplier) if the extrinsic is subject to manual fee
+// adjustment and `None` otherwise
+impl<T> xor_fee::ApplyCustomFees<Call> for xor_fee::Pallet<T> {
     fn compute_fee(call: &Call) -> Option<Balance> {
-        match call {
+        let result = match call {
             Call::Assets(assets::Call::register { .. })
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | Call::Rewards(rewards::Call::claim { .. }) => Some(balance!(0.007)),
-            Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
+            | Call::Rewards(rewards::Call::claim { .. })
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -1094,7 +1121,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::TradingPair(..)
             | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
-        }
+        };
+        result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
     }
 }
 
@@ -1251,10 +1279,11 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
-    type CustomFees = ExtrinsicsFlatFees;
+    type CustomFees = XorFee;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WeightInfo = xor_fee::weights::WeightInfo<Runtime>;
     type WithdrawFee = WithdrawFee;
 }
 
@@ -1283,7 +1312,7 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
-    type WeightToFee = WeightToFixedFee;
+    type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
     type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
@@ -1432,6 +1461,7 @@ impl eth_bridge::Config for Runtime {
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
+    type WeightToFee = XorFee;
 }
 
 #[cfg(feature = "private-net")]
@@ -1690,7 +1720,7 @@ impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
     type ValidatorSet = Historical;
-    type NextSessionRotation = (); //SessionDuration;
+    type NextSessionRotation = Babe;
     type ReportUnresponsiveness = Offences;
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
@@ -1724,6 +1754,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
+    type MaxAuthorities = MaxAuthorities;
 }
 
 impl pallet_mmr::Config for Runtime {
@@ -1822,7 +1853,6 @@ impl demeter_farming_platform::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 parameter_types! {
-    pub const UnsignedPriority: u64 = 100;
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
@@ -1847,10 +1877,10 @@ impl dispatch::Config for Runtime {
 }
 
 use basic_channel::{inbound as basic_channel_inbound, outbound as basic_channel_outbound};
+use bridge_types::CHANNEL_INDEXING_PREFIX;
 use incentivized_channel::{
     inbound as incentivized_channel_inbound, outbound as incentivized_channel_outbound,
 };
-const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 pub struct OutboundRouter<T>(PhantomData<T>);
 
@@ -1894,7 +1924,7 @@ impl basic_channel_inbound::Config for Runtime {
 }
 
 impl basic_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = BasicMaxMessagePayloadSize;
@@ -1911,7 +1941,7 @@ impl Convert<U256, Balance> for FeeConverter {
 }
 
 parameter_types! {
-    pub const Ether: AssetId32<PredefinedAssetId> = ETH;
+    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
 impl incentivized_channel_inbound::Config for Runtime {
@@ -1920,35 +1950,42 @@ impl incentivized_channel_inbound::Config for Runtime {
     type MessageDispatch = dispatch::Pallet<Runtime>;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
-    type FeeAssetId = Ether;
+    type FeeAssetId = FeeCurrency;
     type OutboundRouter = OutboundRouter<Self>;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
 
 impl incentivized_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
     type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
-    type FeeCurrency = Ether;
+    type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
 }
 
 parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
-    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::testnet();
     pub const VerifyPoW: bool = true;
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    // We don't want to have not relevant imports be stuck in transaction pool
+    // for too long
+    pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
 }
 
 impl ethereum_light_client::Config for Runtime {
     type Event = Event;
     type DescendantsUntilFinalized = DescendantsUntilFinalized;
-    type DifficultyConfig = DifficultyConfig;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
+    type UnsignedPriority = EthereumLightClientPriority;
+    type UnsignedLongevity = EthereumLightClientLongevity;
+    type ImportSignature = Signature;
+    type Submitter = <Signature as Verify>::Signer;
 }
 
 pub struct ChannelAppRegistry;
@@ -1987,6 +2024,12 @@ impl erc20_app::Config for Runtime {
     type CallOrigin = EnsureEthereumAccount;
     type AppRegistry = ChannelAppRegistry;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type WeightInfo = ();
+}
+
+impl migration_app::Config for Runtime {
+    type Event = Event;
+    type OutboundRouter = OutboundRouter<Runtime>;
     type WeightInfo = ();
 }
 
@@ -2067,7 +2110,7 @@ construct_runtime! {
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
@@ -2076,6 +2119,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
+        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 
@@ -2162,6 +2206,7 @@ construct_runtime! {
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
+        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 
@@ -2242,6 +2287,8 @@ impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
         >(&RocksDbWeight::get())
     }
 }
+
+pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -2600,7 +2647,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, amount_without_impact, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -2668,7 +2715,7 @@ impl_runtime_apis! {
                             c: PRIMARY_PROBABILITY,
                             genesis_authorities: Babe::authorities().to_vec(),
                             randomness: Babe::randomness(),
-                            allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+                            allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
                     }
             }
 
@@ -2718,26 +2765,26 @@ impl_runtime_apis! {
         }
     }
 
-    impl pallet_mmr_primitives::MmrApi<Block, Hash> for Runtime {
+    impl mmr::MmrApi<Block, Hash> for Runtime {
         fn generate_proof(leaf_index: u64)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Mmr::generate_proof(leaf_index)
-                .map(|(leaf, proof)| (mmr::EncodableOpaqueLeaf::from_leaf(&leaf), proof))
+            Mmr::generate_batch_proof(vec![leaf_index])
+                .and_then(|(leaves, proof)| Ok((
+                    mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
+                    mmr::BatchProof::into_single_leaf_proof(proof)?
+                )))
         }
 
         fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type Leaf = <
-                <Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider
-            >::LeafData;
-
-            let leaf: Leaf = leaf
+            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
+            let leaf: MmrLeaf = leaf
                 .into_opaque_leaf()
                 .try_decode()
                 .ok_or(mmr::Error::Verify)?;
-            Mmr::verify_leaf(leaf, proof)
+            Mmr::verify_leaves(vec![leaf], mmr::Proof::into_batch_proof(proof))
         }
 
         fn verify_proof_stateless(
@@ -2745,9 +2792,39 @@ impl_runtime_apis! {
             leaf: mmr::EncodableOpaqueLeaf,
             proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
             let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
-            pallet_mmr::verify_leaf_proof::<MmrHashing, _>(root, node, proof)
+            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, vec![node], mmr::Proof::into_batch_proof(proof))
+        }
+
+        fn mmr_root() -> Result<Hash, mmr::Error> {
+            Ok(Mmr::mmr_root())
+        }
+
+        fn generate_batch_proof(leaf_indices: Vec<mmr::LeafIndex>)
+            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
+        {
+            Mmr::generate_batch_proof(leaf_indices)
+                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+        }
+
+        fn verify_batch_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::BatchProof<Hash>)
+            -> Result<(), mmr::Error>
+        {
+            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
+            let leaves = leaves.into_iter().map(|leaf|
+                leaf.into_opaque_leaf()
+                .try_decode()
+                .ok_or(mmr::Error::Verify)).collect::<Result<Vec<MmrLeaf>, mmr::Error>>()?;
+            Mmr::verify_leaves(leaves, proof)
+        }
+
+        fn verify_batch_proof_stateless(
+            root: Hash,
+            leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            proof: mmr::BatchProof<Hash>
+        ) -> Result<(), mmr::Error> {
+            let nodes = leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
+            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, nodes, proof)
         }
     }
 
@@ -2804,7 +2881,6 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
-            use xor_fee_benchmarking::Pallet as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
 
             let mut list = Vec::<BenchmarkList>::new();
@@ -2823,7 +2899,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, eth_bridge, EthBridge);
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
-            list_benchmark!(list, extra, xor_fee, XorFeeBench::<Runtime>);
+            list_benchmark!(list, extra, xor_fee, XorFee);
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
@@ -2842,14 +2918,12 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
-            use xor_fee_benchmarking::Pallet as XorFeeBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
-            impl xor_fee_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2884,8 +2958,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);

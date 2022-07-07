@@ -1,0 +1,26 @@
+[package]
+name = "incentivized-channel-rpc"
+version = "0.1.0"
+edition = "2018"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3" }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+jsonrpsee = { version = "0.14", features = ["server", "macros"] }
+serde = { version = "1.0.101", features = ["derive"] }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+anyhow = "1.0"
+
+incentivized-channel = { path = "../" }
+bridge-types = { path = "../../types" }
+common = { path = "../../../../common" }

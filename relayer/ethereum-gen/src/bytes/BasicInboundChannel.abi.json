@@ -24,12 +24,6 @@
         "internalType": "bool",
         "name": "result",
         "type": "bool"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes",
-        "name": "message",
-        "type": "bytes"
       }
     ],
     "name": "MessageDispatched",

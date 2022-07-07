@@ -67,7 +67,7 @@ benchmarks! {
         Pallet::<T>::unreserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }
     verify {
-        assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), Some(0));
+        assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), None);
         assert_eq!(assets::Pallet::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000)));
     }
 
@@ -80,4 +80,10 @@ benchmarks! {
     verify {
         assert_eq!(Referrers::<T>::get(&alice), Some(bob));
     }
+
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::test_ext(),
+        crate::mock::Runtime
+    );
 }

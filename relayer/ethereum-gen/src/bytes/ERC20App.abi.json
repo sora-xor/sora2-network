@@ -34,6 +34,11 @@
         "internalType": "struct ERC20App.Channel",
         "name": "_incentivized",
         "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "migrationApp",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -205,25 +210,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "balances",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "enum ChannelId",
         "name": "",
         "type": "uint8"
@@ -343,6 +329,19 @@
       }
     ],
     "name": "registerAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "registerExistingAsset",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

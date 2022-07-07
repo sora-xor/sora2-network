@@ -6,6 +6,7 @@ use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
 use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::LeafProof;
+use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, ChannelId};
@@ -80,7 +81,7 @@ impl RelayBuilder {
         let incentivized_gas_per_message =
             incentivized.max_gas_per_message().call().await?.as_u64();
         Ok(Relay {
-            chain_id: eth.inner().get_chainid().await?.as_u32(),
+            chain_id: eth.inner().get_chainid().await?,
             sub,
             eth,
             beefy,
@@ -186,14 +187,16 @@ impl Relay {
         &self,
         name: &str,
         call: ContractCall<SignedClientInner, ()>,
+        confirmations: usize,
     ) -> AnyResult<E> {
         debug!("Call '{}' check", name);
         call.call().await?;
+        self.eth.save_gas_price(&call, "relay").await?;
         debug!("Call '{}' send", name);
         let tx = call
             .send()
             .await?
-            .confirmations(self.blocks_until_finalized as usize + 1)
+            .confirmations(confirmations)
             .await?
             .expect("failed");
         debug!("Call '{}' finalized: {:?}", name, tx);
@@ -227,6 +230,7 @@ impl Relay {
             .call_with_event::<beefy_light_client::InitialVerificationSuccessfulFilter>(
                 "New signature commitment",
                 call,
+                self.blocks_until_finalized as usize + 1,
             )
             .await?;
         let call = self
@@ -236,6 +240,7 @@ impl Relay {
             .call_with_event::<beefy_light_client::FinalVerificationSuccessfulFilter>(
                 "Complete signature commitment",
                 call,
+                1,
             )
             .await?;
         self.handle_complete_commitment_success().await?;
@@ -247,7 +252,6 @@ impl Relay {
         block_number: u32,
         latest_hash: H256,
     ) -> AnyResult<()> {
-        const INDEXING_PREFIX: &'static [u8] = b"commitment";
         let block_hash = self
             .sub
             .api()
@@ -305,106 +309,94 @@ impl Relay {
             let digest_prefix = hex::decode(digest_prefix)?.into();
             let digest_suffix = hex::decode(digest_suffix)?.into();
 
-            let key = (INDEXING_PREFIX, id, messages_hash).encode();
-            if let Some(data) = self
-                .sub
-                .offchain_local_get(crate::substrate::StorageKind::Persistent, key)
-                .await?
-            {
-                let (mut call, messages_count) = match id {
-                    ChannelId::Basic => {
-                        let messages_sub = Vec::<
-                            substrate_gen::runtime::runtime_types::basic_channel::outbound::Message,
-                        >::decode(&mut &*data)?;
-                        if messages_sub
-                            .iter()
-                            .all(|message| message.nonce <= basic_nonce)
-                        {
-                            continue;
-                        }
-                        let mut messages = vec![];
-                        for message in messages_sub {
-                            messages.push(basic::Message {
-                                target: message.target,
-                                nonce: message.nonce,
-                                payload: message.payload.into(),
-                            });
-                        }
+            let (mut call, messages_count) = match id {
+                ChannelId::Basic => {
+                    let messages_sub = self.sub.basic_commitments(messages_hash).await?;
+                    if messages_sub
+                        .iter()
+                        .all(|message| message.nonce <= basic_nonce)
+                    {
+                        continue;
+                    }
+                    let mut messages = vec![];
+                    for message in messages_sub {
+                        messages.push(basic::Message {
+                            target: message.target,
+                            nonce: message.nonce,
+                            payload: message.payload.into(),
+                        });
+                    }
 
-                        let leaf_bytes = basic::LeafBytes {
-                            digest_prefix,
-                            digest_suffix,
-                            leaf_prefix: leaf_prefix.clone(),
-                        };
-                        let messages_count = messages.len();
-                        let call = self
-                            .basic_channel
+                    let leaf_bytes = basic::LeafBytes {
+                        digest_prefix,
+                        digest_suffix,
+                        leaf_prefix: leaf_prefix.clone(),
+                    };
+                    let messages_count = messages.len();
+                    let call = self
+                        .basic_channel
+                        .submit(messages, leaf_bytes, proof.clone());
+                    (call, messages_count)
+                }
+                ChannelId::Incentivized => {
+                    let messages_sub = self.sub.incentivized_commitments(messages_hash).await?;
+                    if messages_sub
+                        .iter()
+                        .all(|message| message.nonce <= incentivized_nonce)
+                    {
+                        continue;
+                    }
+                    let mut messages = vec![];
+                    for message in messages_sub {
+                        messages.push(incentivized::Message {
+                            target: message.target,
+                            nonce: message.nonce,
+                            payload: message.payload.into(),
+                            fee: message.fee,
+                        });
+                    }
+                    let leaf_bytes = incentivized::LeafBytes {
+                        digest_prefix,
+                        digest_suffix,
+                        leaf_prefix: leaf_prefix.clone(),
+                    };
+                    let messages_count = messages.len();
+                    let call =
+                        self.incentivized_channel
                             .submit(messages, leaf_bytes, proof.clone());
-                        (call, messages_count)
-                    }
-                    ChannelId::Incentivized => {
-                        let messages_sub = Vec::<substrate_gen::runtime::runtime_types::incentivized_channel::outbound::Message>::decode(&mut &*data)?;
-                        if messages_sub
-                            .iter()
-                            .all(|message| message.nonce <= incentivized_nonce)
-                        {
-                            continue;
-                        }
-                        let mut messages = vec![];
-                        for message in messages_sub {
-                            messages.push(incentivized::Message {
-                                target: message.target,
-                                nonce: message.nonce,
-                                payload: message.payload.into(),
-                                fee: message.fee,
-                            });
-                        }
-                        let leaf_bytes = incentivized::LeafBytes {
-                            digest_prefix,
-                            digest_suffix,
-                            leaf_prefix: leaf_prefix.clone(),
-                        };
-                        let messages_count = messages.len();
-                        let call =
-                            self.incentivized_channel
-                                .submit(messages, leaf_bytes, proof.clone());
-                        (call, messages_count)
-                    }
-                };
-                debug!("Fill submit messages from {:?}", id);
-                self.eth.fill_transaction(&mut call.tx, call.block).await?;
-                call.tx.set_gas(self.submit_message_gas(id, messages_count));
-                debug!("Check submit messages from {:?}", id);
-                call.call().await?;
-                debug!("Send submit messages from {:?}", id);
-                let tx = call.send().await?;
-                debug!(
-                    "Wait for confirmations submit messages from {:?}, {:?}",
-                    id, tx
-                );
-                let tx = tx.confirmations(3).await?;
-                debug!("Submit messages from {:?}: {:?}", id, tx);
-                if let Some(tx) = tx {
-                    for log in tx.logs {
-                        let raw_log = RawLog {
-                            topics: log.topics.clone(),
-                            data: log.data.to_vec(),
-                        };
-                        if let Ok(log) =
-                            <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
-                        {
-                            let msg = String::from_utf8_lossy(log.message.as_ref());
-                            info!(
-                                "Message dispatched: ({}, {}, {})",
-                                log.nonce, log.result, msg
-                            );
-                        } else if let Ok(log) =
-                            <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
-                                &raw_log,
-                            )
-                        {
-                            info!("Message dispatched: {:?}", log);
-                        }
+                    (call, messages_count)
+                }
+            };
+            debug!("Fill submit messages from {:?}", id);
+            self.eth.fill_transaction(&mut call.tx, call.block).await?;
+            call.tx.set_gas(self.submit_message_gas(id, messages_count));
+            debug!("Check submit messages from {:?}", id);
+            call.call().await?;
+            self.eth.save_gas_price(&call, "submit-messages").await?;
+            debug!("Send submit messages from {:?}", id);
+            let tx = call.send().await?;
+            debug!(
+                "Wait for confirmations submit messages from {:?}, {:?}",
+                id, tx
+            );
+            let tx = tx.confirmations(3).await?;
+            debug!("Submit messages from {:?}: {:?}", id, tx);
+            if let Some(tx) = tx {
+                for log in tx.logs {
+                    let raw_log = RawLog {
+                        topics: log.topics.clone(),
+                        data: log.data.to_vec(),
+                    };
+                    if let Ok(log) =
+                        <basic::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
+                    {
+                        info!("Message dispatched: {:?}", log);
+                    } else if let Ok(log) =
+                        <incentivized::MessageDispatchedFilter as EthLogDecode>::decode_log(
+                            &raw_log,
+                        )
+                    {
+                        info!("Message dispatched: {:?}", log);
                     }
                 }
             }
@@ -447,20 +439,20 @@ impl Relay {
             .api()
             .storage()
             .basic_outbound_channel()
-            .interval(None)
+            .interval(false, None)
             .await?;
         let incentivized_interval = self
             .sub
             .api()
             .storage()
             .incentivized_outbound_channel()
-            .interval(None)
+            .interval(false, None)
             .await?;
         let basic_mod = self.chain_id % basic_interval;
         let incentivized_mod = self.chain_id % incentivized_interval;
         while block_number > 0 {
-            if block_number % basic_interval == basic_mod
-                && block_number % incentivized_interval == incentivized_mod
+            if block_number % basic_interval == basic_mod.as_u32()
+                && block_number % incentivized_interval == incentivized_mod.as_u32()
                 && !self.check_new_messages(block_number - 1).await?
             {
                 break;
@@ -485,14 +477,14 @@ impl Relay {
             .api()
             .storage()
             .basic_outbound_channel()
-            .channel_nonces(&self.chain_id, block_hash)
+            .channel_nonces(false, &self.chain_id, block_hash)
             .await?;
         let sub_incentivized_nonce = self
             .sub
             .api()
             .storage()
             .incentivized_outbound_channel()
-            .channel_nonces(&self.chain_id, block_hash)
+            .channel_nonces(false, &self.chain_id, block_hash)
             .await?;
         Ok(basic_nonce < sub_basic_nonce || incentivized_nonce < sub_incentivized_nonce)
     }
@@ -531,8 +523,13 @@ impl Relay {
 
     pub async fn sync_historical_commitments(&self) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await?;
-        let epoch_duration = self.sub.api().constants().babe().epoch_duration()?;
-        let sessions_per_era = self.sub.api().constants().staking().sessions_per_era()?;
+        let epoch_duration = self.sub.api().constants().babe().epoch_duration(false)?;
+        let sessions_per_era = self
+            .sub
+            .api()
+            .constants()
+            .staking()
+            .sessions_per_era(false)?;
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
@@ -542,7 +539,7 @@ impl Relay {
                 .api()
                 .storage()
                 .staking()
-                .active_era(Some(latest_beefy_block_hash))
+                .active_era(false, Some(latest_beefy_block_hash))
                 .await?
                 .expect("should exist");
             let current_block_hash = self.sub.api().client.rpc().finalized_head().await?;
@@ -557,7 +554,7 @@ impl Relay {
                 .api()
                 .storage()
                 .staking()
-                .bonded_eras(Some(next_block_hash))
+                .bonded_eras(false, Some(next_block_hash))
                 .await?;
             debug!("latest era: {latest_era:?}, next block: {next_block}, eras: {next_eras:?}");
             let next_block = if let Some((_, session)) = next_eras
@@ -614,7 +611,7 @@ impl Relay {
     pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await?;
         self.sync_historical_commitments().await?;
-        let mut beefy_sub = self.sub.subscribe_beefy().await?;
+        let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification = BeefyJustification::create(
                 self.sub.clone(),

@@ -6,6 +6,7 @@ pub trait WeightInfo {
     fn import_header_new_finalized_with_single_prune() -> Weight;
     fn import_header_not_new_finalized_with_single_prune() -> Weight;
     fn register_network() -> Weight;
+    fn update_difficulty_config() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -22,6 +23,9 @@ impl WeightInfo for () {
         0
     }
     fn register_network() -> Weight {
+        0
+    }
+    fn update_difficulty_config() -> Weight {
         0
     }
 }

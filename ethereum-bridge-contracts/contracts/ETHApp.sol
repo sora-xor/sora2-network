@@ -5,16 +5,15 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./RewardSource.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
+import "./EthTokenReceiver.sol";
 
 enum ChannelId {
     Basic,
     Incentivized
 }
 
-contract ETHApp is RewardSource, AccessControl {
+contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
     using ScaleCodec for uint256;
-
-    uint256 public balance;
 
     mapping(ChannelId => Channel) public channels;
 
@@ -39,8 +38,6 @@ contract ETHApp is RewardSource, AccessControl {
         Channel memory _basic,
         Channel memory _incentivized
     ) {
-        balance = 0;
-
         Channel storage c1 = channels[ChannelId.Basic];
         c1.inbound = _basic.inbound;
         c1.outbound = _basic.outbound;
@@ -62,8 +59,6 @@ contract ETHApp is RewardSource, AccessControl {
             "Invalid channel ID"
         );
 
-        balance = balance + msg.value;
-
         emit Locked(msg.sender, _recipient, msg.value);
 
         bytes memory call = encodeCall(msg.sender, _recipient, msg.value);
@@ -80,12 +75,6 @@ contract ETHApp is RewardSource, AccessControl {
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) {
         require(_amount > 0, "Must unlock a positive amount");
-        require(
-            balance >= _amount,
-            "ETH token balances insufficient to fulfill the unlock request"
-        );
-
-        balance = balance - _amount;
         _recipient.transfer(_amount);
         emit Unlocked(_sender, _recipient, _amount);
     }
@@ -113,4 +102,6 @@ contract ETHApp is RewardSource, AccessControl {
     {
         _recipient.transfer(_amount);
     }
+
+    function receivePayment() external payable override {}
 }
