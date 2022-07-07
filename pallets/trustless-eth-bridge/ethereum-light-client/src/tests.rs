@@ -782,48 +782,47 @@ fn test_register_network_exists() {
 #[test]
 fn it_validates_last_headers_difficulty() {
     new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
-        initial_networks: vec![(1, ethereum_header_from_file(11090290, ""), 0.into())],
+        initial_networks: vec![(
+            EthNetworkConfig::Mainnet,
+            ethereum_header_from_file(11090290, ""),
+            0u32.into(),
+        )],
     })
     .execute_with(|| {
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
         let mut header1 = ethereum_header_from_file(11090291, "");
         let header1_proof = ethereum_header_proof_from_file(11090291, "");
         let header2 = ethereum_header_from_file(11090292, "");
         let header2_proof = ethereum_header_proof_from_file(11090292, "");
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE as u64).into();
 
         let check_header_num_prev = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER - 1;
         let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
 
         add_header_for_diffiulty_check(
-            BASE_NETWORK_ID,
+            network_id,
             check_header_num_prev,
             header1.clone(),
             header1.difficulty,
         );
         add_header_for_diffiulty_check(
-            BASE_NETWORK_ID,
+            network_id,
             check_header_num,
             header2.clone(),
             header1.difficulty * diff_mult * 1001 / 1000 + header1.difficulty,
         );
 
         assert_err!(
-            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(
-                BASE_NETWORK_ID,
-                &header1
-            ),
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1),
             Error::<Test>::DifficultyTooLow
         );
 
         // increase difficulty a little bit to fit the difference
         header1.difficulty = header1.difficulty * 1002 / 1000;
         assert_ok!(
-            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(
-                BASE_NETWORK_ID,
-                &header1
-            )
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1)
         );
     });
 }
@@ -835,7 +834,7 @@ fn add_header_for_diffiulty_check(
     total_difficulty: U256,
 ) {
     let hash = header.compute_hash();
-    let header_to_store: crate::StoredHeader<AccountId> = crate::StoredHeader {
+    let header_to_store: crate::StoredHeader<crate::mock::AccountId> = crate::StoredHeader {
         submitter: None,
         header: header.clone(),
         total_difficulty,
