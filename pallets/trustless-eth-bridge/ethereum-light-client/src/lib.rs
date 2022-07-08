@@ -659,45 +659,26 @@ pub mod pallet {
             network_id: EthNetworkId,
             new_header: &EthereumHeader,
         ) -> Result<(), Error<T>> {
-            let check_block_number_prev = match new_header
+            let check_block_number = match new_header
                 .number
-                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER + 1)
+                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER)
             {
                 // If less than CHECK_DIFFICULTY_DIFFERENCE_NUMBER - ignore check
                 None => return Ok(()),
                 Some(num) => num,
             };
-            let check_block_number = new_header.number - CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
 
-            let hashes_prev = match HeadersByNumber::<T>::get(network_id, check_block_number_prev) {
-                // We trust our blockchain, so block should exist
-                None => return Ok(()),
-                Some(h) => h,
-            };
             let hashes = match HeadersByNumber::<T>::get(network_id, check_block_number) {
                 // We trust our blockchain, so block should exist
                 None => return Ok(()),
                 Some(h) => h,
             };
 
-            // here get minimum value from previus to check block difficulty
-            let headers_prev_difficulty_min = match hashes_prev
-                .iter()
-                .map(|hash| Headers::<T>::get(network_id, hash))
-                .flat_map(|x| x)
-                .map(|x| x.total_difficulty)
-                .min()
-            {
-                None => frame_support::fail!(Error::<T>::NetworkStateInvalid),
-                Some(min) => min,
-            };
-
-            // here get maximum value from check block difficulty
             let headers_difficulty_max = match hashes
                 .iter()
                 .map(|hash| Headers::<T>::get(network_id, hash))
                 .flat_map(|x| x)
-                .map(|x| x.total_difficulty)
+                .map(|x| x.header.difficulty)
                 .max()
             {
                 None => frame_support::fail!(Error::<T>::NetworkStateInvalid),
@@ -707,8 +688,8 @@ pub mod pallet {
             // check total difficulty difference change and compare with new header difficulty
             ensure!(
                 headers_difficulty_max
-                    .checked_sub(headers_prev_difficulty_min)
-                    .unwrap_or(0.into())
+                    // .checked_sub(headers_prev_difficulty_min)
+                    // .unwrap_or(0.into())
                     <= new_header
                         .difficulty
                         .checked_mul(DIFFICULTY_DIFFERENCE_MULT)
