@@ -37,7 +37,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 ethabi = { version = "17.1.0", default-features = false }
-ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25-no-std", default-features = false }
+ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25", default-features = false }
 serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]

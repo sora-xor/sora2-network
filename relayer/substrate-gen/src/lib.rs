@@ -70,6 +70,10 @@ pub mod runtime {
     use ::subxt::sp_core::H512;
     #[subxt(substitute_type = "primitive_types::U256")]
     use ::subxt::sp_core::U256;
+    #[subxt(substitute_type = "sp_runtime::MultiSignature")]
+    use ::subxt::sp_runtime::MultiSignature;
+    #[subxt(substitute_type = "sp_runtime::MultiSigner")]
+    use ::subxt::sp_runtime::MultiSigner;
 }
 
 pub use config::DefaultConfig;

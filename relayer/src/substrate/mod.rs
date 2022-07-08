@@ -14,6 +14,7 @@ use subxt::extrinsic::Signer;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, ClientT};
 use subxt::sp_core::{Bytes, Pair};
+use subxt::sp_runtime::MultiSigner;
 use subxt::{ClientBuilder, Config, RpcClient};
 pub use types::*;
 
@@ -299,6 +300,10 @@ impl SignedClient {
             .await?;
         self.set_nonce(nonce);
         Ok(())
+    }
+
+    pub fn public_key(&self) -> MultiSigner {
+        MultiSigner::Sr25519(self.key.signer().public())
     }
 }
 

@@ -37,8 +37,12 @@ impl JsonRpcClient for UniversalClient {
         R: DeserializeOwned,
     {
         match self {
-            Self::Ws(client) => client.request(method, params).await.map_err(From::from),
-            Self::Http(client) => client.request(method, params).await.map_err(From::from),
+            Self::Ws(client) => JsonRpcClient::request(client, method, params)
+                .await
+                .map_err(From::from),
+            Self::Http(client) => JsonRpcClient::request(client, method, params)
+                .await
+                .map_err(From::from),
         }
     }
 }

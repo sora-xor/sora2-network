@@ -32,7 +32,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::{Config, Event, Pallet};
+use super::{Call, Config, Event, Pallet};
 
 use codec::Decode;
 use frame_benchmarking::{benchmarks, Zero};
@@ -41,7 +41,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use common::eth::EthAddress;
-use common::{AssetName, AssetSymbol, Balance, XOR};
+use common::{balance, AssetName, AssetSymbol, Balance, XOR};
 use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
 use assets::Pallet as Assets;
@@ -54,6 +54,7 @@ fn alice<T: Config>() -> T::AccountId {
 
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
@@ -113,20 +114,17 @@ benchmarks! {
     }: {
         Pallet::<T>::reset_rewards(caller_origin)?;
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_transfer());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_reset_rewards());
-        });
+    update_limit {
+        let new_limit = balance!(1);
+    }: _(RawOrigin::Root, new_limit)
+    verify {
+        assert_eq!(Pallet::<T>::transfer_limit(), new_limit)
     }
+
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::build(),
+        crate::mock::Runtime
+    );
 }

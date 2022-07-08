@@ -75,7 +75,6 @@ pipeline {
                                 sh """
                                     cargo test  --release --features runtime-benchmarks --target-dir /app/target/
                                     cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    sccache -s
                                     mv /app/target/release/framenode .
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
@@ -93,7 +92,6 @@ pipeline {
                                     cargo test  --features private-net --target-dir /app/target/
                                     cargo check --features runtime-benchmarks --target-dir /app/target/
                                     cargo test --features runtime-benchmarks --target-dir /app/target/
-                                    sccache -s
                                 '''
                             }
                         }
