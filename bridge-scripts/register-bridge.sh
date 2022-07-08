@@ -1,4 +1,4 @@
-#!/usr/bin/bash -v
+#!/bin/bash -v
 
 DEPLOYMENTS=${BASE_DIR:-ethereum-bridge-contracts}/.deployments/${NETWORK:-geth}
 ETH_APP=$(jq '.address' $DEPLOYMENTS/ETHApp.json | tr -d '"')

@@ -36,19 +36,32 @@ use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
-use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
+use frame_support::weights::{
+    DispatchInfo, GetDispatchInfo, Pays, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
+    WeightToFeePolynomial,
+};
 use liquidity_proxy::LiquidityProxyTrait;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
+use smallvec::smallvec;
 use sp_runtime::generic::{CheckedExtrinsic, UncheckedExtrinsic};
 use sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
     SignedExtension, UniqueSaturatedInto, Zero,
 };
-use sp_runtime::{DispatchError, Percent};
+use sp_runtime::{DispatchError, FixedPointNumber, FixedU128, Perbill, Percent};
 use sp_staking::SessionIndex;
 use sp_std::vec::Vec;
+
+mod benchmarking;
+pub mod weights;
+
+#[cfg(test)]
+pub mod mock;
+
+#[cfg(test)]
+mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -555,6 +568,10 @@ impl<T: Config> Pallet<T> {
 
 pub use pallet::*;
 
+pub trait WeightInfo {
+    fn update_multiplier(_m: u32) -> Weight;
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -591,6 +608,8 @@ pub mod pallet {
             Self::AccountId,
             <Self as pallet_session::historical::Config>::FullIdentification,
         >;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;
     }
 
@@ -607,7 +626,22 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// Update the multiplier for weight -> fee conversion.
+        // TODO: benchmark on reference hardware
+        // 0 is passed because argument is unused and no need to
+        // do unnecessary conversions
+        #[pallet::weight(<T as Config>::WeightInfo::update_multiplier(0))]
+        pub fn update_multiplier(
+            origin: OriginFor<T>,
+            new_multiplier: FixedU128,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            <Multiplier<T>>::put(new_multiplier);
+            Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
+            Ok(().into())
+        }
+    }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -616,10 +650,40 @@ pub mod pallet {
         FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
         /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
         ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
+        /// New multiplier for weight to fee conversion is set
+        /// (*1_000_000_000_000_000_000). [New value]
+        WeightToFeeMultiplierUpdated(FixedU128),
     }
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
     pub type XorToVal<T: Config> = StorageValue<_, Balance, ValueQuery>;
+
+    #[pallet::type_value]
+    pub fn DefaultForFeeMultiplier<T: Config>() -> FixedU128 {
+        // We set 50 as it's the given required value
+        FixedU128::from(50)
+    }
+
+    // Multiplier used in WeightToFee conversion
+    #[pallet::storage]
+    #[pallet::getter(fn multiplier)]
+    pub type Multiplier<T> = StorageValue<_, FixedU128, ValueQuery, DefaultForFeeMultiplier<T>>;
+
+    // This affects `base_fee` and `weight_fee`. `length_fee` is too small
+    // in comparison to them, so we should be fine multiplying only this parts.
+    impl<T: Config> WeightToFeePolynomial for Pallet<T> {
+        type Balance = Balance;
+
+        fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
+            smallvec!(WeightToFeeCoefficient {
+                // 7_000_000 was the original coefficient taken as reference
+                coeff_integer: <Multiplier<T>>::get().saturating_mul_int(7_000_000),
+                coeff_frac: Perbill::zero(),
+                negative: false,
+                degree: 1,
+            })
+        }
+    }
 }

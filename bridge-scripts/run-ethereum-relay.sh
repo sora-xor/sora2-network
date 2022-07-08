@@ -1,3 +1,5 @@
+#!/bin/bash
+
 export RUST_LOG=info,relayer=debug 
 
 cargo run --bin relayer --release -- \

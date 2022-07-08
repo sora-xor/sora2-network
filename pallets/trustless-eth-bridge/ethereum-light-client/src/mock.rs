@@ -1,13 +1,14 @@
 // Mock runtime
 #![cfg(test)]
 use crate::{EthashProofData, EthereumHeader};
-use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::test_utils::BlockWithProofs;
 use bridge_types::types::{Message, Proof};
 use frame_support::parameter_types;
 use frame_support::traits::GenesisBuild;
 use frame_system as system;
 use sp_core::H256;
+use sp_keystore::{testing::KeyStore, KeystoreExt};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::MultiSignature;
@@ -39,7 +40,7 @@ pub mod mock_verifier {
             UncheckedExtrinsic = UncheckedExtrinsic,
         {
             System: frame_system::{Pallet, Call, Storage, Event<T>},
-            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>},
+            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
         }
     );
 
@@ -80,6 +81,10 @@ pub mod mock_verifier {
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
+        type UnsignedPriority = frame_support::traits::ConstU64<100>;
+        type UnsignedLongevity = frame_support::traits::ConstU64<100>;
+        type ImportSignature = Signature;
+        type Submitter = <Signature as Verify>::Signer;
     }
 }
 
@@ -138,6 +143,10 @@ pub mod mock_verifier_with_pow {
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
+        type UnsignedPriority = frame_support::traits::ConstU64<100>;
+        type UnsignedLongevity = frame_support::traits::ConstU64<100>;
+        type ImportSignature = Signature;
+        type Submitter = <Signature as Verify>::Signer;
     }
 }
 
@@ -199,6 +208,14 @@ pub fn ethereum_header_proof_from_file(block_num: u64, suffix: &str) -> Vec<Etha
     let filepath = fixture_path(&format!("{}{}_proof.json", block_num, suffix));
     BlockWithProofs::from_file(&filepath)
         .to_double_node_with_merkle_proof_vec(EthashProofData::from_values)
+}
+
+pub fn ethereum_header_mix_nonce_from_file(
+    block_num: u64,
+    suffix: &str,
+) -> bridge_types::ethashproof::MixNonce {
+    let filepath = fixture_path(&format!("{}{}_mix_nonce.json", block_num, suffix));
+    serde_json::from_reader(File::open(&filepath).unwrap()).unwrap()
 }
 
 pub fn message_with_receipt_proof(
@@ -275,7 +292,9 @@ pub fn new_tester_with_config<T: crate::Config>(
 
     GenesisBuild::<T>::assimilate_storage(&config, &mut storage).unwrap();
 
-    let ext: sp_io::TestExternalities = storage.into();
+    let keystore = KeyStore::new();
+    let mut ext: sp_io::TestExternalities = storage.into();
+    ext.register_extension(KeystoreExt(std::sync::Arc::new(keystore)));
     //ext.execute_with(|| <frame_system::Module<T>>::set_block_number();
     ext
 }

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 binary="./target/debug/framenode"
 
@@ -29,7 +29,6 @@ EOF
 eval "$getopt_code"
 
 #export RUST_LOG="beefy=info,ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
-#export RUST_LOG="debug,netlink_proto=info,afg=info,wasmtime_cranelift=info,libp2p_core=info,multistream_select=info"
 export RUST_LOG="info,runtime=debug"
 
 localid=`mktemp`

@@ -1,24 +1,38 @@
 use crate::mock::{
     child_of_genesis_ethereum_header, child_of_header, ethereum_header_from_file,
-    ethereum_header_proof_from_file, genesis_ethereum_block_hash, genesis_ethereum_header,
-    log_payload, message_with_receipt_proof, new_tester, new_tester_with_config,
-    receipt_root_and_proof, ropsten_london_header, ropsten_london_message, AccountId,
+    ethereum_header_mix_nonce_from_file, ethereum_header_proof_from_file,
+    genesis_ethereum_block_hash, genesis_ethereum_header, log_payload, message_with_receipt_proof,
+    new_tester, new_tester_with_config, receipt_root_and_proof, ropsten_london_header,
+    ropsten_london_message,
 };
-use bridge_types::network_params::NetworkConfig as EthNetworkConfig;
+use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::traits::Verifier as VerifierConfig;
-use bridge_types::U256;
+use bridge_types::{import_digest, EthNetworkId, U256};
+use frame_support::pallet_prelude::InvalidTransaction;
+use frame_support::unsigned::TransactionValidityError;
+use sp_core::sr25519::Pair as PairSr25519;
+use sp_core::Pair;
 
-use crate::mock::mock_verifier_with_pow;
+use crate::mock::{mock_verifier, mock_verifier_with_pow};
 
 use crate::mock::mock_verifier::{Origin, Test, Verifier};
 
 use crate::{
-    BestBlock, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers, HeadersByNumber,
-    PruningRange,
+    BestBlock, Call, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers,
+    HeadersByNumber, PruningRange,
 };
 use frame_support::{assert_err, assert_ok};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::DispatchError;
+use sp_runtime::traits::ValidateUnsigned;
+use sp_runtime::{MultiSignature, MultiSigner};
+
+fn digest_signature<T: crate::Config>(
+    signer: &PairSr25519,
+    network_id: &EthNetworkId,
+    header: &EthereumHeader,
+) -> MultiSignature {
+    sp_runtime::MultiSignature::Sr25519(signer.clone().sign(&import_digest(network_id, header)[..]))
+}
 
 #[test]
 fn it_tracks_highest_difficulty_ethereum_chain() {
@@ -30,18 +44,24 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
         child2.difficulty = 0x20000.into();
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            child1,
+            child1.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            child2,
+            child2.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child2),
         ));
 
         let (header_id, highest_difficulty) =
@@ -58,22 +78,28 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
         let child1_hash = child1.compute_hash();
         let mut child2 = child1.clone();
         // make child2 have a different hash to child1
-        child2.difficulty = 0x20000.into();
+        child2.difficulty = 0x20000i64.into();
         let child2_hash = child2.compute_hash();
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            child1,
+            child1.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            child2,
+            child2.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child2),
         ));
 
         assert!(<Headers<Test>>::contains_key(network_id, child1_hash));
@@ -110,13 +136,16 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         //   B2
         //   |
         //   B3
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                header,
+                header.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
         // Relies on DescendantsUntilFinalized = 2
@@ -155,19 +184,25 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         //       B3
         assert_err!(
             Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                block5,
+                block5.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block5),
             ),
             Error::<Test>::HeaderOnStaleFork,
         );
         assert_err!(
             Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                block6,
+                block6.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block6),
             ),
             Error::<Test>::AncientHeader,
         );
@@ -184,7 +219,7 @@ fn it_prunes_ethereum_headers_correctly() {
         let block3 = child_of_header(&block2);
         let block3_hash = block3.compute_hash();
         let mut block4 = child_of_genesis_ethereum_header();
-        block4.difficulty = 2.into();
+        block4.difficulty = 2i64.into();
         let block4_hash = block4.compute_hash();
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
@@ -196,13 +231,16 @@ fn it_prunes_ethereum_headers_correctly() {
         //   B2
         //   |
         //   B3
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                header,
+                header.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
 
@@ -291,19 +329,29 @@ fn it_imports_ethereum_header_only_once() {
         let child_for_reimport = child.clone();
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            child,
+            child.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child),
         ));
         assert_err!(
             Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                child_for_reimport,
+                child_for_reimport.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &child_for_reimport
+                ),
             ),
             Error::<Test>::DuplicateHeader,
         );
@@ -311,17 +359,34 @@ fn it_imports_ethereum_header_only_once() {
 }
 
 #[test]
-fn it_rejects_unsigned_ethereum_header() {
+fn it_rejects_wrong_signature() {
     new_tester::<Test>().execute_with(|| {
         let child = child_of_genesis_ethereum_header();
-        assert_err!(
-            Verifier::import_header(
-                Origin::none(),
-                EthNetworkConfig::Ropsten.chain_id(),
-                child,
-                Default::default()
-            ),
-            DispatchError::BadOrigin,
+        let ferdie = Keyring::Ferdie;
+        let signature_author = Keyring::Eve;
+        let child_of_child: EthereumHeader = Default::default();
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+
+        // We call pre_dispatch here because signature verification
+        // is performed only there; we don't do it second time in
+        // extrinsic itself
+        frame_support::assert_noop!(
+            Verifier::pre_dispatch(&Call::import_header {
+                network_id,
+                header: child.clone(),
+                proof: Default::default(),
+                mix_nonce: Default::default(),
+                // Signer/submitter does not match with signature
+                submitter: MultiSigner::from(ferdie.clone()),
+                signature: digest_signature::<mock_verifier::Test>(
+                    &signature_author.pair(),
+                    &network_id,
+                    &child_of_child
+                ),
+            }),
+            TransactionValidityError::Invalid(InvalidTransaction::Custom(
+                Error::<Test>::InvalidSignature.into()
+            ))
         );
     });
 }
@@ -334,13 +399,20 @@ fn it_rejects_ethereum_header_before_parent() {
         child_of_child.parent_hash = child.compute_hash();
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         assert_err!(
             Verifier::import_header(
-                Origin::signed(ferdie),
+                Origin::none(),
                 network_id,
-                child_of_child,
+                child_of_child.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &child_of_child
+                ),
             ),
             Error::<Test>::MissingParentHeader,
         );
@@ -359,22 +431,72 @@ fn it_validates_proof_of_work() {
     .execute_with(|| {
         let header1 = ethereum_header_from_file(11090291, "");
         let header1_proof = ethereum_header_proof_from_file(11090291, "");
+        let header1_mix_nonce = ethereum_header_mix_nonce_from_file(11090291, "");
         let header2 = ethereum_header_from_file(11090292, "");
         let network_id = EthNetworkConfig::Mainnet.chain_id();
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
-        assert_ok!(mock_verifier_with_pow::Verifier::import_header(
-            mock_verifier_with_pow::Origin::signed(ferdie.clone()),
-            network_id,
-            header1,
-            header1_proof,
-        ));
+        let ferdie = Keyring::Ferdie;
+
+        // Incorrect nonce
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::signed(ferdie),
+                mock_verifier_with_pow::Origin::none(),
                 network_id,
-                header2,
+                header1.clone(),
+                header1_proof.clone(),
                 Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier_with_pow::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &header1
+                ),
+            ),
+            Error::<mock_verifier_with_pow::Test>::InvalidHeader,
+        );
+
+        // Incorrect proof
+        assert_err!(
+            mock_verifier_with_pow::Verifier::import_header(
+                mock_verifier_with_pow::Origin::none(),
+                network_id,
+                header1.clone(),
+                Default::default(),
+                header1_mix_nonce.clone(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier_with_pow::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &header1
+                ),
+            ),
+            Error::<mock_verifier_with_pow::Test>::InvalidHeader,
+        );
+
+        assert_ok!(mock_verifier_with_pow::Verifier::import_header(
+            mock_verifier_with_pow::Origin::none(),
+            network_id,
+            header1.clone(),
+            header1_proof,
+            header1_mix_nonce,
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier_with_pow::Test>(&ferdie.pair(), &network_id, &header1),
+        ));
+
+        // Both proof & nonce are incorrect
+        assert_err!(
+            mock_verifier_with_pow::Verifier::import_header(
+                mock_verifier_with_pow::Origin::none(),
+                network_id,
+                header2.clone(),
+                Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier_with_pow::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &header2
+                ),
             ),
             Error::<mock_verifier_with_pow::Test>::InvalidHeader,
         );
@@ -393,14 +515,23 @@ fn it_rejects_ethereum_header_with_low_difficulty() {
     .execute_with(|| {
         let header = ethereum_header_from_file(11090292, "_low_difficulty");
         let header_proof = ethereum_header_proof_from_file(11090292, "_low_difficulty");
+        let header_mix_nonce = ethereum_header_mix_nonce_from_file(11090292, "_low_difficulty");
         let network_id = EthNetworkConfig::Ropsten.chain_id();
 
+        let ferdie = Keyring::Ferdie;
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::signed(Keyring::Ferdie.into()),
+                mock_verifier_with_pow::Origin::none(),
                 network_id,
-                header,
+                header.clone(),
                 header_proof,
+                header_mix_nonce,
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier_with_pow::Test>(
+                    &ferdie.pair(),
+                    &network_id,
+                    &header
+                ),
             ),
             Error::<mock_verifier_with_pow::Test>::InvalidHeader,
         );
@@ -508,7 +639,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         let block1_hash = block1.compute_hash();
         let mut block1_alt = child_of_genesis_ethereum_header();
         block1_alt.receipts_root = receipts_root;
-        block1_alt.difficulty = 2.into();
+        block1_alt.difficulty = 2i64.into();
         let block1_alt_hash = block1_alt.compute_hash();
         let block2_alt = child_of_header(&block1_alt);
         let block3_alt = child_of_header(&block2_alt);
@@ -524,12 +655,15 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
             Error::<Test>::MissingHeader,
         );
 
-        let ferdie: AccountId = Keyring::Ferdie.into();
+        let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            block1,
+            block1.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block1),
         ));
 
         // Header has been imported but not finalized
@@ -551,10 +685,13 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         //           B3_ALT
         for header in vec![block1_alt, block2_alt, block3_alt].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::signed(ferdie.clone()),
+                Origin::none(),
                 network_id,
-                header,
+                header.clone(),
                 Default::default(),
+                Default::default(),
+                MultiSigner::from(ferdie.clone()),
+                digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
         assert_eq!(
@@ -574,10 +711,13 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         );
 
         assert_ok!(Verifier::import_header(
-            Origin::signed(ferdie.clone()),
+            Origin::none(),
             network_id,
-            block4_alt,
+            block4_alt.clone(),
             Default::default(),
+            Default::default(),
+            MultiSigner::from(ferdie.clone()),
+            digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block4_alt),
         ));
 
         // A finalized header at a newer height exists, but block1 isn't its ancestor
@@ -606,13 +746,20 @@ fn test_register_network() {
             U256::zero(),
         ));
 
-        let caller: AccountId = Keyring::Ferdie.into();
+        let caller = Keyring::Ferdie;
         let header = child_of_genesis_ethereum_header();
         assert_ok!(Verifier::import_header(
-            Origin::signed(caller),
+            Origin::none(),
             EthNetworkConfig::Sepolia.chain_id(),
-            header,
-            Default::default()
+            header.clone(),
+            Default::default(),
+            Default::default(),
+            MultiSigner::from(caller.clone()),
+            digest_signature::<mock_verifier::Test>(
+                &caller.pair(),
+                &EthNetworkConfig::Sepolia.chain_id(),
+                &header
+            ),
         ));
     });
 }

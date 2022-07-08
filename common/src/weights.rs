@@ -32,12 +32,8 @@ use frame_support::parameter_types;
 use frame_support::weights::constants::{
     BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
 };
-use frame_support::weights::{
-    DispatchClass, Pays, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
-    WeightToFeePolynomial,
-};
+use frame_support::weights::{DispatchClass, Pays, Weight};
 use frame_system::limits;
-use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_std::marker::PhantomData;
 
@@ -88,21 +84,6 @@ parameter_types! {
     pub const TransactionByteFee: Balance = 0;
 }
 
-pub struct WeightToFixedFee;
-
-impl WeightToFeePolynomial for WeightToFixedFee {
-    type Balance = Balance;
-
-    fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-        smallvec!(WeightToFeeCoefficient {
-            coeff_integer: 7_000_000,
-            coeff_frac: Perbill::zero(),
-            negative: false,
-            degree: 1,
-        })
-    }
-}
-
 #[inline(always)]
 pub fn pays_no_with_maybe_weight<E: Into<DispatchError>>(
     result: Result<Option<Weight>, E>,
@@ -125,35 +106,5 @@ pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
     DispatchErrorWithPostInfo {
         post_info: Pays::No.into(),
         error: err.into(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::balance;
-    use super::*;
-    use frame_support::weights::{Weight, WeightToFee};
-
-    type Fee = WeightToFixedFee;
-
-    #[test]
-    fn weight_to_fixed_fee_works() {
-        assert_eq!(Fee::weight_to_fee(&100_000_000_000), balance!(0.7));
-        assert_eq!(Fee::weight_to_fee(&500_000_000), balance!(0.0035));
-        assert_eq!(Fee::weight_to_fee(&72_000_000), balance!(0.000504));
-        assert_eq!(Fee::weight_to_fee(&210_200_000_000), balance!(1.4714));
-    }
-
-    #[test]
-    fn weight_to_fixed_fee_does_not_underflow() {
-        assert_eq!(Fee::weight_to_fee(&0), 0);
-    }
-
-    #[test]
-    fn weight_to_fixed_fee_does_not_overflow() {
-        assert_eq!(
-            Fee::weight_to_fee(&Weight::max_value()),
-            129127208515966861305000000
-        );
     }
 }

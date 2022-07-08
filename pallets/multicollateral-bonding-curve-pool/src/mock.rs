@@ -35,7 +35,7 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, DAI,
     DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -92,9 +92,6 @@ pub fn get_pool_reserves_account_id() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
-    "0200060000000000000000000000000000000000000000000000000000000111"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -691,6 +688,88 @@ impl ExtBuilder {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn bench_init() -> Self {
+        Self {
+            endowed_accounts: vec![
+                (
+                    alice(),
+                    XOR,
+                    balance!(350000),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    VAL,
+                    balance!(500000),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(100),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100000),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+            ],
+            dex_list: vec![(
+                DEX_A_ID,
+                DEXInfo {
+                    base_asset_id: GetBaseAssetId::get(),
+                    is_public: true,
+                },
+            )],
+            initial_permission_owners: vec![
+                (INIT_DEX, Scope::Unlimited, vec![alice()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![alice()]),
+            ],
+            initial_permissions: vec![
+                (
+                    alice(),
+                    Scope::Unlimited,
+                    vec![INIT_DEX, permissions::MINT, permissions::BURN],
+                ),
+                (
+                    alice(),
+                    Scope::Limited(hash(&DEX_A_ID)),
+                    vec![MANAGE_DEX, permissions::MINT, permissions::BURN],
+                ),
+                (
+                    assets_owner(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    free_reserves_account(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+            ],
+            reference_asset_id: USDT,
+        }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -772,6 +851,108 @@ impl ExtBuilder {
                 .into_iter()
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        t.into()
+    }
+
+    #[allow(dead_code)]
+    pub fn build_for_benchmarks(self) -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Runtime>()
+            .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .chain(vec![
+                    (bob(), 0),
+                    (assets_owner(), 0),
+                    (incentives_account(), 0),
+                    (free_reserves_account(), 0),
+                ])
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        crate::GenesisConfig::<Runtime> {
+            distribution_accounts: Default::default(),
+            reserves_account_id: Default::default(),
+            reference_asset_id: self.reference_asset_id,
+            incentives_account_id: Some(incentives_account()),
+            initial_collateral_assets: Default::default(),
+            free_reserves_account_id: Some(free_reserves_account()),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                    (
+                        asset_id, account_id, symbol, name, precision, 100000, true, None, None,
+                    )
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .into_iter()
+                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: DAI,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: VAL,
+                    },
+                ),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();

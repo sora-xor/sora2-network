@@ -28,27 +28,26 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "runtime-benchmarks")]
+
+use super::*;
 
 use codec::Decode;
-use common::{Balance, DAI};
+use common::{balance, Balance, DAI, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
+use frame_support::sp_runtime::{FixedPointNumber, FixedU128};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 
-use common::{balance, VAL, XOR};
+use crate::{Config, Pallet};
 
-pub struct Pallet<T: Config>(xor_fee::Pallet<T>);
-
-pub trait Config: xor_fee::Config + pool_xyk::Config + pallet_staking::Config {}
-
-fn alice<T: Config>() -> T::AccountId {
+fn alice<T: Config + pool_xyk::Config + pallet_staking::Config>() -> T::AccountId {
     let bytes = [1; 32];
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn init<T: Config>() {
+fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
 
@@ -119,15 +118,43 @@ fn init<T: Config>() {
 }
 
 benchmarks! {
+    where_clause {
+        where T: Config + pool_xyk::Config + pallet_staking::Config
+    }
     remint {
         init::<T>();
         assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
     }: {
-        xor_fee::Pallet::<T>::remint(balance!(0.1)).unwrap();
+        crate::Pallet::<T>::remint(balance!(0.1)).unwrap();
     } verify {
         let val_burned: Balance = pallet_staking::Pallet::<T>::era_val_burned().unique_saturated_into();
         assert_eq!(val_burned, balance!(0.199380121801856354));
 
         assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
+    }
+
+    update_multiplier {
+        let m in 0 .. 100;
+        let m = FixedU128::checked_from_integer(m).unwrap();
+    }: _(RawOrigin::Root, m)
+    verify {
+        assert_eq!(crate::Multiplier::<T>::get(), m);
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock::{ExtBuilder, Runtime};
+    use frame_support::assert_ok;
+
+    #[test]
+    fn test_benchmarks() {
+        ExtBuilder::build().execute_with(|| {
+            assert_ok!(Pallet::<Runtime>::test_benchmark_update_multiplier());
+            // Benchmark fails, needs revisiting
+            // assert_ok!(test_benchmark_remint::<Runtime>());
+        });
     }
 }

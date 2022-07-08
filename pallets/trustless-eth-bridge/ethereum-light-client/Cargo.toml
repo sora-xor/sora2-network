@@ -29,13 +29,14 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 
 bridge-types = { path = "../types", default-features = false }
 
-ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25-no-std", default-features = false }
+ethash = { git = "https://github.com/vovac12/ethash", branch = "polkadot-v0.9.25", default-features = false }
 
 common = { path = "../../../common", default-features = false }
 
 [dev-dependencies]
 bridge-types = { path = "../types", features = ["test"] }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 hex-literal = { version = "0.3.1" }
 serde_json = "1.0"
 

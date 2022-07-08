@@ -36,8 +36,8 @@ pub mod runtime {
     use ::beefy_primitives::crypto::Public;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
-    #[subxt(substitute_type = "bridge_types::network_params::NetworkConfig")]
-    use ::bridge_types::network_params::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
+    use ::bridge_types::network_config::NetworkConfig;
     #[subxt(substitute_type = "bridge_types::types::ChannelId")]
     use ::bridge_types::types::ChannelId;
     #[subxt(substitute_type = "bridge_types::types::Message")]
@@ -70,6 +70,10 @@ pub mod runtime {
     use ::subxt::sp_core::H512;
     #[subxt(substitute_type = "primitive_types::U256")]
     use ::subxt::sp_core::U256;
+    #[subxt(substitute_type = "sp_runtime::MultiSignature")]
+    use ::subxt::sp_runtime::MultiSignature;
+    #[subxt(substitute_type = "sp_runtime::MultiSigner")]
+    use ::subxt::sp_runtime::MultiSigner;
 }
 
 pub use config::DefaultConfig;
