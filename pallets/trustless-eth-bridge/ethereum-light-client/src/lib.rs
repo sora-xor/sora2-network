@@ -723,10 +723,7 @@ pub mod pallet {
             network_id: EthNetworkId,
             new_header: &EthereumHeader,
         ) -> DispatchResult {
-            match Self::validate_header_difficulty(network_id, new_header) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(e.into()),
-            }
+            Self::validate_header_difficulty(network_id, new_header).map_err(|e| e.into())
         }
 
         // Import a new, validated Ethereum header
