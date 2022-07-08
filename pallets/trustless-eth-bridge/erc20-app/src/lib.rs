@@ -31,7 +31,6 @@ mod tests;
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::EnsureOrigin;
-use frame_support::transactional;
 use frame_system::ensure_signed;
 use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
@@ -166,7 +165,7 @@ pub mod pallet {
          */
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-        #[transactional]
+
         pub fn mint(
             origin: OriginFor<T>,
             token: H160,
@@ -210,7 +209,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
-        #[transactional]
+
         pub fn register_asset_internal(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -235,7 +234,7 @@ pub mod pallet {
 				ChannelId::Incentivized => <T as Config>::WeightInfo::burn_incentivized_channel(),
 			}
 		})]
-        #[transactional]
+
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -284,7 +283,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-        #[transactional]
+
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -328,7 +327,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-        #[transactional]
+
         pub fn register_existing_erc20_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -358,7 +357,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
-        #[transactional]
+
         pub fn register_native_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -390,7 +389,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
-        #[transactional]
+
         pub fn register_native_app(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -407,7 +406,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_app())]
-        #[transactional]
+
         pub fn register_erc20_app(
             origin: OriginFor<T>,
             network_id: EthNetworkId,

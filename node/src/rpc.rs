@@ -145,13 +145,13 @@ where
     B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
-    use beefy_gadget_rpc::{BeefyApiServer, BeefyRpcHandler};
+    use beefy_gadget_rpc::{Beefy, BeefyApiServer};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
-    use pallet_mmr_rpc::{MmrApiServer, MmrRpc};
-    use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
-    use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
+    use pallet_mmr_rpc::{Mmr, MmrApiServer};
+    use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+    use substrate_frame_rpc_system::{System, SystemApiServer};
     // use farming_rpc::*;
     use basic_channel_rpc::{BasicChannelAPIServer, BasicChannelClient};
     use incentivized_channel_rpc::{IncentivizedChannelAPIServer, IncentivizedChannelClient};
@@ -171,12 +171,12 @@ where
         beefy,
     } = deps;
 
-    io.merge(SystemRpc::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
-    io.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
-    io.merge(MmrRpc::new(client.clone()).into_rpc())?;
+    io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+    io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+    io.merge(Mmr::new(client.clone()).into_rpc())?;
 
     io.merge(
-        BeefyRpcHandler::<Block>::new(
+        Beefy::<Block>::new(
             beefy.beefy_commitment_stream,
             beefy.beefy_best_block_stream,
             beefy.subscription_executor,

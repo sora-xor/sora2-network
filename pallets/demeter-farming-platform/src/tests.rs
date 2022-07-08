@@ -22,7 +22,7 @@ mod tests {
         let util: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
             "007348eb8f0f3cec730fbf5eec1b6a842c54d1df8bed75a9df084d5ee013e814"
         ));
-        let pallet_account = PalletId(*b"deofarms").into_account();
+        let pallet_account = PalletId(*b"deofarms").into_account_truncating();
 
         ext.execute_with(|| {
             assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
@@ -768,7 +768,7 @@ mod tests {
                 balance!(2990)
             );
 
-            let pallet_account = PalletId(*b"deofarms").into_account();
+            let pallet_account = PalletId(*b"deofarms").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1939,7 +1939,7 @@ mod tests {
                 is_core
             ));
 
-            let pallet_account = PalletId(*b"deofarms").into_account();
+            let pallet_account = PalletId(*b"deofarms").into_account_truncating();
             assert_ok!(assets::Pallet::<Runtime>::transfer_from(
                 &util,
                 &ALICE,

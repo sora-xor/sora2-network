@@ -24,7 +24,7 @@ impl ElementData {
         self
     }
 
-    fn hash(&self) -> H128 {
+    pub fn hash(&self) -> H128 {
         let data = self.clone().conventional();
         H128::from_slice(&sha2::Sha256::digest(data).as_slice()[16..])
     }
@@ -62,7 +62,7 @@ impl AsMut<[u8]> for ElementData {
     }
 }
 
-fn sha256_hash(a: H128, b: H128) -> H128 {
+pub fn sha256_hash(a: H128, b: H128) -> H128 {
     let mut data = H512::zero();
     data.as_fixed_bytes_mut()[16..32].copy_from_slice(a.as_bytes());
     data.as_fixed_bytes_mut()[48..].copy_from_slice(b.as_bytes());

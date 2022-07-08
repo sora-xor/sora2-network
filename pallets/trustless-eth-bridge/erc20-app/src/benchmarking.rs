@@ -12,7 +12,7 @@ use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-const BASE_NETWORK_ID: EthNetworkId = 12123;
+pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
     where_clause {where T: basic_channel::outbound::Config + incentivized_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}

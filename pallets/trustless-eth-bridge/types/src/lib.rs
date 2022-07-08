@@ -7,6 +7,7 @@ pub mod ethashproof;
 pub mod header;
 pub mod log;
 mod mpt;
+pub mod network_config;
 pub mod receipt;
 pub mod traits;
 pub mod types;
@@ -14,7 +15,10 @@ pub mod types;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 
+use codec::Encode;
 pub use ethereum_types::{Address, H160, H256, H64, U256};
+use sp_std::vec;
+use sp_std::vec::Vec;
 
 pub use header::{Header, HeaderId};
 pub use log::Log;
@@ -42,6 +46,17 @@ impl From<ethabi::Error> for DecodeError {
     }
 }
 
-pub type EthNetworkId = u32;
+pub type EthNetworkId = U256;
 
 pub const CHANNEL_INDEXING_PREFIX: &'static [u8] = b"commitment";
+
+pub fn import_digest(network_id: &EthNetworkId, header: &Header) -> Vec<u8>
+where
+    EthNetworkId: Encode,
+    Header: Encode,
+{
+    let mut digest = vec![];
+    network_id.encode_to(&mut digest);
+    header.encode_to(&mut digest);
+    digest
+}

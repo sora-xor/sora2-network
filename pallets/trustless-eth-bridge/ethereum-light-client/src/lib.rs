@@ -34,13 +34,14 @@ use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log;
 use frame_support::traits::Get;
-use frame_system::ensure_signed;
+use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use bridge_types::difficulty::calc_difficulty;
-pub use bridge_types::difficulty::DifficultyConfig as EthereumDifficultyConfig;
-use bridge_types::ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, EthashProver};
+pub use bridge_types::difficulty::ForkConfig as EthereumDifficultyConfig;
+use bridge_types::ethashproof::{
+    DoubleNodeWithMerkleProof as EthashProofData, EthashProver, MixNonce,
+};
 use bridge_types::traits::Verifier;
 use bridge_types::types::{Message, Proof};
 pub use bridge_types::Header as EthereumHeader;
@@ -79,6 +80,9 @@ struct PruningRange {
     pub oldest_block_to_keep: u64,
 }
 
+pub type Submitter<T> =
+    <<<T as Config>::ImportSignature as Verify>::Signer as IdentifyAccount>::AccountId;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -86,9 +90,11 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::network_config::{Consensus, NetworkConfig as EthNetworkConfig};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{IdentifyAccount, Verify};
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -106,15 +112,28 @@ pub mod pallet {
         /// needs to have in order to be considered final.
         #[pallet::constant]
         type DescendantsUntilFinalized: Get<u8>;
-        /// Ethereum network parameters for header difficulty
-        #[pallet::constant]
-        type DifficultyConfig: Get<EthereumDifficultyConfig>;
         /// Determines whether Ethash PoW is verified for headers
         /// NOTE: Should only be false for dev
         #[pallet::constant]
         type VerifyPoW: Get<bool>;
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
+
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
+
+        type ImportSignature: Verify<Signer = Self::Submitter> + Decode + Member + Encode + TypeInfo;
+        type Submitter: IdentifyAccount<AccountId = Self::AccountId>
+            + Decode
+            + Member
+            + Encode
+            + TypeInfo
+            + Clone;
     }
 
     #[pallet::event]
@@ -123,6 +142,7 @@ pub mod pallet {
         Finalized(EthNetworkId, EthereumHeaderId),
     }
 
+    #[derive(PartialEq, Clone)]
     #[pallet::error]
     pub enum Error<T> {
         /// Header is same height or older than finalized block (we don't support forks).
@@ -150,6 +170,10 @@ pub mod pallet {
         NetworkAlreadyExists,
         /// This should never be returned - indicates a bug
         Unknown,
+        /// Unsupported consensus engine
+        ConsensusNotSupported,
+        /// Signature provided inside unsigned extrinsic is not correct
+        InvalidSignature,
     }
 
     #[pallet::hooks]
@@ -170,6 +194,11 @@ pub mod pallet {
     pub(super) type FinalizedBlock<T: Config> =
         StorageMap<_, Identity, EthNetworkId, EthereumHeaderId, OptionQuery>;
 
+    /// Network config
+    #[pallet::storage]
+    pub(super) type NetworkConfig<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, EthNetworkConfig, OptionQuery>;
+
     /// Map of imported headers by hash.
     #[pallet::storage]
     pub(super) type Headers<T: Config> = StorageDoubleMap<
@@ -189,7 +218,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub initial_networks: Vec<(EthNetworkId, EthereumHeader, U256)>,
+        pub initial_networks: Vec<(EthNetworkConfig, EthereumHeader, U256)>,
     }
 
     #[cfg(feature = "std")]
@@ -204,9 +233,10 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            for (network_id, header, difficulty) in &self.initial_networks {
+            for (network_config, header, difficulty) in &self.initial_networks {
+                NetworkConfig::<T>::insert(network_config.chain_id(), network_config);
                 Pallet::<T>::initialize_storage_inner(
-                    *network_id,
+                    network_config.chain_id(),
                     vec![header.clone()],
                     difficulty.clone(),
                     0, // descendants_until_final = 0 forces the initial header to be finalized
@@ -214,7 +244,7 @@ pub mod pallet {
                 .unwrap();
 
                 <BlocksToPrune<T>>::insert(
-                    network_id,
+                    network_config.chain_id(),
                     PruningRange {
                         oldest_unpruned_block: header.number,
                         oldest_block_to_keep: header.number,
@@ -229,15 +259,24 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_config: EthNetworkConfig,
             header: EthereumHeader,
             initial_difficulty: U256,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            let network_id = network_config.chain_id();
             ensure!(
-                <BestBlock<T>>::contains_key(network_id) == false,
+                <NetworkConfig<T>>::contains_key(network_id) == false,
                 Error::<T>::NetworkAlreadyExists
             );
+            ensure!(
+                matches!(
+                    network_config.consensus(),
+                    Consensus::Ethash { .. } | Consensus::Etchash { .. }
+                ),
+                Error::<T>::ConsensusNotSupported
+            );
+            NetworkConfig::<T>::insert(network_id, network_config);
             Pallet::<T>::initialize_storage_inner(
                 network_id,
                 vec![header.clone()],
@@ -256,6 +295,21 @@ pub mod pallet {
             );
             Ok(())
         }
+
+        #[pallet::weight(T::WeightInfo::update_difficulty_config())]
+        pub fn update_difficulty_config(
+            origin: OriginFor<T>,
+            network_config: EthNetworkConfig,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                NetworkConfig::<T>::contains_key(network_config.chain_id()),
+                Error::<T>::NetworkNotFound
+            );
+            NetworkConfig::<T>::insert(network_config.chain_id(), network_config);
+            Ok(())
+        }
+
         /// Import a single Ethereum PoW header.
         ///
         /// Note that this extrinsic has a very high weight. The weight is affected by the
@@ -274,22 +328,26 @@ pub mod pallet {
             network_id: EthNetworkId,
             header: EthereumHeader,
             proof: Vec<EthashProofData>,
+            mix_nonce: MixNonce,
+            submitter: <T as Config>::Submitter,
+            // Signature was already verified in `validate_unsigned()`
+            _signature: <T as Config>::ImportSignature,
         ) -> DispatchResult {
-            let sender = ensure_signed(origin)?;
+            ensure_none(origin)?;
 
             log::trace!(
                 target: "ethereum-light-client",
-                "Received header {}. Starting validation",
+                "Received header {}. Starting import validation",
                 header.number,
             );
 
-            if let Err(err) = Self::validate_header_to_import(network_id, &header, &proof) {
+            if let Err(err) = Self::validate_header(network_id, &header, &proof, &mix_nonce, true) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Validation for header {} returned error. Skipping import",
                     header.number,
                 );
-                return Err(err);
+                return Err(err.into());
             }
 
             log::trace!(
@@ -298,7 +356,9 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) = Self::import_validated_header(network_id, &sender, &header) {
+            if let Err(err) =
+                Self::import_validated_header(network_id, &submitter.into_account(), &header)
+            {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Import of header {} failed",
@@ -307,9 +367,9 @@ pub mod pallet {
                 return Err(err);
             }
 
-            log::trace!(
+            log::debug!(
                 target: "ethereum-light-client",
-                "Import of header {} succeeded!",
+                "Imported header {}!",
                 header.number,
             );
 
@@ -317,13 +377,110 @@ pub mod pallet {
         }
     }
 
+    impl<T: Config> Into<u8> for Error<T> {
+        fn into(self) -> u8 {
+            match self {
+                Error::<T>::AncientHeader => 1,
+                Error::<T>::MissingHeader => 2,
+                Error::<T>::MissingParentHeader => 3,
+                Error::<T>::DuplicateHeader => 4,
+                Error::<T>::HeaderNotFinalized => 5,
+                Error::<T>::HeaderOnStaleFork => 6,
+                Error::<T>::InvalidHeader => 7,
+                Error::<T>::InvalidProof => 8,
+                Error::<T>::DecodeFailed => 9,
+                Error::<T>::NetworkNotFound => 10,
+                Error::<T>::NetworkAlreadyExists => 11,
+                Error::<T>::Unknown => 12,
+                Error::<T>::ConsensusNotSupported => 13,
+                Error::<T>::InvalidSignature => 14,
+                // Everything points to unreachable-ness (e.g. substrate macro definitions)
+                // https://github.com/paritytech/substrate/blob/158cdfd1a43a122f8cfbf70473fcd54a3b418f3d/frame/support/procedural/src/pallet/expand/call.rs#L235
+                Error::<T>::__Ignore(_, _) => unreachable!(),
+            }
+        }
+    }
+
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if let Call::import_header {
+                network_id,
+                header,
+                proof,
+                mix_nonce,
+                submitter,
+                signature,
+            } = call
+            {
+                // We try to do as much verification from import_header as possible
+                log::trace!(
+                    target: "ethereum-light-client",
+                    "Received header {}. Starting unsigned validation",
+                    header.number,
+                );
+                if !signature.verify(
+                    &bridge_types::import_digest(network_id, header)[..],
+                    &submitter.clone().into_account(),
+                ) {
+                    return InvalidTransaction::Custom(Error::<T>::InvalidSignature.into()).into();
+                }
+
+                // Duplicate requests are filtered by substrate itself, but changing submitter +
+                // signature pair bypasses this basic filtering. This leads to recalculation of one
+                // PoW proof multiple times (until header with such number gets accepted).
+                //
+                // Since it doesn't affect the whole network and the solution is unclear (offchain
+                // storage is inaccessible here) we decided to leave it.
+
+                // We can't check parent, since it is most likely not imported (in storage) yet
+                if let Err(err) =
+                    Self::validate_header(*network_id, header, proof, mix_nonce, false)
+                {
+                    log::warn!(
+                        target: "ethereum-light-client",
+                        "Validation for header {} returned error {:?}. Dropping extrinsic",
+                        header.number, err,
+                    );
+                    return InvalidTransaction::Custom(err.into()).into();
+                }
+
+                log::trace!(
+                    target: "ethereum-light-client",
+                    "Validation of header {} succeeded",
+                    header.number,
+                );
+
+                let validity = ValidTransaction::with_tag_prefix("ImportHeaderETH")
+                    .priority(T::UnsignedPriority::get())
+                    .longevity(T::UnsignedLongevity::get())
+                    .and_provides(header.number)
+                    .propagate(true);
+                validity.build()
+            } else {
+                log::warn!(
+                    target: "ethereum-light-client",
+                    "Unknown unsigned call, can't validate",
+                );
+                InvalidTransaction::Call.into()
+            }
+        }
+    }
+
     impl<T: Config> Pallet<T> {
         // Validate an Ethereum header for import
-        fn validate_header_to_import(
+        //
+        // Must be called at least once with `validate_ancestors` flag,
+        // for example in extrinsic dispatch
+        fn validate_header(
             network_id: EthNetworkId,
             header: &EthereumHeader,
             proof: &[EthashProofData],
-        ) -> DispatchResult {
+            mix_nonce: &MixNonce,
+            validate_ancestors: bool,
+        ) -> Result<(), Error<T>> {
             let hash = header.compute_hash();
             ensure!(
                 !<Headers<T>>::contains_key(network_id, hash),
@@ -333,45 +490,61 @@ pub mod pallet {
             let finalized_header_id =
                 <FinalizedBlock<T>>::get(network_id).ok_or(Error::<T>::NetworkNotFound)?;
 
-            let parent = <Headers<T>>::get(network_id, header.parent_hash)
-                .ok_or(Error::<T>::MissingParentHeader)?
-                .header;
+            let parent = <Headers<T>>::get(network_id, header.parent_hash).map(|x| x.header);
+            // We require parent to be present if we validate ancestors
+            if validate_ancestors {
+                if let None = parent {
+                    return Err(Error::<T>::MissingParentHeader);
+                }
+            }
 
             ensure!(
                 header.number > finalized_header_id.number,
                 Error::<T>::AncientHeader,
             );
 
-            // This iterates over DescendantsUntilFinalized headers in both the worst and
-            // average case. Since we know that the parent header was imported successfully,
-            // we know that the newest finalized header is at most, and on average,
-            // DescendantsUntilFinalized headers before the parent.
-            let ancestor_at_finalized_number =
-                ancestry::<T>(network_id.clone(), header.parent_hash)
-                    .find(|(_, ancestor)| ancestor.number == finalized_header_id.number);
-            // We must find a matching ancestor above since AncientHeader check ensures
-            // that iteration starts at or after the latest finalized block.
-            ensure!(ancestor_at_finalized_number.is_some(), Error::<T>::Unknown,);
-            ensure!(
-                ancestor_at_finalized_number.unwrap().0 == finalized_header_id.hash,
-                Error::<T>::HeaderOnStaleFork,
-            );
+            if validate_ancestors {
+                // This iterates over DescendantsUntilFinalized headers in both the worst and
+                // average case. Since we know that the parent header was imported successfully,
+                // we know that the newest finalized header is at most, and on average,
+                // DescendantsUntilFinalized headers before the parent.
+                let ancestor_at_finalized_number =
+                    ancestry::<T>(network_id.clone(), header.parent_hash)
+                        .find(|(_, ancestor)| ancestor.number == finalized_header_id.number);
+                // We must find a matching ancestor above since AncientHeader check ensures
+                // that iteration starts at or after the latest finalized block.
+                ensure!(ancestor_at_finalized_number.is_some(), Error::<T>::Unknown,);
+                ensure!(
+                    ancestor_at_finalized_number.unwrap().0 == finalized_header_id.hash,
+                    Error::<T>::HeaderOnStaleFork,
+                );
+            }
 
             if !T::VerifyPoW::get() {
                 return Ok(());
             }
 
-            // See YellowPaper formula (50) in section 4.3.4
-            ensure!(
-                header.gas_used <= header.gas_limit
-                    && header.gas_limit < parent.gas_limit * 1025 / 1024
-                    && header.gas_limit > parent.gas_limit * 1023 / 1024
-                    && header.gas_limit >= 5000u64.into()
-                    && header.timestamp > parent.timestamp
-                    && header.number == parent.number + 1
-                    && header.extra_data.len() <= 32,
-                Error::<T>::InvalidHeader,
-            );
+            if let Some(parent) = &parent {
+                // See YellowPaper formula (50) in section 4.3.4
+                ensure!(
+                    header.gas_used <= header.gas_limit
+                        && header.gas_limit < parent.gas_limit * 1025 / 1024
+                        && header.gas_limit > parent.gas_limit * 1023 / 1024
+                        && header.gas_limit >= 5000u64.into()
+                        && header.timestamp > parent.timestamp
+                        && header.number == parent.number + 1
+                        && header.extra_data.len() <= 32,
+                    Error::<T>::InvalidHeader,
+                );
+            } else {
+                // Maximum that we can verify without having parent
+                ensure!(
+                    header.gas_used <= header.gas_limit
+                        && header.gas_limit >= 5000u64.into()
+                        && header.extra_data.len() <= 32,
+                    Error::<T>::InvalidHeader,
+                );
+            }
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -379,13 +552,32 @@ pub mod pallet {
                 header.number
             );
 
-            let difficulty_config = T::DifficultyConfig::get();
-            let header_difficulty = calc_difficulty(&difficulty_config, header.timestamp, &parent)
-                .map_err(|_| Error::<T>::InvalidHeader)?;
-            ensure!(
-                header.difficulty == header_difficulty,
-                Error::<T>::InvalidHeader,
-            );
+            let consensus = NetworkConfig::<T>::get(network_id)
+                .ok_or(Error::<T>::NetworkNotFound)?
+                .consensus();
+            if let Some(parent) = &parent {
+                let header_difficulty = match consensus {
+                    Consensus::Ethash { fork_config } => {
+                        fork_config.calc_difficulty(header.timestamp, &parent)
+                    }
+                    Consensus::Etchash { fork_config } => {
+                        fork_config.calc_difficulty(header.timestamp, &parent)
+                    }
+                    _ => return Err(Error::<T>::ConsensusNotSupported.into()),
+                }
+                .map_err(|err| {
+                    log::debug!(
+                        target: "ethereum-light-client",
+                        "Header {} failed difficulty calculation: {}",
+                        header.number, err
+                    );
+                    Error::<T>::InvalidHeader
+                })?;
+                ensure!(
+                    header.difficulty == header_difficulty,
+                    Error::<T>::InvalidHeader,
+                );
+            }
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -395,14 +587,39 @@ pub mod pallet {
 
             let header_mix_hash = header.mix_hash().ok_or(Error::<T>::InvalidHeader)?;
             let header_nonce = header.nonce().ok_or(Error::<T>::InvalidHeader)?;
-            let (mix_hash, result) = EthashProver::new()
+
+            log::trace!(target: "ethereum-light-client", "Prevalidating PoW with mix nonce");
+            ensure!(
+                H256::from(mix_nonce.as_bytes()) == header_mix_hash,
+                Error::<T>::InvalidHeader,
+            );
+            let prover = EthashProver::new(consensus.calc_epoch_length(header.number));
+            let result = prover.hashimoto_pre_validate(
+                header.compute_partial_hash(),
+                header_nonce,
+                mix_nonce,
+            );
+            ensure!(
+                U256::from(result.0) < ethash::cross_boundary(header.difficulty),
+                Error::<T>::InvalidHeader,
+            );
+
+            log::trace!(target: "ethereum-light-client", "Calculating hashimoto_merkle");
+            let (mix, result) = EthashProver::new(consensus.calc_epoch_length(header.number))
                 .hashimoto_merkle(
                     header.compute_partial_hash(),
                     header_nonce,
                     header.number,
                     proof,
                 )
-                .map_err(|_| Error::<T>::InvalidHeader)?;
+                .map_err(|err| {
+                    log::debug!(
+                        target: "ethereum-light-client",
+                        "Header {} failed PoW calculation: {:?}",
+                        header.number, err
+                    );
+                    Error::<T>::InvalidHeader
+                })?;
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -410,7 +627,7 @@ pub mod pallet {
                 header.number
             );
             ensure!(
-                mix_hash == header_mix_hash
+                H256::from(mix.as_bytes()) == header_mix_hash
                     && U256::from(result.0) < ethash::cross_boundary(header.difficulty),
                 Error::<T>::InvalidHeader,
             );

@@ -1,4 +1,4 @@
-#!/usr/bin/bash -v
+#!/bin/bash -v
 
 cargo run --bin relayer --release -- \
     --substrate-url ws://localhost:9944 \

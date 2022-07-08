@@ -14,16 +14,16 @@ framenode-runtime = { path = "../../runtime", default-features = false, features
     "private-net",
 ] }
 hex = "0.4.3"
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 [dependencies]
 common = { path = "../../common" }
-subxt = { git = "https://github.com/vovac12/subxt", rev = "767a86196a41cb991d06e67319580198abdbcd71" }
+subxt = { git = "https://github.com/vovac12/subxt", branch = "polkadot-v0.9.25" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
-jsonrpsee = { version = "0.13", features = [
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+jsonrpsee = { version = "0.14", features = [
     "macros",
     "ws-client",
     "http-client",

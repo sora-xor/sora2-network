@@ -1,10 +1,13 @@
 use crate::ethereum::make_header;
 use crate::ethereum::proof_loader::ProofLoader;
 use crate::prelude::*;
-use bridge_types::EthNetworkId;
+use bridge_types::{network_config::Consensus, EthNetworkId};
 use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
 use substrate_gen::{runtime, DefaultConfig};
+use subxt::extrinsic::Signer;
+use subxt::sp_runtime::traits::Hash;
+use subxt::Config;
 use subxt::TransactionProgress;
 
 #[derive(Clone)]
@@ -13,6 +16,7 @@ pub struct Relay {
     eth: EthUnsignedClient,
     proof_loader: ProofLoader,
     chain_id: EthNetworkId,
+    consensus: Consensus,
 }
 
 impl Relay {
@@ -21,12 +25,21 @@ impl Relay {
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {
-        let chain_id = eth.get_chainid().await?.as_u32();
+        let chain_id = eth.get_chainid().await?;
+        let consensus = sub
+            .api()
+            .storage()
+            .ethereum_light_client()
+            .network_config(false, &chain_id, None)
+            .await?
+            .ok_or(anyhow!("Network is not registered"))?
+            .consensus();
         Ok(Self {
             sub,
             eth,
             chain_id,
             proof_loader,
+            consensus,
         })
     }
 
@@ -63,8 +76,9 @@ impl Relay {
                 while futures.len() > 10 {
                     if let Some(result) = futures.next().await {
                         // Rust can't infer type here for some reason
-                        let result: Result<(), _> = result;
-                        result.context("finalize import header transaction")?;
+                        let result: Result<u64, _> = result;
+                        let block_number = result.context("finalize import header transaction")?;
+                        debug!("Finalized block {} (pre)import", block_number);
                     }
                 }
                 let number = block.number.unwrap_or_default().as_u64();
@@ -92,8 +106,9 @@ impl Relay {
                 debug!("Import block {}", block.number.unwrap_or_default().as_u64());
                 while futures.len() > 10 {
                     if let Some(result) = futures.next().await {
-                        let result: Result<(), _> = result;
-                        result.context("finalize import header transaction")?;
+                        let result: Result<u64, _> = result;
+                        let block_number = result.context("finalize import header transaction")?;
+                        debug!("Finalized block {} (pre)import", block_number);
                     }
                 }
                 let number = block.number.unwrap_or_default().as_u64();
@@ -110,11 +125,12 @@ impl Relay {
         Ok(())
     }
 
-    async fn finalize_transaction<'a>(
+    async fn finalize_transaction<'a, T: Config>(
         &'a self,
-        progress: TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>,
+        progress: TransactionProgress<'a, T, runtime::DispatchError, runtime::Event>,
         block_number: u64,
-    ) -> AnyResult<()> {
+    ) -> AnyResult<u64> {
+        trace!("Finalizing transaction");
         match progress.wait_for_in_block().await?.wait_for_success().await {
             Err(
                 subxt::Error::Runtime(subxt::RuntimeError(runtime::DispatchError::Module(
@@ -130,12 +146,12 @@ impl Relay {
                     ..
                 }),
             ) if index == 93 && error == 3u32.to_le_bytes() => {
-                warn!("DublicateHeader {}", block_number);
-                return Ok(());
+                warn!("DuplicateHeader {}", block_number);
+                return Ok(block_number);
             }
             Err(subxt::Error::Rpc(subxt::rpc::RpcError::RequestTimeout)) => {
                 warn!("Request timeout {}", block_number);
-                return Ok(());
+                return Ok(block_number);
             }
             Err(err) => {
                 error!(
@@ -146,18 +162,26 @@ impl Relay {
             }
             _ => {}
         };
-        Ok(())
+        Ok(block_number)
     }
 
     async fn process_block<'a>(
         &'a self,
         block: Block<H256>,
     ) -> AnyResult<
-        Option<TransactionProgress<'a, DefaultConfig, runtime::DispatchError, runtime::Event>>,
+        Option<
+            TransactionProgress<
+                'a,
+                DefaultConfig,
+                sub_types::sp_runtime::DispatchError,
+                sub_runtime::Event,
+            >,
+        >,
     > {
         let nonce = block.nonce.unwrap_or_default();
         let header = make_header(block);
         debug!("Process ethereum header: {:?}", header);
+        trace!("Checking if block is already present");
         let has_block = self
             .sub
             .api()
@@ -168,20 +192,42 @@ impl Relay {
         if let Ok(Some(_)) = has_block {
             return Ok(None);
         }
-        let proof = self
+        trace!("Generating header proof");
+        let epoch_length = self.consensus.calc_epoch_length(header.number);
+        let (proof, mix_nonce) = self
             .proof_loader
-            .header_proof(header.clone(), nonce)
+            .header_proof(epoch_length, header.clone(), nonce)
             .await
             .context("generate header proof")?;
-        let result = self
+        trace!("Generated header proof");
+        let header_signature = self
+            .sub
+            .sign(&bridge_types::import_digest(&self.chain_id, &header)[..]);
+        let call = sub_types::framenode_runtime::Call::EthereumLightClient(
+            runtime::runtime_types::ethereum_light_client::pallet::Call::import_header {
+                network_id: self.chain_id,
+                header: header.clone(),
+                proof: proof.clone(),
+                mix_nonce,
+                submitter: self.sub.public_key(),
+                signature: header_signature,
+            },
+        );
+        let ext_encoded = subxt::Encoded(
+            sp_runtime::generic::UncheckedExtrinsic::<(), _, (), ()>::new_unsigned(call.clone())
+                .encode(),
+        );
+        let ext_hash = <DefaultConfig as Config>::Hashing::hash_of(&ext_encoded);
+        debug!("Sending ethereum header to substrate");
+        let subscription = self
             .sub
             .api()
-            .tx()
-            .ethereum_light_client()
-            .import_header(false, self.chain_id, header, proof)?
-            .sign_and_submit_then_watch_default(&self.sub)
+            .client
+            .rpc()
+            .watch_extrinsic(ext_encoded)
             .await
             .context("submit import header extrinsic")?;
-        Ok(Some(result))
+        let progress = TransactionProgress::new(subscription, &self.sub.api().client, ext_hash);
+        Ok(Some(progress))
     }
 }

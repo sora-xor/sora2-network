@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::{assert_approx_eq, assert_noop_msg, balance, PSWAP, VAL};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_ok;
 use hex_literal::hex;
 
 use crate::mock::*;
@@ -59,7 +59,7 @@ fn origin() -> Origin {
 #[test]
 fn claim_fails_signature_invalid() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
-        assert_noop!(
+        common::assert_noop_transactional!(
             Pallet::claim(
                 origin(),
                 hex!("bb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb").into(),
@@ -104,7 +104,7 @@ fn claim_fails_nothing_to_claim() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature: Vec<u8> = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
         assert_ok!(Pallet::claim(origin(), signature.clone()));
-        assert_noop!(Pallet::claim(origin(), signature), Error::NothingToClaim);
+        common::assert_noop_transactional!(Pallet::claim(origin(), signature), Error::NothingToClaim);
     });
 }
 
@@ -112,7 +112,7 @@ fn claim_fails_nothing_to_claim() {
 fn claim_fails_no_rewards() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature = hex!("6619441577e5173239a52ee52cc7d2eaf57b294defeb0a564e11c4e3c197a95574d81bd4bc747976c1e163be5adecf6bc6ceff69ef3ee2948ff90fdcaa02d5411c").into();
-        assert_noop!(Pallet::claim(origin(), signature), Error::AddressNotEligible);
+        common::assert_noop_transactional!(Pallet::claim(origin(), signature), Error::AddressNotEligible);
     });
 }
 

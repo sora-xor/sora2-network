@@ -37,7 +37,7 @@ use common::prelude::{Balance, SwapAmount};
 use common::{
     balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use pool_xyk::Call;
@@ -262,10 +262,10 @@ benchmarks! {
     verify {
         assert!(XYKPool::<T>::properties(asset_xor, asset_dot).is_some())
     }
-}
 
-impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Runtime
-);
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Runtime
+    );
+}

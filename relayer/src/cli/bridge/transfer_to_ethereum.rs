@@ -20,7 +20,7 @@ impl Command {
     pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
         let eth = args.get_unsigned_ethereum().await?;
         let sub = args.get_signed_substrate().await?;
-        let network_id = eth.get_chainid().await?.as_u32();
+        let network_id = eth.get_chainid().await?;
         let (_, native_asset_id) = sub
             .api()
             .storage()

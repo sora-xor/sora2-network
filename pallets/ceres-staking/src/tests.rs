@@ -25,7 +25,7 @@ mod tests {
             assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
 
             // Get staking pool account id
-            let staking_pool = PalletId(*b"cerstake").into_account();
+            let staking_pool = PalletId(*b"cerstake").into_account_truncating();
 
             // Check Alice's balance
             assert_eq!(
@@ -118,7 +118,7 @@ mod tests {
             assert_eq!(staking_info_alice.deposited, balance!(0));
             assert_eq!(staking_info_alice.rewards, balance!(0));
             // Check staking pool's balance
-            let staking_pool = PalletId(*b"cerstake").into_account();
+            let staking_pool = PalletId(*b"cerstake").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool)
                     .expect("Failed to query free balance."),

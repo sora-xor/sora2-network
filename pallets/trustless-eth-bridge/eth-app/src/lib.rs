@@ -19,7 +19,6 @@
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::EnsureOrigin;
-use frame_support::transactional;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_core::{H160, U256};
@@ -141,7 +140,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Users should burn their holdings to release funds on the Ethereum side
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-        #[transactional]
+
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -174,7 +173,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-        #[transactional]
+
         pub fn mint(
             origin: OriginFor<T>,
             sender: H160,
@@ -195,7 +194,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-        #[transactional]
+
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -225,7 +224,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-        #[transactional]
+
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,

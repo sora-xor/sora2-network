@@ -74,7 +74,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let token_locker = PalletId(*b"crstlock").into_account();
+            let token_locker = PalletId(*b"crstlock").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &token_locker)
                     .expect("Failed to query free balance."),
@@ -190,7 +190,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let token_locker = PalletId(*b"crstlock").into_account();
+            let token_locker = PalletId(*b"crstlock").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &token_locker)
                     .expect("Failed to query free balance."),

@@ -154,6 +154,26 @@ macro_rules! assert_approx_eq {
     }};
 }
 
+#[macro_export]
+macro_rules! storage_remove_all {
+    ($x:ty) => {{
+        let mut clear_result = <$x>::clear(u32::max_value(), None);
+        while let Some(cursor) = &clear_result.maybe_cursor {
+            clear_result = <$x>::clear(u32::max_value(), Some(cursor));
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_noop_transactional {
+    (
+		$x:expr,
+		$y:expr $(,)?
+	) => {
+        ::frame_support::assert_noop!($crate::with_transaction(|| { $x }), $y);
+    };
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

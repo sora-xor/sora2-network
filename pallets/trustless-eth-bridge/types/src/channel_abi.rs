@@ -1,6 +1,6 @@
 #![allow(deprecated)]
 
-use ethabi::{Function, Param, ParamType, Token};
+use ethabi::{Function, Param, ParamType, StateMutability, Token};
 use ethereum_types::H160;
 use frame_support::RuntimeDebug;
 use sp_std::prelude::*;
@@ -8,11 +8,13 @@ use sp_std::prelude::*;
 fn authorize_operator_function() -> Function {
     Function {
         name: "authorizeDefaultOperator".into(),
-        constant: false,
+        constant: None,
+        state_mutability: StateMutability::NonPayable,
         outputs: vec![],
         inputs: vec![Param {
             name: "operator".into(),
             kind: ParamType::Address,
+            internal_type: None,
         }],
     }
 }
@@ -20,11 +22,13 @@ fn authorize_operator_function() -> Function {
 fn revoke_operator_function() -> Function {
     Function {
         name: "revokeDefaultOperator".into(),
-        constant: false,
+        constant: None,
+        state_mutability: StateMutability::NonPayable,
         outputs: vec![],
         inputs: vec![Param {
             name: "operator".into(),
             kind: ParamType::Address,
+            internal_type: None,
         }],
     }
 }

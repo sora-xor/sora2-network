@@ -16,7 +16,7 @@ use codec::Encode;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::weights::Pays;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
 use std::str::FromStr;
@@ -455,7 +455,7 @@ fn should_not_import_incoming_request_twice() {
             LoadIncomingRequest::Transaction(load_incoming_transaction_request),
             incoming_transfer_result
         ));
-        assert_noop!(
+        common::assert_noop_transactional!(
             EthBridge::request_from_sidechain(
                 Origin::signed(alice),
                 hash,
@@ -817,7 +817,7 @@ fn should_not_register_and_finalize_incoming_request_twice() {
             Origin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
         ));
-        assert_noop!(
+        common::assert_noop_transactional!(
             EthBridge::register_incoming_request(
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
