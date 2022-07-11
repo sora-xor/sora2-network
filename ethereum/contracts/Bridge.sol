@@ -91,6 +91,11 @@ contract Bridge {
     receive() external payable {
         revert();
     }
+    
+    /*
+    Used only for migration
+    */
+    function receivePayment() external payable {}
 
     /**
      * Adds new token to whitelist.
@@ -144,7 +149,7 @@ contract Bridge {
         bytes32[] memory s
     )
     public
-    shouldBeInitialized shouldBePreparedForMigration {
+    shouldBeInitialized shouldNotBePreparedForMigration {
         require(preparedForMigration_ == false);
         require(address(this) == thisContractAddress);
         require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, _networkId)),
@@ -170,7 +175,7 @@ contract Bridge {
     function shutDownAndMigrate(
         address thisContractAddress,
         bytes32 salt,
-        address newContractAddress,
+        address payable newContractAddress,
         address[] calldata erc20nativeTokens,
         uint8[] memory v,
         bytes32[] memory r,
@@ -192,6 +197,7 @@ contract Bridge {
             IERC20 token = IERC20(erc20nativeTokens[i]);
             token.transfer(newContractAddress, token.balanceOf(address(this)));
         }
+        Bridge(newContractAddress).receivePayment{value: address(this).balance}();
         initialized_ = false;
         emit Migrated(newContractAddress);
     }
