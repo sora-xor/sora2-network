@@ -13,6 +13,3 @@ debug = true
 
 #[unstable]
 #weak-dep-features = true
-
-[net]
-git-fetch-with-cli = true
