@@ -2,8 +2,10 @@ use crate::constants::BABE_GENESIS_EPOCH_CONFIG;
 use crate::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::traits::PalletInfo;
+use sp_core::ecdsa;
 
 pub type Migrations = (
+    SessionKeysMigration,
     ElectionsPhragmenPrefixMigration,
     BabeConfigMigration,
     StakingV6Migration,
@@ -22,6 +24,41 @@ pub type Migrations = (
     StakingV9Migration,
     AddTrustlessBridgeTechnical,
 );
+
+impl_opaque_keys! {
+    pub struct SessionKeysOld {
+        pub babe: Babe,
+        pub grandpa: Grandpa,
+        pub im_online: ImOnline,
+    }
+}
+
+/// Generates a `BeefyId` from the given `AccountId`. The resulting `BeefyId` is
+/// a dummy value and this is a utility function meant to be used when migration
+/// session keys.
+pub fn dummy_beefy_id_from_account_id(a: AccountId) -> BeefyId {
+    let mut id_raw = [0u8; 33];
+
+    // NOTE: AccountId is 32 bytes, whereas BeefyId is 33 bytes.
+    id_raw[1..].copy_from_slice(a.as_ref());
+    id_raw[0..4].copy_from_slice(b"beef");
+
+    ecdsa::Public(id_raw).into()
+}
+
+pub struct SessionKeysMigration;
+
+impl OnRuntimeUpgrade for SessionKeysMigration {
+    fn on_runtime_upgrade() -> Weight {
+        Session::upgrade_keys::<SessionKeysOld, _>(|id, keys| opaque::SessionKeys {
+            babe: keys.babe,
+            grandpa: keys.grandpa,
+            im_online: keys.im_online,
+            beefy: dummy_beefy_id_from_account_id(id),
+        });
+        BlockWeights::get().max_block
+    }
+}
 
 /// https://github.com/paritytech/substrate/pull/8044
 pub struct ElectionsPhragmenPrefixMigration;
