@@ -86,24 +86,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
-fn get_eth_app_address() -> H160 {
-    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
-        .parse()
-        .unwrap()
-}
-
-fn get_basic_channel_address() -> H160 {
-    "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
-        .parse()
-        .unwrap()
-}
-
-fn get_incentivized_channel_address() -> H160 {
-    "0x2708Ca421cB69305831018353168727601De3e39"
-        .parse()
-        .unwrap()
-}
-
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
