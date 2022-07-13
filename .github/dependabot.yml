@@ -8,7 +8,6 @@ updates:
   - package-ecosystem: "cargo" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
-      interval: "weekly"
-      day: "thursday"
-      time: "9:00"
+      interval: "daily"
+      time: "06:00"
     open-pull-requests-limit: 0
