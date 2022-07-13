@@ -120,7 +120,7 @@ Deploy contracts
 ### Register bridge in Sora
 
 ```bash
-./bridge-scripts/register_bridge.sh
+./bridge-scripts/register-bridge.sh
 ```
 
 If you want to use ERC20 tokens in bridge you should register that tokens. 

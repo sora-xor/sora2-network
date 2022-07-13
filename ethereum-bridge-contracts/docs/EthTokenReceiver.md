@@ -1,0 +1,14 @@
+## `EthTokenReceiver`
+
+
+
+
+
+
+### `receivePayment()` (external)
+
+
+
+
+
+
