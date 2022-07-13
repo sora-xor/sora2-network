@@ -27,6 +27,7 @@ sp-std = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
+pallet-timestamp = { version = "3", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
