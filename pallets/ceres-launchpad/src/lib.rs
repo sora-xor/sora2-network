@@ -31,7 +31,7 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct ILOInfo<Balance, AccountId, BlockNumber> {
+pub struct ILOInfo<Balance, AccountId, Moment> {
     ilo_organizer: AccountId,
     tokens_for_ilo: Balance,
     tokens_for_liquidity: Balance,
@@ -44,33 +44,33 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     liquidity_percent: Balance,
     listing_price: Balance,
     lockup_days: u32,
-    start_block: BlockNumber,
-    end_block: BlockNumber,
-    contributors_vesting: ContributorsVesting<Balance, BlockNumber>,
-    team_vesting: TeamVesting<Balance, BlockNumber>,
+    start_timestamp: Moment,
+    end_timestamp: Moment,
+    contributors_vesting: ContributorsVesting<Balance, Moment>,
+    team_vesting: TeamVesting<Balance, Moment>,
     sold_tokens: Balance,
     funds_raised: Balance,
     succeeded: bool,
     failed: bool,
     lp_tokens: Balance,
     claimed_lp_tokens: bool,
-    finish_block: BlockNumber,
+    finish_timestamp: Moment,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct TeamVesting<Balance, BlockNumber> {
+pub struct TeamVesting<Balance, Moment> {
     team_vesting_total_tokens: Balance,
     team_vesting_first_release_percent: Balance,
-    team_vesting_period: BlockNumber,
+    team_vesting_period: Moment,
     team_vesting_percent: Balance,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct ContributorsVesting<Balance, BlockNumber> {
+pub struct ContributorsVesting<Balance, Moment> {
     first_release_percent: Balance,
-    vesting_period: BlockNumber,
+    vesting_period: Moment,
     vesting_percent: Balance,
 }
 
@@ -99,6 +99,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
     use hex_literal::hex;
+    use pallet_timestamp as timestamp;
     use sp_runtime::traits::{
         AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto, Zero,
     };
@@ -116,7 +117,11 @@ pub mod pallet {
         + pswap_distribution::Config
         + vested_rewards::Config
         + ceres_token_locker::Config
+        + timestamp::Config
     {
+        /// One day represented in milliseconds
+        const MILLISECONDS_PER_DAY: Self::Moment;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -125,6 +130,7 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     type TradingPair<T> = trading_pair::Pallet<T>;
     type PoolXYK<T> = pool_xyk::Pallet<T>;
     type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
@@ -192,7 +198,7 @@ pub mod pallet {
         _,
         Identity,
         AssetIdOf<T>,
-        ILOInfo<Balance, AccountIdOf<T>, T::BlockNumber>,
+        ILOInfo<Balance, AccountIdOf<T>, T::Moment>,
         ValueQuery,
     >;
 
@@ -217,7 +223,7 @@ pub mod pallet {
     pub type WhitelistedIloOrganizers<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", BalanceOf<T> = "Balance")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// ILO created [who, what]
@@ -262,10 +268,10 @@ pub mod pallet {
         InvalidLiquidityPercent,
         /// Lockup days must be minimum 30
         InvalidLockupDays,
-        /// Start block must be in future
-        InvalidStartBlock,
-        /// End block must be greater than start block
-        InvalidEndBlock,
+        /// Start timestamp be in future
+        InvalidStartTimestamp,
+        /// End timestamp must be greater than start timestamp
+        InvalidEndTimestamp,
         /// Listing price must be greater than ILO price
         InvalidPrice,
         /// Invalid number of tokens for liquidity
@@ -348,14 +354,14 @@ pub mod pallet {
             liquidity_percent: Balance,
             listing_price: Balance,
             lockup_days: u32,
-            start_block: T::BlockNumber,
-            end_block: T::BlockNumber,
+            start_timestamp: T::Moment,
+            end_timestamp: T::Moment,
             team_vesting_total_tokens: Balance,
             team_vesting_first_release_percent: Balance,
-            team_vesting_period: T::BlockNumber,
+            team_vesting_period: T::Moment,
             team_vesting_percent: Balance,
             first_release_percent: Balance,
-            vesting_period: T::BlockNumber,
+            vesting_period: T::Moment,
             vesting_percent: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin.clone())?;
@@ -384,8 +390,8 @@ pub mod pallet {
                 Error::<T>::CantCreateILOForListedToken
             );
 
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
+            // Get current timestamp
+            let current_timestamp = Timestamp::<T>::get();
 
             // Check parameters
             Self::check_parameters(
@@ -399,9 +405,9 @@ pub mod pallet {
                 liquidity_percent,
                 listing_price,
                 lockup_days,
-                start_block,
-                end_block,
-                current_block,
+                start_timestamp,
+                end_timestamp,
+                current_timestamp,
                 team_vesting_total_tokens,
                 team_vesting_first_release_percent,
                 team_vesting_period,
@@ -447,8 +453,8 @@ pub mod pallet {
                 liquidity_percent,
                 listing_price,
                 lockup_days,
-                start_block,
-                end_block,
+                start_timestamp,
+                end_timestamp,
                 contributors_vesting: ContributorsVesting {
                     first_release_percent,
                     vesting_period,
@@ -466,7 +472,7 @@ pub mod pallet {
                 failed: false,
                 lp_tokens: balance!(0),
                 claimed_lp_tokens: false,
-                finish_block: 0u32.into(),
+                finish_timestamp: 0u32.into(),
             };
 
             <ILOs<T>>::insert(&asset_id, &ilo_info);
@@ -491,7 +497,7 @@ pub mod pallet {
                 return Err(Error::<T>::AccountIsNotWhitelisted.into());
             }
 
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
                 CeresForContributionInILO::<T>::get()
@@ -510,11 +516,11 @@ pub mod pallet {
             let mut contribution_info = <Contributions<T>>::get(&asset_id, &user);
 
             ensure!(
-                ilo_info.start_block < current_block,
+                ilo_info.start_timestamp < current_timestamp,
                 Error::<T>::ILONotStarted
             );
             ensure!(
-                ilo_info.end_block > current_block,
+                ilo_info.end_timestamp > current_timestamp,
                 Error::<T>::ILOIsFinished
             );
             ensure!(
@@ -569,7 +575,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             // Get ILO info
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
@@ -581,11 +587,11 @@ pub mod pallet {
             let contribution_info = <Contributions<T>>::get(&asset_id, &user);
 
             ensure!(
-                ilo_info.start_block < current_block,
+                ilo_info.start_timestamp < current_timestamp,
                 Error::<T>::ILONotStarted
             );
             ensure!(
-                current_block < ilo_info.end_block,
+                current_timestamp < ilo_info.end_timestamp,
                 Error::<T>::ILOIsFinished
             );
             ensure!(
@@ -647,10 +653,11 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
+            // Get current timestamp
+            let current_timestamp = Timestamp::<T>::get();
             ensure!(
-                current_block > ilo_info.end_block || ilo_info.funds_raised == ilo_info.hard_cap,
+                current_timestamp > ilo_info.end_timestamp
+                    || ilo_info.funds_raised == ilo_info.hard_cap,
                 Error::<T>::ILOIsNotFinished
             );
             ensure!(!ilo_info.failed, Error::<T>::ILOIsFailed);
@@ -745,13 +752,13 @@ pub mod pallet {
             )?;
 
             // Lock liquidity
-            let unlocking_block = current_block
-                + (T::BLOCKS_PER_ONE_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
+            let unlocking_liq_timestamp = current_timestamp
+                + (T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
             CeresLiquidityLocker::<T>::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 XOR.into(),
                 asset_id.into(),
-                unlocking_block,
+                unlocking_liq_timestamp,
                 balance!(1),
                 true,
             )?;
@@ -764,7 +771,7 @@ pub mod pallet {
                 PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
 
             ilo_info.succeeded = true;
-            ilo_info.finish_block = current_block;
+            ilo_info.finish_timestamp = current_timestamp;
             <ILOs<T>>::insert(&asset_id, &ilo_info);
 
             // Lock team tokens
@@ -783,8 +790,8 @@ pub mod pallet {
                     Error::<T>::NotEnoughTeamTokensToLock
                 );
 
-                let mut unlocking_block =
-                    current_block + ilo_info.team_vesting.team_vesting_period.into();
+                let mut unlocking_timestamp =
+                    current_timestamp + ilo_info.team_vesting.team_vesting_period.into();
                 let tokens_to_lock_per_period =
                     (FixedWrapper::from(ilo_info.team_vesting.team_vesting_total_tokens)
                         * FixedWrapper::from(ilo_info.team_vesting.team_vesting_percent))
@@ -795,11 +802,11 @@ pub mod pallet {
                     TokenLocker::<T>::lock_tokens(
                         origin.clone(),
                         asset_id.clone(),
-                        unlocking_block,
+                        unlocking_timestamp.clone(),
                         tokens_to_lock_per_period,
                     )?;
 
-                    unlocking_block += ilo_info.team_vesting.team_vesting_period.into();
+                    unlocking_timestamp += ilo_info.team_vesting.team_vesting_period.into();
                     vesting_amount = vesting_amount
                         .checked_sub(ilo_info.team_vesting.team_vesting_percent)
                         .unwrap_or(balance!(0));
@@ -820,7 +827,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             // Get ILO info
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
@@ -834,11 +841,11 @@ pub mod pallet {
 
             ensure!(!ilo_info.claimed_lp_tokens, Error::<T>::CantClaimLPTokens);
 
-            let unlocking_block = ilo_info
-                .finish_block
-                .saturating_add(T::BLOCKS_PER_ONE_DAY.saturating_mul(ilo_info.lockup_days.into()));
+            let unlocking_timestamp = ilo_info.finish_timestamp.saturating_add(
+                T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into()),
+            );
             ensure!(
-                current_block >= unlocking_block,
+                current_timestamp >= unlocking_timestamp,
                 Error::<T>::CantClaimLPTokens
             );
 
@@ -925,10 +932,10 @@ pub mod pallet {
                     }
                 } else {
                     // Claim the rest parts
-                    let current_block = frame_system::Pallet::<T>::block_number();
-                    let blocks_passed = current_block.saturating_sub(ilo_info.finish_block);
+                    let current_timestamp = Timestamp::<T>::get();
+                    let time_passed = current_timestamp.saturating_sub(ilo_info.finish_timestamp);
 
-                    let potential_claims: u32 = blocks_passed
+                    let potential_claims: u32 = time_passed
                         .checked_div(&ilo_info.contributors_vesting.vesting_period)
                         .unwrap_or(0u32.into())
                         .unique_saturated_into();
@@ -1152,15 +1159,17 @@ pub mod pallet {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                let current_timestamp = Timestamp::<T>::get();
                 let days_to_finish_ilo = 14u32;
                 let pallet_account = Self::account_id();
 
                 for ilo in <ILOs<T>>::iter() {
-                    if now > ilo.1.end_block && !ilo.1.failed && !ilo.1.succeeded {
-                        let finish_block = ilo.1.end_block
-                            + (T::BLOCKS_PER_ONE_DAY.saturating_mul(days_to_finish_ilo.into()))
+                    if current_timestamp > ilo.1.end_timestamp && !ilo.1.failed && !ilo.1.succeeded
+                    {
+                        let finish_timestamp = ilo.1.end_timestamp
+                            + (T::MILLISECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into()))
                                 .into();
-                        if now >= finish_block {
+                        if current_timestamp >= finish_timestamp {
                             let mut ilo_info = <ILOs<T>>::get(&ilo.0);
                             ilo_info.failed = true;
 
@@ -1212,15 +1221,15 @@ pub mod pallet {
             liquidity_percent: Balance,
             listing_price: Balance,
             lockup_days: u32,
-            start_block: T::BlockNumber,
-            end_block: T::BlockNumber,
-            current_block: T::BlockNumber,
+            start_timestamp: T::Moment,
+            end_timestamp: T::Moment,
+            current_timestamp: T::Moment,
             team_vesting_total_tokens: Balance,
             team_vesting_first_release_percent: Balance,
-            team_vesting_period: T::BlockNumber,
+            team_vesting_period: T::Moment,
             team_vesting_percent: Balance,
             first_release_percent: Balance,
-            vesting_period: T::BlockNumber,
+            vesting_period: T::Moment,
             vesting_percent: Balance,
         ) -> Result<(), DispatchError> {
             let zero = balance!(0);
@@ -1255,12 +1264,12 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidLockupDays.into());
             }
 
-            if start_block <= current_block {
-                return Err(Error::<T>::InvalidStartBlock.into());
+            if start_timestamp <= current_timestamp {
+                return Err(Error::<T>::InvalidStartTimestamp.into());
             }
 
-            if start_block >= end_block {
-                return Err(Error::<T>::InvalidEndBlock.into());
+            if start_timestamp >= end_timestamp {
+                return Err(Error::<T>::InvalidEndTimestamp.into());
             }
 
             if ilo_price >= listing_price {

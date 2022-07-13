@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "1.2.2"
+version = "1.4.4"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2018"

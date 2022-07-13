@@ -218,10 +218,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 35,
+    spec_version: 37,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 35,
+    transaction_version: 37,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -1485,6 +1485,7 @@ parameter_types! {
 }
 
 impl ceres_launchpad::Config for Runtime {
+    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type Event = Event;
     type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }
@@ -1502,6 +1503,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }

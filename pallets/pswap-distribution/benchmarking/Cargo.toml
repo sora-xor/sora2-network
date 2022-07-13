@@ -32,6 +32,7 @@ pool-xyk = { path = "../../pool-xyk", default-features = false }
 pswap-distribution = { path = "..", default-features = false }
 technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
+pallet-timestamp = { version = "3", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
