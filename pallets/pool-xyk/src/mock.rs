@@ -75,6 +75,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub const MinimumPeriod: u64 = 5;
 }
 
 parameter_type_with_key! {
@@ -95,6 +96,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: orml_tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -223,10 +225,18 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
 }

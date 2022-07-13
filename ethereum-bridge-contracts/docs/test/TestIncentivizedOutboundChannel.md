@@ -1,0 +1,14 @@
+## `TestIncentivizedOutboundChannel`
+
+
+
+
+
+
+### `reset()` (public)
+
+
+
+
+
+

@@ -34,6 +34,7 @@ construct_runtime! {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
@@ -69,6 +70,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = 103;
     pub GetFarmingRewardsAccountId: AccountId = 104;
     pub GetCrowdloanRewardsAccountId: AccountId = 105;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 impl frame_system::Config for Runtime {
@@ -164,10 +166,18 @@ parameter_types! {
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14400;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
 }

@@ -501,27 +501,6 @@ pub fn new_full(
                         );
 
                     Ok((time, slot))
-
-                    // let parachain = polkadot_node_core_parachains_inherent::ParachainsInherentDataProvider::create(
-                    //     &*client_clone,
-                    //     overseer_handle,
-                    //     parent,
-                    // ).await.map_err(|e| Box::new(e))?;
-                    //
-                    // let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
-                    //     &*client_clone,
-                    //     parent,
-                    // )?;
-                    //
-                    // let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-                    //
-                    // let slot =
-                    //     sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
-                    //         *timestamp,
-                    //         slot_duration,
-                    //     );
-                    //
-                    // Ok((timestamp, slot, uncles, parachain))
                 }
             },
             telemetry: telemetry.as_ref().map(|x| x.handle()),

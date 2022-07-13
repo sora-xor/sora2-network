@@ -122,6 +122,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = 1024;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 construct_runtime! {
@@ -136,6 +137,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -342,10 +344,18 @@ impl pallet_scheduler::Config for Runtime {
     type NoPreimagePostponement = ();
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
     type WeightInfo = ();
 }

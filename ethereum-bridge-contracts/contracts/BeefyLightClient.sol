@@ -101,10 +101,10 @@ contract BeefyLightClient {
      * @param version version of the leaf type
      * @param parentNumber parent number of the block this leaf describes
      * @param parentHash parent hash of the block this leaf describes
-     * @param parachainHeadsRoot merkle root of all parachain headers in this block
      * @param nextAuthoritySetId validator set id that will be part of consensus for the next block
      * @param nextAuthoritySetLen length of that validator set
      * @param nextAuthoritySetRoot merkle root of all public keys in that validator set
+     * @param digestHash hash of the latest finalized block
      */
     struct BeefyMMRLeaf {
         uint8 version;

@@ -13,12 +13,12 @@ use frame_support::PalletId;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use pswap_distribution::{ClaimableShares, ShareholderAccounts};
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::traits::{AccountIdConversion, Saturating};
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresLaunchpad;
 use assets::Pallet as Assets;
-use frame_support::traits::{Get, Hooks};
+use frame_support::traits::Get;
 use technical::Pallet as Technical;
 
 // Support Functions
@@ -35,21 +35,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-fn run_to_block<T: Config>(n: u32) {
-    while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
-        frame_system::Pallet::<T>::set_block_number(
-            frame_system::Pallet::<T>::block_number() + 1u32.into(),
-        );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
-    }
-}
-
 benchmarks! {
     create_ilo {
         let caller = WhitelistedIloOrganizers::<T>::get()[0].clone();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -63,6 +53,11 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(20000)
+        );
+
+         let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
         );
     }: _(RawOrigin::Signed(caller.clone()),
         CERES_ASSET_ID.into(),
@@ -77,14 +72,14 @@ benchmarks! {
         balance!(0.75),
         balance!(0.25),
         31,
-        current_block + 5u32.into(),
-        current_block + 10u32.into(),
+        current_timestamp + 5u32.into(),
+        current_timestamp + 10u32.into(),
         balance!(1000),
         balance!(0.2),
-        current_block + 3u32.into(),
+        current_timestamp + 3u32.into(),
         balance!(0.2),
         balance!(0.2),
-        current_block + 3u32.into(),
+        current_timestamp + 3u32.into(),
         balance!(0.2)
     )
     verify {
@@ -94,7 +89,7 @@ benchmarks! {
     contribute {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
         let funds_to_contribute = balance!(800);
 
         let assets_and_permissions_tech_account_id =
@@ -117,6 +112,12 @@ benchmarks! {
             caller.clone(),
             balance!(20000)
         );
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         // Create ILO
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
@@ -132,17 +133,23 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2)
         );
-        run_to_block::<T>(6);
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), funds_to_contribute)
     verify {
         assert_last_event::<T>(Event::Contributed(caller, CERES_ASSET_ID.into(), funds_to_contribute).into());
@@ -151,7 +158,7 @@ benchmarks! {
     emergency_withdraw {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
         let funds_to_contribute = balance!(800);
 
         let assets_and_permissions_tech_account_id =
@@ -175,6 +182,11 @@ benchmarks! {
             balance!(20000)
         );
 
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         // Create ILO
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
@@ -190,18 +202,23 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2)
         );
 
-        run_to_block::<T>(6);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
 
         // Contribute
         let _ = CeresLaunchpad::<T>::contribute(
@@ -217,7 +234,7 @@ benchmarks! {
     finish_ilo {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -240,6 +257,11 @@ benchmarks! {
             balance!(10000)
         );
 
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
@@ -254,20 +276,26 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2)
         );
 
-        run_to_block::<T>(6);
+
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
 
         let funds_to_contribute = balance!(800);
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
 
         let _ = CeresLaunchpad::<T>::contribute(
             RawOrigin::Signed(caller.clone()).into(),
@@ -275,7 +303,8 @@ benchmarks! {
             funds_to_contribute
         );
 
-        run_to_block::<T>(11);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 11u32.into());
+
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
         assert_last_event::<T>(Event::ILOFinished(caller.clone(), CERES_ASSET_ID.into()).into());
@@ -284,7 +313,8 @@ benchmarks! {
     claim_lp_tokens {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
+        let finish_timestamp = current_timestamp + 11u32.into();
         let funds_to_contribute = balance!(800);
 
         let assets_and_permissions_tech_account_id =
@@ -307,6 +337,12 @@ benchmarks! {
             caller.clone(),
             balance!(20000)
         );
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         // Create ILO
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
@@ -322,31 +358,41 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2)
         );
 
-        run_to_block::<T>(6);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         // Contribute
         let _ = CeresLaunchpad::<T>::contribute(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
             funds_to_contribute,
         );
-        run_to_block::<T>(11);
+
+        pallet_timestamp::Now::<T>::put(finish_timestamp);
+
         // Finish ILO
         let _ = CeresLaunchpad::<T>::finish_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into()
         );
-        run_to_block::<T>(500000);
+
+        let unlocking_timestamp = finish_timestamp.saturating_add((86_400u32.saturating_mul(31u32)).into());
+        pallet_timestamp::Now::<T>::put(unlocking_timestamp + 1u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
         assert_last_event::<T>(Event::ClaimedLP(caller, CERES_ASSET_ID.into()).into());
@@ -355,7 +401,7 @@ benchmarks! {
     claim {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -378,6 +424,11 @@ benchmarks! {
             balance!(10000)
         );
 
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
@@ -392,20 +443,25 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.1),
-            30u32.into(),
+            current_timestamp + 30u32.into(),
             balance!(0.18)
         );
 
-        run_to_block::<T>(6);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
 
         let funds_to_contribute = balance!(800);
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
 
         let _ = CeresLaunchpad::<T>::contribute(
             RawOrigin::Signed(caller.clone()).into(),
@@ -413,19 +469,14 @@ benchmarks! {
             funds_to_contribute
         );
 
-        run_to_block::<T>(11);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 11u32.into());
 
         let _ = CeresLaunchpad::<T>::finish_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into()
         );
 
-        let _ = CeresLaunchpad::<T>::claim(
-            RawOrigin::Signed(caller.clone()).into(),
-            CERES_ASSET_ID.into(),
-        );
-
-        run_to_block::<T>(43);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 44u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
         assert_last_event::<T>(Event::Claimed(caller.clone(), CERES_ASSET_ID.into()).into());
@@ -450,7 +501,7 @@ benchmarks! {
     claim_pswap_rewards {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let current_block = frame_system::Pallet::<T>::block_number();
+        let current_timestamp = Timestamp::<T>::get();
 
         let assets_and_permissions_tech_account_id =
             T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
@@ -480,6 +531,11 @@ benchmarks! {
             balance!(10000)
         );
 
+        let _ = CeresLaunchpad::<T>::add_whitelisted_ilo_organizer(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
+
         let _ = CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
@@ -494,20 +550,26 @@ benchmarks! {
             balance!(0.75),
             balance!(0.25),
             31,
-            current_block + 5u32.into(),
-            current_block + 10u32.into(),
+            current_timestamp + 5u32.into(),
+            current_timestamp + 10u32.into(),
             balance!(1000),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2),
             balance!(0.2),
-            current_block + 3u32.into(),
+            current_timestamp + 3u32.into(),
             balance!(0.2)
         );
 
-        run_to_block::<T>(6);
+
+        pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
 
         let funds_to_contribute = balance!(800);
+
+        let _ = CeresLaunchpad::<T>::add_whitelisted_contributor(
+            RawOrigin::Signed(pallet::AuthorityAccount::<T>::get()).into(),
+            caller.clone()
+        );
 
         let _ = CeresLaunchpad::<T>::contribute(
             RawOrigin::Signed(caller.clone()).into(),
@@ -515,14 +577,14 @@ benchmarks! {
             funds_to_contribute
         );
 
-        run_to_block::<T>(11);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 11u32.into());
 
         let _ = CeresLaunchpad::<T>::finish_ilo(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into()
         );
 
-        run_to_block::<T>(20000);
+        pallet_timestamp::Now::<T>::put(current_timestamp + 20000u32.into());
 
         let share = FixedWrapper::from(1.00).get().unwrap();
         let pallet_account: AccountIdOf<T> = PalletId(*b"crslaunc").into_account_truncating();
