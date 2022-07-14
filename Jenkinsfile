@@ -108,7 +108,7 @@ pipeline {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
                         docker.image(envImageName + ':sub4').inside() {
                             sh './housekeeping/coverage.sh'
-                            // cobertura coberturaReportFile: 'cobertura_report'
+                            cobertura coberturaReportFile: 'cobertura_report'
                         }
                     }
                 }
