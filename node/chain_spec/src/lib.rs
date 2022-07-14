@@ -1429,7 +1429,6 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
-                hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(), // TODO: Replace this value
             )
         },
         boot_nodes,
@@ -1464,7 +1463,6 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-    _treasury_account: AccountId,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
