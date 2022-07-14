@@ -44,9 +44,8 @@ RUN add-apt-repository \
 
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2022-05-12
-ENV GRCOV_VERSION=0.8.7
+ENV GRCOV_VERSION=0.8.11
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
-    # cargo install sccache && \
     cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview && \
     rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
