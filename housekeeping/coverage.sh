@@ -1,12 +1,9 @@
 #!/bin/sh
 
-cargo install grcov
-rustup component add llvm-tools-preview
-
 export RUSTFLAGS="-Cinstrument-coverage"
 export SKIP_WASM_BUILD=1
 export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
 
-cargo test --features private-net
+cargo test --features private-net --target-dir /app/target
 
-grcov . --binary-path target/debug -s . -t cobertura --branch --ignore-not-existing -o ./cobertura_report
+grcov . --binary-path /app/target/debug -s . -t cobertura --branch --ignore-not-existing -o ./cobertura_report
