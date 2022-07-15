@@ -7,7 +7,6 @@ use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
@@ -21,7 +20,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
-const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["4130819912a398f4eb84e7f16ed443232ba638b5"];
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -144,6 +142,7 @@ impl assets::Config for Test {
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 128;
     pub const MaxMessagesPerCommit: u64 = 5;
+    pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -166,6 +165,7 @@ impl incentivized_outbound_channel::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type MaxTotalGasLimit = MaxTotalGasLimit;
     type FeeCurrency = ();
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
@@ -199,7 +199,6 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
-            networks: vec![(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))],
             interval: 10u32.into(),
             fee: 100u32.into(),
         };
@@ -248,6 +247,7 @@ fn test_submit() {
             &RawOrigin::Signed(who.clone()),
             BASE_NETWORK_ID,
             target,
+            100000.into(),
             &vec![0, 1, 2]
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
@@ -256,6 +256,7 @@ fn test_submit() {
             &RawOrigin::Signed(who),
             BASE_NETWORK_ID,
             target,
+            100000.into(),
             &vec![0, 1, 2]
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
@@ -277,6 +278,7 @@ fn test_submit_fees_burned() {
             &RawOrigin::Signed(who.clone()),
             BASE_NETWORK_ID,
             target,
+            100000.into(),
             &vec![0, 1, 2]
         ));
         assert_eq!(
@@ -300,6 +302,7 @@ fn test_submit_not_enough_funds() {
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
                 target,
+                100000.into(),
                 &vec![0, 1, 2]
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
@@ -322,6 +325,7 @@ fn test_submit_exceeds_queue_limit() {
                 &RawOrigin::Signed(who.clone()),
                 BASE_NETWORK_ID,
                 target,
+                100000.into(),
                 &vec![0, 1, 2],
             )
             .unwrap()
@@ -332,6 +336,7 @@ fn test_submit_exceeds_queue_limit() {
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
                 target,
+                100000.into(),
                 &vec![0, 1, 2]
             ),
             Error::<Test>::QueueSizeLimitReached,
@@ -364,6 +369,7 @@ fn test_submit_exceeds_payload_limit() {
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
                 target,
+                100000.into(),
                 payload.as_slice()
             ),
             Error::<Test>::PayloadTooLarge,
@@ -383,6 +389,7 @@ fn test_submit_fails_on_nonce_overflow() {
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
                 target,
+                100000.into(),
                 &vec![0, 1, 2]
             ),
             Error::<Test>::Overflow,

@@ -13,7 +13,7 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{H160, H256};
+use sp_core::{H160, H256, U256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
@@ -174,6 +174,7 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         channel: ChannelId,
         _: &RawOrigin<AccountId>,
         _: H160,
+        _: U256,
         _: &[u8],
     ) -> DispatchResult {
         if channel == ChannelId::Incentivized {

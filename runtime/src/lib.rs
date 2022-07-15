@@ -1897,14 +1897,16 @@ where
         channel_id: ChannelId,
         who: &RawOrigin<T::AccountId>,
         target: H160,
+        max_gas: U256,
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
+            // TODO: use only incentivized with specifiable `max_gas`
             ChannelId::Basic => {
                 basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
             }
             ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, payload,
+                who, network_id, target, max_gas, payload,
             ),
         }
     }
@@ -1913,6 +1915,7 @@ where
 parameter_types! {
     pub const IncentivizedMaxMessagePayloadSize: u64 = 256;
     pub const IncentivizedMaxMessagesPerCommit: u64 = 20;
+    pub const IncentivizedMaxTotalGasLimit: u64 = 5_000_000;
     pub const BasicMaxMessagePayloadSize: u64 = 2048;
     pub const BasicMaxMessagesPerCommit: u64 = 4;
     pub const Decimals: u32 = 12;
@@ -1965,6 +1968,7 @@ impl incentivized_channel_outbound::Config for Runtime {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
     type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
+    type MaxTotalGasLimit = IncentivizedMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
