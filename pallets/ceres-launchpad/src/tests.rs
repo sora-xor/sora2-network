@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn create_ilo_ilo_price_zero() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -149,14 +149,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::ParameterCantBeZero
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn create_ilo_hard_cap_zero() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -183,14 +183,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::ParameterCantBeZero
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_soft_cap() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -217,14 +217,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidSoftCap
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_minimum_contribution() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -251,14 +251,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidMinimumContribution
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_maximum_contribution() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -285,14 +285,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidMaximumContribution
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_liquidity_percent() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -319,14 +319,14 @@ mod tests {
                     balance!(0.50),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidLiquidityPercent
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_lockup_days() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -353,14 +353,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     29,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidLockupDays
@@ -369,9 +369,9 @@ mod tests {
     }
 
     #[test]
-    fn create_ilo_invalid_start_block() {
+    fn create_ilo_invalid_start_timestamp() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -387,25 +387,25 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block,
-                    current_block + 10,
+                    current_timestamp,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
-                Error::<Runtime>::InvalidStartBlock
+                Error::<Runtime>::InvalidStartTimestamp
             );
         });
     }
 
     #[test]
-    fn create_ilo_invalid_end_block() {
+    fn create_ilo_invalid_end_timestamp() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -421,17 +421,17 @@ mod tests {
                     balance!(0.75),
                     balance!(0.6),
                     31,
-                    current_block + 5,
-                    current_block + 2,
+                    current_timestamp + 5,
+                    current_timestamp + 2,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
-                Error::<Runtime>::InvalidEndBlock
+                Error::<Runtime>::InvalidEndTimestamp
             );
         });
     }
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_price() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -455,14 +455,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.1),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidPrice
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_ilo() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -489,14 +489,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.20),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidNumberOfTokensForILO
@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_number_of_tokens_for_liquidity() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -523,14 +523,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.20),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.1),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidNumberOfTokensForLiquidity
@@ -541,7 +541,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_team_first_release_percent() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -557,14 +557,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                 ),
                 Error::<Runtime>::InvalidTeamFirstReleasePercent
@@ -575,7 +575,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_team_vesting_percent() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -591,14 +591,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                 ),
                 Error::<Runtime>::InvalidTeamVestingPercent
@@ -609,7 +609,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_team_vesting_percent_overflow() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -625,14 +625,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.9),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                 ),
                 Error::<Runtime>::InvalidTeamVestingPercent
@@ -643,7 +643,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_team_vesting_percent_remainder() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -659,14 +659,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.3),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                 ),
                 Error::<Runtime>::InvalidTeamVestingPercent
@@ -677,7 +677,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_team_vesting_period() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -693,14 +693,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
                     0u32.into(),
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                 ),
                 Error::<Runtime>::InvalidTeamVestingPeriod
@@ -711,7 +711,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_first_release_percent() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -727,14 +727,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(20)
                 ),
                 Error::<Runtime>::InvalidFirstReleasePercent
@@ -745,7 +745,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_vesting_percent() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -761,14 +761,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0)
                 ),
                 Error::<Runtime>::InvalidVestingPercent
@@ -779,7 +779,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_vesting_percent_overflow() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -795,14 +795,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.9)
                 ),
                 Error::<Runtime>::InvalidVestingPercent
@@ -813,7 +813,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_vesting_percent_remainder() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(CHARLES),
@@ -829,14 +829,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.3)
                 ),
                 Error::<Runtime>::InvalidVestingPercent
@@ -847,7 +847,7 @@ mod tests {
     #[test]
     fn create_ilo_invalid_vesting_period() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -863,11 +863,11 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
                     0u32.into(),
@@ -881,7 +881,7 @@ mod tests {
     #[test]
     fn create_ilo_not_enough_ceres() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(BOB),
@@ -897,14 +897,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2)
                 ),
                 Error::<Runtime>::NotEnoughCeres
@@ -915,7 +915,7 @@ mod tests {
     #[test]
     fn create_ilo_not_enough_tokens() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(CHARLES),
@@ -931,14 +931,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2)
                 ),
                 Error::<Runtime>::NotEnoughTokens
@@ -950,7 +950,7 @@ mod tests {
     fn create_ilo_account_is_not_whitelisted() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -966,14 +966,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2)
                 ),
                 Error::<Runtime>::AccountIsNotWhitelisted
@@ -986,7 +986,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             pallet::WhitelistedIloOrganizers::<Runtime>::append(ALICE);
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1001,14 +1001,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -1034,7 +1034,7 @@ mod tests {
     #[test]
     fn create_ilo_ilo_already_exists() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1049,14 +1049,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -1075,14 +1075,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2)
                 ),
                 Error::<Runtime>::ILOAlreadyExists
@@ -1107,7 +1107,7 @@ mod tests {
     #[test]
     fn contribute_not_enough_ceres() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1122,18 +1122,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_ok!(Assets::transfer_from(
                 &CERES_ASSET_ID.into(),
@@ -1156,7 +1156,7 @@ mod tests {
     #[test]
     fn contribute_ilo_not_started() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1171,14 +1171,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
             assert_err!(
@@ -1195,7 +1195,7 @@ mod tests {
     #[test]
     fn contribute_ilo_is_finished() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1210,18 +1210,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
@@ -1238,7 +1238,7 @@ mod tests {
     fn contribute_contribution_is_lower_then_min() {
         preset_initial(|| {
             let asset_id = CERES_ASSET_ID;
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 asset_id.into(),
@@ -1253,18 +1253,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
@@ -1280,7 +1280,7 @@ mod tests {
     #[test]
     fn contribute_contribution_is_bigger_then_max() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1295,18 +1295,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
                 Origin::signed(ALICE),
@@ -1327,7 +1327,7 @@ mod tests {
     #[test]
     fn contribute_hard_cap_is_hit() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let asset_id = CERES_ASSET_ID;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1343,18 +1343,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
                 Origin::signed(ALICE),
@@ -1376,7 +1376,7 @@ mod tests {
     #[test]
     fn contribute_account_is_not_whitelisted() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1391,18 +1391,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::contribute(
@@ -1418,7 +1418,7 @@ mod tests {
     #[test]
     fn contribute_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let asset_id = CERES_ASSET_ID;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1434,18 +1434,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
             let funds_to_contribute = balance!(0.21);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
@@ -1491,7 +1491,7 @@ mod tests {
     #[test]
     fn emergency_withdraw_ilo_not_started() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1506,14 +1506,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -1530,7 +1530,7 @@ mod tests {
     #[test]
     fn emergency_withdraw_ilo_is_finished() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1545,18 +1545,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
@@ -1571,7 +1571,7 @@ mod tests {
     #[test]
     fn emergency_withdraw_not_enough_funds() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1586,18 +1586,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
@@ -1612,7 +1612,7 @@ mod tests {
     #[test]
     fn emergency_withdraw_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1627,18 +1627,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(0.21);
 
@@ -1700,7 +1700,7 @@ mod tests {
     #[test]
     fn finish_ilo_ilo_is_not_finished() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1715,14 +1715,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -1739,7 +1739,7 @@ mod tests {
     #[test]
     fn finish_ilo_unauthorized() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1754,18 +1754,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::finish_ilo(
@@ -1780,7 +1780,7 @@ mod tests {
     #[test]
     fn finish_ilo_ilo_failed_refunded_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1795,18 +1795,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -1834,7 +1834,7 @@ mod tests {
     #[test]
     fn finish_ilo_ilo_failed_burned_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1849,18 +1849,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -1888,7 +1888,7 @@ mod tests {
     #[test]
     fn finish_ilo_ilo_is_failed() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1903,18 +1903,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -1934,7 +1934,7 @@ mod tests {
     #[test]
     fn finish_ilo_not_filled_hard_cap_ok() {
         preset_initial(|| {
-            let mut current_block = frame_system::Pallet::<Runtime>::block_number();
+            let mut current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -1949,18 +1949,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(800);
 
@@ -1970,9 +1970,9 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
-            current_block = frame_system::Pallet::<Runtime>::block_number();
+            current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into()
@@ -2019,14 +2019,14 @@ mod tests {
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );
 
-            assert_eq!(ilo_info.finish_block, current_block);
+            assert_eq!(ilo_info.finish_timestamp, current_timestamp);
         });
     }
 
     #[test]
     fn finish_ilo_not_enough_team_tokens_to_lock() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(DAN),
                 CERES_ASSET_ID.into(),
@@ -2041,18 +2041,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2062,7 +2062,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::finish_ilo(
@@ -2077,7 +2077,7 @@ mod tests {
     #[test]
     fn finish_ilo_filled_hard_cap_ok() {
         preset_initial(|| {
-            let mut current_block = frame_system::Pallet::<Runtime>::block_number();
+            let mut current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2092,18 +2092,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2113,7 +2113,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            current_block = frame_system::Pallet::<Runtime>::block_number();
+            current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into()
@@ -2162,15 +2162,16 @@ mod tests {
 
             let token_locker_data = ceres_token_locker::TokenLockerData::<Runtime>::get(ALICE);
             assert_eq!(token_locker_data.len(), 4 as usize);
-            let mut unlocking_block = current_block + ilo_info.team_vesting.team_vesting_period;
+            let mut unlocking_timestamp =
+                current_timestamp + ilo_info.team_vesting.team_vesting_period;
             for token_lock_info in token_locker_data {
                 assert_eq!(token_lock_info.asset_id, CERES_ASSET_ID.into());
                 assert_eq!(token_lock_info.tokens, balance!(200));
-                assert_eq!(token_lock_info.unlocking_block, unlocking_block);
-                unlocking_block += ilo_info.team_vesting.team_vesting_period;
+                assert_eq!(token_lock_info.unlocking_timestamp, unlocking_timestamp);
+                unlocking_timestamp += ilo_info.team_vesting.team_vesting_period;
             }
 
-            assert_eq!(ilo_info.finish_block, current_block);
+            assert_eq!(ilo_info.finish_timestamp, current_timestamp);
         });
     }
 
@@ -2190,7 +2191,7 @@ mod tests {
     #[test]
     fn claim_ilo_is_not_finished() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2205,14 +2206,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -2229,7 +2230,7 @@ mod tests {
     #[test]
     fn claim_ilo_failed_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2244,18 +2245,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(0.21);
 
@@ -2265,7 +2266,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2292,7 +2293,7 @@ mod tests {
     #[test]
     fn claim_funds_already_claimed() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2307,18 +2308,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(0.21);
 
@@ -2328,7 +2329,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2353,7 +2354,7 @@ mod tests {
     #[test]
     fn claim_first_release_claim_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2368,18 +2369,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2389,7 +2390,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2423,7 +2424,7 @@ mod tests {
     #[test]
     fn claim_no_potential_claims() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2438,18 +2439,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 50,
+                current_timestamp + 50,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2459,7 +2460,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2471,7 +2472,7 @@ mod tests {
                 CERES_ASSET_ID.into(),
             ));
 
-            run_to_block(12);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 12);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::claim(
@@ -2486,7 +2487,7 @@ mod tests {
     #[test]
     fn claim_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2501,18 +2502,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.1),
                 30u32.into(),
                 balance!(0.18)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2522,7 +2523,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2548,7 +2549,7 @@ mod tests {
                 CERES_ASSET_ID.into(),
             ));
 
-            run_to_block(43);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 43);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
                 Origin::signed(CHARLES),
@@ -2561,7 +2562,7 @@ mod tests {
                 balance!(5000) + first_release + tokens_per_claim
             );
 
-            run_to_block(103);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 103);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
                 Origin::signed(CHARLES),
@@ -2573,7 +2574,7 @@ mod tests {
                 balance!(5000) + first_release + tokens_per_claim * 3
             );
 
-            run_to_block(163);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 163);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
                 Origin::signed(CHARLES),
@@ -2630,7 +2631,7 @@ mod tests {
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2645,14 +2646,14 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
@@ -2669,7 +2670,7 @@ mod tests {
     #[test]
     fn claim_lp_tokens_unauthorized() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2684,18 +2685,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
                 Origin::signed(CHARLES),
@@ -2703,7 +2704,7 @@ mod tests {
                 balance!(800)
             ),);
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2711,11 +2712,11 @@ mod tests {
             ),);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
-            let unlocking_block = ilo_info
-                .finish_block
-                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+            let unlocking_timestamp = ilo_info
+                .finish_timestamp
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
-            run_to_block(unlocking_block);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
@@ -2730,7 +2731,7 @@ mod tests {
     #[test]
     fn claim_lp_tokens_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2745,18 +2746,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(800);
 
@@ -2766,7 +2767,7 @@ mod tests {
                 funds_to_contribute
             ),);
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2775,11 +2776,11 @@ mod tests {
 
             let mut ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let unlocking_block = ilo_info
-                .finish_block
-                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+            let unlocking_timestamp = ilo_info
+                .finish_timestamp
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
-            run_to_block(unlocking_block);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
                 Origin::signed(ALICE),
@@ -2811,7 +2812,7 @@ mod tests {
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens_already_claimed() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2826,18 +2827,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(800);
 
@@ -2847,7 +2848,7 @@ mod tests {
                 funds_to_contribute
             ),);
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2856,11 +2857,11 @@ mod tests {
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let unlocking_block = ilo_info
-                .finish_block
-                .saturating_add(14440_u64.saturating_mul(ilo_info.lockup_days.into()));
+            let unlocking_timestamp = ilo_info
+                .finish_timestamp
+                .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
 
-            run_to_block(unlocking_block);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
                 Origin::signed(ALICE),
@@ -2890,7 +2891,7 @@ mod tests {
     #[test]
     fn claim_pswap_rewards_ok() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2905,18 +2906,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2926,7 +2927,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            run_to_block(11);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
                 Origin::signed(ALICE),
@@ -2963,7 +2964,7 @@ mod tests {
     #[test]
     fn on_initialize_fail_ilo() {
         preset_initial(|| {
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
                 CERES_ASSET_ID.into(),
@@ -2978,18 +2979,18 @@ mod tests {
                 balance!(0.75),
                 balance!(0.25),
                 31,
-                current_block + 5,
-                current_block + 10,
+                current_timestamp + 5,
+                current_timestamp + 10,
                 balance!(1000),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2),
                 balance!(0.2),
-                current_block + 3,
+                current_timestamp + 3,
                 balance!(0.2)
             ));
 
-            run_to_block(6);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
 
             let funds_to_contribute = balance!(1000);
 
@@ -2999,6 +3000,9 @@ mod tests {
                 funds_to_contribute
             ));
 
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(
+                current_timestamp + 15 * 86_400_000u64,
+            );
             run_to_block(300000);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
@@ -3176,7 +3180,7 @@ mod tests {
                 true
             );
 
-            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::create_ilo(
                     Origin::signed(ALICE),
@@ -3192,14 +3196,14 @@ mod tests {
                     balance!(0.75),
                     balance!(0.25),
                     31,
-                    current_block + 5,
-                    current_block + 10,
+                    current_timestamp + 5,
+                    current_timestamp + 10,
                     balance!(1000),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2),
                     balance!(0.2),
-                    current_block + 3,
+                    current_timestamp + 3,
                     balance!(0.2)
                 ),
                 Error::<Runtime>::AccountIsNotWhitelisted

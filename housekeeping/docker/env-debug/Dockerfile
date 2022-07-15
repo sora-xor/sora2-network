@@ -1,10 +1,10 @@
-FROM docker.io/library/debian:buster-slim
+FROM docker.io/library/debian:bullseye-slim
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    CC=clang-13 \
-    CXX=clang-13
+    CC=clang \
+    CXX=clang++
 
 # Install dependencies
 RUN apt-get -y update && \
@@ -14,19 +14,7 @@ RUN apt-get -y update && \
     curl lsof xz-utils unzip protobuf-compiler \
     git binaryen \
     software-properties-common \
-    llvm clang make cmake time rhash && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install clang
-RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-13 main" >> /etc/apt/sources.list.d/llvm-toochain-buster-13.list && \
-    echo "deb-src http://apt.llvm.org/buster/ llvm-toolchain-buster-13 main" >> /etc/apt/sources.list.d/llvm-toochain-buster-13.list && \
-    apt-get -y update && \
-    apt-get install -y --no-install-recommends \
-    clang-13 lldb-13 lld-13 libclang-13-dev && \
-    update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
+    llvm clang lld libclang-dev make cmake time rhash && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -44,9 +32,8 @@ RUN add-apt-repository \
 
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2022-05-12
-ENV GRCOV_VERSION=0.8.7
+ENV GRCOV_VERSION=0.8.11
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
-    # cargo install sccache && \
     cargo install grcov --version ${GRCOV_VERSION} && \
     rustup component add llvm-tools-preview && \
     rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
@@ -61,7 +48,6 @@ RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_li
 # Build project
 ADD . /app
 WORKDIR /app
-# ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
 RUN cargo check && \
     cargo test && \

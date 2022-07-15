@@ -100,7 +100,7 @@ impl UnsignedClient {
     pub async fn incentivized_commitments(
         &self,
         hash: H256,
-    ) -> AnyResult<Vec<incentivized_channel_rpc::Message>> {
+    ) -> AnyResult<incentivized_channel_rpc::Commitment> {
         Ok(
             incentivized_channel_rpc::IncentivizedChannelAPIClient::commitment(self.rpc(), hash)
                 .await?

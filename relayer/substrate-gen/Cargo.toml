@@ -18,7 +18,7 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 
 [dependencies]
 common = { path = "../../common" }
-subxt = { git = "https://github.com/vovac12/subxt", branch = "polkadot-v0.9.25" }
+subxt = { git = "https://github.com/sora-xor/subxt", branch = "polkadot-v0.9.25" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 bridge-types = { path = "../../pallets/trustless-eth-bridge/types" }

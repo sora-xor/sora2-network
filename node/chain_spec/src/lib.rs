@@ -86,24 +86,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
-fn get_eth_app_address() -> H160 {
-    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
-        .parse()
-        .unwrap()
-}
-
-fn get_basic_channel_address() -> H160 {
-    "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
-        .parse()
-        .unwrap()
-}
-
-fn get_incentivized_channel_address() -> H160 {
-    "0x2708Ca421cB69305831018353168727601De3e39"
-        .parse()
-        .unwrap()
-}
-
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -1447,7 +1429,6 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
-                hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(), // TODO: Replace this value
             )
         },
         boot_nodes,
@@ -1482,7 +1463,6 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-    _treasury_account: AccountId,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);

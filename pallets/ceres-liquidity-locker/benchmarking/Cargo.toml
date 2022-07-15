@@ -31,6 +31,7 @@ assets = { path = "../../assets", default-features = false }
 pool-xyk = { path = "../../pool-xyk", default-features = false }
 technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
@@ -61,6 +62,7 @@ std = [
     'assets/std',
     'ceres-liquidity-locker/std',
     'technical/std',
+    'pallet-timestamp/std',
     'trading-pair/std',
     'permissions/std',
     'pool-xyk/std',

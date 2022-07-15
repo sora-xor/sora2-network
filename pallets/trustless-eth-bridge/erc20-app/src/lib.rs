@@ -275,6 +275,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
+                100000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
@@ -320,6 +321,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
@@ -350,6 +352,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
@@ -382,6 +385,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Ok(())
