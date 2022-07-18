@@ -38,15 +38,16 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
-ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-dex-manager = { path = "../../dex-manager", default-features = false }
-dex-api = { path = "../../dex-api", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+dex-manager = { path = "../../dex-manager" }
+dex-api = { path = "../../dex-api" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+common = { path = "../../../common", features = ["test"] }
 
 [features]
 default = ["std"]
@@ -61,9 +62,11 @@ std = [
     'common/std',
     'assets/std',
     'ceres-liquidity-locker/std',
+    'demeter-farming-platform/std',
     'technical/std',
     'pallet-timestamp/std',
     'trading-pair/std',
     'permissions/std',
     'pool-xyk/std',
+    'pswap-distribution/std',
 ]

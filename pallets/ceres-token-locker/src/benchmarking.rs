@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::Decode;
-use common::{balance, FromGenericPair, CERES_ASSET_ID};
+use common::{balance, AssetId32, PredefinedAssetId, CERES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -13,7 +13,6 @@ use sp_std::prelude::*;
 
 use crate::Pallet as CeresTokenLocker;
 use assets::Pallet as Assets;
-use technical::Pallet as Technical;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -30,26 +29,25 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
+    where_clause {
+        where T::AssetId: From<AssetId32<PredefinedAssetId>>
+    }
+
     lock_tokens {
         let caller = alice::<T>();
+        let asset_id = T::AssetId::from(CERES_ASSET_ID);
+        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+        Assets::<T>::mint(
+            RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             token_balance
-        );
+        ).unwrap();
     }: {
         let _ = CeresTokenLocker::<T>::lock_tokens(
             RawOrigin::Signed(caller.clone()).into(),
@@ -64,32 +62,27 @@ benchmarks! {
 
     withdraw_tokens {
         let caller = alice::<T>();
+        let asset_id = T::AssetId::from(CERES_ASSET_ID);
+        let asset_owner = Assets::<T>::asset_owner(&asset_id).unwrap();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let timestamp = Timestamp::<T>::get() + 10u32.into();
         let locked_tokens = balance!(2000);
         let token_balance = locked_tokens + balance!(100);
 
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+        Assets::<T>::mint(
+            RawOrigin::Signed(asset_owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             token_balance
-        );
+        ).unwrap();
 
         // Lock tokens
-        let _ = CeresTokenLocker::<T>::lock_tokens(
+        CeresTokenLocker::<T>::lock_tokens(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
             timestamp,
             locked_tokens
-        );
+        ).unwrap();
 
         pallet_timestamp::Now::<T>::put(Timestamp::<T>::get() + 14440u32.into());
 
@@ -107,9 +100,9 @@ benchmarks! {
         assert_last_event::<T>(Event::FeeChanged(caller, new_fee).into());
     }
 
-    // impl_benchmark_test_suite!(
-    //     Pallet,
-    //     crate::mock::ExtBuilder::default().build(),
-    //     crate::mock::Runtime
-    // );
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Runtime
+    );
 }
