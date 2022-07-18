@@ -86,6 +86,10 @@ pipeline {
                             docker.image(envImageName + ':sub4').inside() {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
+                                    whoami
+                                    groups
+                                    pwd
+                                    ls -alh .
                                     mold --run cargo test 
                                     mold --run cargo test --features private-net
                                     mold --run cargo test --features runtime-benchmarks
