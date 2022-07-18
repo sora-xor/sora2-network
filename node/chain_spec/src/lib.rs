@@ -969,7 +969,7 @@ fn testnet_genesis(
             ..Default::default()
         },
         system: SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
         sudo: SudoConfig {
             key: Some(root_key.clone()),
