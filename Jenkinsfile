@@ -40,6 +40,11 @@ pipeline {
                     docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
+                               whoami
+                               groups
+                               id
+                               pwd
+                               ls -alh .
                                cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -73,6 +78,11 @@ pipeline {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
+                                    whoami
+                                    groups
+                                    id
+                                    pwd
+                                    ls -alh .
                                     mold --run cargo test  --release --features runtime-benchmarks
                                     mold --run cargo build --release --features \"${featureList}\"
                                     mv /app/target/release/framenode .
@@ -88,6 +98,7 @@ pipeline {
                                     cargo fmt -- --check > /dev/null
                                     whoami
                                     groups
+                                    id
                                     pwd
                                     ls -alh .
                                     mold --run cargo test 
