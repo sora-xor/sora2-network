@@ -45,19 +45,19 @@ hex-literal = "0.3.1"
 [dev-dependencies]
 assets = { path = "../../assets" }
 common = { path = "../../../common", features = ["test"] }
-ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
-serde = { version = "1.0.101", default-features = false, features = ["derive"] }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
+serde = { version = "1.0.101", features = ["derive"] }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 vested-rewards = { path = "../../vested-rewards" }
 permissions = { path = "../../permissions" }
-technical = { path = "../../technical", default-features = false }
-pool-xyk = { path = "../../pool-xyk", default-features = false }
+technical = { path = "../../technical" }
+pool-xyk = { path = "../../pool-xyk" }
 pswap-distribution = { path = "../../pswap-distribution" }
-multicollateral-bonding-curve-pool = { path = "../../multicollateral-bonding-curve-pool", default-features = false }
-dex-manager = { path = "../../dex-manager", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../../multicollateral-bonding-curve-pool" }
+dex-manager = { path = "../../dex-manager" }
 
 [features]
 default = ["std"]
