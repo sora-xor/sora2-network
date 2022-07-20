@@ -9,7 +9,6 @@ use common::ContentSource;
 use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::PSWAP;
 use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
@@ -332,7 +331,9 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    #[cfg(feature = "runtime-benchmarks")]
     pub fn benchmarking() -> Self {
+        use common::PSWAP;
         let mut res = Self::default();
         res.endowed_assets = vec![
             (
