@@ -75,8 +75,8 @@ pipeline {
                                 sh """
                                     mold --run cargo test  --release --features runtime-benchmarks
                                     mold --run cargo build --release --features \"${featureList}\"
-                                    mv /app/target/release/framenode .
-                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    mv ./target/release/framenode .
+                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
                                 archiveArtifacts artifacts:
