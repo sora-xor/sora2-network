@@ -31,13 +31,14 @@
 use crate::mock::*;
 use crate::{Error, LiquidityProxyTrait};
 use common::prelude::fixnum::ops::CheckedSub;
-use common::prelude::{Balance, QuoteAmount, SwapAmount};
+use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL,
     XOR,
 };
 use core::convert::TryInto;
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError;
 
 #[inline]
@@ -765,6 +766,77 @@ fn test_swap_should_fail_with_bad_origin() {
             FilterMode::Disabled,
         );
         common::assert_noop_transactional!(result, DispatchError::BadOrigin);
+    });
+}
+
+#[test]
+fn test_swap_shoild_fail_with_non_divisible_assets() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // Register ETH as non-divisible asset
+        assert_ok!(Assets::register_asset_id(
+            alice(),
+            ETH,
+            AssetSymbol(b"ETH".to_vec()),
+            AssetName(b"Ethereum".to_vec()),
+            0,
+            Balance::from(10u32),
+            true,
+            None,
+            None,
+        ));
+
+        // Register DOT as non-divisible asset
+        assert_ok!(Assets::register_asset_id(
+            alice(),
+            DOT,
+            AssetSymbol(b"DOT".to_vec()),
+            AssetName(b"Polkadot".to_vec()),
+            0,
+            Balance::from(10u32),
+            true,
+            None,
+            None,
+        ));
+
+        assert_noop!(
+            LiquidityProxy::swap(
+                Origin::signed(alice()),
+                DEX_C_ID,
+                ETH,
+                GetBaseAssetId::get(),
+                SwapAmount::with_desired_input(balance!(500), balance!(300)),
+                Vec::new(),
+                FilterMode::Disabled,
+            ),
+            Error::<Runtime>::UnableToSwapIndivisibleAssets
+        );
+
+        assert_noop!(
+            LiquidityProxy::swap(
+                Origin::signed(alice()),
+                DEX_C_ID,
+                GetBaseAssetId::get(),
+                DOT,
+                SwapAmount::with_desired_input(balance!(500), balance!(300)),
+                Vec::new(),
+                FilterMode::Disabled,
+            ),
+            Error::<Runtime>::UnableToSwapIndivisibleAssets
+        );
+
+        assert_noop!(
+            LiquidityProxy::swap(
+                Origin::signed(alice()),
+                DEX_C_ID,
+                ETH,
+                DOT,
+                SwapAmount::with_desired_input(balance!(500), balance!(300)),
+                Vec::new(),
+                FilterMode::Disabled,
+            ),
+            Error::<Runtime>::UnableToSwapIndivisibleAssets
+        );
     });
 }
 

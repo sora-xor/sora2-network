@@ -1757,6 +1757,153 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
 }
 
 #[test]
+fn deposit_liquidity_with_non_divisible_assets() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset: AssetId = GoldenTicket.into();
+        let target_asset_a: AssetId = GreenPromise.into();
+        let target_asset_b: AssetId = BluePromise.into();
+
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            target_asset_a,
+            AssetSymbol(b"GP".to_vec()),
+            AssetName(b"Green Promise".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        ));
+
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            target_asset_b,
+            AssetSymbol(b"BP".to_vec()),
+            AssetName(b"Blue Promise".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        ));
+
+        assert_noop!(
+            crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                base_asset,
+                target_asset_a,
+                balance!(1),
+                balance!(100),
+                balance!(1),
+                balance!(100),
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+
+        assert_noop!(
+            crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                target_asset_b,
+                base_asset,
+                balance!(1),
+                balance!(100),
+                balance!(1),
+                balance!(100),
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+
+        assert_noop!(
+            crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                target_asset_a,
+                target_asset_b,
+                balance!(1),
+                balance!(100),
+                balance!(1),
+                balance!(100),
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+    })]);
+}
+
+#[test]
+fn withdraw_liquidity_with_non_divisible_assets() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset: AssetId = GoldenTicket.into();
+        let target_asset_a: AssetId = GreenPromise.into();
+        let target_asset_b: AssetId = BluePromise.into();
+
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            target_asset_a,
+            AssetSymbol(b"GP".to_vec()),
+            AssetName(b"Green Promise".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        ));
+
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            target_asset_b,
+            AssetSymbol(b"BP".to_vec()),
+            AssetName(b"Blue Promise".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
+        ));
+
+        assert_noop!(
+            crate::Module::<Runtime>::withdraw_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                base_asset,
+                target_asset_a,
+                balance!(8784),
+                balance!(18100),
+                balance!(4100)
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+
+        assert_noop!(
+            crate::Module::<Runtime>::withdraw_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                target_asset_b,
+                base_asset,
+                balance!(8784),
+                balance!(18100),
+                balance!(4100)
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+
+        assert_noop!(
+            crate::Module::<Runtime>::withdraw_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                target_asset_a,
+                target_asset_b,
+                balance!(8784),
+                balance!(18100),
+                balance!(4100)
+            ),
+            crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
+        );
+    })]);
+}
+
+#[test]
 fn price_without_impact_small_amount() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
