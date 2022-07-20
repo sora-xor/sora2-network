@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use crate::{Config, *};
+#[cfg(test)]
 use common::mock::ExistentialDeposits;
 use common::{fixed, hash, Amount, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;

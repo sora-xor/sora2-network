@@ -34,9 +34,9 @@ hex-literal = "0.3.1"
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 permissions = { path = "../permissions" }
 technical = { path = "../technical", default-features = false }
 
@@ -51,6 +51,10 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "common/std",
+    "assets/std",
+    "permissions/std",
+    "technical/std",
 ]
 
 runtime-benchmarks = [
