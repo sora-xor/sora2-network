@@ -688,6 +688,13 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            ensure!(
+                assets::AssetInfos::<T>::get(input_asset_a).2 != 0
+                    && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
+                Error::<T>::UnableToOperateWithIndivisibleAssets
+            );
+
             Module::<T>::deposit_liquidity_unchecked(
                 source,
                 dex_id,
@@ -712,6 +719,13 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            ensure!(
+                assets::AssetInfos::<T>::get(output_asset_a).2 != 0
+                    && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
+                Error::<T>::UnableToOperateWithIndivisibleAssets
+            );
+
             Module::<T>::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
@@ -900,6 +914,8 @@ pub mod pallet {
         NotEnoughUnlockedLiquidity,
         /// Cannot create a pool with indivisible assets
         UnableToCreatePoolWithIndivisibleAssets,
+        /// Unable to proceed operation with indivisible assets
+        UnableToOperateWithIndivisibleAssets,
         /// Not enough liquidity out of farming to withdraw
         NotEnoughLiquidityOutOfFarming,
     }

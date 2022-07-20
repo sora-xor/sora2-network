@@ -220,6 +220,12 @@ impl<T: Config> Pallet<T> {
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
     ) -> Result<(), DispatchError> {
+        ensure!(
+            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
+                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
+            Error::<T>::UnableToSwapIndivisibleAssets
+        );
+
         if Self::is_forbidden_filter(
             &input_asset_id,
             &output_asset_id,
@@ -1484,6 +1490,7 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+
             Self::inner_swap(
                 who.clone(),
                 who,
@@ -1519,6 +1526,7 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+
             Self::inner_swap(
                 who,
                 receiver,
@@ -1571,5 +1579,7 @@ pub mod pallet {
         ForbiddenFilter,
         /// Failure while calculating price ignoring non-linearity of liquidity source.
         FailedToCalculatePriceWithoutImpact,
+        /// Unable to swap indivisible assets
+        UnableToSwapIndivisibleAssets,
     }
 }
