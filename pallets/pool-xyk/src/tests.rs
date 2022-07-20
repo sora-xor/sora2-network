@@ -30,8 +30,8 @@
 
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
-    DEFAULT_BALANCE_PRECISION,
+    assert_noop_transactional, balance, AssetName, AssetSymbol, Balance, LiquiditySource,
+    LiquiditySourceType, ToFeeAccount, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_ok;
 
@@ -1758,12 +1758,12 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
 
 #[test]
 fn deposit_liquidity_with_non_divisible_assets() {
-    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
         let base_asset: AssetId = GoldenTicket.into();
         let target_asset_a: AssetId = GreenPromise.into();
         let target_asset_b: AssetId = BluePromise.into();
 
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             target_asset_a,
             AssetSymbol(b"GP".to_vec()),
@@ -1775,7 +1775,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             target_asset_b,
             AssetSymbol(b"BP".to_vec()),
@@ -1787,8 +1787,8 @@ fn deposit_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_noop!(
-            crate::Module::<Runtime>::deposit_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 base_asset,
@@ -1801,8 +1801,8 @@ fn deposit_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop!(
-            crate::Module::<Runtime>::deposit_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 target_asset_b,
@@ -1815,8 +1815,8 @@ fn deposit_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop!(
-            crate::Module::<Runtime>::deposit_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 target_asset_a,
@@ -1833,12 +1833,12 @@ fn deposit_liquidity_with_non_divisible_assets() {
 
 #[test]
 fn withdraw_liquidity_with_non_divisible_assets() {
-    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+    crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
         let base_asset: AssetId = GoldenTicket.into();
         let target_asset_a: AssetId = GreenPromise.into();
         let target_asset_b: AssetId = BluePromise.into();
 
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             target_asset_a,
             AssetSymbol(b"GP".to_vec()),
@@ -1850,7 +1850,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             target_asset_b,
             AssetSymbol(b"BP".to_vec()),
@@ -1862,8 +1862,8 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_noop!(
-            crate::Module::<Runtime>::withdraw_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 base_asset,
@@ -1875,8 +1875,8 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop!(
-            crate::Module::<Runtime>::withdraw_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 target_asset_b,
@@ -1888,8 +1888,8 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop!(
-            crate::Module::<Runtime>::withdraw_liquidity(
+        assert_noop_transactional!(
+            crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 target_asset_a,
