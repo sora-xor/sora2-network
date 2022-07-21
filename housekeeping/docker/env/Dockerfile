@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM debian:bullseye-slim
 
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rustup"
