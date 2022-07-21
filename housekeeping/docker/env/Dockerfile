@@ -15,8 +15,7 @@ RUN apt-get update && \
     libssl-dev pkg-config \
     curl \
     git binaryen \
-    make cmake libssl-dev zlib1g-dev \
-    file bsdmainutils mold clang lldb lld libclang-dev llvm \
+    make cmake libssl-dev \
     software-properties-common && \
     apt-get autoremove -y && \
     apt-get clean && \
@@ -58,9 +57,3 @@ RUN curl https://github.com/chevdor/subwasm/releases/download/v0.17.0/subwasm_li
 RUN cargo install grcov && \
     rustup component add llvm-tools-preview && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-
-RUN git clone https://github.com/rui314/mold.git && \
-    git -C "./mold" checkout v1.3.1 && \
-    make --directory="./mold" -j && \
-    make --directory="./mold" install && \
-    rm -rf "./mold"

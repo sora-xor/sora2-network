@@ -1780,7 +1780,7 @@ fn mainnet_genesis(
             ..Default::default()
         },
         system: SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,

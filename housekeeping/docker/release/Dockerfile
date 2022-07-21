@@ -13,5 +13,6 @@ RUN mkdir /chain && \
 USER substrate
 
 COPY ./framenode /usr/local/bin/framenode
+COPY ./relayer /usr/local/bin/relayer
 
 ENTRYPOINT ["framenode"]

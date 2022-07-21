@@ -73,9 +73,9 @@ pipeline {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
-                                    mold --run cargo test  --release --features runtime-benchmarks
-                                    mold --run cargo build --release --features \"${featureList}\"
-                                    mv ./target/release/framenode .
+                                    cargo test  --release --features runtime-benchmarks
+                                    cargo build --release --features \"${featureList}\"
+                                    mv ./target/release/framenode ./target/release/relayer .
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
@@ -86,9 +86,9 @@ pipeline {
                             docker.image(envImageName).inside() {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
-                                    mold --run cargo test
-                                    mold --run cargo test --features private-net
-                                    mold --run cargo test --features runtime-benchmarks
+                                    cargo test
+                                    cargo test --features private-net
+                                    cargo test --features runtime-benchmarks
                                 '''
                             }
                         }
