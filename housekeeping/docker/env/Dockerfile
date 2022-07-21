@@ -22,26 +22,27 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-#     echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-13 main" >> /etc/apt/sources.list.d/llvm-toochain-13.list && \
-#     echo "deb-src http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-13 main" >> /etc/apt/sources.list.d/llvm-toochain-13.list && \
-#     apt-get -y update && \
-#     apt-get install -y --no-install-recommends \
-#     clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 && \
-#     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
-#     apt-get autoremove -y && \
-#     apt-get clean && \
-#     rm -rf /var/lib/apt/lists/*
+RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
+    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
+    apt-get -y update && \
+    apt-get install -y --no-install-recommends \
+    clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 && \
+    update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install docker
-# RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-# RUN echo "deb https://download.docker.com/linux/debian bullseye stable" >> /etc/apt/sources.list.d/docker-ce.list && \
-#     apt-get update && \
-#     apt-get install --no-install-recommends -y \
-#     docker-ce docker-ce-cli containerd.io && \
-#     apt-get autoremove -y && \
-#     apt-get clean && \
-#     rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+RUN add-apt-repository \
+    "deb https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y \
+    docker-ce docker-ce-cli containerd.io && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2022-05-12
@@ -58,8 +59,8 @@ RUN cargo install grcov && \
     rustup component add llvm-tools-preview && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
 
-# RUN git clone https://github.com/rui314/mold.git && \
-#     git -C "./mold" checkout v1.3.1 && \
-#     make --directory="./mold" -j && \
-#     make --directory="./mold" install && \
-#     rm -rf "./mold"
+RUN git clone https://github.com/rui314/mold.git && \
+    git -C "./mold" checkout v1.3.1 && \
+    make --directory="./mold" -j && \
+    make --directory="./mold" install && \
+    rm -rf "./mold"

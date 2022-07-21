@@ -5,7 +5,7 @@ String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String cargoAuditImage        = registry + '/build-tools/cargo_audit'
-String envImageName           = registry + '/sora2/env'
+String envImageName           = registry + '/sora2/env:sub4'
 String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
@@ -40,7 +40,7 @@ pipeline {
                     docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
-                               cargo audit  > cargoAuditReport.txt || exit 0
+                                cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
                         }
@@ -59,7 +59,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
                         if (getPushVersion(pushTags)) {
-                            docker.image(envImageName + ':sub4').inside() {
+                            docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
@@ -83,10 +83,10 @@ pipeline {
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
-                            docker.image(envImageName + ':sub4').inside() {
+                            docker.image(envImageName).inside() {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
-                                    mold --run cargo test 
+                                    mold --run cargo test
                                     mold --run cargo test --features private-net
                                     mold --run cargo test --features runtime-benchmarks
                                 '''
@@ -103,7 +103,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(envImageName + ':sub4').inside() {
+                        docker.image(envImageName).inside() {
                             sh './housekeeping/coverage.sh'
                             cobertura coberturaReportFile: 'cobertura_report'
                         }
