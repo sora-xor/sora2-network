@@ -75,7 +75,8 @@ pipeline {
                                 sh """
                                     cargo test  --release --features runtime-benchmarks
                                     cargo build --release --features \"${featureList}\"
-                                    mv ./target/release/framenode ./target/release/relayer .
+                                    mv ./target/release/framenode .
+                                    mv ./target/release/relayer ./relayer.bin
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
