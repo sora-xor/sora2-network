@@ -72,7 +72,25 @@ pub mod currency {
     use common::Balance;
 
     pub const TRANSACTION_BYTE_FEE: Balance = 0;
+
+    pub const UNITS: Balance = 1_000_000_000_000_000_000;
+    pub const CENTS: Balance = UNITS / 30_000;
+    pub const GRAND: Balance = CENTS * 100_000;
+    pub const MILLICENTS: Balance = CENTS / 1_000;
+
+    pub const fn deposit(items: u32, bytes: u32) -> Balance {
+        items as Balance * 2_000 * CENTS + (bytes as Balance) * 100 * MILLICENTS
+    }
 }
+
+// 1 in 4 blocks (on average, not counting collisions) will be primary babe blocks.
+pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
+
+pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
+    sp_consensus_babe::BabeEpochConfiguration {
+        c: PRIMARY_PROBABILITY,
+        allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
+    };
 
 pub mod rewards {
     use sp_runtime::Percent;

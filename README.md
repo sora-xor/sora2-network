@@ -7,6 +7,8 @@ This repo contains code of node, pallets, runtime.
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
 
+[BRIDGE.md](BRIDGE.md) - Quick start for Ethereum bridge
+
 # System requirements
 
 ## Minimum (for example for small docker container)

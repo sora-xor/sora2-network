@@ -52,15 +52,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod migration;
-
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Assets<T> = assets::Module<T>;
-type System<T> = frame_system::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type System<T> = frame_system::Pallet<T>;
 
 pub trait WeightInfo {
     fn claim_incentive() -> Weight;
@@ -227,7 +225,7 @@ impl<T: Config> Pallet<T> {
             // are to be reminted in responsible pallets.
             let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
             // Burn all incentives.
-            assets::Module::<T>::burn_from(
+            assets::Pallet::<T>::burn_from(
                 &incentive_asset_id,
                 tech_account_id,
                 fees_account_id,
@@ -273,14 +271,14 @@ impl<T: Config> Pallet<T> {
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
                 distribution.liquidity_providers,
             )?;
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 &T::GetParliamentAccountId::get(),
@@ -395,6 +393,7 @@ pub mod pallet {
     use common::{AccountIdOf, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -420,8 +419,13 @@ pub mod pallet {
         type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -433,10 +437,6 @@ pub mod pallet {
             Self::burn_rate_update_routine(block_num);
 
             <T as Config>::WeightInfo::on_initialize(is_distributing)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
         }
     }
 
@@ -451,7 +451,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fees successfully exchanged for appropriate amount of pool tokens.

@@ -6,21 +6,21 @@ use ceres_liquidity_locker::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
 use common::{balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, XOR};
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use assets::Module as Assets;
-use pallet_timestamp::Module as Timestamp;
-use permissions::Module as Permissions;
-use pool_xyk::Module as XYKPool;
-use trading_pair::Module as TradingPair;
+use assets::Pallet as Assets;
+use pallet_timestamp::Pallet as Timestamp;
+use permissions::Pallet as Permissions;
+use pool_xyk::Pallet as XYKPool;
+use trading_pair::Pallet as TradingPair;
 
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Config>(ceres_liquidity_locker::Module<T>);
+pub struct Pallet<T: Config>(ceres_liquidity_locker::Pallet<T>);
 pub trait Config: ceres_liquidity_locker::Config + trading_pair::Config + pool_xyk::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -34,12 +34,12 @@ fn alice<T: Config>() -> T::AccountId {
 #[allow(non_snake_case)]
 pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
     let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
-    AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -103,7 +103,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -161,7 +161,7 @@ benchmarks! {
         setup_benchmark::<T>()?;
         let caller = AUTHORITY::<T>();
     }: {
-        let _ = ceres_liquidity_locker::Module::<T>::change_ceres_fee(
+        let _ = ceres_liquidity_locker::Pallet::<T>::change_ceres_fee(
             RawOrigin::Signed(caller.clone()).into(),
             balance!(69)
         );
@@ -171,17 +171,8 @@ benchmarks! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_lock_liquidity::<Runtime>());
-            assert_ok!(test_benchmark_change_ceres_fee::<Runtime>());
-        });
-    }
-}
+impl_benchmark_test_suite!(
+    Pallet,
+    crate::mock::ExtBuilder::default().build(),
+    crate::mock::Runtime
+);

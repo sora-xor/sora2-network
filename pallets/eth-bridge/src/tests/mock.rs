@@ -49,11 +49,11 @@ use common::{
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, UnfilteredDispatchable};
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
-use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainExt, TransactionPoolExt};
+use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainDbExt, TransactionPoolExt};
 use frame_support::sp_runtime::app_crypto::sp_core::{ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::offchain::http;
 use frame_support::sp_runtime::offchain::testing::{
@@ -71,7 +71,7 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{GenesisBuild, Get};
+use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -79,10 +79,11 @@ use frame_system::EnsureRoot;
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
-use sp_core::offchain::OffchainStorage;
+use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
 use sp_keystore::testing::KeyStore;
 use sp_keystore::{KeystoreExt, SyncCryptoStore};
+use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::Debug;
@@ -114,7 +115,7 @@ parameter_types! {
     pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MyTestXt<Call, Extra> {
     /// Signature of the extrinsic.
     pub signature: Option<(AccountId, Extra)>,
@@ -155,6 +156,16 @@ impl SignedExtension for MyExtra {
     type Pre = ();
 
     fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+        Ok(())
+    }
+
+    fn pre_dispatch(
+        self,
+        _who: &Self::AccountId,
+        _call: &Self::Call,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
+    ) -> Result<Self::Pre, TransactionValidityError> {
         Ok(())
     }
 }
@@ -220,7 +231,7 @@ impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo)]
 pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
 
@@ -249,7 +260,7 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -271,6 +282,8 @@ impl frame_system::Config for Runtime {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -329,6 +342,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -339,10 +354,15 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -356,7 +376,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -386,6 +406,24 @@ impl pallet_sudo::Config for Runtime {
     type Call = Call;
 }
 
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
+}
+
 impl pallet_scheduler::Config for Runtime {
     type Event = Event;
     type Origin = Origin;
@@ -395,6 +433,9 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl crate::Config for Runtime {
@@ -424,16 +465,16 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
-        Currencies: currencies::{Module, Call, Storage,  Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Multisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -592,8 +633,11 @@ impl State {
             let call = e.call;
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
-            if let Err(e) = call.dispatch(Some(who).into()) {
-                eprintln!("{:?}", e);
+            let origin = Some(who).into();
+            // set_caller_from
+            println!("{:?} {:?}", origin, call);
+            if let Err(e) = call.dispatch_bypass_filter(origin) {
+                eprintln!("call dispatch error {:?}", e);
             }
         }
     }
@@ -716,7 +760,7 @@ impl ExtBuilder {
         contract_address: H160,
     ) -> u32 {
         let net_id = self.last_network_id;
-        let multisig_account_id = bridge_multisig::Module::<Runtime>::multi_account_id(
+        let multisig_account_id = bridge_multisig::Pallet::<Runtime>::multi_account_id(
             &self.root_account_id,
             1,
             net_id as u64 + 10,
@@ -743,7 +787,7 @@ impl ExtBuilder {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let authority_account_id =
-            bridge_multisig::Module::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
+            bridge_multisig::Pallet::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
@@ -860,7 +904,7 @@ impl ExtBuilder {
 
         if !endowed_accounts.is_empty() {
             SudoConfig {
-                key: endowed_accounts[0].0.clone(),
+                key: Some(endowed_accounts[0].0.clone()),
             }
             .assimilate_storage(&mut storage)
             .unwrap();
@@ -880,7 +924,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: endowed_accounts.clone(),
+            balances: endowed_accounts.clone(),
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -893,7 +937,7 @@ impl ExtBuilder {
 
         EthBridgeConfig {
             networks: bridge_network_configs,
-            authority_account: authority_account_id.clone(),
+            authority_account: Some(authority_account_id.clone()),
             val_master_contract_address: sp_core::H160::from_str(
                 "47e229aa491763038f6a505b4f85d8eb463f0962",
             )
@@ -906,7 +950,8 @@ impl ExtBuilder {
         .assimilate_storage(&mut storage)
         .unwrap();
         let mut t = TestExternalities::from(storage);
-        t.register_extension(OffchainExt::new(offchain));
+        t.register_extension(OffchainDbExt::new(offchain.clone()));
+        t.register_extension(OffchainWorkerExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
         t.register_extension(KeystoreExt(Arc::new(key_store)));
         t.execute_with(|| System::set_block_number(1));

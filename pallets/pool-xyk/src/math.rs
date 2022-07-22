@@ -37,9 +37,9 @@ use common::{fixed_wrapper, TradingPair};
 
 use crate::{to_balance, to_fixed_wrapper};
 
-use crate::{Config, Error, Module};
+use crate::{Config, Error, Pallet};
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
     // Original uniswap code.
 
@@ -71,8 +71,8 @@ impl<T: Config> Module<T> {
         amount_a_min: Balance,
         amount_b_min: Balance,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let opt_am_a_des = Module::<T>::calculate_quote(&amount_b_desired, &reserve_b, &reserve_a)?;
-        let opt_am_b_des = Module::<T>::calculate_quote(&amount_a_desired, &reserve_a, &reserve_b)?;
+        let opt_am_a_des = Pallet::<T>::calculate_quote(&amount_b_desired, &reserve_b, &reserve_a)?;
+        let opt_am_b_des = Pallet::<T>::calculate_quote(&amount_a_desired, &reserve_a, &reserve_b)?;
         if opt_am_b_des <= amount_b_desired {
             ensure!(
                 opt_am_b_des >= amount_b_min,
@@ -102,7 +102,7 @@ impl<T: Config> Module<T> {
         amount_a_min: Balance,
         amount_b_min: Balance,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
-        let (am_a_des, am_b_des) = Module::<T>::calculate_optimal_deposit(
+        let (am_a_des, am_b_des) = Pallet::<T>::calculate_optimal_deposit(
             total_supply,
             reserve_a,
             reserve_b,
@@ -220,9 +220,9 @@ impl<T: Config> Module<T> {
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let b_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
+            assets::Pallet::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
         let t_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
+            assets::Pallet::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
         let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);

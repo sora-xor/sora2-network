@@ -38,7 +38,7 @@ use common::prelude::{Balance, FixedWrapper};
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
-use crate::{Config, Error, Module, MIN_LIQUIDITY};
+use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 
 use crate::bounds::*;
 use crate::operations::*;
@@ -86,9 +86,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             _ => (),
         }
         let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+            technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(self.destination.0.asset, &self.pool_account)?;
+        Pallet::<T>::is_pool_account_valid_for(self.destination.0.asset, &self.pool_account)?;
 
         // Balance of source account for k value.
         let balance_ks = PoolProviders::<T>::get(&pool_account_repr_sys, &source).unwrap_or(0);
@@ -98,10 +98,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         // Balance of pool account for asset pair basic asset.
         let balance_bp =
-            <assets::Module<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
         // Balance of pool account for asset pair target asset.
         let balance_tp =
-            <assets::Module<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
 
         if balance_bp == 0 && balance_tp == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
@@ -222,37 +222,37 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
         let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        technical::Module::<T>::transfer_out(
+            technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        technical::Pallet::<T>::transfer_out(
             &self.destination.0.asset,
             &self.pool_account,
             self.receiver_account_a.as_ref().unwrap(),
             self.destination.0.amount.unwrap(),
         )?;
-        technical::Module::<T>::transfer_out(
+        technical::Pallet::<T>::transfer_out(
             &self.destination.1.asset,
             &self.pool_account,
             self.receiver_account_b.as_ref().unwrap(),
             self.destination.1.amount.unwrap(),
         )?;
-        Module::<T>::burn(&pool_account_repr_sys, source, self.pool_tokens)?;
+        Pallet::<T>::burn(&pool_account_repr_sys, source, self.pool_tokens)?;
         // Pool tokens balance became zero while burned amount was actually non-zero.
-        if Module::<T>::pool_providers(&pool_account_repr_sys, source)
+        if Pallet::<T>::pool_providers(&pool_account_repr_sys, source)
             .unwrap_or(0)
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Module::<T>::strict_sort_pair(
+            let pair = Pallet::<T>::strict_sort_pair(
                 &self.destination.0.asset,
                 &self.destination.1.asset,
             )?;
             AccountPools::<T>::mutate(source, |set| set.remove(&pair.target_asset_id));
         }
         let balance_a =
-            <assets::Module<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
         let balance_b =
-            <assets::Module<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
-        Module::<T>::update_reserves(
+            <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
+        Pallet::<T>::update_reserves(
             &self.destination.0.asset,
             &self.destination.1.asset,
             (&balance_a, &balance_b),

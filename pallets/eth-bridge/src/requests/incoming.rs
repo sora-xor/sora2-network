@@ -48,7 +48,7 @@ use frame_support::debug;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
-use frame_support::weights::WeightToFeePolynomial;
+use frame_support::weights::WeightToFee;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -60,8 +60,9 @@ pub const MIN_PEERS: usize = 4;
 pub const MAX_PEERS: usize = 100;
 
 /// Incoming request for adding Sidechain token to a bridge.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingAddToken<T: Config> {
     pub token_address: EthAddress,
     pub asset_id: T::AssetId,
@@ -100,10 +101,11 @@ impl<T: Config> IncomingAddToken<T> {
 }
 
 /// Incoming request for adding/removing peer in a bridge.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeers<T: Config> {
-    pub peer_account_id: T::AccountId,
+    pub peer_account_id: Option<T::AccountId>,
     pub peer_address: EthAddress,
     pub removed: bool,
     pub author: T::AccountId,
@@ -121,10 +123,16 @@ impl<T: Config> IncomingChangePeers<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let pending_peer =
             crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
-        ensure!(
-            self.removed || pending_peer == self.peer_account_id,
-            Error::<T>::WrongPendingPeer
-        );
+        if !self.removed {
+            ensure!(
+                &pending_peer
+                    == self
+                        .peer_account_id
+                        .as_ref()
+                        .ok_or(Error::<T>::UnknownPeerAddress)?,
+                Error::<T>::WrongPendingPeer
+            );
+        }
         let is_eth_network = self.network_id == T::GetEthNetworkId::get();
         let eth_sync_peers_opt = if is_eth_network {
             let mut eth_sync_peers: EthPeersSync = crate::PendingEthPeersSync::<T>::get();
@@ -139,10 +147,16 @@ impl<T: Config> IncomingChangePeers<T> {
             .unwrap_or(true);
         if is_ready {
             if self.removed {
-                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
+                if let Some(peer) = &self.peer_account_id {
+                    frame_system::Pallet::<T>::dec_consumers(peer);
+                }
             } else {
-                let account_id = self.peer_account_id.clone();
-                bridge_multisig::Module::<T>::add_signatory(
+                let account_id = self
+                    .peer_account_id
+                    .as_ref()
+                    .ok_or(Error::<T>::UnknownPeerAddress)?
+                    .clone();
+                bridge_multisig::Pallet::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
@@ -169,15 +183,16 @@ impl<T: Config> IncomingChangePeers<T> {
     }
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ChangePeersContract {
     XOR,
     VAL,
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: EthAddress,
@@ -216,7 +231,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         if is_ready {
             let account_id = self.peer_account_id.clone();
             if self.added {
-                bridge_multisig::Module::<T>::add_signatory(
+                bridge_multisig::Pallet::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
@@ -246,8 +261,9 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 }
 
 /// Incoming request for transferring token from Sidechain to Thischain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingTransfer<T: Config> {
     pub from: EthAddress,
     pub to: T::AccountId,
@@ -266,7 +282,7 @@ pub struct IncomingTransfer<T: Config> {
 impl<T: Config> IncomingTransfer<T> {
     pub fn fee_amount() -> Balance {
         let weight = <T as Config>::WeightInfo::request_from_sidechain();
-        <T as Config>::WeightToFee::calc(&weight)
+        <T as Config>::WeightToFee::weight_to_fee(&weight)
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
@@ -367,8 +383,9 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
 /// signatures were collected, but something changed in the bridge state (e.g., peers set) and
 /// the signatures became invalid. In this case we want to cancel the request to be able to
 /// re-submit it later.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub outgoing_request: OutgoingRequest<T>,
     pub outgoing_request_hash: H256,
@@ -448,8 +465,9 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 /// Incoming request that's used to mark outgoing requests as done.
 /// Since off-chain workers query Sidechain networks lazily, we should force them to check
 /// if some outgoing request was finalized on Sidechain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
@@ -502,8 +520,9 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
 
 /// Incoming request that acts as an acknowledgement to a corresponding
 /// `OutgoingPrepareForMigration` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
@@ -544,8 +563,9 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 
 /// Incoming request that acts as an acknowledgement to a corresponding
 /// `OutgoingMigrate` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: EthAddress,
     pub author: T::AccountId,

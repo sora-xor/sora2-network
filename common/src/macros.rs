@@ -69,23 +69,23 @@ macro_rules! fixed_wrapper {
 #[macro_export]
 macro_rules! dbg {
     () => {
-        debug::info!("[{}]", core::line!());
+        log::info!("[{}]", core::line!());
     };
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         match $val {
             tmp => {
-                debug::info!("[{}] {} = {:#?}",
+                log::info!("[{}] {} = {:#?}",
                     core::line!(), core::stringify!($val), &tmp);
                 tmp
             }
         }
     };
     // Trailing comma with single argument is ignored
-    ($val:expr,) => { debug::info!($val) };
+    ($val:expr,) => { log::info!($val) };
     ($($val:expr),+ $(,)?) => {
-        ($(debug::info!($val)),+,)
+        ($(log::info!($val)),+,)
     };
 }
 
@@ -152,6 +152,26 @@ macro_rules! assert_approx_eq {
             $tol
         );
     }};
+}
+
+#[macro_export]
+macro_rules! storage_remove_all {
+    ($x:ty) => {{
+        let mut clear_result = <$x>::clear(u32::max_value(), None);
+        while let Some(cursor) = &clear_result.maybe_cursor {
+            clear_result = <$x>::clear(u32::max_value(), Some(cursor));
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_noop_transactional {
+    (
+		$x:expr,
+		$y:expr $(,)?
+	) => {
+        ::frame_support::assert_noop!($crate::with_transaction(|| { $x }), $y);
+    };
 }
 
 #[cfg(test)]

@@ -4,14 +4,13 @@ use crate::requests::{
 };
 use crate::tests::mock::*;
 use crate::util::majority;
-use codec::{Decode, Encode};
 use common::eth;
 use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::weights::Pays;
 use frame_support::{assert_err, assert_ok, ensure};
 
 use secp256k1::{PublicKey, SecretKey};
-use sp_core::{ecdsa, Public, H256};
+use sp_core::{ecdsa, H256};
 use std::collections::BTreeSet;
 
 mod asset;
@@ -27,21 +26,26 @@ pub(crate) type Assets = assets::Pallet<Runtime>;
 
 pub const ETH_NETWORK_ID: u32 = 0;
 
-fn get_signature_params(signature: &ecdsa::Signature) -> SignatureParams {
-    let encoded = signature.encode();
-    let mut params = SignatureParams::decode(&mut &encoded[..]).expect("Wrong signature format");
+fn get_signature_params(
+    signature: &(secp256k1::Signature, secp256k1::RecoveryId),
+) -> SignatureParams {
+    let mut params = SignatureParams {
+        r: signature.0.r.b32(),
+        s: signature.0.s.b32(),
+        v: signature.1.into(),
+    };
     params.v += 27;
     params
 }
 
 pub fn last_event() -> Option<Event> {
-    frame_system::Module::<Runtime>::events()
+    frame_system::Pallet::<Runtime>::events()
         .pop()
         .map(|x| x.event)
 }
 
 pub fn no_event() -> bool {
-    frame_system::Module::<Runtime>::events().pop().is_none()
+    frame_system::Pallet::<Runtime>::events().pop().is_none()
 }
 
 pub fn approve_request(
@@ -59,8 +63,7 @@ pub fn approve_request(
         let public = PublicKey::from_secret_key(&secret);
         let msg = eth::prepare_message(encoded.as_raw());
         let sig_pair = secp256k1::sign(&msg, &secret);
-        let signature = sig_pair.into();
-        let signature_params = get_signature_params(&signature);
+        let signature_params = get_signature_params(&sig_pair);
         approvals.insert(signature_params.clone());
         let additional_sigs = if EthBridge::is_additional_signature_needed(net_id, &request) {
             1
@@ -72,7 +75,7 @@ pub fn approve_request(
         ensure!(
             EthBridge::approve_request(
                 Origin::signed(account_id.clone()),
-                ecdsa::Public::from_slice(&public.serialize_compressed()),
+                ecdsa::Public::from_raw(public.serialize_compressed()),
                 request_hash,
                 signature_params,
                 net_id
@@ -82,7 +85,7 @@ pub fn approve_request(
         );
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
-                Event::eth_bridge(bridge_event) => match bridge_event {
+                Event::EthBridge(bridge_event) => match bridge_event {
                     crate::Event::ApprovalsCollected(h) => {
                         assert_eq!(h, request_hash);
                     }
@@ -91,7 +94,7 @@ pub fn approve_request(
                             crate::RequestsQueue::<Runtime>::get(net_id).last(),
                             Some(&request_hash)
                         );
-                        return Err(Some(Event::eth_bridge(e)));
+                        return Err(Some(Event::EthBridge(e)));
                     }
                 },
                 e => panic!("Unexpected event: {:?}", e),

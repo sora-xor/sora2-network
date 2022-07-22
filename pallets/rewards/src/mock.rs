@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
@@ -95,14 +95,14 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -118,7 +118,7 @@ impl Config for Runtime {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -140,6 +140,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl technical::Config for Runtime {
@@ -158,7 +160,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -176,7 +178,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -192,6 +193,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -202,6 +205,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 pub struct ExtBuilder {
@@ -262,7 +271,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![
+            balances: vec![
                 (account_id.clone(), VAL.into(), balance!(30000)),
                 (account_id.clone(), PSWAP.into(), balance!(1000)),
             ],
@@ -336,37 +345,4 @@ pub fn run_to_block(n: u64) {
         Rewards::on_initialize(System::block_number());
         Rewards::on_val_burned(balance!(10));
     }
-}
-
-pub fn unclaimed_val_data() -> Vec<(crate::EthAddress, Balance)> {
-    vec![
-        (
-            hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-            balance!(500),
-        ),
-        (
-            hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-            balance!(1000),
-        ),
-        (
-            hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-            balance!(1500),
-        ),
-        (
-            hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
-            balance!(2000),
-        ),
-        (
-            hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
-            balance!(2500),
-        ),
-        (
-            hex!("90781049bad67cb0b870bfd41da6b467d4345683").into(),
-            balance!(3000),
-        ),
-        (
-            hex!("8522d57aa68fad76c110ca6ff310dcd57071cdf6").into(),
-            balance!(3500),
-        ),
-    ]
 }

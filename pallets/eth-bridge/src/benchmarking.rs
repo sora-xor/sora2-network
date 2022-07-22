@@ -38,7 +38,7 @@ use crate::Pallet;
 use codec::Decode;
 use common::eth::public_key_to_eth_address;
 use common::{balance, XOR};
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, BenchmarkError};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::sp_runtime::MultiSigner;
 use frame_system::{EventRecord, RawOrigin};
@@ -48,11 +48,11 @@ type Assets<T> = assets::Pallet<T>;
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = events.last().unwrap();
@@ -180,7 +180,7 @@ benchmarks! {
         ));
         let request = Requests::<T>::get(net_id, RequestsQueue::<T>::get(net_id).first().unwrap()).unwrap();
         let (out_req, req_hash) = request.as_outgoing().unwrap();
-        let encoded_request = out_req.to_eth_abi(req_hash)?;
+        let encoded_request = out_req.to_eth_abi(req_hash).map_err(|_| BenchmarkError::Stop("EthAbi encoding error"))?;
         let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
         let public = secp256k1::PublicKey::from_secret_key(&sk);
         let address = public_key_to_eth_address(&public);
@@ -216,7 +216,7 @@ benchmarks! {
         ));
         let request = Requests::<T>::get(net_id, RequestsQueue::<T>::get(net_id).first().unwrap()).unwrap();
         let (out_req, req_hash) = request.as_outgoing().unwrap();
-        let encoded_request = out_req.to_eth_abi(req_hash)?;
+        let encoded_request = out_req.to_eth_abi(req_hash).map_err(|_| BenchmarkError::Stop("EthAbi encoding error"))?;
         let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
         let public = secp256k1::PublicKey::from_secret_key(&sk);
         let address = public_key_to_eth_address(&public);
@@ -281,13 +281,13 @@ mod bench_tests {
     fn test_benchmarks() {
         let (mut ext, _state) = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert_ok!(test_benchmark_transfer_to_sidechain::<Runtime>());
-            assert_ok!(test_benchmark_request_from_sidechain::<Runtime>());
-            assert_ok!(test_benchmark_register_incoming_request::<Runtime>());
-            assert_ok!(test_benchmark_finalize_incoming_request::<Runtime>());
-            assert_ok!(test_benchmark_approve_request::<Runtime>());
-            assert_ok!(test_benchmark_approve_request_finalize::<Runtime>());
-            assert_ok!(test_benchmark_abort_request::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_transfer_to_sidechain());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_request_from_sidechain());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_register_incoming_request());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_finalize_incoming_request());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_approve_request());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_approve_request_finalize());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_abort_request());
         });
     }
 }

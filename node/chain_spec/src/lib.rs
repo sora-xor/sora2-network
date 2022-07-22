@@ -48,14 +48,17 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig, GetBaseAssetId,
-    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    BabeConfig, BalancesConfig, BasicInboundChannelConfig, BasicOutboundChannelConfig, BeefyConfig,
+    BeefyId, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig, DEXManagerConfig,
+    DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
+    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
+
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
@@ -63,7 +66,8 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{Public, H160, H256};
+use sp_core::crypto::ByteArray;
+use sp_core::{Public, H160, H256, U256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
 use sp_runtime::{BuildStorage, Perbill};
@@ -79,7 +83,7 @@ use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
-type Technical = technical::Module<Runtime>;
+type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate a crypto pair from seed
@@ -100,7 +104,15 @@ where
 /// Generate an Babe authority key.
 pub fn authority_keys_from_seed(
     seed: &str,
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
+) -> (
+    AccountId,
+    AccountId,
+    AuraId,
+    BabeId,
+    GrandpaId,
+    ImOnlineId,
+    BeefyId,
+) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
         get_account_id_from_seed::<sr25519::Public>(seed),
@@ -108,6 +120,7 @@ pub fn authority_keys_from_seed(
         get_from_seed::<BabeId>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<ImOnlineId>(seed),
+        get_from_seed::<BeefyId>(seed),
     )
 }
 
@@ -116,22 +129,38 @@ pub fn authority_keys_from_public_keys(
     controller_address: [u8; 32],
     sr25519_key: [u8; 32],
     ed25519_key: [u8; 32],
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
+    ecdsa_key: [u8; 33],
+) -> (
+    AccountId,
+    AccountId,
+    AuraId,
+    BabeId,
+    GrandpaId,
+    ImOnlineId,
+    BeefyId,
+) {
     (
         stash_address.into(),
         controller_address.into(),
-        AuraId::from_slice(&sr25519_key),
-        BabeId::from_slice(&sr25519_key),
-        GrandpaId::from_slice(&ed25519_key),
-        ImOnlineId::from_slice(&sr25519_key),
+        AuraId::from_slice(&sr25519_key).unwrap(),
+        BabeId::from_slice(&sr25519_key).unwrap(),
+        GrandpaId::from_slice(&ed25519_key).unwrap(),
+        ImOnlineId::from_slice(&sr25519_key).unwrap(),
+        BeefyId::from_slice(&ecdsa_key).unwrap(),
     )
 }
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
+fn session_keys(
+    grandpa: GrandpaId,
+    babe: BabeId,
+    im_online: ImOnlineId,
+    beefy: BeefyId,
+) -> SessionKeys {
     SessionKeys {
         babe,
         grandpa,
         im_online,
+        beefy,
     }
 }
 
@@ -179,37 +208,43 @@ pub fn dev_net_coded() -> ChainSpec {
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
                         hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57"),
+                        hex!("032001ac7aab973536274d6903d5108f2a18114f6b8eaf63a94b10eda40831b8e9"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
                         hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e"),
+                        hex!("032773c06f08f6a0bcb6d1e2487c4ab60ea9e6e90227f686115cc75de06149aca0"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004"),
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
                         hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
+                        hex!("031b4b72dc354abf2efa3ba17d27907a0ef73de252719e8b5953f568a86eca9a18"),
                     ),
-                    authority_keys_from_public_keys(
-                        hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
-                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
-                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
-                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
-                    ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
+                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                    //     hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                    //     hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
+                    //     hex!("03cafa6f45bfad692c66ff5b8b3f24f826802f4dd863b31821fc05832cad3e8389"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
+                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                    //     hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                    //     hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
+                    //     hex!("0249197248076adbd30b1e162c6ec6517ed552b1f63f1f102efa6fc57c892d4f03"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
+                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                    //     hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                    //     hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
+                    //     hex!("026b0e88acde2c1e83b22c1638bd41d4c70464e6b9dc2434a731adc97f3d16c677"),
+                    // ),
                 ],
                 vec![
                     hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
@@ -221,6 +256,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 ],
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
@@ -249,11 +285,13 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                 ],
+                3,
             )
         },
         vec![],
         None,
         Some("sora-substrate-dev"),
+        None,
         Some(properties),
         None,
     )
@@ -333,30 +371,35 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
                         hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
                         hex!("51d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8"),
+                        hex!("0251d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48"),
                         hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
                         hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
                         hex!("f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346"),
+                        hex!("02f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("e493667f399170b28f3b2db4b9f28dbbabbc5da5fc21114e076768fc3c539002"),
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
                         hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
+                        hex!("02b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
                         hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
                         hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
                         hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
+                        hex!("0204bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
                         hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
                         hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
                         hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
+                        hex!("02c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
                     ),
                 ],
                 vec![],
@@ -385,11 +428,13 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
+                69,
             )
         },
         boot_nodes,
         None,
         Some(protocol),
+        None,
         Some(properties),
         None,
     )
@@ -491,9 +536,10 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
                     authority_keys_from_seed("Dave"),
-                    /*
                     authority_keys_from_seed("Eve"),
                     authority_keys_from_seed("Ferdie"),
+                    /*
+                    authority_keys_from_seed("Treasury"),
                     */
                 ],
                 vec![
@@ -541,9 +587,11 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
+                3,
             )
         },
         vec![],
+        None,
         None,
         None,
         Some(properties),
@@ -556,13 +604,25 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
     dev: bool,
     root_key: AccountId,
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    initial_authorities: Vec<(
+        AccountId,
+        AccountId,
+        AuraId,
+        BabeId,
+        GrandpaId,
+        ImOnlineId,
+        BeefyId,
+    )>,
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
+    validator_count: u32,
 ) -> GenesisConfig {
+    use common::XSTUSD;
+    use framenode_runtime::EthAppConfig;
+
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -583,7 +643,7 @@ fn testnet_genesis(
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let xor_fee_account_id: AccountId =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
             .expect("Failed to decode account Id");
 
     let eth_bridge_tech_account_id = TechAccountId::Generic(
@@ -591,17 +651,29 @@ fn testnet_genesis(
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let eth_bridge_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
     let eth_bridge_authority_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_AUTHORITY.to_vec(),
     );
     let eth_bridge_authority_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
+
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
+
+    let treasury_tech_account_id = framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let treasury_account_id = framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -634,7 +706,7 @@ fn testnet_genesis(
         iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
         iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+    let iroha_migration_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
         &iroha_migration_tech_account_id,
     )
     .unwrap();
@@ -644,13 +716,13 @@ fn testnet_genesis(
         rewards::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let rewards_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
     let assets_and_permissions_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
     let assets_and_permissions_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
@@ -658,7 +730,7 @@ fn testnet_genesis(
     let dex_root_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
     let dex_root_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
     let mut tech_accounts = vec![
@@ -670,6 +742,18 @@ fn testnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
+        ),
+        (
+            treasury_account_id.clone(),
+            treasury_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -840,7 +924,7 @@ fn testnet_genesis(
             faucet::TECH_ACCOUNT_MAIN.to_vec(),
         );
         let faucet_account_id: AccountId =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
                 .expect("Failed to decode account id");
         let ceres = common::AssetId32::from_bytes(hex!(
             "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -861,45 +945,70 @@ fn testnet_genesis(
         } else {
             our_include!("bytes/iroha_migration_accounts_staging.in")
         },
-        account_id: iroha_migration_account_id.clone(),
+        account_id: Some(iroha_migration_account_id.clone()),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
-        frame_system: Some(SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
-            changes_trie_config: Default::default(),
-        }),
-        pallet_sudo: Some(SudoConfig {
-            key: root_key.clone(),
-        }),
-        technical: Some(TechnicalConfig {
+        migration_app: Default::default(),
+        erc20_app: Default::default(),
+        eth_app: Default::default(),
+        ethereum_light_client: Default::default(),
+        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
+            reward_fraction: Perbill::from_percent(80),
+            ..Default::default()
+        },
+        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
+            fee: 10000,
+            interval: 10,
+            ..Default::default()
+        },
+        basic_inbound_channel: Default::default(),
+        basic_outbound_channel: BasicOutboundChannelConfig {
+            interval: 10,
+            ..Default::default()
+        },
+        system: SystemConfig {
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
+        },
+        sudo: SudoConfig {
+            key: Some(root_key.clone()),
+        },
+        technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
-        }),
-        pallet_babe: Some(BabeConfig {
+        },
+        babe: BabeConfig {
             authorities: vec![],
-        }),
-        pallet_grandpa: Some(GrandpaConfig {
+            epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+        },
+        grandpa: GrandpaConfig {
             authorities: vec![],
-        }),
-        pallet_session: Some(SessionConfig {
+        },
+        session: SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
-                    (
-                        account.clone(),
-                        account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
-                    )
-                })
+                .map(
+                    |(account, _, _, babe_id, grandpa_id, im_online_id, beefy_id)| {
+                        (
+                            account.clone(),
+                            account.clone(),
+                            session_keys(
+                                grandpa_id.clone(),
+                                babe_id.clone(),
+                                im_online_id.clone(),
+                                beefy_id.clone(),
+                            ),
+                        )
+                    },
+                )
                 .collect::<Vec<_>>(),
-        }),
-        pallet_staking: Some(StakingConfig {
-            validator_count: 69,
+        },
+        staking: StakingConfig {
+            validator_count,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -911,8 +1020,8 @@ fn testnet_genesis(
             invulnerables: Vec::new(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
-        }),
-        assets: Some(AssetsConfig {
+        },
+        assets: AssetsConfig {
             endowed_assets: vec![
                 (
                     GetXorAssetId::get(),
@@ -1006,8 +1115,8 @@ fn testnet_genesis(
                     None,
                 ),
             ],
-        }),
-        permissions: Some(PermissionsConfig {
+        },
+        permissions: PermissionsConfig {
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
@@ -1078,9 +1187,9 @@ fn testnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-        }),
-        pallet_balances: Some(BalancesConfig { balances }),
-        dex_manager: Some(DEXManagerConfig {
+        },
+        balances: BalancesConfig { balances },
+        dex_manager: DEXManagerConfig {
             dex_list: vec![(
                 0,
                 DEXInfo {
@@ -1088,12 +1197,12 @@ fn testnet_genesis(
                     is_public: true,
                 },
             )],
-        }),
-        faucet: Some(faucet_config),
-        tokens: Some(TokensConfig {
-            endowed_accounts: tokens_endowed_accounts,
-        }),
-        trading_pair: Some(TradingPairConfig {
+        },
+        faucet: faucet_config,
+        tokens: TokensConfig {
+            balances: tokens_endowed_accounts,
+        },
+        trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
                 .chain(initial_synthetic_assets.iter())
@@ -1108,17 +1217,17 @@ fn testnet_genesis(
                     )
                 })
                 .collect(),
-        }),
-        dex_api: Some(DEXAPIConfig {
+        },
+        dexapi: DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
             ]
             .into(),
-        }),
-        eth_bridge: Some(EthBridgeConfig {
-            authority_account: eth_bridge_authority_account_id.clone(),
+        },
+        eth_bridge: EthBridgeConfig {
+            authority_account: Some(eth_bridge_authority_account_id.clone()),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
@@ -1156,46 +1265,49 @@ fn testnet_genesis(
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
             val_master_contract_address: eth_bridge_params.val_master_contract_address,
-        }),
-        bridge_multisig: Some(BridgeMultisigConfig {
+        },
+        bridge_multisig: BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
-        }),
-        multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
+        },
+        multicollateral_bonding_curve_pool: MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
-            incentives_account_id: mbc_pool_rewards_account_id,
+            incentives_account_id: Some(mbc_pool_rewards_account_id),
             initial_collateral_assets,
-            free_reserves_account_id: mbc_pool_free_reserves_account_id,
-        }),
-        pswap_distribution: Some(PswapDistributionConfig {
+            free_reserves_account_id: Some(mbc_pool_free_reserves_account_id),
+        },
+        pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
-        }),
-        iroha_migration: Some(iroha_migration_config),
-        rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig {
+        },
+        iroha_migration: iroha_migration_config,
+        rewards: rewards_config,
+        council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),
-        }),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+        },
+        technical_committee: TechnicalCommitteeConfig {
             members: technical_committee_accounts,
             phantom: Default::default(),
-        }),
-        pallet_democracy: Some(DemocracyConfig::default()),
-        pallet_elections_phragmen: Default::default(),
-        pallet_membership_Instance1: Default::default(),
-        pallet_im_online: Default::default(),
-        xst: Some(XSTPoolConfig {
+        },
+        democracy: DemocracyConfig::default(),
+        elections_phragmen: Default::default(),
+        technical_membership: Default::default(),
+        im_online: Default::default(),
+        xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
-        }),
-        vested_rewards: Some(VestedRewardsConfig {
+        },
+        beefy: BeefyConfig {
+            authorities: vec![],
+        },
+        vested_rewards: VestedRewardsConfig {
             test_crowdloan_rewards: vec![
                 CrowdloanReward {
                     id: Vec::new(),
@@ -1224,7 +1336,7 @@ fn testnet_genesis(
                     percent: fixed!(6.7),
                 },
             ],
-        }),
+        },
     }
 }
 
@@ -1272,12 +1384,14 @@ pub fn main_net_coded() -> ChainSpec {
                         hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
                         hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
                         hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
+                        hex!("024f206cdff359d50597b3fd41fd17a1b585c7914037eedbd8e4a0d3f213a8ab33"), // Prod value
                     ),
                     authority_keys_from_public_keys(
                         hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
                         hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
                         hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
                         hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
+                        hex!("02aadf7d2aa0d424cd60d6b384647f48e8d00610a631079fa33c1da0d712a71b1d"), // Prod value
                     ),
                 ],
                 vec![
@@ -1320,6 +1434,7 @@ pub fn main_net_coded() -> ChainSpec {
         boot_nodes,
         None,
         Some("sora-substrate-1"),
+        None,
         Some(properties),
         None,
     )
@@ -1334,7 +1449,15 @@ pub fn main_net_coded() -> ChainSpec {
     not(feature = "private-net")
 ))]
 fn mainnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    initial_authorities: Vec<(
+        AccountId,
+        AccountId,
+        AuraId,
+        BabeId,
+        GrandpaId,
+        ImOnlineId,
+        BeefyId,
+    )>,
     additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
@@ -1362,7 +1485,7 @@ fn mainnet_genesis(
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let xor_fee_account_id: AccountId =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
             .expect("Failed to decode account Id");
 
     // Bridge peers multisignature account
@@ -1372,7 +1495,7 @@ fn mainnet_genesis(
     );
     // Wrapping of bridge peers multisignature account
     let eth_bridge_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
     // Bridge authority account expected to be managed by voting
     let eth_bridge_authority_tech_account_id = TechAccountId::Generic(
@@ -1381,10 +1504,19 @@ fn mainnet_genesis(
     );
     // Wrapper for Bridge authority account expected to be managed by voting
     let eth_bridge_authority_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
+
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -1415,7 +1547,7 @@ fn mainnet_genesis(
         iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
         iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+    let iroha_migration_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
         &iroha_migration_tech_account_id,
     )
     .unwrap();
@@ -1425,13 +1557,13 @@ fn mainnet_genesis(
         rewards::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let rewards_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
     let assets_and_permissions_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
     let assets_and_permissions_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
@@ -1439,7 +1571,7 @@ fn mainnet_genesis(
     let dex_root_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
     let dex_root_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
     let mut tech_accounts = vec![
@@ -1451,6 +1583,14 @@ fn mainnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -1620,37 +1760,63 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        frame_system: Some(SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
-            changes_trie_config: Default::default(),
-        }),
-        technical: Some(TechnicalConfig {
+        migration_app: Default::default(),
+        vested_rewards: Default::default(),
+        erc20_app: Default::default(),
+        eth_app: Default::default(),
+        ethereum_light_client: Default::default(),
+        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
+            reward_fraction: Perbill::from_percent(80),
+            ..Default::default()
+        },
+        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
+            fee: 10000,
+            interval: 10,
+            ..Default::default()
+        },
+        basic_inbound_channel: Default::default(),
+        basic_outbound_channel: BasicOutboundChannelConfig {
+            interval: 10,
+            ..Default::default()
+        },
+        system: SystemConfig {
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
+        },
+        technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
-        }),
-        pallet_babe: Some(BabeConfig {
+        },
+        babe: BabeConfig {
             authorities: vec![],
-        }),
-        pallet_grandpa: Some(GrandpaConfig {
+            epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+        },
+        grandpa: GrandpaConfig {
             authorities: vec![],
-        }),
-        pallet_session: Some(SessionConfig {
+        },
+        session: SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
-                    (
-                        account.clone(),
-                        account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
-                    )
-                })
+                .map(
+                    |(account, _, _, babe_id, grandpa_id, im_online_id, beefy_id)| {
+                        (
+                            account.clone(),
+                            account.clone(),
+                            session_keys(
+                                grandpa_id.clone(),
+                                babe_id.clone(),
+                                im_online_id.clone(),
+                                beefy_id.clone(),
+                            ),
+                        )
+                    },
+                )
                 .collect::<Vec<_>>(),
-        }),
-        pallet_staking: Some(StakingConfig {
+        },
+        staking: StakingConfig {
             validator_count: 69,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -1661,15 +1827,15 @@ fn mainnet_genesis(
                 .collect(),
             invulnerables: initial_authorities
                 .iter()
-                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
+                .map(|(stash_account, _, _, _, _, _, _)| stash_account.clone())
                 .collect(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
-        }),
-        assets: Some(AssetsConfig {
+        },
+        assets: AssetsConfig {
             endowed_assets: endowed_assets,
-        }),
-        permissions: Some(PermissionsConfig {
+        },
+        permissions: PermissionsConfig {
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
@@ -1735,10 +1901,12 @@ fn mainnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-        }),
-        pallet_balances: Some(BalancesConfig {
+        },
+        balances: BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_fees_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),
@@ -1769,8 +1937,8 @@ fn mainnet_genesis(
                     .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
-        }),
-        dex_manager: Some(DEXManagerConfig {
+        },
+        dex_manager: DEXManagerConfig {
             dex_list: vec![(
                 0,
                 DEXInfo {
@@ -1778,9 +1946,9 @@ fn mainnet_genesis(
                     is_public: true,
                 },
             )],
-        }),
-        tokens: Some(TokensConfig {
-            endowed_accounts: vec![
+        },
+        tokens: TokensConfig {
+            balances: vec![
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
@@ -1810,8 +1978,8 @@ fn mainnet_genesis(
                     initial_pswap_market_maker_rewards,
                 ),
             ],
-        }),
-        trading_pair: Some(TradingPairConfig {
+        },
+        trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
                 .chain(initial_synthetic_assets.iter())
@@ -1826,16 +1994,16 @@ fn mainnet_genesis(
                     )
                 })
                 .collect(),
-        }),
-        dex_api: Some(DEXAPIConfig {
+        },
+        dexapi: DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
             ]
             .into(),
-        }),
-        eth_bridge: Some(EthBridgeConfig {
-            authority_account: eth_bridge_authority_account_id.clone(),
+        },
+        eth_bridge: EthBridgeConfig {
+            authority_account: Some(eth_bridge_authority_account_id.clone()),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
@@ -1848,48 +2016,51 @@ fn mainnet_genesis(
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
             val_master_contract_address: eth_bridge_params.val_master_contract_address,
-        }),
-        bridge_multisig: Some(BridgeMultisigConfig {
+        },
+        bridge_multisig: BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
-        }),
-        multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
+        },
+        multicollateral_bonding_curve_pool: MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
-            incentives_account_id: mbc_pool_rewards_account_id,
+            incentives_account_id: Some(mbc_pool_rewards_account_id),
             initial_collateral_assets,
-            free_reserves_account_id: mbc_pool_free_reserves_account_id,
-        }),
-        pswap_distribution: Some(PswapDistributionConfig {
+            free_reserves_account_id: Some(mbc_pool_free_reserves_account_id),
+        },
+        pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
-        }),
-        iroha_migration: Some(IrohaMigrationConfig {
+        },
+        iroha_migration: IrohaMigrationConfig {
             iroha_accounts: Vec::new(),
-            account_id: iroha_migration_account_id,
-        }),
-        rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig {
+            account_id: Some(iroha_migration_account_id),
+        },
+        rewards: rewards_config,
+        council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),
-        }),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+        },
+        technical_committee: TechnicalCommitteeConfig {
             members: technical_committee_accounts,
             phantom: Default::default(),
-        }),
-        pallet_democracy: Some(DemocracyConfig::default()),
-        pallet_elections_phragmen: Default::default(),
-        pallet_membership_Instance1: Default::default(),
-        pallet_im_online: Default::default(),
-        xst: Some(XSTPoolConfig {
+        },
+        democracy: DemocracyConfig::default(),
+        elections_phragmen: Default::default(),
+        technical_membership: Default::default(),
+        im_online: Default::default(),
+        xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
-        }),
+        },
+        beefy: BeefyConfig {
+            authorities: vec![],
+        },
     }
 }
 

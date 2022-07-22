@@ -5,9 +5,8 @@ mod tests {
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
-    use frame_support::{assert_err, assert_ok, Identity};
+    use frame_support::{assert_err, assert_ok, Identity, PalletId};
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
 
     #[test]
     fn lock_tokens_invalid_number_of_tokens() {
@@ -78,7 +77,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let token_locker = ModuleId(*b"crstlock").into_account();
+            let token_locker = PalletId(*b"crstlock").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &token_locker)
                     .expect("Failed to query free balance."),
@@ -195,7 +194,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let token_locker = ModuleId(*b"crstlock").into_account();
+            let token_locker = PalletId(*b"crstlock").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &token_locker)
                     .expect("Failed to query free balance."),

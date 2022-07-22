@@ -78,14 +78,17 @@ use common::prelude::Balance;
 use common::{AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use core::{line, stringify};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::log::{debug, error, info, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, StorageLock, Time};
-use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member, One};
+use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
+use frame_support::sp_runtime::traits::{
+    AtLeast32Bit, BlockNumberProvider, MaybeSerializeDeserialize, Member, One,
+};
 use frame_support::sp_runtime::KeyTypeId;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{debug, ensure, fail, transactional, Parameter, RuntimeDebug};
+use frame_support::{ensure, fail, Parameter, RuntimeDebug};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
@@ -93,6 +96,7 @@ use hex_literal::hex;
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
+#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
 use sp_std::borrow::Cow;
@@ -139,7 +143,6 @@ pub mod weights;
 mod benchmarking;
 mod contract;
 mod macros;
-mod migrations;
 pub mod offchain;
 pub mod requests;
 mod rpc;
@@ -196,7 +199,9 @@ type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 /// Ethereum node parameters (url, credentials).
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NodeParams {
     url: String,
@@ -212,7 +217,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 
 /// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct NetworkParams<AccountId: Ord> {
     pub bridge_contract_address: EthAddress,
     pub initial_peers: BTreeSet<AccountId>,
@@ -220,7 +225,8 @@ pub struct NetworkParams<AccountId: Ord> {
 
 /// Network configuration.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
@@ -266,7 +272,7 @@ impl<T: Config> BridgeAssetData<T> {
 
 /// Bridge status.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub enum BridgeStatus {
     Initialized,
     Migrating,
@@ -280,7 +286,7 @@ impl Default for BridgeStatus {
 
 /// Bridge asset parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum AssetConfig<AssetId> {
     Thischain {
         id: AssetId,
@@ -330,10 +336,10 @@ pub mod pallet {
     use crate::util::get_bridge_account;
     use codec::Codec;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
+    use frame_support::log;
     use frame_support::pallet_prelude::*;
-    use frame_support::sp_runtime::traits::Zero;
-    use frame_support::traits::schedule::{Anon, DispatchTime};
-    use frame_support::traits::{GetCallMetadata, PalletVersion};
+    use frame_support::traits::schedule::Anon;
+    use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -386,8 +392,13 @@ pub mod pallet {
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -395,25 +406,14 @@ pub mod pallet {
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
-        fn on_runtime_upgrade() -> Weight {
-            match Pallet::<T>::storage_version() {
-                Some(version) if version == PalletVersion::new(0, 1, 0) => {
-                    migrations::migrate_to_0_2_0::<T>()
-                }
-                _ => Weight::zero(),
-            }
-        }
-
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: T::BlockNumber) {
-            debug::debug!("Entering off-chain workers {:?}", block_number);
-            if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY)
-                .get::<Vec<u8>>()
-                .is_none()
-            {
-                debug::debug!("Peer secret key not found. Skipping off-chain procedure.");
+            debug!("Entering off-chain workers {:?}", block_number);
+            let value_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+            if value_ref.get::<Vec<u8>>().ok().flatten().is_none() {
+                debug!("Peer secret key not found. Skipping off-chain procedure.");
                 return;
             }
 
@@ -425,7 +425,7 @@ pub mod pallet {
             if let Ok(_guard) = guard {
                 Self::offchain();
             } else {
-                debug::debug!("Skip worker {:?}", block_number);
+                log::debug!("Skip worker {:?}", block_number);
             }
         }
     }
@@ -438,7 +438,6 @@ pub mod pallet {
         /// - `bridge_contract_address` - address of smart-contract deployed on a corresponding
         /// network.
         /// - `initial_peers` - a set of initial network peers.
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
@@ -448,7 +447,7 @@ pub mod pallet {
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
-            let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
+            let peers_account_id = bridge_multisig::Pallet::<T>::register_multisig_inner(
                 initial_peers[0].clone(),
                 initial_peers.clone(),
             )?;
@@ -467,7 +466,6 @@ pub mod pallet {
         /// Parameters:
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -475,9 +473,9 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
                 OutgoingAddAsset {
                     author: from.clone(),
@@ -487,7 +485,7 @@ pub mod pallet {
                     timepoint,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -499,7 +497,6 @@ pub mod pallet {
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -509,11 +506,11 @@ pub mod pallet {
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called add_sidechain_token");
+            debug!("called add_sidechain_token");
             ensure_root(origin)?;
-            let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddToken(
                 OutgoingAddToken {
                     author: from.clone(),
@@ -526,7 +523,7 @@ pub mod pallet {
                     timepoint,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -544,7 +541,6 @@ pub mod pallet {
         /// - `to` - sidechain account id.
         /// - `amount` - amount of the asset.
         /// - `network_id` - network identifier.
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -553,10 +549,10 @@ pub mod pallet {
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called transfer_to_sidechain");
+            debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Transfer(
                 OutgoingTransfer {
                     from: from.clone(),
@@ -568,7 +564,7 @@ pub mod pallet {
                     timepoint,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -578,7 +574,7 @@ pub mod pallet {
         /// - `eth_tx_hash` - transaction hash on Sidechain.
         /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
@@ -586,9 +582,9 @@ pub mod pallet {
             kind: IncomingRequestKind,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called request_from_sidechain");
+            debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             match kind {
                 IncomingRequestKind::Transaction(kind) => {
                     Self::add_request(&OffchainRequest::LoadIncoming(
@@ -606,7 +602,7 @@ pub mod pallet {
                     if kind == IncomingMetaRequestKind::CancelOutgoingRequest {
                         fail!(Error::<T>::Unavailable);
                     }
-                    let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+                    let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
                     Self::add_request(&OffchainRequest::load_incoming_meta(
                         LoadIncomingMetaRequest::new(
                             from,
@@ -634,7 +630,7 @@ pub mod pallet {
             hash: H256,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called finalize_incoming_request");
+            debug!("called finalize_incoming_request");
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, &hash)
                 .ok_or_else(|| err_pays_no(Error::<T>::UnknownRequest))?;
@@ -652,7 +648,7 @@ pub mod pallet {
         /// - `account_id` - account id on thischain.
         /// - `address` - account id on sidechain.
         /// - `network_id` - network identifier.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -660,11 +656,11 @@ pub mod pallet {
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called change_peers_out");
+            debug!("called change_peers_out");
             ensure_root(origin)?;
-            let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeer(
                 OutgoingAddPeer {
                     author: from.clone(),
@@ -675,9 +671,9 @@ pub mod pallet {
                     timepoint,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             if network_id == T::GetEthNetworkId::get() {
-                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                let nonce = frame_system::Pallet::<T>::account_nonce(&from);
                 Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(
                     OutgoingAddPeerCompat {
                         author: from.clone(),
@@ -688,7 +684,7 @@ pub mod pallet {
                         timepoint,
                     },
                 )))?;
-                frame_system::Module::<T>::inc_account_nonce(&from);
+                frame_system::Pallet::<T>::inc_account_nonce(&from);
             }
             Ok(().into())
         }
@@ -698,7 +694,7 @@ pub mod pallet {
         /// Parameters:
         /// - `account_id` - account id on thischain.
         /// - `network_id` - network identifier.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -706,9 +702,9 @@ pub mod pallet {
             peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called change_peers_out");
+            debug!("called change_peers_out");
             ensure_root(origin)?;
-            let from = Self::authority_account();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let peer_address = if PeerAddress::<T>::contains_key(network_id, &account_id) {
                 if let Some(peer_address) = peer_address {
                     ensure!(
@@ -722,9 +718,9 @@ pub mod pallet {
             } else {
                 peer_address.ok_or(Error::<T>::UnknownPeerId)?
             };
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             let compat_hash = if network_id == T::GetEthNetworkId::get() {
-                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                let nonce = frame_system::Pallet::<T>::account_nonce(&from);
                 let request = OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(
                     OutgoingRemovePeerCompat {
                         author: from.clone(),
@@ -736,12 +732,12 @@ pub mod pallet {
                     },
                 ));
                 Self::add_request(&request)?;
-                frame_system::Module::<T>::inc_account_nonce(&from);
+                frame_system::Pallet::<T>::inc_account_nonce(&from);
                 Some(request.hash())
             } else {
                 None
             };
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
                 OutgoingRemovePeer {
                     author: from.clone(),
@@ -753,7 +749,7 @@ pub mod pallet {
                     compat_hash,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -763,17 +759,17 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `network_id` - bridge network identifier.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called prepare_for_migration");
+            debug!("called prepare_for_migration");
             ensure_root(origin)?;
-            let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(
                 OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
                     author: from.clone(),
@@ -782,7 +778,7 @@ pub mod pallet {
                     timepoint,
                 }),
             ))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -794,7 +790,7 @@ pub mod pallet {
         /// - `new_contract_address` - new sidechain ocntract address.
         /// - `erc20_native_tokens` - migrated assets ids.
         /// - `network_id` - bridge network identifier.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -802,11 +798,11 @@ pub mod pallet {
             erc20_native_tokens: Vec<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called prepare_for_migration");
+            debug!("called prepare_for_migration");
             ensure_root(origin)?;
-            let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Migrate(
                 OutgoingMigrate {
                     author: from.clone(),
@@ -817,7 +813,7 @@ pub mod pallet {
                     timepoint,
                 },
             )))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
+            frame_system::Pallet::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
 
@@ -832,7 +828,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called register_incoming_request");
+            debug!("called register_incoming_request");
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
             pays_no(Self::register_incoming_request_inner(
@@ -853,7 +849,7 @@ pub mod pallet {
             load_incoming_request: LoadIncomingRequest<T>,
             incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called import_incoming_request");
+            debug!("called import_incoming_request");
             let net_id = load_incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
             pays_no(Self::inner_import_incoming_request(
@@ -875,7 +871,7 @@ pub mod pallet {
             signature_params: SignatureParams,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called approve_request");
+            debug!("called approve_request");
             let author = ensure_signed(origin)?;
             let net_id = network_id;
             Self::ensure_peer(&author, net_id)?;
@@ -901,10 +897,9 @@ pub mod pallet {
             error: DispatchError,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!(
+            debug!(
                 "called abort_request. Hash: {:?}, reason: {:?}",
-                hash,
-                error
+                hash, error
             );
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, hash)
@@ -915,7 +910,7 @@ pub mod pallet {
         /// Add the given peer to the peers set without additional checks.
         ///
         /// Can only be called by a root account.
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
@@ -937,39 +932,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(0)]
-        pub fn migrate_to_0_2_0(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let weight = match Pallet::<T>::storage_version() {
-                Some(version) if version == PalletVersion::new(0, 1, 0) => {
-                    let bridge_multisig = crate::BridgeAccount::<T>::get(T::GetEthNetworkId::get())
-                        .unwrap_or_default();
-                    let mut migrating_requests = MigratingRequests::<T>::get();
-                    migrating_requests.retain(|hash| {
-                        bridge_multisig::Multisigs::<T>::contains_key(&bridge_multisig, &hash.0)
-                    });
-                    // Wait for all the previous requests to finish and then finish the migration
-                    if migrating_requests.is_empty() {
-                        migrations::remove_peers::<T>(&T::RemovePeerAccountIds::get());
-                    } else {
-                        // ...or postpone the migration.
-                        let block_number = frame_system::Pallet::<T>::current_block_number();
-                        let _ = T::Scheduler::schedule(
-                            DispatchTime::At(block_number + 100u32.into()),
-                            None,
-                            1,
-                            RawOrigin::Root.into(),
-                            Call::migrate_to_0_2_0().into(),
-                        );
-                    }
-                    MigratingRequests::<T>::set(migrating_requests);
-                    <T as frame_system::Config>::DbWeight::get().reads_writes(2, 1)
-                }
-                _ => Weight::zero(),
-            };
-            Ok(Some(weight).into())
-        }
-
         /// Remove asset
         ///
         /// Can only be called by root.
@@ -979,7 +941,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
+            log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
             assets::Pallet::<T>::ensure_asset_exists(&asset_id)?;
             let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
@@ -1001,7 +963,7 @@ pub mod pallet {
             token_address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!(
+            log::debug!(
                 "called register_existing_sidechain_asset. asset_id: {:?}",
                 asset_id
             );
@@ -1021,7 +983,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New request has been registered. [Request Hash]
@@ -1207,8 +1168,12 @@ pub mod pallet {
         ExpectedEthNetwork,
         /// Request was removed and refunded.
         RemovedAndRefunded,
+        /// Authority account is not set.
+        AuthorityAccountNotSet,
         /// Not enough peers provided, need at least 1
         NotEnoughPeers,
+        /// Failed to read value from offchain storage.
+        ReadStorageError,
     }
 
     impl<T: Config> Error<T> {
@@ -1356,7 +1321,7 @@ pub mod pallet {
         Blake2_128Concat,
         EthAddress,
         T::AccountId,
-        ValueQuery,
+        OptionQuery,
     >;
 
     /// Peer address on Sidechain.
@@ -1381,7 +1346,7 @@ pub mod pallet {
     /// Thischain authority account.
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
-    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     /// Bridge status.
     #[pallet::storage]
@@ -1416,7 +1381,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub authority_account: T::AccountId,
+        pub authority_account: Option<T::AccountId>,
         pub xor_master_contract_address: EthAddress,
         pub val_master_contract_address: EthAddress,
         pub networks: Vec<NetworkConfig<T>>,
@@ -1437,7 +1402,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            AuthorityAccount::<T>::put(&self.authority_account);
+            AuthorityAccount::<T>::put(&self.authority_account.as_ref().unwrap());
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             for network in &self.networks {
@@ -1468,7 +1433,7 @@ pub mod pallet {
                 let scope = Scope::Unlimited;
                 let permission_ids = [MINT, BURN];
                 for permission_id in &permission_ids {
-                    permissions::Module::<T>::assign_permission(
+                    permissions::Pallet::<T>::assign_permission(
                         peers_account_id.clone(),
                         &peers_account_id,
                         *permission_id,
@@ -1530,7 +1495,7 @@ impl<T: Config> Pallet<T> {
         Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |v| v.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
-        let block_number = frame_system::Module::<T>::current_block_number();
+        let block_number = frame_system::Pallet::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
         Self::deposit_event(Event::RequestRegistered(hash));
         Ok(())
@@ -1569,7 +1534,7 @@ impl<T: Config> Pallet<T> {
                 incoming_request_hash,
                 RequestStatus::Failed(e),
             );
-            debug::warn!("{:?}", e);
+            warn!("{:?}", e);
             return Err(e.into());
         }
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
@@ -1596,14 +1561,14 @@ impl<T: Config> Pallet<T> {
         );
         let error_opt = request.finalize().err();
         if let Some(e) = error_opt {
-            debug::error!("Incoming request failed {:?} {:?}", hash, e);
+            error!("Incoming request failed {:?} {:?}", hash, e);
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
             cancel!(request, hash, network_id, e);
             Self::remove_request_from_queue(network_id, &hash);
             return Err(e);
         } else {
-            debug::warn!("Incoming request finalized {:?}", hash);
+            warn!("Incoming request finalized {:?}", hash);
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
             Self::deposit_event(Event::IncomingRequestFinalized(hash));
         }
@@ -1638,7 +1603,7 @@ impl<T: Config> Pallet<T> {
         );
         let bridge_account =
             Self::bridge_account(network_id).expect("networks can't be removed; qed");
-        let asset_id = assets::Module::<T>::register_from(
+        let asset_id = assets::Pallet::<T>::register_from(
             &bridge_account,
             symbol,
             name,
@@ -1658,7 +1623,7 @@ impl<T: Config> Pallet<T> {
             let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)
                 .pop()
                 .unwrap_or_else(|| bridge_account.clone());
-            permissions::Module::<T>::grant_permission_with_scope(
+            permissions::Pallet::<T>::grant_permission_with_scope(
                 permission_owner,
                 bridge_account.clone(),
                 *permission_id,
@@ -1733,7 +1698,7 @@ impl<T: Config> Pallet<T> {
             // TODO: punish the peer.
             return Err(Error::<T>::InvalidSignature.into());
         }
-        debug::info!("Verified request approve {:?}", request_encoded);
+        info!("Verified request approve {:?}", request_encoded);
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
         let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
             1
@@ -1747,12 +1712,12 @@ impl<T: Config> Pallet<T> {
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
             if let Err(err) = request.finalize() {
-                debug::error!("Outgoing request finalization failed: {:?}", err);
+                error!("Outgoing request finalization failed: {:?}", err);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
                 Self::deposit_event(Event::RequestFinalizationFailed(hash));
                 cancel!(request, hash, net_id, err);
             } else {
-                debug::debug!("Outgoing request approvals collected {:?}", hash);
+                debug!("Outgoing request approvals collected {:?}", hash);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
                 Self::deposit_event(Event::ApprovalsCollected(hash));
             }

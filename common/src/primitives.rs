@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
@@ -52,7 +52,7 @@ use {
 pub type Balance = u128;
 
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
-#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
 
 impl From<Balance> for BalanceWrapper {
@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
 }
 
 /// Information about state of particular DEX.
-#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
@@ -101,7 +101,19 @@ pub struct DEXInfo<AssetId> {
 
 //TODO: consider replacing base_asset_id with dex_id, and getting base asset from dex
 /// Trading pair data.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, Hash)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    Hash,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
     /// Base token of exchange.
@@ -117,7 +129,19 @@ impl<AssetId: Eq> TradingPair<AssetId> {
 }
 
 /// Asset identifier.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum PredefinedAssetId {
@@ -166,7 +190,19 @@ pub type AssetId32Code = [u8; 32];
 
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32<AssetId> {
     /// Internal data representing given AssetId.
@@ -310,7 +346,9 @@ where
 }
 
 /// DEX identifier.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum DEXId {
@@ -332,7 +370,9 @@ impl Default for DEXId {
 pub type BalancePrecision = u8;
 pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION as u8;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
 
@@ -397,7 +437,9 @@ impl AssetSymbol {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetName(pub Vec<u8>);
 
@@ -464,7 +506,9 @@ impl AssetName {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct ContentSource(pub Vec<u8>);
 
@@ -519,7 +563,9 @@ impl ContentSource {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct Description(pub Vec<u8>);
 
@@ -574,14 +620,18 @@ impl Description {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
     Escaped(AssetId32Code),
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
     DEXId(DEXId),
@@ -602,7 +652,9 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Enumaration of all available liquidity sources.
-#[derive(Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum LiquiditySourceType {
@@ -616,7 +668,7 @@ pub enum LiquiditySourceType {
     XSTPool,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum FilterMode {
@@ -634,7 +686,7 @@ impl Default for FilterMode {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum ManagementMode {
@@ -651,7 +703,9 @@ impl Default for ManagementMode {
 }
 
 /// Identification of liquidity source.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct LiquiditySourceId<DEXId: Copy, LiquiditySourceIndex: Copy> {
     /// Identification of target DEX.
     pub dex_id: DEXId,
@@ -693,7 +747,7 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Code of purpose for technical account.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechPurpose<AssetId> {
     FeeCollector,
@@ -705,7 +759,7 @@ pub enum TechPurpose<AssetId> {
 /// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
@@ -713,6 +767,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+    None,
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
@@ -735,9 +790,9 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
     }
 }
 
-impl<AccountId: Default, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
+impl<AccountId, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
     fn default() -> Self {
-        TechAccountId::Wrapped(AccountId::default())
+        TechAccountId::None
     }
 }
 
@@ -891,8 +946,18 @@ impl From<InvokeRPCError> for i64 {
     }
 }
 
+impl From<InvokeRPCError> for i32 {
+    fn from(item: InvokeRPCError) -> i32 {
+        match item {
+            InvokeRPCError::RuntimeError => 1,
+        }
+    }
+}
+
 /// Reason for particular reward during swap.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardReason {
     /// Reason is unknown.
@@ -913,7 +978,7 @@ impl Default for RewardReason {
     }
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
     pub parliament: Balance,

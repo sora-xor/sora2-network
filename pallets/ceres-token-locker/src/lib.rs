@@ -20,7 +20,7 @@ pub trait WeightInfo {
     fn change_fee() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TokenLockInfo<Balance, Moment, AssetId> {
     /// Amount of locked tokens
@@ -32,7 +32,7 @@ pub struct TokenLockInfo<Balance, Moment, AssetId> {
 }
 
 /// Storage version.
-#[derive(Encode, Decode, Eq, PartialEq)]
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
 pub enum StorageVersion {
     /// Initial version
     V1,
@@ -48,15 +48,15 @@ pub mod pallet {
     use common::balance;
     use common::prelude::{Balance, FixedWrapper};
     use frame_support::pallet_prelude::*;
+    use frame_support::PalletId;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use pallet_timestamp as timestamp;
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
     use sp_std::vec::Vec;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"crstlock");
+    const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
     #[pallet::config]
     pub trait Config:
@@ -79,12 +79,13 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::type_value]
     pub fn DefaultForFeesAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account for collecting fees
@@ -96,7 +97,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("0a0455d92e1fda8dee17b2c58761c8efca490ef2a1a03322dbfea7379481d517");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account which has permissions for changing fee
@@ -137,7 +138,6 @@ pub mod pallet {
     >;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::Moment = "Moment")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Funds Locked [who, amount, asset]
@@ -305,7 +305,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
     }
 }

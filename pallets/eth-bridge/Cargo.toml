@@ -1,36 +1,54 @@
 [package]
 name = "eth-bridge"
 version = "0.2.0"
-edition = "2018"
+edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "full"] }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
-frame-benchmarking = { version = "3", default-features = false, optional = true }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+    "full",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, optional = true }
 hex-literal = "0.3.1"
-libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
-once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
+secp256k1 = { version = "0.7", features = [
+    'hmac',
+], default-features = false, package = "libsecp256k1" }
+once_cell = { version = "1.5.2", default-features = false, features = [
+    'alloc',
+    'unstable',
+] }
 rlp = { version = "0.4.6", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
-serde = { version = "1.0", features = ["alloc", "derive"], default-features = false }
+serde = { version = "1.0", features = [
+    "alloc",
+    "derive",
+], default-features = false }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-sp-core = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 tiny-keccak = { version = "2", default-features = false }
-pallet-scheduler = { version = "3", default-features = false }
-pallet-timestamp = { version = "3", default-features = false }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig", default-features = false }
-ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false, features = ["alloc"] }
-ethabi-contract = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract", default-features = false }
-ethabi-derive = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive", default-features = false }
-ethereum-types = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std", package = "ethereum-types", default-features = false, features = ['serialize', 'codec'] }
-jsonrpc-core = { git = "https://github.com/vmarkushin/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.25", package = "pallet-multisig", default-features = false }
+ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi", default-features = false, features = [
+    "alloc",
+] }
+ethabi-contract = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-contract", default-features = false }
+ethabi-derive = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-derive", default-features = false }
+ethereum-types = { version = "0.13.1", default-features = false, features = [
+    'serialize',
+    'codec',
+] }
+# jsonrpc-core = { version = "18.0.0", default-features = false }
+jsonrpc-core = { git = "https://github.com/sora-xor/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
@@ -38,18 +56,22 @@ permissions = { path = "../permissions", default-features = false }
 
 [dev-dependencies]
 async-std = { version = "1.5", features = ["attributes", "unstable"] }
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 env_logger = "0.8.1"
-frame-executive = { version = "3", default-features = false }
-orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
-pallet-balances = "3"
-pallet-sudo = "3"
-parity-util-mem = { version = "0.9", default-features = false }
-parking_lot = "0.11.0"
-sp-core = { version = "3", default-features = false, features = ["full_crypto"] }
-sp-keystore = { version = "0.9", default-features = false }
-tokens = { version = "0.4", package = "orml-tokens" }
-tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
+frame-executive = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+pallet-sudo = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+parity-util-mem = { version = "0.11.0", default-features = false, features = [
+    "primitive-types",
+] }
+parking_lot = "0.12.0"
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, features = [
+    "full_crypto",
+] }
+sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+tokio = { version = "1.10.1", default-features = false, features = ["macros"] }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
@@ -60,11 +82,12 @@ default = ['std']
 std = [
     'bridge-multisig/std',
     'codec/std',
+    "scale-info/std",
     'ethereum-types/std',
     'frame-support/std',
     'frame-system/std',
     'jsonrpc-core/std',
-    'libsecp256k1/std',
+    'secp256k1/std',
     'rlp/std',
     'rustc-hex/std',
     'serde_json/std',
@@ -73,7 +96,7 @@ std = [
     'sp-std/std',
     'pallet-scheduler/std',
     'pallet-timestamp/std',
-    'common/std'
+    'common/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

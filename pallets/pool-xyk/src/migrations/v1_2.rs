@@ -35,7 +35,7 @@ mod tests {
                 hex!("0200020700000000000000000000000000000000000000000000000000000000").into(),
             );
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 ALICE(),
                 base_asset.clone(),
                 AssetSymbol(b"BASE".to_vec()),
@@ -48,7 +48,7 @@ mod tests {
             )
             .unwrap();
             for target_asset in [target_asset_a, target_asset_b, target_asset_c].iter() {
-                assets::Module::<Runtime>::register_asset_id(
+                assets::Pallet::<Runtime>::register_asset_id(
                     ALICE(),
                     target_asset.clone(),
                     AssetSymbol(b"A".to_vec()),
@@ -60,14 +60,14 @@ mod tests {
                     None,
                 )
                 .unwrap();
-                trading_pair::Module::<Runtime>::register(
+                trading_pair::Pallet::<Runtime>::register(
                     Origin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),
                     target_asset.clone(),
                 )
                 .unwrap();
-                crate::Module::<Runtime>::initialize_pool(
+                crate::Pallet::<Runtime>::initialize_pool(
                     Origin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),

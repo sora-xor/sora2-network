@@ -2,22 +2,28 @@
 name = "framenode-chain-spec"
 version = "1.2.2"
 authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", features = ["derive", "chain-error"] }
-frame-support = "3"
+codec = { package = "parity-scale-codec", version = "3", features = [
+    "derive",
+    "chain-error",
+] }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 hex-literal = "0.3.1"
-sc-finality-grandpa = "0.9"
-sc-network = "0.9"
-sc-service = "0.9"
-sp-consensus-aura = "0.9"
-sp-consensus-babe = "0.9"
-sp-core = "3"
-sp-io = "3"
-sp-runtime = "3"
+sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sc-network = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig" }
+serde = { version = "1.0.101", features = ["derive"] }
+serde_json = "1.0.61"
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.25", package = "pallet-multisig" }
 
 common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
@@ -25,7 +31,7 @@ framenode-runtime = { path = "../../runtime" }
 iroha-migration = { path = "../../pallets/iroha-migration" }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
-technical = {path = "../../pallets/technical" }
+technical = { path = "../../pallets/technical" }
 xor-fee = { path = "../../pallets/xor-fee" }
 
 [dev-dependencies]
@@ -34,11 +40,6 @@ common = { path = "../../common", features = ["test"] }
 [features]
 include-real-files = []
 main-net-coded = []
-test = [
-    "common/test"
-]
+test = ["common/test"]
 
-private-net = [
-    "faucet",
-    "framenode-runtime/private-net",
-]
+private-net = ["faucet", "framenode-runtime/private-net"]

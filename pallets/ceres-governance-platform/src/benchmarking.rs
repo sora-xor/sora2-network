@@ -18,11 +18,11 @@ use technical::Pallet as Technical;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -46,27 +46,29 @@ benchmarks! {
                 &assets_and_permissions_tech_account_id,
             ).unwrap();
 
-        let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
+
+        Assets::<T>::mint(
+            RawOrigin::Signed(owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             number_of_votes
-        );
+        ).unwrap();
 
-        let _ = CeresGovernancePlatform::<T>::create_poll(
+        CeresGovernancePlatform::<T>::create_poll(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
             poll_start_timestamp,
             poll_end_timestamp
-        );
+        ).unwrap();
     }: {
-        let _ = CeresGovernancePlatform::<T>::vote(
+        CeresGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
             number_of_votes
-        );
+        ).unwrap();
     }
     verify {
         assert_last_event::<T>(Event::Voted(caller, poll_id, voting_option, number_of_votes).into());
@@ -135,23 +137,12 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(poll_start_timestamp + 14440u32.into());
     }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
     verify {
-        assert_last_event::<T>(Event::Withdrawn(caller, number_of_votes).into());
+        assert_last_event::<T>(Event::Withdrawn(caller, 0).into());
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_vote::<Runtime>());
-            assert_ok!(test_benchmark_create_poll::<Runtime>());
-            assert_ok!(test_benchmark_withdraw::<Runtime>());
-        });
-    }
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Runtime
+    );
 }

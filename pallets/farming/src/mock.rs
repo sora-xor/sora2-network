@@ -36,7 +36,7 @@ use common::{
     PSWAP, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -47,6 +47,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{Perbill, Percent};
+use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
 
 pub use common::mock::*;
@@ -116,6 +117,10 @@ parameter_types! {
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([12; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
     pub const SchedulerMaxWeight: Weight = 1024;
     pub const MinimumPeriod: u64 = 5;
 }
@@ -126,29 +131,29 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
-        VestedRewards: vested_rewards::{Module, Storage, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        Farming: farming::{Module, Call, Storage},
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Pallet, Storage, Event<T>},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
+        Farming: farming::{Pallet, Storage},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -170,6 +175,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl permissions::Config for Runtime {
@@ -180,7 +187,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -197,6 +204,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -207,13 +216,18 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Pallet<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -225,7 +239,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -256,7 +270,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
@@ -282,8 +296,8 @@ impl pswap_distribution::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
@@ -291,11 +305,29 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
-    type GetMarketMakerRewardsAccountId = ();
-    type GetBondingCurveRewardsAccountId = ();
-    type GetFarmingRewardsAccountId = ();
-    type GetCrowdloanRewardsAccountId = ();
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
+}
+
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -307,6 +339,9 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -416,7 +451,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+            balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

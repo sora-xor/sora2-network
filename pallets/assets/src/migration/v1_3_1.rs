@@ -31,8 +31,8 @@
 use common::{
     generate_storage_instance, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
 };
-use frame_support::debug::error;
 use frame_support::dispatch::Weight;
+use frame_support::log::error;
 use frame_support::pallet_prelude::{Get, OptionQuery, StorageMap};
 use frame_support::Twox64Concat;
 

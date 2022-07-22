@@ -1,3 +1,4 @@
+use crate::mock::*;
 use common::prelude::FixedWrapper;
 use common::{
     balance, generate_storage_instance, AssetName, AssetSymbol, Balance, LiquiditySourceType,
@@ -5,7 +6,6 @@ use common::{
 };
 use frame_support::{assert_err, assert_ok, Identity};
 
-use crate::mock::*;
 use crate::{AccountIdOf, AssetIdOf};
 use frame_support::pallet_prelude::StorageMap;
 use frame_support::storage::types::ValueQuery;
@@ -21,7 +21,7 @@ where
     let ceres: AssetId = CERES_ASSET_ID.into();
 
     ext.execute_with(|| {
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
@@ -33,7 +33,7 @@ where
             None,
         ));
 
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
             CERES_ASSET_ID.into(),
             AssetSymbol(b"CERES".to_vec()),
@@ -45,14 +45,14 @@ where
             None,
         ));
 
-        assert_ok!(trading_pair::Module::<Runtime>::register(
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
             Origin::signed(BOB()),
             dex_id.clone(),
             XOR.into(),
             CERES_ASSET_ID.into()
         ));
 
-        assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
             Origin::signed(BOB()),
             dex_id.clone(),
             XOR.into(),
@@ -60,7 +60,7 @@ where
         ));
 
         assert!(
-            trading_pair::Module::<Runtime>::is_source_enabled_for_trading_pair(
+            trading_pair::Pallet::<Runtime>::is_source_enabled_for_trading_pair(
                 &dex_id,
                 &XOR.into(),
                 &CERES_ASSET_ID.into(),
@@ -70,7 +70,7 @@ where
         );
 
         let (_tpair, tech_acc_id) =
-            pool_xyk::Module::<Runtime>::tech_account_from_dex_and_asset_pair(
+            pool_xyk::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
                 dex_id.clone(),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
@@ -79,32 +79,32 @@ where
 
         let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
         let repr: AccountId =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
         let fee_repr: AccountId =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
 
-        assert_ok!(assets::Module::<Runtime>::mint_to(
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &xor,
             &ALICE(),
             &ALICE(),
             balance!(900000)
         ));
 
-        assert_ok!(assets::Module::<Runtime>::mint_to(
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &ceres,
             &ALICE(),
             &ALICE(),
             balance!(900000)
         ));
 
-        assert_ok!(assets::Module::<Runtime>::mint_to(
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &xor,
             &ALICE(),
             &BOB(),
             balance!(900000)
         ));
 
-        assert_ok!(assets::Module::<Runtime>::mint_to(
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &ceres,
             &ALICE(),
             &BOB(),
@@ -112,29 +112,29 @@ where
         ));
 
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&xor, &ALICE()).unwrap(),
+            assets::Pallet::<Runtime>::free_balance(&xor, &ALICE()).unwrap(),
             balance!(900000)
         );
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&ceres, &ALICE()).unwrap(),
+            assets::Pallet::<Runtime>::free_balance(&ceres, &ALICE()).unwrap(),
             balance!(902000)
         );
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&xor, &repr.clone()).unwrap(),
+            assets::Pallet::<Runtime>::free_balance(&xor, &repr.clone()).unwrap(),
             0
         );
 
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&ceres, &repr.clone()).unwrap(),
+            assets::Pallet::<Runtime>::free_balance(&ceres, &repr.clone()).unwrap(),
             0
         );
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&xor, &fee_repr.clone()).unwrap(),
+            assets::Pallet::<Runtime>::free_balance(&xor, &fee_repr.clone()).unwrap(),
             0
         );
 
         assert_eq!(
-            pool_xyk::Module::<Runtime>::properties(xor, ceres),
+            pool_xyk::Pallet::<Runtime>::properties(xor, ceres),
             Some((repr.clone(), fee_repr.clone()))
         );
 

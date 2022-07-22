@@ -42,9 +42,9 @@ use common::{
 };
 use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use frame_support::{fail, transactional};
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -52,7 +52,6 @@ use sp_std::convert::TryInto;
 use sp_std::str;
 use sp_std::vec::Vec;
 
-mod migration;
 pub mod weights;
 
 mod benchmarking;
@@ -85,7 +84,9 @@ type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Denotes PSWAP rewards amounts of particular types available for user.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 pub struct RewardInfo {
     /// Reward amount vested, denotes portion of `total_avialable` which can be claimed.
     /// Reset to 0 after claim until more is vested over time.
@@ -99,7 +100,9 @@ pub struct RewardInfo {
 /// Denotes information about users who make transactions counted for market makers strategic
 /// rewards programme. To participate in rewards distribution account needs to get 500+ tx's over 1
 /// XOR in volume each.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 pub struct MarketMakerInfo {
     /// Number of eligible transactions - namely those with individual volume over 1 XOR.
     count: u32,
@@ -108,7 +111,9 @@ pub struct MarketMakerInfo {
 }
 
 /// A vested reward for crowdloan.
-#[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
+#[derive(
+    Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
+)]
 pub struct CrowdloanReward {
     /// The user id
     #[serde(with = "serde_bytes", rename = "ID")]
@@ -331,7 +336,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> OnPswapBurned for Module<T> {
+impl<T: Config> OnPswapBurned for Pallet<T> {
     /// NOTE: currently is not invoked.
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
@@ -339,7 +344,7 @@ impl<T: Config> OnPswapBurned for Module<T> {
     }
 }
 
-impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Module<T> {
+impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
     /// `count` is used as a multiplier if multiple times same volume is transferred inside
     /// transaction.
@@ -393,9 +398,9 @@ pub mod pallet {
     use super::*;
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::UniqueSaturatedFrom;
-    use traits::MultiCurrency;
 
     #[pallet::config]
     pub trait Config:
@@ -414,19 +419,20 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                let elems = Module::<T>::market_maker_rewards_distribution_routine();
+                let elems = Pallet::<T>::market_maker_rewards_distribution_routine();
                 <T as Config>::WeightInfo::on_initialize(elems)
             } else {
                 <T as Config>::WeightInfo::on_initialize(0)
@@ -438,7 +444,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
         #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
-        #[transactional]
+
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
@@ -446,7 +452,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
-        #[transactional]
+
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -469,21 +475,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Inject market makers snapshot into storage.
-        #[pallet::weight(0)]
-        #[transactional]
-        pub fn inject_market_makers(
-            origin: OriginFor<T>,
-            snapshot: Vec<(T::AccountId, u32, Balance)>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot)?;
-            Ok(Some(weight).into())
-        }
-
         /// Allow/disallow a market making pair.
         #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
-        #[transactional]
+
         pub fn set_asset_pair(
             origin: OriginFor<T>,
             from_asset_id: T::AssetId,
@@ -543,7 +537,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Rewards vested, limits were raised. [vested amount]
@@ -627,6 +620,9 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
+            use frame_support::log;
+            use traits::MultiCurrency;
+
             self.test_crowdloan_rewards.iter().for_each(|reward| {
                 CrowdloanRewards::<T>::insert(
                     T::AccountId::decode(&mut &reward.address[..])
@@ -640,7 +636,7 @@ pub mod pallet {
                 &T::GetCrowdloanRewardsAccountId::get(),
                 VAL_CROWDLOAN_REWARDS,
             ) {
-                debug::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
+                log::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
             }
 
             if let Err(e) = T::Currency::deposit(
@@ -648,7 +644,7 @@ pub mod pallet {
                 &T::GetCrowdloanRewardsAccountId::get(),
                 PSWAP_CROWDLOAN_REWARDS,
             ) {
-                debug::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
+                log::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
             }
 
             if let Err(e) = T::Currency::deposit(
@@ -656,7 +652,7 @@ pub mod pallet {
                 &T::GetCrowdloanRewardsAccountId::get(),
                 XSTUSD_CROWDLOAN_REWARDS,
             ) {
-                debug::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
+                log::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
             }
         }
     }

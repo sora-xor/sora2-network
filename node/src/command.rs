@@ -21,7 +21,7 @@ use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
 fn set_default_ss58_version() {
-    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::Custom(
+    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::from(
         framenode_runtime::SS58Prefix::get() as u16,
     ));
 }
@@ -107,50 +107,50 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
         Some(Subcommand::ExportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, config.database), task_manager))
             })
         }
         Some(Subcommand::ExportState(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, config.chain_spec), task_manager))
             })
         }
         Some(Subcommand::ImportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
@@ -162,29 +162,61 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::Revert(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     backend,
                     ..
-                } = service::new_partial(&config)?;
-                Ok((cmd.run(client, backend), task_manager))
+                } = service::new_partial(&mut config, None)?;
+                Ok((cmd.run(client, backend, None), task_manager))
             })
         }
         #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
+            use frame_benchmarking_cli::BenchmarkCmd;
+            use sc_chain_spec::ChainType;
+            use sc_service::Error;
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| cmd.run::<framenode_runtime::Block, service::Executor>(config))
+            let chain_spec = &runner.config().chain_spec;
+
+            match cmd {
+                BenchmarkCmd::Storage(cmd) => runner.sync_run(|mut config| {
+                    let PartialComponents {
+                        client, backend, ..
+                    } = service::new_partial(&mut config, None)?;
+                    let db = backend.expose_db();
+                    let storage = backend.expose_storage();
+                    cmd.run(config, client, db, storage)
+                }),
+                BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
+                    let PartialComponents { client, .. } = service::new_partial(&mut config, None)?;
+
+                    cmd.run(client)
+                }),
+                BenchmarkCmd::Pallet(cmd) => {
+                    if !matches!(chain_spec.chain_type(), ChainType::Development) {
+                        return Err(Error::Other("Available only for dev chain".into()).into());
+                    }
+
+                    runner.sync_run(|config| {
+                        cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+                    })
+                }
+                #[allow(unreachable_patterns)]
+                _ => Err(Error::Other("Command not implemented".into()).into()),
+            }
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
                 match config.role {
-                    Role::Light => service::new_light(config),
-                    _ => service::new_full(config),
+                    //Role::Light => service::new_light(config),
+                    Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
+                    // TODO: fix args
+                    _ => service::new_full(config, false, None),
                 }
                 .map_err(sc_cli::Error::Service)
             })

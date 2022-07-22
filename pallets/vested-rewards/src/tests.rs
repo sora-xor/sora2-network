@@ -30,22 +30,18 @@
 
 use crate::mock::*;
 use crate::{
-    migration, Error, MarketMakerInfo, MarketMakingPairs, RewardInfo, FARMING_REWARDS,
+    Error, MarketMakerInfo, MarketMakingPairs, RewardInfo,
     MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY,
 };
 use codec::Decode;
 use common::{
     balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    ETH, PSWAP, VAL, XOR, XSTUSD,
+    ETH, PSWAP, XOR, XSTUSD,
 };
-use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
-use frame_support::traits::{OnInitialize, PalletVersion};
-use sp_std::collections::btree_map::BTreeMap;
+use frame_support::traits::OnInitialize;
 use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
-
-type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 fn deposit_rewards_to_reserves(amount: Balance) {
     Currencies::deposit(PSWAP, &GetBondingCurveRewardsAccountId::get(), amount).unwrap();
@@ -204,7 +200,7 @@ fn should_update_market_making_pairs_correctly() {
 
         let origin = Origin::none();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, true),
             DispatchError::BadOrigin
         );
@@ -216,14 +212,14 @@ fn should_update_market_making_pairs_correctly() {
         assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
 
         // we already have this pair, so it should return an error
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), XOR, ETH, true),
             Error::<Runtime>::MarketMakingPairAlreadyAllowed
         );
 
         let origin = Origin::none();
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false),
             DispatchError::BadOrigin
         );
@@ -233,7 +229,7 @@ fn should_update_market_making_pairs_correctly() {
         VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false).unwrap();
 
         // we don't have this pair anymore, so it should return an error
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::set_asset_pair(origin, ETH, XOR, false),
             Error::<Runtime>::MarketMakingPairAlreadyDisallowed
         );
@@ -246,347 +242,16 @@ fn trying_to_add_market_maker_entry_no_side_effect() {
     ext.execute_with(|| {
         prepare_mm_pairs();
 
-        let root_a = frame_support::storage_root();
+        let root_a = frame_support::storage_root(frame_support::StateVersion::V1);
         VestedRewards::update_market_maker_records(&alice(), balance!(1), 1, &XOR, &ETH, None)
             .unwrap();
-        let root_b = frame_support::storage_root();
+        let root_b = frame_support::storage_root(frame_support::StateVersion::V1);
         assert_ne!(root_a, root_b);
         // adding record should not add default value explicitly for non-eligible volume
         VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1, &XOR, &ETH, None)
             .unwrap();
-        let root_c = frame_support::storage_root();
+        let root_c = frame_support::storage_root(frame_support::StateVersion::V1);
         assert_eq!(root_b, root_c);
-    });
-}
-
-#[test]
-fn migration_v0_1_0_to_v1_1_0_bonding_curve() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::{Rewards as VRewards, TotalRewards as VTotalRewards};
-        use multicollateral_bonding_curve_pool::Rewards as MBCRewards;
-
-        MBCRewards::<Runtime>::insert(alice(), (balance!(0.5), balance!(100)));
-        MBCRewards::<Runtime>::insert(bob(), (balance!(0), balance!(10)));
-        MBCRewards::<Runtime>::insert(eve(), (balance!(0.5), balance!(1)));
-
-        assert_eq!(
-            MBCRewards::<Runtime>::get(alice()),
-            (balance!(0.5), balance!(100))
-        );
-        assert_eq!(
-            MBCRewards::<Runtime>::get(bob()),
-            (balance!(0), balance!(10))
-        );
-        assert_eq!(
-            MBCRewards::<Runtime>::get(eve()),
-            (balance!(0.5), balance!(1))
-        );
-
-        assert_eq!(
-            VRewards::<Runtime>::get(alice()),
-            crate::RewardInfo {
-                limit: 0,
-                total_available: 0,
-                rewards: BTreeMap::new()
-            }
-        );
-        assert_eq!(
-            VRewards::<Runtime>::get(bob()),
-            crate::RewardInfo {
-                limit: 0,
-                total_available: 0,
-                rewards: BTreeMap::new()
-            }
-        );
-        assert_eq!(
-            VRewards::<Runtime>::get(eve()),
-            crate::RewardInfo {
-                limit: 0,
-                total_available: 0,
-                rewards: BTreeMap::new()
-            }
-        );
-
-        crate::migration::migrate_rewards_from_tbc::<Runtime>();
-
-        assert_eq!(
-            MBCRewards::<Runtime>::get(alice()),
-            (balance!(0), balance!(0))
-        );
-        assert_eq!(
-            MBCRewards::<Runtime>::get(bob()),
-            (balance!(0), balance!(0))
-        );
-        assert_eq!(
-            MBCRewards::<Runtime>::get(eve()),
-            (balance!(0), balance!(0))
-        );
-
-        assert_eq!(
-            VRewards::<Runtime>::get(alice()),
-            crate::RewardInfo {
-                limit: balance!(0.5),
-                total_available: balance!(680),
-                rewards: [(RewardReason::BuyOnBondingCurve, balance!(680))]
-                    .iter()
-                    .cloned()
-                    .collect()
-            }
-        );
-        assert_eq!(
-            VRewards::<Runtime>::get(bob()),
-            crate::RewardInfo {
-                limit: balance!(0),
-                total_available: balance!(68),
-                rewards: [(RewardReason::BuyOnBondingCurve, balance!(68))]
-                    .iter()
-                    .cloned()
-                    .collect()
-            }
-        );
-        assert_eq!(
-            VRewards::<Runtime>::get(eve()),
-            crate::RewardInfo {
-                limit: balance!(0.5),
-                total_available: balance!(6.8),
-                rewards: [(RewardReason::BuyOnBondingCurve, balance!(6.8))]
-                    .iter()
-                    .cloned()
-                    .collect()
-            }
-        );
-        assert_eq!(
-            VTotalRewards::<Runtime>::get(),
-            balance!(680) + balance!(68) + balance!(6.8)
-        );
-    });
-}
-
-#[test]
-fn migration_v0_1_0_to_v1_1_0_market_makers() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::{MarketMakersRegistry, Rewards};
-
-        MarketMakersRegistry::<Runtime>::insert(
-            alice(),
-            MarketMakerInfo {
-                count: 1000,
-                volume: balance!(10000),
-            },
-        );
-        MarketMakersRegistry::<Runtime>::insert(
-            bob(),
-            MarketMakerInfo {
-                count: 2000,
-                volume: balance!(20000),
-            },
-        );
-        MarketMakersRegistry::<Runtime>::insert(
-            eve(),
-            MarketMakerInfo {
-                count: 3000,
-                volume: balance!(30000),
-            },
-        );
-
-        let snapshot = vec![
-            (alice(), 1000, balance!(10000)),
-            (bob(), 1500, balance!(15000)),
-        ];
-
-        crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot).unwrap();
-
-        // completely depleted
-        assert_eq!(
-            MarketMakersRegistry::<Runtime>::get(alice()),
-            MarketMakerInfo {
-                count: 0,
-                volume: balance!(0)
-            }
-        );
-        // partially depleted
-        assert_eq!(
-            MarketMakersRegistry::<Runtime>::get(bob()),
-            MarketMakerInfo {
-                count: 500,
-                volume: balance!(5000)
-            }
-        );
-        // untouched
-        assert_eq!(
-            MarketMakersRegistry::<Runtime>::get(eve()),
-            MarketMakerInfo {
-                count: 3000,
-                volume: balance!(30000)
-            }
-        );
-
-        // migrated accounts share 20M PSWAP according to their owned amounts
-        assert_eq!(
-            Rewards::<Runtime>::get(alice()),
-            RewardInfo {
-                limit: 0,
-                total_available: balance!(8000000),
-                rewards: [(RewardReason::MarketMakerVolume, balance!(8000000))]
-                    .iter()
-                    .cloned()
-                    .collect()
-            }
-        );
-        assert_eq!(
-            Rewards::<Runtime>::get(bob()),
-            RewardInfo {
-                limit: 0,
-                total_available: balance!(12000000),
-                rewards: [(RewardReason::MarketMakerVolume, balance!(12000000))]
-                    .iter()
-                    .cloned()
-                    .collect()
-            }
-        );
-        assert_eq!(
-            Rewards::<Runtime>::get(eve()),
-            RewardInfo {
-                limit: 0,
-                total_available: balance!(0),
-                rewards: Default::default()
-            }
-        );
-    });
-}
-
-#[test]
-fn migration_v0_1_0_to_v1_1_0_market_makers_fails_on_underflow() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::MarketMakersRegistry;
-
-        let snapshot = vec![(alice(), 1000, balance!(10000))];
-        assert_noop!(
-            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
-            Error::<Runtime>::CantSubtractSnapshot
-        );
-
-        MarketMakersRegistry::<Runtime>::insert(
-            alice(),
-            MarketMakerInfo {
-                count: 10,
-                volume: balance!(10000),
-            },
-        );
-        let snapshot = vec![(alice(), 1000, balance!(10000))];
-        assert_noop!(
-            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
-            Error::<Runtime>::CantSubtractSnapshot
-        );
-
-        MarketMakersRegistry::<Runtime>::insert(
-            alice(),
-            MarketMakerInfo {
-                count: 1000,
-                volume: balance!(100),
-            },
-        );
-        let snapshot = vec![(alice(), 1000, balance!(10000))];
-        assert_noop!(
-            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
-            Error::<Runtime>::CantSubtractSnapshot
-        );
-    });
-}
-
-#[test]
-fn storage_has_crowdloan_rewards() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::CrowdloanRewards;
-
-        let account_1 = <Runtime as frame_system::Config>::AccountId::decode(
-            &mut &[
-                92, 92, 122, 119, 21, 211, 27, 86, 74, 193, 56, 61, 11, 124, 127, 100, 234, 233, 8,
-                200, 238, 178, 238, 40, 215, 84, 140, 255, 219, 251, 115, 41,
-            ][..],
-        )
-        .unwrap();
-        let account_2 = <Runtime as frame_system::Config>::AccountId::decode(
-            &mut &[
-                134, 117, 252, 180, 75, 195, 116, 5, 226, 246, 21, 12, 186, 113, 178, 185, 144, 26,
-                163, 232, 1, 32, 138, 161, 102, 236, 125, 71, 106, 79, 84, 77,
-            ][..],
-        )
-        .unwrap();
-        let account_3 = <Runtime as frame_system::Config>::AccountId::decode(
-            &mut &[
-                48, 141, 221, 249, 159, 67, 62, 86, 155, 15, 70, 36, 73, 150, 69, 252, 7, 29, 69,
-                69, 64, 242, 150, 40, 130, 178, 156, 76, 229, 64, 187, 54,
-            ][..],
-        )
-        .unwrap();
-
-        assert_eq!(
-            crate::CrowdloanReward::default(),
-            CrowdloanRewards::<Runtime>::get(&account_1)
-        );
-        assert_eq!(
-            crate::CrowdloanReward::default(),
-            CrowdloanRewards::<Runtime>::get(&account_2)
-        );
-        assert_eq!(
-            crate::CrowdloanReward::default(),
-            CrowdloanRewards::<Runtime>::get(&account_3)
-        );
-
-        crate::migration::add_crowdloan_rewards::<Runtime>();
-
-        assert_eq!(
-            account_1,
-            <Runtime as frame_system::Config>::AccountId::decode(
-                &mut &CrowdloanRewards::<Runtime>::get(&account_1).address[..]
-            )
-            .unwrap()
-        );
-        assert_eq!(
-            account_2,
-            <Runtime as frame_system::Config>::AccountId::decode(
-                &mut &CrowdloanRewards::<Runtime>::get(&account_2).address[..]
-            )
-            .unwrap()
-        );
-        assert_eq!(
-            account_3,
-            <Runtime as frame_system::Config>::AccountId::decode(
-                &mut &CrowdloanRewards::<Runtime>::get(&account_3).address[..]
-            )
-            .unwrap()
-        );
-    });
-}
-
-#[test]
-fn crowdloan_rewards_account_has_funds() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::migration::add_funds_to_crowdloan_rewards_account;
-        use crate::{PSWAP_CROWDLOAN_REWARDS, VAL_CROWDLOAN_REWARDS, XSTUSD_CROWDLOAN_REWARDS};
-
-        add_funds_to_crowdloan_rewards_account::<Runtime>();
-
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(&VAL, &GetCrowdloanRewardsAccountId::get()),
-            Ok(VAL_CROWDLOAN_REWARDS)
-        );
-
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &GetCrowdloanRewardsAccountId::get()),
-            Ok(PSWAP_CROWDLOAN_REWARDS)
-        );
-
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(&XSTUSD, &GetCrowdloanRewardsAccountId::get()),
-            Ok(XSTUSD_CROWDLOAN_REWARDS)
-        );
     });
 }
 
@@ -719,64 +384,6 @@ fn crowdloan_reward_period_is_whole_days() {
             1257861635220125784,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
-    });
-}
-
-#[test]
-fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
-        migration::add_crowdloan_rewards::<Runtime>();
-
-        // this account is known as having issue with getting PSWAP reward
-        let mut raw_address = &[
-            244, 140, 36, 125, 28, 44, 188, 122, 200, 181, 210, 183, 7, 41, 241, 37, 50, 63, 215,
-            126, 240, 94, 36, 196, 65, 157, 70, 8, 127, 46, 122, 14,
-        ][..];
-
-        let account =
-            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-
-        let current_block_number = (crate::BLOCKS_PER_DAY * 2 + crate::LEASE_START_BLOCK) as u64;
-
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
-        assert!(crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP) > 0);
-
-        // the claim history is reset after the migration
-        PalletVersion {
-            major: 1,
-            minor: 2,
-            patch: 0,
-        }
-        .put_into_storage::<PalletInfoOf<Runtime>, crate::Pallet<Runtime>>();
-
-        migration::migrate::<Runtime>();
-
-        assert_eq!(
-            0,
-            crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP)
-        );
-    });
-}
-
-#[test]
-fn storage_has_allowed_market_maker_pools() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::MarketMakingPairs;
-
-        assert!(!MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
-        assert!(!MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
-
-        crate::migration::allow_market_making_pairs::<Runtime>();
-
-        assert!(MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
-        assert!(MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
     });
 }
 
@@ -1074,7 +681,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             Assets::free_balance(&PSWAP, &alice()).unwrap(),
             balance!(60)
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -1137,7 +744,7 @@ fn some_rewards_reserves_are_depleted() {
                     .collect(),
             }
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -1157,7 +764,7 @@ fn all_rewards_reserves_are_depleted() {
             vesting: balance!(40),
             ..Default::default()
         });
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -1202,12 +809,12 @@ fn claiming_without_rewards() {
                 rewards: Default::default(),
             }
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
         VestedRewards::add_tbc_reward(&bob(), balance!(10)).expect("Failed to add reward.");
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::ClaimLimitExceeded
         );
@@ -1631,15 +1238,15 @@ fn distributing_with_no_accounts_is_postponed() {
             VestedRewards::on_initialize(block_n.into());
         }
 
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::NothingToClaim
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             VestedRewards::claim_rewards(Origin::signed(eve())),
             Error::<Runtime>::NothingToClaim
         );
@@ -1647,54 +1254,6 @@ fn distributing_with_no_accounts_is_postponed() {
         assert_eq!(
             Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
             initial_reserve
-        );
-    });
-}
-
-#[test]
-fn adding_funds_to_farming_rewards_account() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_eq!(
-            Currencies::free_balance(PSWAP, &GetFarmingRewardsAccountId::get()),
-            0
-        );
-        migration::add_funds_to_farming_rewards_account::<Runtime>();
-        assert_eq!(
-            Currencies::free_balance(PSWAP, &GetFarmingRewardsAccountId::get()),
-            FARMING_REWARDS
-        );
-        VestedRewards::add_farming_reward(&alice(), balance!(100)).expect("failed to add rewards");
-        VestedRewards::on_pswap_burned(PswapRemintInfo {
-            vesting: balance!(12),
-            ..Default::default()
-        });
-        assert_eq!(
-            VestedRewards::rewards(&alice()),
-            RewardInfo {
-                limit: balance!(12),
-                total_available: balance!(100),
-                rewards: [(RewardReason::LiquidityProvisionFarming, balance!(100))]
-                    .iter()
-                    .cloned()
-                    .collect(),
-            }
-        );
-        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
-        assert_eq!(
-            VestedRewards::rewards(&alice()),
-            RewardInfo {
-                limit: balance!(0),
-                total_available: balance!(88),
-                rewards: [(RewardReason::LiquidityProvisionFarming, balance!(88))]
-                    .iter()
-                    .cloned()
-                    .collect(),
-            }
-        );
-        assert_eq!(
-            Assets::free_balance(&PSWAP, &alice()).unwrap(),
-            balance!(12)
         );
     });
 }

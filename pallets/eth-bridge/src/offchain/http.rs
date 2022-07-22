@@ -42,10 +42,11 @@ use crate::{
 };
 use alloc::string::String;
 use alloc::vec::Vec;
+use frame_support::log::{error, trace, warn};
 use frame_support::sp_runtime::offchain as rt_offchain;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::traits::Get;
-use frame_support::{debug, fail, sp_io};
+use frame_support::{fail, sp_io};
 use frame_system::offchain::CreateSignedTransaction;
 use hex_literal::hex;
 use serde::{Deserialize, Serialize};
@@ -60,7 +61,7 @@ impl<T: Config> Pallet<T> {
         body: Vec<u8>,
         headers: &[(&'static str, String)],
     ) -> Result<Vec<u8>, Error<T>> {
-        debug::trace!("Sending request to: {}", url);
+        trace!("Sending request to: {}", url);
         let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
@@ -70,7 +71,7 @@ impl<T: Config> Pallet<T> {
         }
         #[allow(unused_mut)]
         let mut pending = request.deadline(timeout).send().map_err(|e| {
-            debug::error!("Failed to send a request {:?}", e);
+            error!("Failed to send a request {:?}", e);
             <Error<T>>::HttpFetchingError
         })?;
         #[cfg(test)]
@@ -78,15 +79,15 @@ impl<T: Config> Pallet<T> {
         let response = pending
             .try_wait(timeout)
             .map_err(|e| {
-                debug::error!("Failed to get a response: {:?}", e);
+                error!("Failed to get a response: {:?}", e);
                 <Error<T>>::HttpFetchingError
             })?
             .map_err(|e| {
-                debug::error!("Failed to get a response: {:?}", e);
+                error!("Failed to get a response: {:?}", e);
                 <Error<T>>::HttpFetchingError
             })?;
         if response.code != 200 {
-            debug::error!("Unexpected http request status code: {}", response.code);
+            error!("Unexpected http request status code: {}", response.code);
             return Err(<Error<T>>::HttpFetchingError);
         }
         let resp = response.body().collect::<Vec<u8>>();
@@ -106,7 +107,7 @@ impl<T: Config> Pallet<T> {
             Value::Array(v) => Params::Array(v),
             Value::Object(v) => Params::Map(v),
             _ => {
-                debug::error!("json_rpc_request: got invalid params");
+                error!("json_rpc_request: got invalid params");
                 fail!(Error::<T>::JsonSerializationError);
             }
         };
@@ -126,13 +127,13 @@ impl<T: Config> Pallet<T> {
         )
         .and_then(|x| {
             String::from_utf8(x).map_err(|e| {
-                debug::error!("json_rpc_request: from utf8 failed, {}", e);
+                error!("json_rpc_request: from utf8 failed, {}", e);
                 Error::<T>::HttpFetchingError
             })
         })?;
         let response = jsonrpc::Response::from_json(&raw_response)
             .map_err(|e| {
-                debug::error!("json_rpc_request: from_json failed, {}", e);
+                error!("json_rpc_request: from_json failed, {}", e);
             })
             .map_err(|_| Error::<T>::FailedToLoadTransaction)?;
         let result = match response {
@@ -147,13 +148,13 @@ impl<T: Config> Pallet<T> {
                     Err(Error::<T>::FailedToLoadTransaction)
                 } else {
                     serde_json::from_value(s.result).map_err(|e| {
-                        debug::error!("json_rpc_request: from_value failed, {}", e);
+                        error!("json_rpc_request: from_value failed, {}", e);
                         Error::<T>::JsonDeserializationError.into()
                     })
                 }
             }
             _ => {
-                debug::error!("json_rpc_request: request failed");
+                error!("json_rpc_request: request failed");
                 Err(Error::<T>::JsonDeserializationError.into())
             }
         }
@@ -168,10 +169,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<O, Error<T>> {
         let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network_id);
         let s_node_params = StorageValueRef::persistent(string.as_bytes());
-        let node_params = match s_node_params.get::<NodeParams>().flatten() {
+        let node_params = match s_node_params.get::<NodeParams>().ok().flatten() {
             Some(v) => v,
             None => {
-                debug::warn!("Failed to make JSON-RPC request, make sure to set node parameters.");
+                warn!("Failed to make JSON-RPC request, make sure to set node parameters.");
                 fail!(Error::<T>::FailedToLoadSidechainNodeParams);
             }
         };
@@ -190,6 +191,7 @@ impl<T: Config> Pallet<T> {
         let s_node_url = StorageValueRef::persistent(STORAGE_SUB_NODE_URL_KEY);
         let node_url = s_node_url
             .get::<String>()
+            .ok()
             .flatten()
             .unwrap_or_else(|| SUB_NODE_URL.into());
         let headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];

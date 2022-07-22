@@ -30,14 +30,13 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Module, migration::get_permissioned_tech_account_id, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, LiquiditySourceType, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
-    use frame_support::{assert_noop, assert_ok};
-    use permissions::{BURN, MINT};
+    use crate::{Error, Pallet, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
+    use frame_support::assert_ok;
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
-    type XSTPool = Module<Runtime>;
+    type XSTPool = Pallet<Runtime>;
 
     /// Sets up the tech account so that mint permission is enabled
     fn xst_pool_init() -> Result<TechAccountId, DispatchError> {
@@ -108,7 +107,7 @@ mod tests {
             // add some reserves
             XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 XSTPool::sell_price(
                     &XOR,
                     &XSTUSD,
@@ -116,7 +115,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 XSTPool::sell_price(
                     &XOR,
                     &XSTUSD,
@@ -141,7 +140,7 @@ mod tests {
                 Ok(fixed!(0)),
             );
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 XSTPool::buy_price(
                     &XOR,
                     &XSTUSD,
@@ -149,7 +148,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 XSTPool::buy_price(
                     &XOR,
                     &XSTUSD,
@@ -471,28 +470,6 @@ mod tests {
     }
 
     #[test]
-    fn migration_none_to_v1_0_0() {
-        let mut ext = ExtBuilder::minimal().build();
-        ext.execute_with(|| {
-            // technical account existance fix
-            System::inc_providers(&crate::migration::get_assets_owner_account::<Runtime>());
-            let (_, account_id) = get_permissioned_tech_account_id::<Runtime>();
-
-            System::inc_consumers(&account_id).unwrap_err();
-            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
-
-            // version is initially None for tests
-            crate::migration::migrate::<Runtime>();
-            assert_ok!(Assets::ensure_asset_exists(&XSTUSD.into()));
-            assert_ok!(System::inc_consumers(&account_id));
-            assert_ok!(Permissions::check_permission(account_id.clone(), MINT));
-            assert_ok!(Permissions::check_permission(account_id, BURN));
-
-            assert!(DEXApi::get_supported_types().contains(&LiquiditySourceType::XSTPool));
-        });
-    }
-
-    #[test]
     fn price_without_impact() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
@@ -601,7 +578,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
-            assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
+            common::assert_noop_transactional!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
         });
     }
 

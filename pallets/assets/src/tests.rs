@@ -33,14 +33,10 @@ mod tests {
     use crate::mock::*;
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
-    use common::{
-        balance, AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL,
-        XOR,
-    };
-    use frame_support::{assert_err, assert_noop, assert_ok};
+    use common::{AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR};
+    use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
-    use traits::MultiCurrency;
 
     #[test]
     fn should_gen_and_register_asset() {
@@ -104,7 +100,7 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::register_asset_id(
                     ALICE,
                     XOR,
@@ -289,11 +285,11 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
@@ -416,15 +412,15 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -454,21 +450,21 @@ mod tests {
             assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::set_non_mintable_from(&XOR, &BOB),
                 Error::<Runtime>::InvalidAssetOwner
             );
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
 
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -493,7 +489,7 @@ mod tests {
                 None,
             ));
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::set_non_mintable_from(&XOR, &ALICE),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
@@ -547,7 +543,7 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            common::assert_noop_transactional!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
                 permissions::Error::<Runtime>::Forbidden
             );
@@ -580,19 +576,6 @@ mod tests {
                 Balance::from(0u32)
             );
         })
-    }
-
-    #[test]
-    fn migration_v0_1_0_to_v0_2_0() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let expected_minted = balance!(3000000000);
-            Currencies::deposit(PSWAP, &GetTeamReservesAccountId::get(), balance!(1000)).unwrap();
-            let balance_before = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            crate::migration::mint_team_rewards::<Runtime>().expect("Failed to migrate");
-            let balance_after = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            assert_eq!(balance_after - balance_before, expected_minted);
-        });
     }
 
     #[test]

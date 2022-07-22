@@ -32,7 +32,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::{Call, Config, Event, Module, Pallet};
+use super::{Call, Config, Event, Pallet};
 
 use codec::Decode;
 use frame_benchmarking::{benchmarks, Zero};
@@ -49,11 +49,12 @@ use assets::Pallet as Assets;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
@@ -82,7 +83,7 @@ fn add_rewards<T: Config>(n: u32) {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -118,23 +119,12 @@ benchmarks! {
         let new_limit = balance!(1);
     }: _(RawOrigin::Root, new_limit)
     verify {
-        assert_eq!(Module::<T>::transfer_limit(), new_limit)
+        assert_eq!(Pallet::<T>::transfer_limit(), new_limit)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(test_benchmark_transfer::<Runtime>());
-            assert_ok!(test_benchmark_reset_rewards::<Runtime>());
-            assert_ok!(test_benchmark_update_limit::<Runtime>());
-        });
-    }
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::build(),
+        crate::mock::Runtime
+    );
 }

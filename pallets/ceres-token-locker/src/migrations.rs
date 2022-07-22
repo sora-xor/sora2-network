@@ -1,11 +1,11 @@
 use crate::{AssetIdOf, Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
 use common::{convert_block_number_to_timestamp, Balance};
-use frame_support::debug;
+use frame_support::log;
 use frame_support::traits::Get;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
-    debug::RuntimeLogger::init();
+    sp_runtime::runtime_logger::RuntimeLogger::init();
     migrate_token_locker_data::<T>()
 }
 
@@ -37,7 +37,7 @@ pub fn migrate_token_locker_data<T: Config>() -> Weight {
         },
     );
 
-    debug::info!(
+    log::info!(
         target: "runtime",
         "TokenLockInfo migrated to new version with unlocking_timestamp field"
     );

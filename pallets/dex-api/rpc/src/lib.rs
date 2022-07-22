@@ -29,9 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use common::{BalanceWrapper, InvokeRPCError};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use common::BalanceWrapper;
+use jsonrpsee::{
+    core::{Error as RpcError, RpcResult as Result},
+    proc_macros::rpc,
+    types::error::CallError,
+};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -42,10 +45,10 @@ use std::sync::Arc;
 use dex_runtime_api::SwapOutcomeInfo;
 pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
 {
-    #[rpc(name = "dexApi_quote")]
+    #[method(name = "dexApi_quote")]
     fn quote(
         &self,
         dex_id: DEXId,
@@ -57,7 +60,7 @@ pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVa
         at: Option<BlockHash>,
     ) -> Result<SwapResponse>;
 
-    #[rpc(name = "dexApi_canExchange")]
+    #[method(name = "dexApi_canExchange")]
     fn can_exchange(
         &self,
         dex_id: DEXId,
@@ -67,7 +70,7 @@ pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVa
         at: Option<BlockHash>,
     ) -> Result<bool>;
 
-    #[rpc(name = "dexApi_listSupportedSources")]
+    #[method(name = "dexApi_listSupportedSources")]
     fn list_supported_sources(&self, at: Option<BlockHash>) -> Result<Vec<LiquiditySourceType>>;
 }
 
@@ -87,7 +90,7 @@ impl<C, B> DEX<C, B> {
 }
 
 impl<C, Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>
-    DEXAPI<
+    DEXAPIServer<
         <Block as BlockT>::Hash,
         AssetId,
         DEXId,
@@ -131,11 +134,7 @@ where
             amount,
             swap_variant,
         )
-        .map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to quote price.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn can_exchange(
@@ -158,11 +157,7 @@ where
             input_asset_id,
             output_asset_id,
         )
-        .map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to query exchange capability of source.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_supported_sources(
@@ -174,10 +169,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.list_supported_sources(&at).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to query supported liquidity source types.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.list_supported_sources(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

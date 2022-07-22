@@ -32,8 +32,8 @@ use crate::mock::*;
 use crate::{Error, MigratedAccounts, Pallet, PendingMultiSigAccounts, PendingReferrals};
 use common::prelude::Balance;
 use common::VAL;
+use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
-use frame_support::{assert_noop, assert_ok};
 use referrals::Referrers;
 
 type Assets = assets::Pallet<Runtime>;
@@ -41,7 +41,7 @@ type Assets = assets::Pallet<Runtime>;
 #[test]
 fn test_verification_failed() {
     new_test_ext().execute_with(|| {
-        assert_noop!(Pallet::<Runtime>::migrate(
+        common::assert_noop_transactional!(Pallet::<Runtime>::migrate(
             Origin::signed(ALICE),
              "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
               "d9bda3688c6f608ab15c03a55B171DA0413788a40a25722b4ae4d3672890bcd7".to_string(),
@@ -53,7 +53,7 @@ fn test_verification_failed() {
 #[test]
 fn test_account_not_found() {
     new_test_ext().execute_with(|| {
-        assert_noop!(Pallet::<Runtime>::migrate(
+        common::assert_noop_transactional!(Pallet::<Runtime>::migrate(
             Origin::signed(ALICE),
              "did_sora_1@sora".to_string(),
               "b6deadb8ac430c0c8ed33ff6e170708ec838a215ba70c30CF8602328834912c7".to_string(),
@@ -71,7 +71,7 @@ fn test_already_migrated() {
               "d9bda3688c6f608ab15c03a55B171da0413788a40a25722b4ae4d3672890bcd7".to_string(),
               "c3cdb9a20b19abcfc869eae8f14389680aecc7afb5959fb87C2fee65951a46a7507f8bf11ee0c609fb101fd41d6534b84bb8c3e55a79189de96bcc8227fa5c01".to_string()));
               assert!(MigratedAccounts::<Runtime>::contains_key("did_sora_d9bda3688c6f608ab15c@sora".to_string()));
-              assert_noop!(Pallet::<Runtime>::migrate(
+              common::assert_noop_transactional!(Pallet::<Runtime>::migrate(
                 Origin::signed(ALICE),
                  "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
                   "d9bda3688c6f608ab15c03a55b171da0413788a40a25722b4ae4d3672890BCD7".to_string(),
@@ -143,7 +143,7 @@ fn test_migrate_multi_sig() {
         let multi_account = {
             let mut signatories = [ALICE, BOB, CHARLIE];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(0u128));
         assert_ok!(Pallet::<Runtime>::migrate(
@@ -181,12 +181,12 @@ fn test_migrate_multi_sig_after_timeout() {
         let multi_account_of_2 = {
             let mut signatories = [ALICE, BOB];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         let multi_account_of_3 = {
             let mut signatories = [ALICE, BOB, CHARLIE];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
@@ -210,7 +210,7 @@ fn test_migrate_multi_sig_after_timeout() {
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(1000u128));
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
 
-        assert_noop!(Pallet::<Runtime>::migrate(
+        common::assert_noop_transactional!(Pallet::<Runtime>::migrate(
             Origin::signed(CHARLIE),
             iroha_address.clone(),
             "57571ec82cff710143eba60c05d88de14a22799048137162d63C534a8b02dc20".to_string(),
@@ -232,7 +232,7 @@ fn test_migrate_multi_sig_public_key_already_used() {
         );
         assert!(!MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(&iroha_address));
-        assert_noop!(Pallet::<Runtime>::migrate(
+        common::assert_noop_transactional!(Pallet::<Runtime>::migrate(
             Origin::signed(ALICE),
             iroha_address.clone(),
             "f7d89d39d48a67e4741a612de10650234f9148e84fE9e8b2a9fad322b0d8e5bc".to_string(),

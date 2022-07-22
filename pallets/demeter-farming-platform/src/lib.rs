@@ -26,7 +26,7 @@ pub trait WeightInfo {
     fn change_info() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PoolData {
     pub multiplier: u32,
@@ -39,7 +39,7 @@ pub struct PoolData {
     pub is_removed: bool,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TokenInfo<AccountId> {
     pub farms_total_multiplier: u32,
@@ -51,7 +51,7 @@ pub struct TokenInfo<AccountId> {
     pub team_account: AccountId,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct UserInfo<AssetId> {
     pub pool_asset: AssetId,
@@ -70,15 +70,14 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Vec;
-    use frame_support::transactional;
+    use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
     use sp_runtime::traits::{AccountIdConversion, Zero};
-    use sp_runtime::ModuleId;
+    use sp_std::prelude::*;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
+    const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
     #[pallet::config]
     pub trait Config:
@@ -103,6 +102,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::storage]
@@ -130,7 +130,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     #[pallet::storage]
@@ -141,7 +141,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultFeeAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account for fees
@@ -151,7 +151,6 @@ pub mod pallet {
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultFeeAccount<T>>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Token registered [who, what]
@@ -227,12 +226,9 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Get token info
-            let mut token_info = <TokenInfos<T>>::get(&pool_asset).unwrap_or_default();
-
             // Check if token is already registered
             ensure!(
-                token_info.token_per_block == 0,
+                !<TokenInfos<T>>::contains_key(&pool_asset),
                 Error::<T>::TokenAlreadyRegistered
             );
 
@@ -245,7 +241,7 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidAllocationParameters.into());
             }
 
-            token_info = TokenInfo {
+            let token_info = TokenInfo {
                 farms_total_multiplier: 0,
                 staking_total_multiplier: 0,
                 token_per_block,
@@ -327,7 +323,7 @@ pub mod pallet {
         }
 
         /// Deposit to pool
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
@@ -484,7 +480,7 @@ pub mod pallet {
         }
 
         /// Get rewards
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
@@ -560,7 +556,7 @@ pub mod pallet {
         }
 
         /// Withdraw
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
@@ -909,12 +905,16 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
 
         fn mint_deo() {
             let blocks = 14400_u32;
-            let deo_info = <TokenInfos<T>>::get(&T::DemeterAssetId::get()).unwrap_or_default();
+            let deo_info = if let Some(info) = <TokenInfos<T>>::get(&T::DemeterAssetId::get()) {
+                info
+            } else {
+                return;
+            };
 
             let amount = (FixedWrapper::from(balance!(blocks))
                 * FixedWrapper::from(deo_info.token_per_block))

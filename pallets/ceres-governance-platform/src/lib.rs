@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(destructuring_assignment)]
 
 pub mod migrations;
 pub mod weights;
@@ -22,7 +21,7 @@ pub trait WeightInfo {
     fn withdraw() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct VotingInfo {
     /// Voting option
@@ -33,7 +32,7 @@ pub struct VotingInfo {
     ceres_withdrawn: bool,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PollInfo<Moment> {
     /// Number of options
@@ -45,7 +44,7 @@ pub struct PollInfo<Moment> {
 }
 
 /// Storage version.
-#[derive(Encode, Decode, Eq, PartialEq)]
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
 pub enum StorageVersion {
     /// Initial version
     V1,
@@ -60,15 +59,14 @@ pub mod pallet {
     use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Vec;
-    use frame_support::transactional;
+    use frame_support::sp_runtime::traits::AccountIdConversion;
+    use frame_support::PalletId;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
-    use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
+    use sp_std::prelude::*;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"ceresgov");
+    const PALLET_ID: PalletId = PalletId(*b"ceresgov");
 
     #[pallet::config]
     pub trait Config:
@@ -90,6 +88,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     /// A vote of a particular user for a particular poll
@@ -115,7 +114,6 @@ pub mod pallet {
         StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", T::Moment = "Moment")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option, balance]
@@ -157,7 +155,6 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Voting for option
-        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -330,7 +327,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
     }
 }

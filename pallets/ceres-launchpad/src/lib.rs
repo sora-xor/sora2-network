@@ -29,7 +29,7 @@ pub trait WeightInfo {
     fn remove_whitelisted_ilo_organizer() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct ILOInfo<Balance, AccountId, Moment> {
     ilo_organizer: AccountId,
@@ -57,7 +57,7 @@ pub struct ILOInfo<Balance, AccountId, Moment> {
     finish_timestamp: Moment,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TeamVesting<Balance, Moment> {
     team_vesting_total_tokens: Balance,
@@ -66,7 +66,7 @@ pub struct TeamVesting<Balance, Moment> {
     team_vesting_percent: Balance,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct ContributorsVesting<Balance, Moment> {
     first_release_percent: Balance,
@@ -74,7 +74,7 @@ pub struct ContributorsVesting<Balance, Moment> {
     vesting_percent: Balance,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct ContributionInfo<Balance> {
     funds_contributed: Balance,
@@ -94,8 +94,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Vec;
-    use frame_support::transactional;
+    use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
     use hex_literal::hex;
@@ -103,9 +102,9 @@ pub mod pallet {
     use sp_runtime::traits::{
         AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto, Zero,
     };
-    use sp_runtime::ModuleId;
+    use sp_std::prelude::*;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"crslaunc");
+    const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
     #[pallet::config]
     pub trait Config:
@@ -144,12 +143,13 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::type_value]
     pub fn DefaultForPenaltiesAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account for collecting penalties
@@ -183,7 +183,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account which has permissions for changing CERES burn amount fee
@@ -199,7 +199,7 @@ pub mod pallet {
         Identity,
         AssetIdOf<T>,
         ILOInfo<Balance, AccountIdOf<T>, T::Moment>,
-        ValueQuery,
+        OptionQuery,
     >;
 
     #[pallet::storage]
@@ -223,7 +223,6 @@ pub mod pallet {
     pub type WhitelistedIloOrganizers<T: Config> = StorageValue<_, Vec<AccountIdOf<T>>, ValueQuery>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", BalanceOf<T> = "Balance")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// ILO created [who, what]
@@ -370,12 +369,9 @@ pub mod pallet {
                 return Err(Error::<T>::AccountIsNotWhitelisted.into());
             }
 
-            // Get ILO info of token
-            let mut ilo_info = <ILOs<T>>::get(&asset_id);
-
             // Check if ILO for token already exists
             ensure!(
-                ilo_info.ilo_price == balance!(0),
+                !<ILOs<T>>::contains_key(&asset_id),
                 Error::<T>::ILOAlreadyExists
             );
 
@@ -440,7 +436,7 @@ pub mod pallet {
             // Transfer tokens to pallet
             Assets::<T>::transfer_from(&asset_id.into(), &user, &Self::account_id(), total_tokens)?;
 
-            ilo_info = ILOInfo {
+            let ilo_info = ILOInfo {
                 ilo_organizer: user.clone(),
                 tokens_for_ilo,
                 tokens_for_liquidity,
@@ -507,10 +503,7 @@ pub mod pallet {
             );
 
             // Get ILO info
-            let mut ilo_info = <ILOs<T>>::get(&asset_id);
-
-            // Check if ILO for token exists
-            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+            let mut ilo_info = <ILOs<T>>::get(&asset_id).ok_or(Error::<T>::ILODoesNotExist)?;
 
             // Get contribution info
             let mut contribution_info = <Contributions<T>>::get(&asset_id, &user);
@@ -568,7 +561,7 @@ pub mod pallet {
         }
 
         /// Emergency withdraw
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::emergency_withdraw())]
         pub fn emergency_withdraw(
             origin: OriginFor<T>,
@@ -578,10 +571,7 @@ pub mod pallet {
             let current_timestamp = Timestamp::<T>::get();
 
             // Get ILO info
-            let mut ilo_info = <ILOs<T>>::get(&asset_id);
-
-            // Check if ILO for token exists
-            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+            let mut ilo_info = <ILOs<T>>::get(&asset_id).ok_or(Error::<T>::ILODoesNotExist)?;
 
             // Get contribution info
             let contribution_info = <Contributions<T>>::get(&asset_id, &user);
@@ -635,7 +625,7 @@ pub mod pallet {
         }
 
         /// Finish ILO
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
             origin: OriginFor<T>,
@@ -644,10 +634,7 @@ pub mod pallet {
             let user = ensure_signed(origin.clone())?;
 
             // Get ILO info of asset_id token
-            let mut ilo_info = <ILOs<T>>::get(&asset_id);
-
-            // Check if ILO for token already exists
-            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+            let mut ilo_info = <ILOs<T>>::get(&asset_id).ok_or(Error::<T>::ILODoesNotExist)?;
 
             if user != ilo_info.ilo_organizer {
                 return Err(Error::<T>::Unauthorized.into());
@@ -830,10 +817,7 @@ pub mod pallet {
             let current_timestamp = Timestamp::<T>::get();
 
             // Get ILO info
-            let mut ilo_info = <ILOs<T>>::get(&asset_id);
-
-            // Check if ILO for token exists
-            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+            let mut ilo_info = <ILOs<T>>::get(&asset_id).ok_or(Error::<T>::ILODoesNotExist)?;
 
             if user != ilo_info.ilo_organizer {
                 return Err(Error::<T>::Unauthorized.into());
@@ -884,10 +868,7 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             // Get ILO info
-            let ilo_info = <ILOs<T>>::get(&asset_id);
-
-            // Check if ILO for token exists
-            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+            let ilo_info = <ILOs<T>>::get(&asset_id).ok_or(Error::<T>::ILODoesNotExist)?;
 
             if !ilo_info.failed && !ilo_info.succeeded {
                 return Err(Error::<T>::ILOIsNotFinished.into());
@@ -1034,7 +1015,7 @@ pub mod pallet {
         }
 
         /// Claim PSWAP rewards
-        #[transactional]
+
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -1163,14 +1144,16 @@ pub mod pallet {
                 let days_to_finish_ilo = 14u32;
                 let pallet_account = Self::account_id();
 
-                for ilo in <ILOs<T>>::iter() {
-                    if current_timestamp > ilo.1.end_timestamp && !ilo.1.failed && !ilo.1.succeeded
+                let ilos = ILOs::<T>::iter().collect::<Vec<_>>();
+                for (ilo_asset, mut ilo_info) in ilos {
+                    if current_timestamp > ilo_info.end_timestamp
+                        && !ilo_info.failed
+                        && !ilo_info.succeeded
                     {
-                        let finish_timestamp = ilo.1.end_timestamp
+                        let finish_timestamp = ilo_info.end_timestamp
                             + (T::MILLISECONDS_PER_DAY.saturating_mul(days_to_finish_ilo.into()))
                                 .into();
                         if current_timestamp >= finish_timestamp {
-                            let mut ilo_info = <ILOs<T>>::get(&ilo.0);
                             ilo_info.failed = true;
 
                             let total_tokens =
@@ -1178,19 +1161,19 @@ pub mod pallet {
                             if !ilo_info.refund_type {
                                 let _ = Assets::<T>::burn(
                                     RawOrigin::Signed(pallet_account.clone()).into(),
-                                    ilo.0.into(),
+                                    ilo_asset.into(),
                                     total_tokens,
                                 );
                             } else {
                                 let _ = Assets::<T>::transfer_from(
-                                    &ilo.0.into(),
+                                    &ilo_asset.into(),
                                     &pallet_account,
                                     &ilo_info.ilo_organizer,
                                     total_tokens,
                                 );
                             }
 
-                            <ILOs<T>>::insert(&ilo.0, ilo_info);
+                            <ILOs<T>>::insert(&ilo_asset, ilo_info);
                             counter += 1;
                         }
                     }
@@ -1206,7 +1189,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
 
         /// Check parameters

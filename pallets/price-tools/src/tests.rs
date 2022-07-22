@@ -36,7 +36,6 @@ use common::prelude::Balance;
 use common::{
     balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR,
 };
-use frame_support::assert_noop;
 
 fn to_avg<'a, I>(it: I, size: u32) -> Balance
 where
@@ -56,7 +55,7 @@ fn initial_setup_without_history() {
         }
         let avg_calc = balance!(1 + AVG_BLOCK_SPAN) / 2;
         for i in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
@@ -82,7 +81,7 @@ fn average_price_same_values() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
@@ -257,7 +256,7 @@ fn price_quote_continuous_failure() {
         }
         // initialization period
         for _ in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
@@ -280,7 +279,7 @@ fn price_quote_continuous_failure() {
 
         // recovery period
         for _ in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
@@ -301,7 +300,7 @@ fn failure_for_unsupported_assets() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
@@ -311,19 +310,19 @@ fn failure_for_unsupported_assets() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             balance!(10)
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             PriceTools::get_average_price(&XOR.into(), &DOT.into()),
             Error::<Runtime>::UnsupportedQuotePath
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             PriceTools::get_average_price(&DOT.into(), &XOR.into()),
             Error::<Runtime>::UnsupportedQuotePath
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             PriceTools::get_average_price(&DOT.into(), &ETH.into()),
             Error::<Runtime>::UnsupportedQuotePath
         );
-        assert_noop!(
+        common::assert_noop_transactional!(
             PriceTools::get_average_price(&ETH.into(), &DOT.into()),
             Error::<Runtime>::UnsupportedQuotePath
         );
@@ -428,7 +427,7 @@ fn price_should_go_up_faster_than_going_down() {
         let price_a = balance!(1);
         let price_b = balance!(100);
         for _ in 1..=AVG_BLOCK_SPAN {
-            assert_noop!(
+            common::assert_noop_transactional!(
                 PriceTools::get_average_price(&XOR.into(), &DAI.into()),
                 Error::<Runtime>::InsufficientSpotPriceData
             );

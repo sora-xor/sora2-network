@@ -54,11 +54,11 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -67,7 +67,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -143,7 +143,7 @@ fn add_pending<T: Config>(n: u32) {
 benchmarks! {
     initialize_pool {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -169,7 +169,7 @@ benchmarks! {
             USDT.into()
         ).unwrap();
     }: {
-        Module::<T>::initialize_pool(
+        Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into()
         ).unwrap();
@@ -180,7 +180,7 @@ benchmarks! {
 
     set_reference_asset {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -200,7 +200,7 @@ benchmarks! {
             None
         ).unwrap();
     }: {
-        Module::<T>::set_reference_asset(
+        Pallet::<T>::set_reference_asset(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into()
         ).unwrap();
@@ -211,7 +211,7 @@ benchmarks! {
 
     set_optional_reward_multiplier {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -233,7 +233,7 @@ benchmarks! {
         TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
-        Module::<T>::set_optional_reward_multiplier(
+        Pallet::<T>::set_optional_reward_multiplier(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into(),
             Some(fixed!(123))
@@ -254,7 +254,7 @@ benchmarks! {
 
     set_price_change_config {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -263,7 +263,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
     }: {
-        Module::<T>::set_price_change_config(
+        Pallet::<T>::set_price_change_config(
             RawOrigin::Root.into(),
             balance!(12),
             balance!(2600)
@@ -277,7 +277,7 @@ benchmarks! {
 
     set_price_bias {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -286,7 +286,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
     }: {
-        Module::<T>::set_price_bias(
+        Pallet::<T>::set_price_bias(
             RawOrigin::Root.into(),
             balance!(253)
         ).unwrap();
@@ -295,25 +295,31 @@ benchmarks! {
         assert_last_event::<T>(Event::PriceBiasChanged(balance!(253)).into());
         assert_eq!(InitialPrice::<T>::get(), FixedWrapper::from(balance!(253)).get().unwrap());
     }
+
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::bench_init().build_for_benchmarks(),
+        crate::mock::Runtime
+    );
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::mock::{ExtBuilder, Runtime};
+//     use frame_support::assert_ok;
 
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::bench_init()
-            .build_for_benchmarks()
-            .execute_with(|| {
-                assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-                assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
-                assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
-                assert_ok!(test_benchmark_set_price_bias::<Runtime>());
-                assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
-                assert_ok!(test_benchmark_on_initialize::<Runtime>());
-            });
-    }
-}
+//     #[test]
+//     fn test_benchmarks() {
+//         ExtBuilder::bench_init()
+//             .build_for_benchmarks()
+//             .execute_with(|| {
+//                 assert_ok!(test_benchmark_initialize_pool::<Runtime>());
+//                 assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
+//                 assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+//                 assert_ok!(test_benchmark_set_price_bias::<Runtime>());
+//                 assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
+//                 assert_ok!(test_benchmark_on_initialize::<Runtime>());
+//             });
+//     }
+// }

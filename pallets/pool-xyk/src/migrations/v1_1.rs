@@ -27,7 +27,7 @@ pub fn migrate<T: Config>() -> Weight {
     );
 
     for (reserves_acc, asset, _) in &acc_asset_currs {
-        let total_issuance = if let Ok(issuance) = assets::Module::<T>::total_issuance(asset) {
+        let total_issuance = if let Ok(issuance) = assets::Pallet::<T>::total_issuance(asset) {
             issuance
         } else {
             continue;
@@ -113,7 +113,7 @@ mod tests {
                 (BOB(), BOB(), asset6.clone()),
             );
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 ALICE(),
                 asset3.clone(),
                 AssetSymbol(b"A".to_vec()),
@@ -126,10 +126,10 @@ mod tests {
             )
             .unwrap();
 
-            assets::Module::<Runtime>::mint_to(&asset3, &ALICE(), &ALICE(), balance!(3)).unwrap();
-            assets::Module::<Runtime>::mint_to(&asset3, &ALICE(), &BOB(), balance!(3)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset3, &ALICE(), &ALICE(), balance!(3)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset3, &ALICE(), &BOB(), balance!(3)).unwrap();
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 BOB(),
                 asset6.clone(),
                 AssetSymbol(b"C".to_vec()),
@@ -142,8 +142,8 @@ mod tests {
             )
             .unwrap();
 
-            assets::Module::<Runtime>::mint_to(&asset6, &BOB(), &ALICE(), balance!(4)).unwrap();
-            assets::Module::<Runtime>::mint_to(&asset6, &BOB(), &BOB(), balance!(4)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset6, &BOB(), &ALICE(), balance!(4)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset6, &BOB(), &BOB(), balance!(4)).unwrap();
 
             super::migrate::<Runtime>();
 

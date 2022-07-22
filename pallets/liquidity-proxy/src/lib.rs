@@ -30,9 +30,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
@@ -98,7 +95,9 @@ impl<T: Config> ExchangePath<T> {
 }
 
 /// Output of the aggregated LiquidityProxy::quote() price.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
@@ -1436,6 +1435,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -1461,8 +1461,13 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -1542,7 +1547,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Exchange of tokens has been performed

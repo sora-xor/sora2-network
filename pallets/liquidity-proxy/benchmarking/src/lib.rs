@@ -32,11 +32,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
-use liquidity_proxy::*;
-
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
@@ -47,6 +42,7 @@ use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use liquidity_proxy::Call;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -60,7 +56,7 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Config>(liquidity_proxy::Module<T>);
+pub struct Pallet<T: Config>(liquidity_proxy::Pallet<T>);
 pub trait Config:
     liquidity_proxy::Config
     + pool_xyk::Config
@@ -72,13 +68,13 @@ pub trait Config:
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
@@ -257,7 +253,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     for _ in 0..price_tools::AVG_BLOCK_SPAN {
-        price_tools::Module::<T>::average_prices_calculation_routine();
+        price_tools::Pallet::<T>::average_prices_calculation_routine();
     }
 
     Ok(())
@@ -271,7 +267,7 @@ benchmarks! {
         let to_asset: T::AssetId = XOR.into();
         let initial_from_balance = Assets::<T>::free_balance(&from_asset, &caller).unwrap();
     }: {
-        liquidity_proxy::Module::<T>::swap(
+        liquidity_proxy::Pallet::<T>::swap(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             from_asset.clone(),
@@ -295,7 +291,7 @@ benchmarks! {
         let to_asset: T::AssetId = XOR.into();
         let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
     }: {
-        liquidity_proxy::Module::<T>::swap(
+        liquidity_proxy::Pallet::<T>::swap(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             from_asset.clone(),
@@ -410,12 +406,12 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_multiple::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_primary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_primary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_multiple());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
         });
     }
 }

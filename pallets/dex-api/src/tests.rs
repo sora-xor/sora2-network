@@ -29,14 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::Module;
+use crate::Pallet;
 use common::prelude::QuoteAmount;
 use common::{
     balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, XOR,
 };
 
-type DexApi = Module<Runtime>;
+type DexApi = Pallet<Runtime>;
 
 #[test]
 fn test_filter_empty_should_pass() {
@@ -115,7 +115,7 @@ fn test_filter_with_allowed_existing_should_pass() {
 fn test_different_reserves_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let res1 = crate::Module::<Runtime>::quote(
+        let res1 = crate::Pallet::<Runtime>::quote(
             &LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool),
             &XOR,
             &DOT,
@@ -126,7 +126,7 @@ fn test_different_reserves_should_pass() {
             res1.unwrap().amount,
             balance!(136.851187324744592819) // for reserves: 5000 XOR, 7000 DOT, 30bp fee
         );
-        let res2 = crate::Module::<Runtime>::quote(
+        let res2 = crate::Pallet::<Runtime>::quote(
             &LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool2),
             &XOR,
             &DOT,

@@ -13,3 +13,4 @@ housekeeping
 *.sh
 LICENSE
 rustfmt.toml
+db*
