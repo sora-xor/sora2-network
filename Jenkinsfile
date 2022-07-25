@@ -11,8 +11,8 @@ String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
-String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
+String featureList            = 'private-net include-real-files reduced-pswap-reward-periods enable-beefy'
+Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
 
 pipeline {
     options {
