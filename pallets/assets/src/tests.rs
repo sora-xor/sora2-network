@@ -33,7 +33,10 @@ mod tests {
     use crate::mock::*;
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
-    use common::{AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR};
+    use common::{
+        AssetId32, ContentSource, Description, ASSET_CONTENT_SOURCE_MAX_LENGTH,
+        ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
+    };
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
@@ -619,6 +622,29 @@ mod tests {
     }
 
     #[test]
+    fn should_fail_content_source() {
+        let mut ext = ExtBuilder::default().build();
+        let source: Vec<u8> = vec![0; ASSET_CONTENT_SOURCE_MAX_LENGTH + 1];
+        let content_src = ContentSource(source);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    Some(content_src.clone()),
+                    None,
+                ),
+                Error::<Runtime>::InvalidContentSource
+            );
+        })
+    }
+
+    #[test]
     fn should_associate_desciption() {
         let mut ext = ExtBuilder::default().build();
         let desc = Description(b"Lorem ipsum".to_vec());
@@ -635,6 +661,29 @@ mod tests {
                 Some(desc.clone()),
             ));
             assert_eq!(Assets::get_asset_description(&XOR), Some(desc));
+        })
+    }
+
+    #[test]
+    fn should_fail_description() {
+        let mut ext = ExtBuilder::default().build();
+        let text: Vec<u8> = vec![0; ASSET_DESCRIPTION_MAX_LENGTH + 1];
+        let desc = Description(text);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    None,
+                    Some(desc.clone()),
+                ),
+                Error::<Runtime>::InvalidDescription
+            );
         })
     }
 }

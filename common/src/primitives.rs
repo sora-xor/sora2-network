@@ -51,6 +51,12 @@ use {
 
 pub type Balance = u128;
 
+/// Max length of asset content source. The same value as IE URL length. It should enough for any URI / IPFS address (CID)
+pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
+
+/// Max length of asset description, it should be enough to describe everything the user wants
+pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
@@ -559,7 +565,7 @@ impl Default for ContentSource {
 
 impl ContentSource {
     pub fn is_valid(&self) -> bool {
-        self.0.is_ascii()
+        self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
     }
 }
 
@@ -616,7 +622,7 @@ impl Default for Description {
 
 impl Description {
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= 200
+        self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
     }
 }
 
