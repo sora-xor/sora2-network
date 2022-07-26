@@ -393,7 +393,7 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
             PriceInfos::<T>::insert(asset_id.clone(), PriceInfo::default());
             Ok(())
         } else {
-            fail!(Error::<T>::UnsupportedQuotePath);
+            fail!(Error::<T>::AssetAlreadyRegistered);
         }
     }
 }

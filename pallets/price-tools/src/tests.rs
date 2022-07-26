@@ -464,3 +464,15 @@ fn price_should_go_up_faster_than_going_down() {
         assert_eq!(m, 231690);
     });
 }
+
+#[test]
+fn asset_already_registered() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        PriceTools::register_asset(&ETH).unwrap();
+        common::assert_noop_transactional!(
+            PriceTools::register_asset(&ETH),
+            Error::<Runtime>::AssetAlreadyRegistered
+        );
+    });
+}
