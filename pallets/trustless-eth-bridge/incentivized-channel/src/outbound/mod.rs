@@ -290,6 +290,15 @@ pub mod pallet {
             if messages.is_empty() {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }
+
+            for message in messages.iter() {
+                T::MessageStatusNotifier::update_status(
+                    network_id,
+                    Self::make_message_id(message.nonce),
+                    MessageStatus::Committed,
+                );
+            }
+
             let commitment = Commitment {
                 total_max_gas,
                 messages,
@@ -308,14 +317,6 @@ pub mod pallet {
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&*key, &commitment.encode());
-
-            for message in messages.iter() {
-                T::MessageStatusNotifier::update_status(
-                    network_id,
-                    Self::make_message_id(message.nonce),
-                    MessageStatus::Committed,
-                );
-            }
 
             <T as Config>::WeightInfo::on_initialize(
                 messages_count as u32,

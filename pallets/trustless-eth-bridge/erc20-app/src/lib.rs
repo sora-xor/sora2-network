@@ -15,6 +15,8 @@
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub const TRANSFER_MAX_GAS: u64 = 100_000;
+
 extern crate alloc;
 
 mod payload;
@@ -479,6 +481,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
+                TRANSFER_MAX_GAS.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             T::MessageStatusNotifier::outbound_request(

@@ -215,6 +215,7 @@ where
         channel_id: ChannelId,
         who: &RawOrigin<T::AccountId>,
         target: H160,
+        max_gas: U256,
         payload: &[u8],
     ) -> Result<H256, DispatchError> {
         match channel_id {
@@ -222,7 +223,7 @@ where
                 unimplemented!()
             }
             ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, payload,
+                who, network_id, target, max_gas, payload,
             ),
         }
     }
@@ -243,6 +244,7 @@ impl Convert<U256, Balance> for FeeConverter {
 
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const MaxTotalGasLimit: u64 = 5_000_000;
 }
 
 impl incentivized_channel::outbound::Config for Test {
@@ -254,6 +256,7 @@ impl incentivized_channel::outbound::Config for Test {
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type FeeCurrency = FeeCurrency;
     type MessageStatusNotifier = EvmBridgeProxy;
+    type MaxTotalGasLimit = MaxTotalGasLimit;
     type WeightInfo = ();
 }
 
