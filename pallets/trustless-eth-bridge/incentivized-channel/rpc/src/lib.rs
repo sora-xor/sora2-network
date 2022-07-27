@@ -34,13 +34,13 @@ use codec::{Decode, Encode};
 use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
 use sp_api::offchain::OffchainStorage;
 
-pub use incentivized_channel::outbound::Message;
+pub use incentivized_channel::outbound::Commitment;
 use sp_core::H256;
 
 #[rpc(server, client)]
 pub trait IncentivizedChannelAPI {
     #[method(name = "intentivizedChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Vec<Message>>>;
+    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
 }
 
 pub struct IncentivizedChannelClient<S> {
@@ -58,7 +58,7 @@ impl<S> IncentivizedChannelAPIServer for IncentivizedChannelClient<S>
 where
     S: OffchainStorage + 'static,
 {
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Vec<Message>>> {
+    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
         let key = (
             CHANNEL_INDEXING_PREFIX,
             ChannelId::Incentivized,

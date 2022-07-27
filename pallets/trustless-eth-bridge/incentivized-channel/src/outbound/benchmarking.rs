@@ -20,11 +20,12 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            <MessageQueues<T>>::append(BASE_NETWORK_ID, Message {
+            append_message_queue::<T>(BASE_NETWORK_ID, Message {
                 network_id: BASE_NETWORK_ID,
                 target: H160::zero(),
                 nonce: 0u64,
                 fee: U256::zero(),
+                max_gas: 100000u64.into(),
                 payload,
             });
         }
@@ -39,12 +40,13 @@ benchmarks! {
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
     // because it's not a commitment interval.
     on_initialize_non_interval {
-        <MessageQueues<T>>::take(BASE_NETWORK_ID);
-        <MessageQueues<T>>::append(BASE_NETWORK_ID, Message {
+        take_message_queue::<T>(BASE_NETWORK_ID);
+        append_message_queue::<T>(BASE_NETWORK_ID, Message {
             network_id: BASE_NETWORK_ID,
             target: H160::zero(),
             nonce: 0u64,
             fee: U256::zero(),
+            max_gas: 100000u64.into(),
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
 
@@ -60,7 +62,7 @@ benchmarks! {
     // Benchmark 'on_initialize` for the case where it is a commitment interval
     // but there are no messages in the queue.
     on_initialize_no_messages {
-        <MessageQueues<T>>::take(BASE_NETWORK_ID);
+        take_message_queue::<T>(BASE_NETWORK_ID);
 
         let block_number = Interval::<T>::get();
 

@@ -10,7 +10,7 @@ use common::Balance;
 use ethereum_types::H256;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::{Config, RawOrigin};
-use sp_core::H160;
+use sp_core::{H160, U256};
 use sp_std::prelude::*;
 
 use crate::types::{ChannelId, Message};
@@ -35,6 +35,7 @@ pub trait OutboundRouter<AccountId> {
         channel_id: ChannelId,
         who: &RawOrigin<AccountId>,
         target: H160,
+        max_gas: U256,
         payload: &[u8],
     ) -> Result<H256, DispatchError>;
 }

@@ -6,7 +6,7 @@
     "rust-analyzer.diagnostics.disabled": [
         "macro-error"
     ],
-    "rust-analyzer.diagnostics.enableExperimental": false,
+    "rust-analyzer.diagnostics.experimental.enable": false,
     "rust-analyzer.cargo.features": [
         "private-net",
         "runtime-benchmarks"

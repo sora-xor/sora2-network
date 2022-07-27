@@ -1,3 +1,5 @@
+//! Channel for passing messages from ethereum to substrate.
+
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::{ChannelId, Message, MessageId};
 use bridge_types::EthNetworkId;
@@ -197,6 +199,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 message
                     .encode()
                     .map_err(|_| Error::<T>::CallEncodeFailed)?
@@ -216,6 +219,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 message
                     .encode()
                     .map_err(|_| Error::<T>::CallEncodeFailed)?

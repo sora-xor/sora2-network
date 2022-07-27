@@ -514,10 +514,10 @@ benchmarks! {
     verify {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
     }
-}
 
-frame_benchmarking::impl_benchmark_test_suite!(
-    Pallet,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Runtime,
-);
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Runtime,
+    );
+}

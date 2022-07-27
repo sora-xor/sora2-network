@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
@@ -13,5 +13,6 @@ RUN mkdir /chain && \
 USER substrate
 
 COPY ./framenode /usr/local/bin/framenode
+COPY ./relayer.bin /usr/local/bin/relayer
 
 ENTRYPOINT ["framenode"]
