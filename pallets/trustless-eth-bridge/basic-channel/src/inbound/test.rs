@@ -10,7 +10,7 @@ use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{DispatchResult, MultiSignature};
+use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
 use bridge_types::traits::{MessageDispatch, OutboundRouter};
@@ -106,8 +106,8 @@ impl basic_inbound_channel::Config for Test {
     type Event = Event;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
-    type WeightInfo = ();
     type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type WeightInfo = ();
 }
 
 pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
@@ -119,11 +119,11 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         _: &RawOrigin<AccountId>,
         _: H160,
         _: &[u8],
-    ) -> DispatchResult {
+    ) -> Result<H256, DispatchError> {
         if channel == ChannelId::Incentivized {
             return Err(DispatchError::Other("some error!"));
         }
-        Ok(())
+        Ok(Default::default())
     }
 }
 

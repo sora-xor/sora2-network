@@ -1,6 +1,5 @@
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
-use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -46,7 +45,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::types::AuxiliaryDigestItem;
+    use bridge_types::types::MessageId;
+    use bridge_types::types::MessageStatus;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -71,6 +73,8 @@ pub mod pallet {
         type FeeCurrency: Get<Self::AssetId>;
 
         type FeeTechAccountId: Get<Self::TechAccountId>;
+
+        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -179,7 +183,7 @@ pub mod pallet {
             network_id: EthNetworkId,
             target: H160,
             payload: &[u8],
-        ) -> DispatchResult {
+        ) -> Result<H256, DispatchError> {
             debug!("Send message from {:?} to {:?}", who, target);
             ensure!(
                 MessageQueues::<T>::decode_len(network_id).unwrap_or(0)
@@ -191,7 +195,7 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> Result<H256, DispatchError> {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
@@ -224,8 +228,13 @@ pub mod pallet {
                     },
                 );
                 Self::deposit_event(Event::MessageAccepted(network_id, *nonce));
-                Ok(())
+                Ok(Self::make_message_id(*nonce))
             })
+        }
+
+        fn make_message_id(nonce: u64) -> H256 {
+            MessageId::outbound(ChannelId::Incentivized, nonce)
+                .using_encoded(|v| <T as Config>::Hashing::hash(v))
         }
 
         fn commit(network_id: EthNetworkId) -> Weight {
@@ -248,6 +257,14 @@ pub mod pallet {
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&*key, &messages.encode());
+
+            for message in messages.iter() {
+                T::MessageStatusNotifier::update_status(
+                    network_id,
+                    Self::make_message_id(message.nonce),
+                    MessageStatus::Committed,
+                );
+            }
 
             <T as Config>::WeightInfo::on_initialize(
                 messages_count as u32,

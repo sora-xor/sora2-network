@@ -1,13 +1,44 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
-use bridge_types::traits::OutboundRouter;
+use bridge_types::traits::AppRegistry;
 use bridge_types::types::{AssetKind, ChannelId};
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
+    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
+    PredefinedAssetId, DAI, ETH, XOR,
 };
 use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
@@ -16,9 +47,13 @@ use frame_system as system;
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::traits::{
+    BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
+};
+use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
 use system::RawOrigin;
+
+use crate as proxy;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -38,9 +73,10 @@ frame_support::construct_runtime!(
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
+        IncentivizedOutboundChannel: incentivized_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Erc20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
-        MigrationApp: crate::{Pallet, Call, Config, Storage, Event<T>},
+        ERC20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        EvmBridgeProxy: proxy::{Pallet, Call, Storage, Event},
     }
 );
 
@@ -49,6 +85,7 @@ pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -167,21 +204,57 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+pub struct MockOutboundRouter<T>(PhantomData<T>);
 
-impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for MockOutboundRouter<T>
+where
+    T: incentivized_channel::outbound::Config,
+{
     fn submit(
-        _: EthNetworkId,
-        channel: ChannelId,
-        _: &RawOrigin<AccountId>,
-        _: H160,
-        _: &[u8],
+        network_id: bridge_types::EthNetworkId,
+        channel_id: ChannelId,
+        who: &RawOrigin<T::AccountId>,
+        target: H160,
+        payload: &[u8],
     ) -> Result<H256, DispatchError> {
-        if channel == ChannelId::Incentivized {
-            return Err(DispatchError::Other("some error!"));
+        match channel_id {
+            ChannelId::Basic => {
+                unimplemented!()
+            }
+            ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
+                who, network_id, target, payload,
+            ),
         }
-        Ok(Default::default())
     }
+}
+
+parameter_types! {
+    pub const MaxMessagePayloadSize: u64 = 2048;
+    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const Decimals: u32 = 12;
+}
+pub struct FeeConverter;
+impl Convert<U256, Balance> for FeeConverter {
+    fn convert(amount: U256) -> Balance {
+        common::eth::unwrap_balance(amount, Decimals::get())
+            .expect("Should not panic unless runtime is misconfigured")
+    }
+}
+
+parameter_types! {
+    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+}
+
+impl incentivized_channel::outbound::Config for Test {
+    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    type Event = Event;
+    type Hashing = Keccak256;
+    type MaxMessagePayloadSize = MaxMessagePayloadSize;
+    type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type FeeCurrency = FeeCurrency;
+    type MessageStatusNotifier = EvmBridgeProxy;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -199,48 +272,57 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl eth_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type OutboundRouter = MockOutboundRouter<Test>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type MessageStatusNotifier = ();
+    type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
 }
 
-pub struct AppRegistry;
+pub struct AppRegistryImpl;
 
-impl bridge_types::traits::AppRegistry for AppRegistry {
-    fn register_app(
-        _network_id: bridge_types::EthNetworkId,
-        _app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
+impl AppRegistry for AppRegistryImpl {
+    fn register_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
         Ok(())
     }
 
-    fn deregister_app(
-        _network_id: bridge_types::EthNetworkId,
-        _app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
+    fn deregister_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
         Ok(())
     }
 }
 
 impl erc20_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type OutboundRouter = MockOutboundRouter<Test>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type AppRegistry = AppRegistry;
-    type MessageStatusNotifier = ();
+    type MessageStatusNotifier = EvmBridgeProxy;
+    type AppRegistry = AppRegistryImpl;
     type WeightInfo = ();
 }
 
-impl crate::Config for Test {
+impl proxy::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type EthApp = EthApp;
+    type ERC20App = ERC20App;
     type WeightInfo = ();
 }
 
@@ -250,17 +332,23 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .unwrap();
 
     technical::GenesisConfig::<Test> {
-        register_tech_accounts: vec![(
-            GetTrustlessBridgeAccountId::get(),
-            GetTrustlessBridgeTechAccountId::get(),
-        )],
+        register_tech_accounts: vec![
+            (
+                GetTrustlessBridgeAccountId::get(),
+                GetTrustlessBridgeTechAccountId::get(),
+            ),
+            (
+                GetTrustlessBridgeFeesAccountId::get(),
+                GetTrustlessBridgeFeesTechAccountId::get(),
+            ),
+        ],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR)],
+            networks: vec![(BASE_NETWORK_ID, Default::default(), ETH)],
         },
         &mut storage,
     )
@@ -269,18 +357,23 @@ pub fn new_tester() -> sp_io::TestExternalities {
     GenesisBuild::<Test>::assimilate_storage(
         &erc20_app::GenesisConfig {
             apps: vec![
-                (BASE_NETWORK_ID, Default::default(), AssetKind::Thischain),
-                (BASE_NETWORK_ID, Default::default(), AssetKind::Sidechain),
+                (BASE_NETWORK_ID, H160::repeat_byte(1), AssetKind::Thischain),
+                (BASE_NETWORK_ID, H160::repeat_byte(2), AssetKind::Sidechain),
             ],
-            assets: vec![],
-        },
-        &mut storage,
-    )
-    .unwrap();
-
-    GenesisBuild::<Test>::assimilate_storage(
-        &crate::GenesisConfig {
-            networks: vec![(BASE_NETWORK_ID, Default::default())],
+            assets: vec![
+                (
+                    BASE_NETWORK_ID,
+                    XOR,
+                    H160::repeat_byte(3),
+                    AssetKind::Thischain,
+                ),
+                (
+                    BASE_NETWORK_ID,
+                    DAI,
+                    H160::repeat_byte(4),
+                    AssetKind::Sidechain,
+                ),
+            ],
         },
         &mut storage,
     )
@@ -295,17 +388,41 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     assets::GenesisConfig::<Test> {
-        endowed_assets: vec![(
-            XOR.into(),
-            bob,
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"SORA".to_vec()),
-            18,
-            0,
-            true,
-            None,
-            None,
-        )],
+        endowed_assets: vec![
+            (
+                XOR.into(),
+                bob.clone(),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                DAI.into(),
+                bob.clone(),
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                ETH.into(),
+                bob.clone(),
+                AssetSymbol(b"ETH".to_vec()),
+                AssetName(b"Ether".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+        ],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

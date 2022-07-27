@@ -9,14 +9,14 @@ use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
 use system::RawOrigin;
 
@@ -162,6 +162,7 @@ impl dispatch::Config for Test {
     type Origin = Origin;
     type Event = Event;
     type MessageId = u64;
+    type Hashing = Keccak256;
     type Call = Call;
     type CallFilter = Everything;
 }
@@ -175,11 +176,11 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         _: &RawOrigin<AccountId>,
         _: H160,
         _: &[u8],
-    ) -> DispatchResult {
+    ) -> Result<H256, DispatchError> {
         if channel == ChannelId::Basic {
             return Err(DispatchError::Other("some error!"));
         }
-        Ok(())
+        Ok(Default::default())
     }
 }
 
@@ -205,6 +206,7 @@ impl eth_app::Config for Test {
     type OutboundRouter = MockOutboundRouter<Self::AccountId>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type MessageStatusNotifier = ();
     type WeightInfo = ();
 }
 

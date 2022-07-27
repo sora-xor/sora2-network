@@ -3131,6 +3131,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77f3309417938f28bf8228fcff79a4a37103981e3e186d2ccd19c74b38f4eb71"
 
 [[package]]
+name = "evm-bridge-proxy"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "basic-channel",
+ "bridge-types",
+ "common",
+ "dispatch",
+ "erc20-app",
+ "eth-app",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "incentivized-channel",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
+name = "evm-bridge-proxy-rpc"
+version = "0.1.0"
+dependencies = [
+ "bridge-types",
+ "common",
+ "evm-bridge-proxy-runtime-api",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "evm-bridge-proxy-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "bridge-types",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "exit-future"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3609,6 +3671,7 @@ dependencies = [
  "dex-api-rpc",
  "dex-manager-rpc",
  "eth-bridge-rpc",
+ "evm-bridge-proxy-rpc",
  "exit-future",
  "frame-benchmarking",
  "frame-benchmarking-cli",
@@ -3737,6 +3800,8 @@ dependencies = [
  "eth-bridge",
  "eth-bridge-runtime-api",
  "ethereum-light-client",
+ "evm-bridge-proxy",
+ "evm-bridge-proxy-runtime-api",
  "farming",
  "faucet",
  "frame-benchmarking",

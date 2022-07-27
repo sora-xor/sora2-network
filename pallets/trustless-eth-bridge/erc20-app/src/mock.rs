@@ -20,7 +20,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::{AccountId32, DispatchError, MultiSignature};
 use system::RawOrigin;
 
 use crate as erc20_app;
@@ -186,6 +186,7 @@ impl dispatch::Config for Test {
     type Origin = Origin;
     type Event = Event;
     type MessageId = u64;
+    type Hashing = Keccak256;
     type Call = Call;
     type CallFilter = Everything;
 }
@@ -204,7 +205,7 @@ where
         who: &RawOrigin<T::AccountId>,
         target: H160,
         payload: &[u8],
-    ) -> DispatchResult {
+    ) -> Result<H256, DispatchError> {
         match channel_id {
             ChannelId::Basic => {
                 basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
@@ -251,6 +252,7 @@ impl incentivized_channel::outbound::Config for Test {
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type FeeCurrency = FeeCurrency;
+    type MessageStatusNotifier = ();
     type WeightInfo = ();
 }
 
@@ -284,6 +286,7 @@ impl erc20_app::Config for Test {
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();
+    type MessageStatusNotifier = ();
     type AppRegistry = AppRegistryImpl;
 }
 

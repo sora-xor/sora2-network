@@ -33,7 +33,7 @@ fn mints_after_handling_ethereum_event() {
         ));
 
         assert_ok!(Erc20App::mint(
-            dispatch::RawOrigin(BASE_NETWORK_ID, peer_contract).into(),
+            dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
             token,
             sender,
             recipient.clone(),
@@ -141,7 +141,7 @@ fn test_register_asset_internal() {
     new_tester().execute_with(|| {
         let asset_id = ETH;
         let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, who);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), who);
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<Test>::contains_key(
             BASE_NETWORK_ID,

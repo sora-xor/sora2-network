@@ -141,7 +141,7 @@ pub mod pallet {
                 }
             })?;
 
-            let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
+            let message_id = MessageId::inbound(ChannelId::Basic, envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 envelope.source,

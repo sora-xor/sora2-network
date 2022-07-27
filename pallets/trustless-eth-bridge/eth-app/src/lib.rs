@@ -70,6 +70,9 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
+    use bridge_types::traits::{EvmBridgeApp, MessageStatusNotifier};
+    use bridge_types::types::AppKind;
+    use bridge_types::H256;
     use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -88,7 +91,9 @@ pub mod pallet {
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H160)>;
+        type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
+
+        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
         type BridgeTechAccountId: Get<Self::TechAccountId>;
 
@@ -149,26 +154,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let (target, asset_id) =
-                Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
-
-            T::Currency::withdraw(asset_id, &who, amount)?;
-
-            let message = OutboundPayload::<T> {
-                sender: who.clone(),
-                recipient: recipient.clone(),
-                amount: amount.into(),
-            };
-
-            T::OutboundRouter::submit(
-                network_id,
-                channel_id,
-                &RawOrigin::Signed(who.clone()),
-                target,
-                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
-            )?;
-            Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
-
+            Pallet::<T>::burn_inner(who, network_id, channel_id, recipient, amount)?;
             Ok(())
         }
 
@@ -180,7 +166,7 @@ pub mod pallet {
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: U256,
         ) -> DispatchResult {
-            let (network_id, who) = T::CallOrigin::ensure_origin(origin)?;
+            let (network_id, message_id, who) = T::CallOrigin::ensure_origin(origin)?;
             let (contract, asset_id) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             ensure!(who == contract, Error::<T>::InvalidAppAddress);
@@ -188,6 +174,14 @@ pub mod pallet {
             let amount: BalanceOf<T> = amount.as_u128().into();
             let recipient = T::Lookup::lookup(recipient)?;
             T::Currency::deposit(asset_id, &recipient, amount)?;
+            T::MessageStatusNotifier::inbound_request(
+                network_id,
+                message_id,
+                sender,
+                recipient.clone(),
+                asset_id,
+                amount,
+            );
             Self::deposit_event(Event::Minted(network_id, sender, recipient.clone(), amount));
 
             Ok(())
@@ -273,6 +267,44 @@ pub mod pallet {
             }
             Ok(())
         }
+
+        pub fn burn_inner(
+            who: T::AccountId,
+            network_id: EthNetworkId,
+            channel_id: ChannelId,
+            recipient: H160,
+            amount: BalanceOf<T>,
+        ) -> Result<H256, DispatchError> {
+            let (target, asset_id) =
+                Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+
+            T::Currency::withdraw(asset_id, &who, amount)?;
+
+            let message = OutboundPayload::<T> {
+                sender: who.clone(),
+                recipient: recipient.clone(),
+                amount: amount.into(),
+            };
+
+            let message_id = T::OutboundRouter::submit(
+                network_id,
+                channel_id,
+                &RawOrigin::Signed(who.clone()),
+                target,
+                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+            )?;
+            T::MessageStatusNotifier::outbound_request(
+                network_id,
+                message_id,
+                who.clone(),
+                recipient,
+                asset_id,
+                amount,
+            );
+            Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
+
+            Ok(message_id)
+        }
     }
 
     #[pallet::genesis_config]
@@ -295,6 +327,46 @@ pub mod pallet {
             for (network_id, contract, asset_id) in &self.networks {
                 Pallet::<T>::register_network_inner(*network_id, *asset_id, *contract).unwrap();
             }
+        }
+    }
+
+    impl<T: Config> EvmBridgeApp<T::AccountId, T::AssetId, Balance> for Pallet<T> {
+        fn is_asset_supported(network_id: EthNetworkId, asset_id: T::AssetId) -> bool {
+            Addresses::<T>::get(network_id)
+                .map(|(_contract, native_asset_id)| native_asset_id == asset_id)
+                .unwrap_or(false)
+        }
+
+        fn transfer(
+            network_id: EthNetworkId,
+            asset_id: T::AssetId,
+            sender: T::AccountId,
+            recipient: H160,
+            amount: Balance,
+        ) -> Result<H256, DispatchError> {
+            if Self::is_asset_supported(network_id, asset_id) {
+                Pallet::<T>::burn_inner(
+                    sender,
+                    network_id,
+                    ChannelId::Incentivized,
+                    recipient,
+                    amount,
+                )
+            } else {
+                Err(Error::<T>::AppIsNotRegistered.into())
+            }
+        }
+
+        fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, T::AssetId)> {
+            Addresses::<T>::get(network_id)
+                .map(|(_contract, asset_id)| vec![(AppKind::EthApp, asset_id)])
+                .unwrap_or_default()
+        }
+
+        fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)> {
+            Addresses::<T>::get(network_id)
+                .map(|(contract, _asset_id)| vec![(AppKind::EthApp, contract)])
+                .unwrap_or_default()
         }
     }
 }
