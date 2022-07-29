@@ -37,8 +37,7 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for erc20_app.
 pub trait WeightInfo {
-	fn burn_basic_channel() -> Weight;
-	fn burn_incentivized_channel() -> Weight;
+	fn burn() -> Weight;
 	fn mint() -> Weight;
 	fn register_erc20_asset() -> Weight;
 	fn register_native_asset() -> Weight;
@@ -47,54 +46,9 @@ pub trait WeightInfo {
 	fn register_asset_internal() -> Weight;
 }
 
-/// Weights for erc20_app using the Snowbridge node and recommended hardware.
-pub struct SnowbridgeWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SnowbridgeWeight<T> {
-	fn burn_basic_channel() -> Weight {
-		(57_652_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn burn_incentivized_channel() -> Weight {
-		(71_837_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-	}
-	fn mint() -> Weight {
-		(30_615_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-
-	fn register_erc20_asset() -> Weight {
-		Default::default()
-    }
-
-	fn register_native_asset() -> Weight {
-		Default::default()
-    }
-
-	fn register_erc20_app() -> Weight {
-		Default::default()
-    }
-
-	fn register_native_app() -> Weight {
-		Default::default()
-    }
-
-	fn register_asset_internal() -> Weight {
-		Default::default()
-    }
-}
-
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn burn_basic_channel() -> Weight {
-		(57_652_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
-	}
-	fn burn_incentivized_channel() -> Weight {
+	fn burn() -> Weight {
 		(71_837_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(6 as Weight))

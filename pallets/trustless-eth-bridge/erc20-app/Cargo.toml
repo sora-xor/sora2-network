@@ -36,12 +36,10 @@ ethabi = { version = "17.0.0", default-features = false }
 bridge-types = { path = "../types", default-features = false }
 
 dispatch = { path = "../dispatch", default-features = false, optional = true }
-basic-channel = { path = "../basic-channel", default-features = false, optional = true }
-incentivized-channel = { path = "../incentivized-channel", default-features = false, optional = true }
+bridge-channel = { path = "../channel", default-features = false, optional = true }
 
 [dev-dependencies]
-basic-channel = { path = "../basic-channel", default-features = false }
-incentivized-channel = { path = "../incentivized-channel", default-features = false }
+bridge-channel = { path = "../channel", default-features = false }
 dispatch = { path = "../dispatch" }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
@@ -68,8 +66,7 @@ std = [
 
     "frame-benchmarking/std",
     "dispatch/std",
-    "basic-channel/std",
-    "incentivized-channel/std",
+    "bridge-channel/std",
     "assets/std",
     "technical/std",
     "permissions/std",
@@ -83,6 +80,5 @@ runtime-benchmarks = [
     "dispatch/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "incentivized-channel/runtime-benchmarks",
-    "basic-channel/runtime-benchmarks",
+    "bridge-channel/runtime-benchmarks",
 ]

@@ -2,38 +2,14 @@
   {
     "inputs": [
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct ERC20App.Channel",
-        "name": "_basic",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "_inbound",
+        "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct ERC20App.Channel",
-        "name": "_incentivized",
-        "type": "tuple"
+        "internalType": "contract OutboundChannel",
+        "name": "_outbound",
+        "type": "address"
       },
       {
         "internalType": "address",
@@ -210,30 +186,6 @@
   {
     "inputs": [
       {
-        "internalType": "enum ChannelId",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "channels",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "inbound",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "outbound",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -293,6 +245,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "inbound",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -308,16 +273,24 @@
         "internalType": "uint256",
         "name": "_amount",
         "type": "uint256"
-      },
-      {
-        "internalType": "enum ChannelId",
-        "name": "_channelId",
-        "type": "uint8"
       }
     ],
     "name": "lock",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "outbound",
+    "outputs": [
+      {
+        "internalType": "contract OutboundChannel",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

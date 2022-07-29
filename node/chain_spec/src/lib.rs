@@ -48,14 +48,14 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BasicInboundChannelConfig, BasicOutboundChannelConfig, BeefyConfig,
-    BeefyId, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig, DEXManagerConfig,
-    DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
-    GrandpaConfig, ImOnlineId, IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeInboundChannelConfig,
+    BridgeMultisigConfig, BridgeOutboundChannelConfig, CouncilConfig, CrowdloanReward,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader,
+    EthereumLightClientConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId,
+    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
@@ -954,17 +954,12 @@ fn testnet_genesis(
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
-        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
+        bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
+        bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
-            interval: 10,
-            ..Default::default()
-        },
-        basic_inbound_channel: Default::default(),
-        basic_outbound_channel: BasicOutboundChannelConfig {
             interval: 10,
             ..Default::default()
         },
@@ -1765,17 +1760,12 @@ fn mainnet_genesis(
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
-        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
+        bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
+        bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
-            interval: 10,
-            ..Default::default()
-        },
-        basic_inbound_channel: Default::default(),
-        basic_outbound_channel: BasicOutboundChannelConfig {
             interval: 10,
             ..Default::default()
         },

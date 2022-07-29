@@ -48,7 +48,6 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::types::ChannelId;
 use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
@@ -64,7 +63,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
 use beefy_primitives::mmr::MmrLeafVersion;
-use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -1880,63 +1878,14 @@ impl dispatch::Config for Runtime {
     type CallFilter = CallFilter;
 }
 
-use basic_channel::{inbound as basic_channel_inbound, outbound as basic_channel_outbound};
+use bridge_channel::{inbound as bridge_channel_inbound, outbound as bridge_channel_outbound};
 use bridge_types::CHANNEL_INDEXING_PREFIX;
-use incentivized_channel::{
-    inbound as incentivized_channel_inbound, outbound as incentivized_channel_outbound,
-};
-
-pub struct OutboundRouter<T>(PhantomData<T>);
-
-pub use frame_system::RawOrigin;
-impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for OutboundRouter<T>
-where
-    T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
-{
-    fn submit(
-        network_id: bridge_types::EthNetworkId,
-        channel_id: ChannelId,
-        who: &RawOrigin<T::AccountId>,
-        target: H160,
-        max_gas: U256,
-        payload: &[u8],
-    ) -> Result<H256, DispatchError> {
-        match channel_id {
-            // TODO: use only incentivized with specifiable `max_gas`
-            ChannelId::Basic => {
-                basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
-            }
-            ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, max_gas, payload,
-            ),
-        }
-    }
-}
 
 parameter_types! {
-    pub const IncentivizedMaxMessagePayloadSize: u64 = 256;
-    pub const IncentivizedMaxMessagesPerCommit: u64 = 20;
-    pub const IncentivizedMaxTotalGasLimit: u64 = 5_000_000;
-    pub const BasicMaxMessagePayloadSize: u64 = 2048;
-    pub const BasicMaxMessagesPerCommit: u64 = 4;
+    pub const BridgeMaxMessagePayloadSize: u64 = 256;
+    pub const BridgeMaxMessagesPerCommit: u64 = 20;
+    pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
-}
-
-impl basic_channel_inbound::Config for Runtime {
-    type Event = Event;
-    type Verifier = ethereum_light_client::Pallet<Runtime>;
-    type MessageDispatch = dispatch::Pallet<Runtime>;
-    type WeightInfo = ();
-    type OutboundRouter = OutboundRouter<Self>;
-}
-
-impl basic_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
-    type Event = Event;
-    type Hashing = Keccak256;
-    type MaxMessagePayloadSize = BasicMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = BasicMaxMessagesPerCommit;
-    type WeightInfo = ();
 }
 
 pub struct FeeConverter;
@@ -1951,25 +1900,25 @@ parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
-impl incentivized_channel_inbound::Config for Runtime {
+impl bridge_channel_inbound::Config for Runtime {
     type Event = Event;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = dispatch::Pallet<Runtime>;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
-    type OutboundRouter = OutboundRouter<Self>;
+    type OutboundRouter = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
 
-impl incentivized_channel_outbound::Config for Runtime {
+impl bridge_channel_outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
-    type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
-    type MaxTotalGasLimit = IncentivizedMaxTotalGasLimit;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type MaxTotalGasLimit = BridgeMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -1997,31 +1946,9 @@ impl ethereum_light_client::Config for Runtime {
     type Submitter = <Signature as Verify>::Signer;
 }
 
-pub struct ChannelAppRegistry;
-
-impl bridge_types::traits::AppRegistry for ChannelAppRegistry {
-    fn register_app(
-        network_id: bridge_types::EthNetworkId,
-        app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
-        BasicInboundChannel::register_app(network_id, app)?;
-        IncentivizedInboundChannel::register_app(network_id, app)?;
-        Ok(())
-    }
-
-    fn deregister_app(
-        network_id: bridge_types::EthNetworkId,
-        app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
-        BasicInboundChannel::deregister_app(network_id, app)?;
-        IncentivizedInboundChannel::deregister_app(network_id, app)?;
-        Ok(())
-    }
-}
-
 impl eth_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
+    type OutboundRouter = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -2030,9 +1957,9 @@ impl eth_app::Config for Runtime {
 
 impl erc20_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
+    type OutboundRouter = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
-    type AppRegistry = ChannelAppRegistry;
+    type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
@@ -2040,7 +1967,7 @@ impl erc20_app::Config for Runtime {
 
 impl migration_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
+    type OutboundRouter = BridgeOutboundChannel;
     type WeightInfo = ();
 }
 
@@ -2129,10 +2056,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
@@ -2217,10 +2142,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,

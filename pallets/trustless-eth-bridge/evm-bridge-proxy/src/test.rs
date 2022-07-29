@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{
-    new_tester, AccountId, Call, Currencies, Dispatch, ERC20App, Event, EvmBridgeProxy,
-    IncentivizedOutboundChannel, System, Test, BASE_NETWORK_ID,
+    new_tester, AccountId, BridgeOutboundChannel, Call, Currencies, Dispatch, ERC20App, Event,
+    EvmBridgeProxy, System, Test, BASE_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions, UserTransactions};
 use bridge_types::traits::MessageDispatch;
@@ -41,7 +41,7 @@ use frame_system::RawOrigin;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
-use bridge_types::types::{AssetKind, ChannelId, MessageId, MessageStatus};
+use bridge_types::types::{AssetKind, MessageId, MessageStatus};
 
 fn assert_event(event: Event) {
     System::events()
@@ -81,7 +81,7 @@ fn burn_successfull() {
             })
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::InQueue).into());
-        IncentivizedOutboundChannel::on_initialize(IncentivizedOutboundChannel::interval());
+        BridgeOutboundChannel::on_initialize(BridgeOutboundChannel::interval());
         assert_event(
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
@@ -129,7 +129,7 @@ fn mint_successfull() {
         Dispatch::dispatch(
             BASE_NETWORK_ID,
             source,
-            MessageId::inbound(ChannelId::Incentivized, 0),
+            MessageId::inbound(0),
             &Call::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
@@ -162,7 +162,7 @@ fn mint_failed() {
         Dispatch::dispatch(
             BASE_NETWORK_ID,
             source,
-            MessageId::inbound(ChannelId::Incentivized, 0),
+            MessageId::inbound(0),
             &Call::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),

@@ -14,7 +14,7 @@ impl Command {
     pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
         let eth = args.get_signed_ethereum().await?;
         let sub = args.get_unsigned_substrate().await?;
-        let network_id = eth.inner().get_chainid().await?;
+        let network_id = eth.inner().get_chainid().await.context("fetch chain id")?;
         let eth_app = sub
             .api()
             .storage()
@@ -24,20 +24,28 @@ impl Command {
             .ok_or(anyhow!("Network is not registered"))?
             .0;
         let eth_app = ethereum_gen::ETHApp::new(eth_app, eth.inner());
-        let basic_inbound_address = eth_app.channels(0).call().await?.0;
-        let incentivized_inbound_address = eth_app.channels(1).call().await?.0;
-        let basic = ethereum_gen::BasicInboundChannel::new(basic_inbound_address, eth.inner());
-        let beefy = basic.beefy_light_client().call().await?;
+        let inbound_channel_address = eth_app
+            .inbound()
+            .call()
+            .await
+            .context("fetch outbound channel address")?;
+        let channel = ethereum_gen::InboundChannel::new(inbound_channel_address, eth.inner());
+        let beefy = channel
+            .beefy_light_client()
+            .call()
+            .await
+            .context("fetch beefy light client address")?;
         RelayBuilder::new()
             .with_substrate_client(sub)
             .with_ethereum_client(eth)
-            .with_basic_contract(basic_inbound_address)
-            .with_incentivized_contract(incentivized_inbound_address)
+            .with_inbound_channel_contract(inbound_channel_address)
             .with_beefy_contract(beefy)
             .build()
-            .await?
+            .await
+            .context("build substrate relay")?
             .run(!self.send_unneeded_commitments)
-            .await?;
+            .await
+            .context("run substrate relay")?;
         Ok(())
     }
 }

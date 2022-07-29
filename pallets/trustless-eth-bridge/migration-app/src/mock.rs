@@ -3,7 +3,7 @@ use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundRouter;
-use bridge_types::types::{AssetKind, ChannelId};
+use bridge_types::types::AssetKind;
 use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
 use common::{
@@ -172,15 +172,11 @@ pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
 impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
     fn submit(
         _: EthNetworkId,
-        channel: ChannelId,
         _: &RawOrigin<AccountId>,
         _: H160,
         _: U256,
         _: &[u8],
     ) -> Result<H256, DispatchError> {
-        if channel == ChannelId::Incentivized {
-            return Err(DispatchError::Other("some error!"));
-        }
         Ok(Default::default())
     }
 }

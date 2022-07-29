@@ -1,25 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity =0.8.13;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ScaleCodec.sol";
-import "./OutboundChannel.sol";
 import "./IAssetRegister.sol";
+import "./GenericApp.sol";
 
-enum ChannelId {
-    Basic,
-    Incentivized
-}
-
-contract ERC20App is AccessControl, IAssetRegister {
+contract ERC20App is GenericApp, IAssetRegister {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
     mapping(address => bool) public tokens;
-
-    mapping(ChannelId => Channel) public channels;
 
     bytes2 constant MINT_CALL = 0x6500;
 
@@ -37,44 +29,21 @@ contract ERC20App is AccessControl, IAssetRegister {
         uint256 amount
     );
 
-    struct Channel {
-        address inbound;
-        address outbound;
-    }
-
-    bytes32 public constant INBOUND_CHANNEL_ROLE =
-        keccak256("INBOUND_CHANNEL_ROLE");
-
     constructor(
-        Channel memory _basic,
-        Channel memory _incentivized,
+        address _inbound,
+        OutboundChannel _outbound,
         address migrationApp
-    ) {
-        Channel storage c1 = channels[ChannelId.Basic];
-        c1.inbound = _basic.inbound;
-        c1.outbound = _basic.outbound;
-
-        Channel storage c2 = channels[ChannelId.Incentivized];
-        c2.inbound = _incentivized.inbound;
-        c2.outbound = _incentivized.outbound;
-
-        _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
-        _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
+    ) GenericApp(_inbound, _outbound) {
         _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
         address _token,
         bytes32 _recipient,
-        uint256 _amount,
-        ChannelId _channelId
+        uint256 _amount
     ) public {
         require(tokens[_token], "Token is not registered");
-        require(
-            _channelId == ChannelId.Basic ||
-                _channelId == ChannelId.Incentivized,
-            "Invalid channel ID"
-        );
+
         IERC20 token = IERC20(_token);
         uint256 beforeBalance = token.balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
@@ -90,10 +59,7 @@ contract ERC20App is AccessControl, IAssetRegister {
             transferredAmount
         );
 
-        OutboundChannel channel = OutboundChannel(
-            channels[_channelId].outbound
-        );
-        channel.submit(msg.sender, call);
+        outbound.submit(msg.sender, call);
     }
 
     function unlock(

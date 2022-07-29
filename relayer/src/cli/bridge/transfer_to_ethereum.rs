@@ -1,7 +1,6 @@
 use super::*;
 use crate::prelude::*;
 use assets_rpc::AssetsAPIClient;
-use bridge_types::types::ChannelId;
 use bridge_types::H160;
 use common::{AssetId32, PredefinedAssetId};
 use ethers::prelude::Middleware;
@@ -37,13 +36,7 @@ impl Command {
             sub.api()
                 .tx()
                 .eth_app()
-                .burn(
-                    false,
-                    network_id,
-                    ChannelId::Incentivized,
-                    self.recipient,
-                    self.amount,
-                )?
+                .burn(false, network_id, self.recipient, self.amount)?
                 .sign_and_submit_then_watch_default(&sub)
                 .await?
                 .wait_for_in_block()
@@ -57,7 +50,6 @@ impl Command {
                 .burn(
                     false,
                     network_id,
-                    ChannelId::Incentivized,
                     self.asset_id,
                     self.recipient,
                     self.amount,

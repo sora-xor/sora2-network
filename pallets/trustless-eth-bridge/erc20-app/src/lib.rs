@@ -51,7 +51,7 @@ pub mod pallet {
 
     use assets::AssetIdOf;
     use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundRouter};
-    use bridge_types::types::{AppKind, AssetKind, ChannelId};
+    use bridge_types::types::{AppKind, AssetKind};
     use bridge_types::{EthNetworkId, H256};
     use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::*;
@@ -240,24 +240,17 @@ pub mod pallet {
         Common exstrinsics
          */
 
-        #[pallet::weight({
-			match channel_id {
-				ChannelId::Basic => <T as Config>::WeightInfo::burn_basic_channel(),
-				ChannelId::Incentivized => <T as Config>::WeightInfo::burn_incentivized_channel(),
-			}
-		})]
-
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
-            channel_id: ChannelId,
             asset_id: AssetIdOf<T>,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            Self::burn_inner(who, network_id, channel_id, asset_id, recipient, amount)?;
+            Self::burn_inner(who, network_id, asset_id, recipient, amount)?;
 
             Ok(())
         }
@@ -297,7 +290,6 @@ pub mod pallet {
 
             T::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -328,7 +320,6 @@ pub mod pallet {
 
             T::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -361,7 +352,6 @@ pub mod pallet {
 
             T::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -446,7 +436,6 @@ pub mod pallet {
         pub fn burn_inner(
             who: T::AccountId,
             network_id: EthNetworkId,
-            channel_id: ChannelId,
             asset_id: AssetIdOf<T>,
             recipient: H160,
             amount: BalanceOf<T>,
@@ -478,7 +467,6 @@ pub mod pallet {
 
             let message_id = T::OutboundRouter::submit(
                 network_id,
-                channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
                 TRANSFER_MAX_GAS.into(),
@@ -510,14 +498,7 @@ pub mod pallet {
             recipient: H160,
             amount: Balance,
         ) -> Result<H256, DispatchError> {
-            Pallet::<T>::burn_inner(
-                sender,
-                network_id,
-                ChannelId::Incentivized,
-                asset_id,
-                recipient,
-                amount,
-            )
+            Pallet::<T>::burn_inner(sender, network_id, asset_id, recipient, amount)
         }
 
         fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, T::AssetId)> {

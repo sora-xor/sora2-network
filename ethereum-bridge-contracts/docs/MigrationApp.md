@@ -5,7 +5,7 @@
 
 
 
-### `constructor(address _basic_inbound, address _basic_outbound, address _incentivized_inbound, address _incentivized_outbound)` (public)
+### `constructor(address inbound, contract OutboundChannel _outbound)` (public)
 
 
 

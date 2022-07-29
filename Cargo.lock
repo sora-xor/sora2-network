@@ -509,52 +509,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a32fd6af2b5827bce66c29053ba0e7c42b9dcab01835835058558c10851a46b"
 
 [[package]]
-name = "basic-channel"
-version = "0.1.1"
-dependencies = [
- "assets",
- "bridge-types",
- "common",
- "ethabi 17.1.0",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "once_cell",
- "pallet-balances",
- "parity-scale-codec",
- "rlp 0.5.1",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "basic-channel-rpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "basic-channel",
- "bridge-types",
- "common",
- "jsonrpsee",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-offchain",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "bech32"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -848,6 +802,57 @@ dependencies = [
  "fastrand",
  "futures-lite",
  "once_cell",
+]
+
+[[package]]
+name = "bridge-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-types",
+ "common",
+ "ethabi 17.1.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "once_cell",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.1",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
+name = "bridge-channel-rpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bridge-channel",
+ "bridge-types",
+ "common",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-offchain",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -2527,7 +2532,7 @@ name = "erc20-app"
 version = "0.1.1"
 dependencies = [
  "assets",
- "basic-channel",
+ "bridge-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -2536,7 +2541,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
- "incentivized-channel",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3135,7 +3139,7 @@ name = "evm-bridge-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
- "basic-channel",
+ "bridge-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -3144,7 +3148,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "incentivized-channel",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -3661,10 +3664,10 @@ dependencies = [
  "ansi_term",
  "assert_cmd",
  "assets-rpc",
- "basic-channel-rpc",
  "beefy-gadget",
  "beefy-gadget-rpc",
  "beefy-primitives",
+ "bridge-channel-rpc",
  "clap 3.2.10",
  "common",
  "derive_more",
@@ -3678,7 +3681,6 @@ dependencies = [
  "framenode-chain-spec",
  "framenode-runtime",
  "futures 0.3.21",
- "incentivized-channel-rpc",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
@@ -3777,8 +3779,8 @@ version = "1.4.4"
 dependencies = [
  "assets",
  "assets-runtime-api",
- "basic-channel",
  "beefy-primitives",
+ "bridge-channel",
  "bridge-types",
  "ceres-governance-platform",
  "ceres-launchpad",
@@ -3813,7 +3815,6 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "framenode-chain-spec",
  "hex-literal",
- "incentivized-channel",
  "iroha-migration",
  "iroha-migration-runtime-api",
  "leaf-provider",
@@ -4586,57 +4587,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "incentivized-channel"
-version = "0.1.1"
-dependencies = [
- "assets",
- "bridge-types",
- "common",
- "ethabi 17.1.0",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "once_cell",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions",
- "rlp 0.5.1",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
- "technical",
-]
-
-[[package]]
-name = "incentivized-channel-rpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bridge-types",
- "common",
- "incentivized-channel",
- "jsonrpsee",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-offchain",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -8690,10 +8640,10 @@ dependencies = [
  "assets-rpc",
  "assets-runtime-api",
  "async-trait",
- "basic-channel-rpc",
  "beefy-gadget-rpc",
  "beefy-merkle-tree",
  "beefy-primitives",
+ "bridge-channel-rpc",
  "bridge-types",
  "clap 3.0.0-rc.4",
  "common",
@@ -8708,7 +8658,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "http",
- "incentivized-channel-rpc",
  "jsonrpsee",
  "k256",
  "keccak-hasher",

@@ -1,15 +1,9 @@
 ethers::contract::abigen!(
-    BasicInboundChannel,
-    "src/bytes/BasicInboundChannel.abi.json",
+    InboundChannel,
+    "src/bytes/InboundChannel.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
-    BasicOutboundChannel,
-    "src/bytes/BasicOutboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    IncentivizedInboundChannel,
-    "src/bytes/IncentivizedInboundChannel.abi.json",
-    event_derives (serde::Deserialize, serde::Serialize);
-    IncentivizedOutboundChannel,
-    "src/bytes/IncentivizedOutboundChannel.abi.json",
+    OutboundChannel,
+    "src/bytes/OutboundChannel.abi.json",
     event_derives (serde::Deserialize, serde::Serialize);
     BeefyLightClient,
     "src/bytes/BeefyLightClient.abi.json",
@@ -45,20 +39,12 @@ ethers::contract::abigen!(
 
 // Re-export modules, because it's private
 
-pub mod basic_inbound_channel {
-    pub use crate::basicinboundchannel_mod::*;
+pub mod outbound_channel {
+    pub use crate::outboundchannel_mod::*;
 }
 
-pub mod basic_outbound_channel {
-    pub use crate::basicoutboundchannel_mod::*;
-}
-
-pub mod incentivized_outbound_channel {
-    pub use crate::incentivizedoutboundchannel_mod::*;
-}
-
-pub mod incentivized_inbound_channel {
-    pub use crate::incentivizedinboundchannel_mod::*;
+pub mod inbound_channel {
+    pub use crate::inboundchannel_mod::*;
 }
 
 pub mod beefy_light_client {

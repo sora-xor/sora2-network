@@ -22,7 +22,6 @@ use sp_core::H160;
 use sp_std::prelude::*;
 
 use bridge_types::traits::OutboundRouter;
-use bridge_types::types::ChannelId;
 use bridge_types::EthNetworkId;
 
 mod payload;
@@ -167,7 +166,6 @@ pub mod pallet {
 
             <T as Config>::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -214,7 +212,6 @@ pub mod pallet {
 
             <T as Config>::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -238,7 +235,6 @@ pub mod pallet {
 
             <T as Config>::OutboundRouter::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
