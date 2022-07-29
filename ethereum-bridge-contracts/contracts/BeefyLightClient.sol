@@ -387,6 +387,10 @@ contract BeefyLightClient {
         bytes32 nextAuthoritySetRoot
     ) internal {
         if (nextAuthoritySetId != validatorRegistry.id()) {
+            require(
+                nextAuthoritySetId > validatorRegistry.id(),
+                "Error: Cannot switch to old validator set"
+            );
             validatorRegistry.update(
                 nextAuthoritySetRoot,
                 nextAuthoritySetLen,
@@ -420,6 +424,14 @@ contract BeefyLightClient {
     ) internal view {
         ValidationData storage data = validationData[id];
 
+        // Encode and hash the commitment
+        bytes32 commitmentHash = createCommitmentHash(commitment);
+        require(
+            commitmentHash == data.commitmentHash,
+            "Error: Wrong commitment, hash is not equal to the one posted in newSignatureCommitment()"
+        );
+
+
         // Verify that sender is the same as in `newSignatureCommitment`
         require(
             msg.sender == data.senderAddress,
@@ -452,7 +464,7 @@ contract BeefyLightClient {
             randomBitfield,
             proof,
             requiredNumOfSignatures,
-            commitment
+            commitmentHash
         );
     }
 
@@ -486,11 +498,8 @@ contract BeefyLightClient {
         uint256[] memory randomBitfield,
         ValidatorProof calldata proof,
         uint256 requiredNumOfSignatures,
-        Commitment calldata commitment
+        bytes32 commitmentHash
     ) internal view {
-        // Encode and hash the commitment
-        bytes32 commitmentHash = createCommitmentHash(commitment);
-
         /**
          *  @dev For each randomSignature, do:
          */
