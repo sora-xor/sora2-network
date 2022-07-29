@@ -2,6 +2,7 @@
 pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./RewardSource.sol";
 import "./ScaleCodec.sol";
 import "./OutboundChannel.sol";
@@ -12,7 +13,7 @@ enum ChannelId {
     Incentivized
 }
 
-contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
+contract ETHApp is RewardSource, AccessControl, EthTokenReceiver, ReentrancyGuard {
     using ScaleCodec for uint256;
 
     mapping(ChannelId => Channel) public channels;
@@ -73,9 +74,12 @@ contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
         bytes32 _sender,
         address payable _recipient,
         uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+    ) public onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         require(_amount > 0, "Must unlock a positive amount");
-        _recipient.transfer(_amount);
+        (bool success, ) = _recipient.call{
+            value: _amount
+        }("");
+        require(success, "Transfer failed.");
         emit Unlocked(_sender, _recipient, _amount);
     }
 
@@ -98,9 +102,12 @@ contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
     function reward(address payable _recipient, uint256 _amount)
         external
         override
-        onlyRole(REWARD_ROLE)
+        onlyRole(REWARD_ROLE) nonReentrant
     {
-        _recipient.transfer(_amount);
+        (bool success, ) = _recipient.call{
+            value: _amount
+        }("");
+        require(success, "Transfer failed.");
     }
 
     function receivePayment() external payable override {}

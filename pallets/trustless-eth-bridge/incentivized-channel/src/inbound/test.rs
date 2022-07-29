@@ -245,6 +245,7 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         _: ChannelId,
         _: &RawOrigin<AccountId>,
         _: H160,
+        _: U256,
         _: &[u8],
     ) -> DispatchResult {
         Ok(())

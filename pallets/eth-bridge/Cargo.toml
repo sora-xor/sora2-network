@@ -38,17 +38,17 @@ pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.25", package = "pallet-multisig", default-features = false }
-ethabi = { git = "https://github.com/vovac12/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi", default-features = false, features = [
+ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi", default-features = false, features = [
     "alloc",
 ] }
-ethabi-contract = { git = "https://github.com/vovac12/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-contract", default-features = false }
-ethabi-derive = { git = "https://github.com/vovac12/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-derive", default-features = false }
+ethabi-contract = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-contract", default-features = false }
+ethabi-derive = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.25", package = "ethabi-derive", default-features = false }
 ethereum-types = { version = "0.13.1", default-features = false, features = [
     'serialize',
     'codec',
 ] }
-#jsonrpc-core = { version = "18.0.0", default-features = false }
-jsonrpc-core = { git = "https://github.com/vmarkushin/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
+# jsonrpc-core = { version = "18.0.0", default-features = false }
+jsonrpc-core = { git = "https://github.com/sora-xor/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }

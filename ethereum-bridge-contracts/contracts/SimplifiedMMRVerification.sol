@@ -37,7 +37,7 @@ contract SimplifiedMMRVerification {
         bytes32 leafNodeHash,
         bytes32[] memory merkleProofItems,
         uint64 merkleProofOrderBitField
-    ) internal pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         bytes32 currentHash = leafNodeHash;
 
         for (

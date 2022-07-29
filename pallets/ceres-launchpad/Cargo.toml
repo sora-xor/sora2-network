@@ -36,6 +36,7 @@ pswap-distribution = { path = "../pswap-distribution", default-features = false 
 vested-rewards = { path = "../vested-rewards", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
@@ -70,10 +71,14 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "pallet-timestamp/std",
+    "ceres-liquidity-locker/std",
+    "ceres-token-locker/std",
 ]
 
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
 ]

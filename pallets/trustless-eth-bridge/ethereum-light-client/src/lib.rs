@@ -53,6 +53,18 @@ pub use weights::WeightInfo;
 const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 /// Max number of headers we're pruning in single import call.
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
+/// Length of difficulties vector to store
+const CHECK_DIFFICULTY_DIFFERENCE_NUMBER: u64 = 10;
+/// Calculate the maximum difference between current header difficulty and maximum among stored in vector
+pub(crate) const DIFFICULTY_DIFFERENCE: f64 =
+    1.0 + 0.125 * (CHECK_DIFFICULTY_DIFFERENCE_NUMBER as f64);
+const DIVISION_COEFFICIENT: u64 = 1000;
+const DIFFICULTY_DIFFERENCE_MULT: U256 = U256([
+    ((DIFFICULTY_DIFFERENCE * (DIVISION_COEFFICIENT as f64)) as u64) / DIVISION_COEFFICIENT,
+    0,
+    0,
+    0,
+]);
 
 /// Ethereum block header as it is stored in the runtime storage.
 #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
@@ -168,6 +180,10 @@ pub mod pallet {
         NetworkNotFound,
         /// Network with given id already registered
         NetworkAlreadyExists,
+        /// Difficulty is too low comparing to last blocks difficulty
+        DifficultyTooLow,
+        /// Network state is not suitable to proceed transacton
+        NetworkStateInvalid,
         /// This should never be returned - indicates a bug
         Unknown,
         /// Unsupported consensus engine
@@ -394,6 +410,8 @@ pub mod pallet {
                 Error::<T>::Unknown => 12,
                 Error::<T>::ConsensusNotSupported => 13,
                 Error::<T>::InvalidSignature => 14,
+                Error::<T>::DifficultyTooLow => 15,
+                Error::<T>::NetworkStateInvalid => 16,
                 // Everything points to unreachable-ness (e.g. substrate macro definitions)
                 // https://github.com/paritytech/substrate/blob/158cdfd1a43a122f8cfbf70473fcd54a3b418f3d/frame/support/procedural/src/pallet/expand/call.rs#L235
                 Error::<T>::__Ignore(_, _) => unreachable!(),
@@ -579,6 +597,8 @@ pub mod pallet {
                 );
             }
 
+            Self::validate_header_difficulty(network_id, &header)?;
+
             log::trace!(
                 target: "ethereum-light-client",
                 "Header {} passed difficulty verification",
@@ -633,6 +653,58 @@ pub mod pallet {
             );
 
             Ok(())
+        }
+
+        fn validate_header_difficulty(
+            network_id: EthNetworkId,
+            new_header: &EthereumHeader,
+        ) -> Result<(), Error<T>> {
+            let check_block_number = match new_header
+                .number
+                .checked_sub(CHECK_DIFFICULTY_DIFFERENCE_NUMBER)
+            {
+                // If less than CHECK_DIFFICULTY_DIFFERENCE_NUMBER - ignore check
+                None => return Ok(()),
+                Some(num) => num,
+            };
+
+            let hashes = match HeadersByNumber::<T>::get(network_id, check_block_number) {
+                // We trust our blockchain, so block should exist
+                None => return Ok(()),
+                Some(h) => h,
+            };
+
+            let headers_difficulty_max = match hashes
+                .iter()
+                .map(|hash| Headers::<T>::get(network_id, hash))
+                .flat_map(|x| x)
+                .map(|x| x.header.difficulty)
+                .max()
+            {
+                None => frame_support::fail!(Error::<T>::NetworkStateInvalid),
+                Some(max) => max,
+            };
+
+            // check total difficulty difference change and compare with new header difficulty
+            ensure!(
+                headers_difficulty_max
+                    // .checked_sub(headers_prev_difficulty_min)
+                    // .unwrap_or(0.into())
+                    <= new_header
+                        .difficulty
+                        .checked_mul(DIFFICULTY_DIFFERENCE_MULT)
+                        .unwrap_or(U256::MAX),
+                Error::<T>::DifficultyTooLow
+            );
+            Ok(())
+        }
+
+        #[cfg(test)]
+        pub fn validate_header_difficulty_test(
+            network_id: EthNetworkId,
+            new_header: &EthereumHeader,
+        ) -> DispatchResult {
+            Self::validate_header_difficulty(network_id, new_header).map_err(|e| e.into())
         }
 
         // Import a new, validated Ethereum header

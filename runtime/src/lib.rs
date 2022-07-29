@@ -40,6 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
+mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -68,7 +69,7 @@ use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse, OnRuntimeUpgrade};
+use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use hex_literal::hex;
@@ -231,10 +232,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 35,
+    spec_version: 37,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 35,
+    transaction_version: 37,
     state_version: 0,
 };
 
@@ -1804,6 +1805,7 @@ parameter_types! {
 }
 
 impl ceres_launchpad::Config for Runtime {
+    const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type Event = Event;
     type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }
@@ -1821,6 +1823,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }
@@ -1894,14 +1897,16 @@ where
         channel_id: ChannelId,
         who: &RawOrigin<T::AccountId>,
         target: H160,
+        max_gas: U256,
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
+            // TODO: use only incentivized with specifiable `max_gas`
             ChannelId::Basic => {
                 basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
             }
             ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, payload,
+                who, network_id, target, max_gas, payload,
             ),
         }
     }
@@ -1910,6 +1915,7 @@ where
 parameter_types! {
     pub const IncentivizedMaxMessagePayloadSize: u64 = 256;
     pub const IncentivizedMaxMessagesPerCommit: u64 = 20;
+    pub const IncentivizedMaxTotalGasLimit: u64 = 5_000_000;
     pub const BasicMaxMessagePayloadSize: u64 = 2048;
     pub const BasicMaxMessagesPerCommit: u64 = 4;
     pub const Decimals: u32 = 12;
@@ -1962,6 +1968,7 @@ impl incentivized_channel_outbound::Config for Runtime {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
     type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
+    type MaxTotalGasLimit = IncentivizedMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type WeightInfo = ();
@@ -2256,37 +2263,8 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    (
-        MigratePalletVersionToStorageVersion,
-        AddTrustlessBridgeTechnical,
-    ),
+    migrations::Migrations,
 >;
-
-pub struct AddTrustlessBridgeTechnical;
-
-impl OnRuntimeUpgrade for AddTrustlessBridgeTechnical {
-    fn on_runtime_upgrade() -> frame_support::weights::Weight {
-        let _ = Technical::register_tech_account_id_if_not_exist(
-            &GetTrustlessBridgeTechAccountId::get(),
-        );
-        let _ = Technical::register_tech_account_id_if_not_exist(
-            &GetTrustlessBridgeFeesTechAccountId::get(),
-        );
-        let _ = Technical::register_tech_account_id_if_not_exist(&GetTreasuryTechAccountId::get());
-        RocksDbWeight::get().reads_writes(6, 6)
-    }
-}
-
-/// Migrate from `PalletVersion` to the new `StorageVersion`
-pub struct MigratePalletVersionToStorageVersion;
-
-impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
-    fn on_runtime_upgrade() -> frame_support::weights::Weight {
-        frame_support::migrations::migrate_from_pallet_version_to_storage_version::<
-            AllPalletsWithSystem,
-        >(&RocksDbWeight::get())
-    }
-}
 
 pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
@@ -2761,7 +2739,14 @@ impl_runtime_apis! {
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
-            Beefy::validator_set()
+            #[cfg(feature = "enable-beefy")]
+            {
+                Beefy::validator_set()
+            }
+            #[cfg(not(feature = "enable-beefy"))]
+            {
+                None
+            }
         }
     }
 

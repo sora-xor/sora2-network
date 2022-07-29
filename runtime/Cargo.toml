@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "1.2.2"
+version = "1.4.4"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -146,10 +146,7 @@ bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-feature
 
 [dev-dependencies]
 env_logger = "0.9.0"
-framenode-chain-spec = { path = "../node/chain_spec", features = [
-    "test",
-    "private-net",
-] }
+framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
 default = ["std", "build-wasm-binary"]
@@ -255,7 +252,12 @@ std = [
     "xst/std",
 ]
 
-private-net = ["faucet", "farming/private-net", "vested-rewards/private-net"]
+private-net = [
+    "faucet",
+    "farming/private-net",
+    "vested-rewards/private-net",
+    "framenode-chain-spec/private-net",
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -304,3 +306,5 @@ runtime-benchmarks = [
 reduced-pswap-reward-periods = []
 
 build-wasm-binary = []
+
+enable-beefy = []

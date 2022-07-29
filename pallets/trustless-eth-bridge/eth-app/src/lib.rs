@@ -165,6 +165,7 @@ pub mod pallet {
                 channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
+                100000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
