@@ -168,14 +168,20 @@ impl dispatch::Config for Test {
 
 pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
 
-impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+impl OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
     fn submit(
         _: EthNetworkId,
-        _: &RawOrigin<AccountId>,
+        who: &RawOrigin<AccountId>,
         _: H160,
         _: U256,
         _: &[u8],
     ) -> Result<H256, DispatchError> {
+        if let RawOrigin::Signed(who) = who {
+            if *who == Keyring::Eve.to_account_id() {
+                return Err(DispatchError::Other("some error!".into()));
+            }
+        }
+
         Ok(Default::default())
     }
 }
