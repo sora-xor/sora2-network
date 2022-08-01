@@ -126,7 +126,7 @@ fn calculate_merkle_proof_order<T>(leave: u64, proof: &Vec<T>) -> u64 {
 pub fn convert_to_simplified_mmr_proof<T: Clone>(
     leaf_index: u64,
     leaf_count: u64,
-    proof_items: Vec<T>,
+    proof_items: &[T],
 ) -> Proof<T> {
     let leaf_pos = leaf_index_to_pos(leaf_index);
 

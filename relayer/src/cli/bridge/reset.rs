@@ -93,49 +93,22 @@ impl Command {
             let result = pending.await?;
             debug!("Confirmed: {:?}", result);
 
-            info!("Reset incentivized inbound contract");
-            let call: ContractCall<_, _> = incentivized_inbound.reset();
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
-
-            debug!("Reset incentivized outbound contract");
-            let call: ContractCall<_, _> = incentivized_outbound.reset();
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
-
-            info!("Reset basic inbound contract");
-            let call: ContractCall<_, _> = basic_inbound.reset();
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
-
-            debug!("Reset basic outbound contract");
-            let call: ContractCall<_, _> = basic_outbound.reset();
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
+            for call in [
+                basic_inbound.reset(),
+                basic_outbound.reset(),
+                incentivized_inbound.reset(),
+                incentivized_outbound.reset(),
+            ] {
+                info!("Reset {:?}", call.tx.to());
+                let call = call.legacy().from(eth.address());
+                debug!("Static call: {:?}", call);
+                call.call().await?;
+                debug!("Send transaction");
+                let pending = call.send().await?;
+                debug!("Pending transaction: {:?}", pending);
+                let result = pending.await?;
+                debug!("Confirmed: {:?}", result);
+            }
         }
         Ok(())
     }

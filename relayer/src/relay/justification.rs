@@ -105,11 +105,11 @@ impl BeefyJustification {
             let leaf_proof = sub.mmr_generate_proof(leaf_index, Some(block_hash)).await?;
             let hashed_leaf = leaf_proof
                 .leaf
-                .using_encoded(|e| subxt::sp_runtime::traits::Keccak256::hash(e));
+                .using_encoded(subxt::sp_runtime::traits::Keccak256::hash);
             let proof = convert_to_simplified_mmr_proof(
                 leaf_proof.proof.leaf_index,
                 leaf_proof.proof.leaf_count,
-                leaf_proof.proof.items.clone(),
+                &leaf_proof.proof.items,
             );
             let computed_root = proof.root(
                 |a, b| {

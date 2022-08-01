@@ -285,7 +285,7 @@ impl Relay {
         debug!("Digest: {}", digest_hex);
 
         let proof =
-            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, proof.items);
+            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, &proof.items);
         let proof = beefy_light_client::SimplifiedMMRProof {
             merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
             merkle_proof_order_bit_field: proof.order,
