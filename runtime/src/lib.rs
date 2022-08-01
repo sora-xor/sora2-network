@@ -48,7 +48,7 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::H256;
+use bridge_types::types::LeafExtraData;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, XOR};
@@ -1769,6 +1769,7 @@ impl leaf_provider::Config for Runtime {
     type Event = Event;
     type Hashing = Keccak256;
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
+    type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
 parameter_types! {
@@ -1791,7 +1792,8 @@ parameter_types! {
 impl pallet_beefy_mmr::Config for Runtime {
     type LeafVersion = LeafVersion;
     type BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
-    type LeafExtra = H256;
+    type LeafExtra =
+        LeafExtraData<<Self as leaf_provider::Config>::Hash, <Self as frame_system::Config>::Hash>;
     type BeefyDataProvider = leaf_provider::Pallet<Runtime>;
 }
 

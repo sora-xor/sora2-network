@@ -155,6 +155,12 @@ pub enum AppKind {
     SidechainApp,
 }
 
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct LeafExtraData<Hash, RandomSeed> {
+    pub random_seed: RandomSeed,
+    pub digest_hash: Hash,
+}
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_FEES: &[u8] = b"fees";
