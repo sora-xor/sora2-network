@@ -121,7 +121,12 @@ contract BeefyLightClient {
     ValidatorRegistry public validatorRegistry;
     SimplifiedMMRVerification public mmrVerification;
     uint256 public currentId;
-    bytes32 public latestMMRRoot;
+
+    // Ring buffer of latest MMR Roots
+    mapping(uint256 => bytes32) public latestMMRRoots;
+    uint32 public latestMMRRootIndex = 0;
+    uint32 public constant MMR_ROOT_HISTORY_SIZE = 30;
+
     uint64 public latestBeefyBlock;
     mapping(uint256 => ValidationData) public validationData;
 
@@ -162,6 +167,43 @@ contract BeefyLightClient {
     /* Public Functions */
 
     /**
+     * @notice Adds MMR root to the known last roots history.
+     */
+    function addKnownMMRRoot(bytes32 root) public returns (uint32 index) {
+        uint32 newRootIndex = (latestMMRRootIndex + 1) % MMR_ROOT_HISTORY_SIZE;
+        latestMMRRoots[newRootIndex] = root;
+        latestMMRRootIndex = newRootIndex;
+        return latestMMRRootIndex;
+    }
+
+    /**
+     * @notice Whether the root is present in the root history
+     */
+    function isKnownRoot(bytes32 root) public view returns (bool) {
+        if (root == 0) {
+            return false;
+        }
+        uint32 i = latestMMRRootIndex;
+        do {
+            if (root == latestMMRRoots[i]) {
+                return true;
+            }
+            if (i == 0) {
+                i = MMR_ROOT_HISTORY_SIZE;
+            }
+            i--;
+        } while (i != latestMMRRootIndex);
+        return false;
+    }
+
+    /**
+     *@notice Returns the last added root
+     */
+    function getLatestMMRRoot() public view returns (bytes32) {
+        return latestMMRRoots[latestMMRRootIndex];
+    }
+
+    /**
      * @notice Executed by the incoming channel in order to verify commitment
      * @param beefyMMRLeaf contains the merkle leaf to be verified
      * @param proof contains simplified MMR proof
@@ -170,12 +212,13 @@ contract BeefyLightClient {
         bytes32 beefyMMRLeaf,
         SimplifiedMMRProof memory proof
     ) external view returns (bool) {
-        return
-            mmrVerification.verifyInclusionProof(
-                latestMMRRoot,
-                beefyMMRLeaf,
-                proof
-            );
+        bytes32 proofRoot = mmrVerification.calculateMerkleRoot(
+            beefyMMRLeaf,
+            proof.merkleProofItems,
+            proof.merkleProofOrderBitField
+        );
+
+        return isKnownRoot(proofRoot);
     }
 
     /**
@@ -368,9 +411,9 @@ contract BeefyLightClient {
             "Payload blocknumber is too new"
         );
 
-        latestMMRRoot = payload;
+        addKnownMMRRoot(payload);
         latestBeefyBlock = blockNumber;
-        emit NewMMRRoot(latestMMRRoot, blockNumber);
+        emit NewMMRRoot(payload, blockNumber);
     }
 
     /**
@@ -387,6 +430,10 @@ contract BeefyLightClient {
         bytes32 nextAuthoritySetRoot
     ) internal {
         if (nextAuthoritySetId != validatorRegistry.id()) {
+            require(
+                nextAuthoritySetId > validatorRegistry.id(),
+                "Error: Cannot switch to old validator set"
+            );
             validatorRegistry.update(
                 nextAuthoritySetRoot,
                 nextAuthoritySetLen,
@@ -420,6 +467,14 @@ contract BeefyLightClient {
     ) internal view {
         ValidationData storage data = validationData[id];
 
+        // Encode and hash the commitment
+        bytes32 commitmentHash = createCommitmentHash(commitment);
+        require(
+            commitmentHash == data.commitmentHash,
+            "Error: Wrong commitment, hash is not equal to the one posted in newSignatureCommitment()"
+        );
+
+
         // Verify that sender is the same as in `newSignatureCommitment`
         require(
             msg.sender == data.senderAddress,
@@ -452,7 +507,7 @@ contract BeefyLightClient {
             randomBitfield,
             proof,
             requiredNumOfSignatures,
-            commitment
+            commitmentHash
         );
     }
 
@@ -486,11 +541,8 @@ contract BeefyLightClient {
         uint256[] memory randomBitfield,
         ValidatorProof calldata proof,
         uint256 requiredNumOfSignatures,
-        Commitment calldata commitment
+        bytes32 commitmentHash
     ) internal view {
-        // Encode and hash the commitment
-        bytes32 commitmentHash = createCommitmentHash(commitment);
-
         /**
          *  @dev For each randomSignature, do:
          */

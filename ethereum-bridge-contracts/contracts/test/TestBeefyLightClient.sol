@@ -24,7 +24,8 @@ contract TestBeefyLightClient is BeefyLightClient, Ownable {
         uint64 _authoritySetId
     ) public onlyOwner {
         latestBeefyBlock = _startingBeefyBlock;
-        latestMMRRoot = bytes32(0);
+        latestMMRRoots[0] = bytes32(0);
+        latestMMRRootIndex = 0;
         validatorRegistry.update(
             _authoritySetRoot,
             _authoritySetLen,
