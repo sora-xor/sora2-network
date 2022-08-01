@@ -1,18 +1,18 @@
 @Library('jenkins-library')
 
-String agentLabel             = 'docker-build-agent'
+String agentLabel             = 'docker-build-agent-docker-20'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String cargoAuditImage        = registry + '/build-tools/cargo_audit'
-String envImageName           = registry + '/sora2/env'
+String envImageName           = registry + '/sora2/env:sub4'
 String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
-String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
+String featureList            = 'private-net include-real-files reduced-pswap-reward-periods enable-beefy'
+Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
 
 pipeline {
     options {
@@ -40,7 +40,7 @@ pipeline {
                     docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
-                               cargo audit  > cargoAuditReport.txt || exit 0
+                                cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
                         }
@@ -59,7 +59,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
                         if (getPushVersion(pushTags)) {
-                            docker.image(envImageName + ':sub4').inside() {
+                            docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
@@ -73,25 +73,23 @@ pipeline {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
-                                    cargo test  --release --features runtime-benchmarks --target-dir /app/target/
-                                    cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    mv /app/target/release/framenode .
-                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    cargo test  --release --features runtime-benchmarks
+                                    cargo build --release --features \"${featureList}\"
+                                    mv ./target/release/framenode .
+                                    mv ./target/release/relayer ./relayer.bin
+                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
                                 archiveArtifacts artifacts:
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
-                            docker.image(envImageName + ':sub4').inside() {
+                            docker.image(envImageName).inside() {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
-                                    cargo check --target-dir /app/target/
-                                    cargo test --target-dir /app/target/
-                                    cargo check --features private-net --target-dir /app/target/
-                                    cargo test  --features private-net --target-dir /app/target/
-                                    cargo check --features runtime-benchmarks --target-dir /app/target/
-                                    cargo test --features runtime-benchmarks --target-dir /app/target/
+                                    cargo test
+                                    cargo test --features private-net
+                                    cargo test --features runtime-benchmarks
                                 '''
                             }
                         }
@@ -106,9 +104,9 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(envImageName + ':sub4').inside() {
+                        docker.image(envImageName).inside() {
                             sh './housekeeping/coverage.sh'
-                            // cobertura coberturaReportFile: 'cobertura_report'
+                            cobertura coberturaReportFile: 'cobertura_report'
                         }
                     }
                 }

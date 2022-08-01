@@ -86,24 +86,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
-fn get_eth_app_address() -> H160 {
-    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
-        .parse()
-        .unwrap()
-}
-
-fn get_basic_channel_address() -> H160 {
-    "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
-        .parse()
-        .unwrap()
-}
-
-fn get_incentivized_channel_address() -> H160 {
-    "0x2708Ca421cB69305831018353168727601De3e39"
-        .parse()
-        .unwrap()
-}
-
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -987,7 +969,7 @@ fn testnet_genesis(
             ..Default::default()
         },
         system: SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
         sudo: SudoConfig {
             key: Some(root_key.clone()),
@@ -1447,7 +1429,6 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
-                hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(), // TODO: Replace this value
             )
         },
         boot_nodes,
@@ -1482,7 +1463,6 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-    _treasury_account: AccountId,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
@@ -1555,15 +1535,6 @@ fn mainnet_genesis(
 
     let xst_pool_permissioned_tech_account_id =
         framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
-
-    let trustless_bridge_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
-    let trustless_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
-
-    let trustless_bridge_fees_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
-    let trustless_bridge_fees_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
@@ -1789,6 +1760,8 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        migration_app: Default::default(),
+        vested_rewards: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
@@ -1807,7 +1780,7 @@ fn mainnet_genesis(
             ..Default::default()
         },
         system: SystemConfig {
-            code: WASM_BINARY.unwrap().to_vec(),
+            code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
@@ -2065,29 +2038,9 @@ fn mainnet_genesis(
         },
         iroha_migration: IrohaMigrationConfig {
             iroha_accounts: Vec::new(),
-            account_id: iroha_migration_account_id,
+            account_id: Some(iroha_migration_account_id),
         },
-        rewards: Some(rewards_config),
-        pallet_collective_Instance1: CouncilConfig {
-            members: council_accounts,
-            phantom: Default::default(),
-        },
-        pallet_collective_Instance2: TechnicalCommitteeConfig {
-            members: technical_committee_accounts,
-            phantom: Default::default(),
-        },
-        pallet_democracy: DemocracyConfig::default(),
-        pallet_elections_phragmen: Default::default(),
-        pallet_membership_Instance1: Default::default(),
-        pallet_im_online: Default::default(),
-        xst: XSTPoolConfig {
-            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
-            reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTUSD],
-        },
-        beefy: BeefyConfig {
-            authorities: vec![],
-        },
+        rewards: rewards_config,
         council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),
@@ -2096,7 +2049,18 @@ fn mainnet_genesis(
             members: technical_committee_accounts,
             phantom: Default::default(),
         },
+        democracy: DemocracyConfig::default(),
+        elections_phragmen: Default::default(),
         technical_membership: Default::default(),
+        im_online: Default::default(),
+        xst_pool: XSTPoolConfig {
+            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        },
+        beefy: BeefyConfig {
+            authorities: vec![],
+        },
     }
 }
 

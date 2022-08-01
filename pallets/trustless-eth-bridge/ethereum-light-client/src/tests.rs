@@ -778,3 +778,114 @@ fn test_register_network_exists() {
         );
     });
 }
+
+#[test]
+fn it_validates_last_headers_difficulty() {
+    new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
+        initial_networks: vec![(
+            EthNetworkConfig::Mainnet,
+            ethereum_header_from_file(11090290, ""),
+            0u32.into(),
+        )],
+    })
+    .execute_with(|| {
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+        let mut header1 = ethereum_header_from_file(11090291, "");
+
+        let ferdie = Keyring::Ferdie;
+        let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE as u64).into();
+        let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
+
+        add_header_for_diffiulty_check(
+            network_id,
+            check_header_num,
+            header1.clone(),
+            header1.difficulty * diff_mult * 1001 / 1000,
+        );
+
+        assert_err!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1),
+            Error::<Test>::DifficultyTooLow
+        );
+
+        // increase difficulty a little bit to fit the difference
+        header1.difficulty = header1.difficulty * 1002 / 1000;
+        assert_ok!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1)
+        );
+    });
+}
+
+#[test]
+fn it_validates_last_headers_difficulty_multi() {
+    new_tester_with_config::<mock_verifier_with_pow::Test>(GenesisConfig {
+        initial_networks: vec![(
+            EthNetworkConfig::Mainnet,
+            ethereum_header_from_file(11090290, ""),
+            0u32.into(),
+        )],
+    })
+    .execute_with(|| {
+        let network_id = EthNetworkConfig::Ropsten.chain_id();
+        let mut header1 = ethereum_header_from_file(11090291, "");
+        let header2 = ethereum_header_from_file(11090292, "");
+
+        let ferdie = Keyring::Ferdie;
+        let diff_mult: U256 = (crate::DIFFICULTY_DIFFERENCE as u64).into();
+        let check_header_num = header1.number - crate::CHECK_DIFFICULTY_DIFFERENCE_NUMBER;
+
+        add_header_for_diffiulty_check(
+            network_id,
+            check_header_num,
+            header1.clone(),
+            header1.difficulty * diff_mult,
+        );
+
+        add_header_for_diffiulty_check(
+            network_id,
+            check_header_num,
+            header2.clone(),
+            header1.difficulty * diff_mult * 1001 / 1000,
+        );
+
+        assert_err!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1),
+            Error::<Test>::DifficultyTooLow
+        );
+
+        // increase difficulty a little bit to fit the difference
+        header1.difficulty = header1.difficulty * 1002 / 1000;
+        assert_ok!(
+            mock_verifier_with_pow::Verifier::validate_header_difficulty_test(network_id, &header1)
+        );
+    });
+}
+
+fn add_header_for_diffiulty_check(
+    network_id: EthNetworkId,
+    header_number: u64,
+    mut header: EthereumHeader,
+    difficulty: U256,
+) {
+    header.difficulty = difficulty;
+    let hash = header.compute_hash();
+    let header_to_store: crate::StoredHeader<crate::mock::AccountId> = crate::StoredHeader {
+        submitter: None,
+        header: header.clone(),
+        total_difficulty: difficulty,
+        finalized: false,
+    };
+    Headers::<Test>::insert(network_id, hash, header_to_store);
+    HeadersByNumber::<Test>::try_mutate(
+        network_id,
+        header_number,
+        |x| -> sp_runtime::DispatchResult {
+            match x {
+                None => *x = Some(vec![hash]),
+                Some(v) => v.push(hash),
+            }
+            Ok(().into())
+        },
+    )
+    .expect("add_header_for_diffiulty_check: add headers error");
+}

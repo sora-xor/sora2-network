@@ -94,6 +94,8 @@ library MerkleProof {
             i++;
         }
 
+        require(i >= proof.length, "Merkle proof is too long");
+
         return computedHash;
     }
 }

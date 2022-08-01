@@ -164,19 +164,6 @@
   },
   {
     "inputs": [],
-    "name": "MAX_GAS_PER_MESSAGE",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "beefyLightClient",
     "outputs": [
       {
@@ -348,29 +335,46 @@
       {
         "components": [
           {
-            "internalType": "address",
-            "name": "target",
-            "type": "address"
-          },
-          {
-            "internalType": "uint64",
-            "name": "nonce",
-            "type": "uint64"
-          },
-          {
             "internalType": "uint256",
-            "name": "fee",
+            "name": "total_max_gas",
             "type": "uint256"
           },
           {
-            "internalType": "bytes",
-            "name": "payload",
-            "type": "bytes"
+            "components": [
+              {
+                "internalType": "address",
+                "name": "target",
+                "type": "address"
+              },
+              {
+                "internalType": "uint64",
+                "name": "nonce",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "fee",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "max_gas",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "payload",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct IncentivizedInboundChannel.Message[]",
+            "name": "messages",
+            "type": "tuple[]"
           }
         ],
-        "internalType": "struct IncentivizedInboundChannel.Message[]",
-        "name": "_messages",
-        "type": "tuple[]"
+        "internalType": "struct IncentivizedInboundChannel.Batch",
+        "name": "batch",
+        "type": "tuple"
       },
       {
         "components": [

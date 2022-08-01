@@ -54,29 +54,13 @@ fn granularity(decimals: u32) -> Option<U256> {
 }
 
 pub fn unwrap_balance(value: U256, decimals: u32) -> Option<Balance> {
-    let granularity = match granularity(decimals) {
-        Some(value) => value,
-        None => return None,
-    };
-
-    let unwrapped = match value.checked_div(granularity) {
-        Some(value) => value,
-        None => return None,
-    };
-
+    let granularity = granularity(decimals)?;
+    let unwrapped = value.checked_div(granularity)?;
     unwrapped.low_u128().checked_into()
 }
 
 pub fn wrap_balance(value: Balance, decimals: u32) -> Option<U256> {
-    let granularity = match granularity(decimals) {
-        Some(value) => value,
-        None => return None,
-    };
-
-    let value_u256 = match value.checked_into::<u128>() {
-        Some(value) => U256::from(value),
-        None => return None,
-    };
-
+    let granularity = granularity(decimals)?;
+    let value_u256 = U256::from(value.checked_into::<u128>()?);
     value_u256.checked_mul(granularity)
 }

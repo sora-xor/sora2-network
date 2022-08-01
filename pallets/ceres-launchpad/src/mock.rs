@@ -2,6 +2,11 @@ use crate::{self as ceres_launchpad};
 use common::mock::ExistentialDeposits;
 pub use common::mock::*;
 use common::prelude::Balance;
+use common::AssetName;
+use common::AssetSymbol;
+use common::BalancePrecision;
+use common::ContentSource;
+use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, XOR};
@@ -35,6 +40,7 @@ construct_runtime! {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
@@ -74,6 +80,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = 103;
     pub GetFarmingRewardsAccountId: AccountId = 104;
     pub GetCrowdloanRewardsAccountId: AccountId = 105;
+    pub const MinimumPeriod: u64 = 5;
 }
 
 impl frame_system::Config for Runtime {
@@ -104,6 +111,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl crate::Config for Runtime {
+    const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
     type Event = Event;
     type WeightInfo = ();
 }
@@ -195,10 +203,18 @@ impl ceres_token_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type Event = Event;
     type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
 }
@@ -271,6 +287,17 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
+    pub endowed_assets: Vec<(
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        Balance,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    )>,
     initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
@@ -280,6 +307,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            endowed_assets: vec![],
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
@@ -303,6 +331,48 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn benchmarking() -> Self {
+        use common::PSWAP;
+        let mut res = Self::default();
+        res.endowed_assets = vec![
+            (
+                CERES_ASSET_ID,
+                ALICE,
+                AssetSymbol(b"CERES".to_vec()),
+                AssetName(b"Ceres".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                XOR,
+                ALICE,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"XOR".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                PSWAP,
+                ALICE,
+                AssetSymbol(b"PSWAP".to_vec()),
+                AssetName(b"PSWAP".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+        ];
+        res
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
@@ -321,6 +391,12 @@ impl ExtBuilder {
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self.endowed_assets,
         }
         .assimilate_storage(&mut t)
         .unwrap();

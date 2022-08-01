@@ -203,6 +203,7 @@ where
         channel_id: ChannelId,
         who: &RawOrigin<T::AccountId>,
         target: H160,
+        max_gas: U256,
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
@@ -210,7 +211,7 @@ where
                 basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
             }
             ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, payload,
+                who, network_id, target, max_gas, payload,
             ),
         }
     }
@@ -219,6 +220,7 @@ where
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
     pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
 
@@ -249,6 +251,7 @@ impl incentivized_channel::outbound::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type MaxTotalGasLimit = MaxTotalGasLimit;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type FeeCurrency = FeeCurrency;
     type WeightInfo = ();
@@ -358,7 +361,6 @@ pub fn new_tester() -> sp_io::TestExternalities {
         &incentivized_channel::outbound::GenesisConfig {
             fee: 10000,
             interval: 10,
-            networks: vec![(BASE_NETWORK_ID, H160::repeat_byte(5))],
         },
         &mut storage,
     )

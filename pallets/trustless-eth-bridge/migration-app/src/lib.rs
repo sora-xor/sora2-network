@@ -170,6 +170,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::Erc20Migrated(network_id, contract_address));
@@ -216,6 +217,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));
@@ -239,6 +241,7 @@ pub mod pallet {
                 ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
+                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));

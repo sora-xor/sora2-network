@@ -120,7 +120,13 @@ Deploy contracts
 ### Register bridge in Sora
 
 ```bash
-./bridge-scripts/register_bridge.sh
+./bridge-scripts/register-bridge.sh
+```
+
+By default it will register local geth ethereum network. If you want to choose different, run the script with `relayer bridge register-bridge`'s parameters (see `--help` for details). For example,
+
+```bash
+./bridge-scripts/register-bridge.sh --ropsten
 ```
 
 If you want to use ERC20 tokens in bridge you should register that tokens. 

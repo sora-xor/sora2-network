@@ -78,8 +78,6 @@ impl RelayBuilder {
         let blocks_until_finalized = beefy.block_wait_period().call().await?;
         let beefy_start_block = sub.beefy_start_block().await?;
         let basic_gas_per_message = basic.max_gas_per_message().call().await?.as_u64();
-        let incentivized_gas_per_message =
-            incentivized.max_gas_per_message().call().await?.as_u64();
         Ok(Relay {
             chain_id: eth.inner().get_chainid().await?,
             sub,
@@ -90,7 +88,6 @@ impl RelayBuilder {
             basic_channel: basic,
             incentivized_channel: incentivized,
             basic_gas_per_message,
-            incentivized_gas_per_message,
             lost_gas: Default::default(),
             successful_sent: Default::default(),
             failed_to_sent: Default::default(),
@@ -109,7 +106,6 @@ pub struct Relay {
     blocks_until_finalized: u64,
     chain_id: EthNetworkId,
     basic_gas_per_message: u64,
-    incentivized_gas_per_message: u64,
     lost_gas: Arc<AtomicU64>,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
@@ -298,19 +294,19 @@ impl Relay {
         let incentivized_nonce = self.incentivized_channel.nonce().call().await?;
 
         for log in digest.logs {
-            let AuxiliaryDigestItem::Commitment(chain_id, id, messages_hash) = log;
+            let AuxiliaryDigestItem::Commitment(chain_id, id, commitment_hash) = log;
             if chain_id != self.chain_id {
                 continue;
             }
-            let delimiter = (chain_id, id, messages_hash).encode();
+            let delimiter = (chain_id, id, commitment_hash).encode();
             let (digest_prefix, digest_suffix) =
                 digest_hex.split_once(&hex::encode(delimiter)).unwrap();
             let digest_prefix = hex::decode(digest_prefix)?.into();
             let digest_suffix = hex::decode(digest_suffix)?.into();
 
-            let (mut call, messages_count) = match id {
+            let (mut call, messages_total_gas) = match id {
                 ChannelId::Basic => {
-                    let messages_sub = self.sub.basic_commitments(messages_hash).await?;
+                    let messages_sub = self.sub.basic_commitments(commitment_hash).await?;
                     if messages_sub
                         .iter()
                         .all(|message| message.nonce <= basic_nonce)
@@ -331,44 +327,51 @@ impl Relay {
                         digest_suffix,
                         leaf_prefix: leaf_prefix.clone(),
                     };
-                    let messages_count = messages.len();
+                    let messages_total_gas: U256 =
+                        ((messages.len() as u64) * self.basic_gas_per_message).into();
                     let call = self
                         .basic_channel
                         .submit(messages, leaf_bytes, proof.clone());
-                    (call, messages_count)
+                    (call, messages_total_gas)
                 }
                 ChannelId::Incentivized => {
-                    let messages_sub = self.sub.incentivized_commitments(messages_hash).await?;
-                    if messages_sub
+                    let commitment_sub = self.sub.incentivized_commitments(commitment_hash).await?;
+                    if commitment_sub
+                        .messages
                         .iter()
                         .all(|message| message.nonce <= incentivized_nonce)
                     {
                         continue;
                     }
                     let mut messages = vec![];
-                    for message in messages_sub {
+                    for message in commitment_sub.messages {
                         messages.push(incentivized::Message {
                             target: message.target,
                             nonce: message.nonce,
                             payload: message.payload.into(),
                             fee: message.fee,
+                            max_gas: message.max_gas,
                         });
                     }
+                    let batch = incentivized::Batch {
+                        total_max_gas: commitment_sub.total_max_gas,
+                        messages,
+                    };
                     let leaf_bytes = incentivized::LeafBytes {
                         digest_prefix,
                         digest_suffix,
                         leaf_prefix: leaf_prefix.clone(),
                     };
-                    let messages_count = messages.len();
-                    let call =
-                        self.incentivized_channel
-                            .submit(messages, leaf_bytes, proof.clone());
-                    (call, messages_count)
+                    let messages_total_gas = batch.total_max_gas;
+                    let call = self
+                        .incentivized_channel
+                        .submit(batch, leaf_bytes, proof.clone());
+                    (call, messages_total_gas)
                 }
             };
             debug!("Fill submit messages from {:?}", id);
             self.eth.fill_transaction(&mut call.tx, call.block).await?;
-            call.tx.set_gas(self.submit_message_gas(id, messages_count));
+            call.tx.set_gas(self.submit_message_gas(messages_total_gas));
             debug!("Check submit messages from {:?}", id);
             call.call().await?;
             self.eth.save_gas_price(&call, "submit-messages").await?;
@@ -424,12 +427,8 @@ impl Relay {
         Ok(())
     }
 
-    fn submit_message_gas(&self, channel: ChannelId, messages: usize) -> u64 {
-        let max_gas_per_message = match channel {
-            ChannelId::Basic => self.basic_gas_per_message,
-            ChannelId::Incentivized => self.incentivized_gas_per_message,
-        };
-        260000 + max_gas_per_message * messages as u64
+    fn submit_message_gas(&self, messages_total_gas: U256) -> U256 {
+        messages_total_gas.saturating_add(260000.into())
     }
 
     pub async fn find_start_block(&self, mut block_number: u32) -> AnyResult<u32> {

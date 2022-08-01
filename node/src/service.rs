@@ -458,13 +458,15 @@ pub fn new_full(
     })?;
 
     if role.is_authority() {
-        let proposer = sc_basic_authorship::ProposerFactory::new(
+        let mut proposer = sc_basic_authorship::ProposerFactory::new(
             task_manager.spawn_handle(),
             client.clone(),
             transaction_pool,
             prometheus_registry.as_ref(),
             telemetry.as_ref().map(|x| x.handle()),
         );
+        // Increase default block size to be able to run runtime upgrade with larger runtime wasm
+        proposer.set_default_block_size_limit(sc_basic_authorship::DEFAULT_BLOCK_SIZE_LIMIT * 4);
 
         let backoff_authoring_blocks =
             Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
@@ -499,27 +501,6 @@ pub fn new_full(
                         );
 
                     Ok((time, slot))
-
-                    // let parachain = polkadot_node_core_parachains_inherent::ParachainsInherentDataProvider::create(
-                    //     &*client_clone,
-                    //     overseer_handle,
-                    //     parent,
-                    // ).await.map_err(|e| Box::new(e))?;
-                    //
-                    // let uncles = sc_consensus_uncles::create_uncles_inherent_data_provider(
-                    //     &*client_clone,
-                    //     parent,
-                    // )?;
-                    //
-                    // let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
-                    //
-                    // let slot =
-                    //     sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
-                    //         *timestamp,
-                    //         slot_duration,
-                    //     );
-                    //
-                    // Ok((timestamp, slot, uncles, parachain))
                 }
             },
             telemetry: telemetry.as_ref().map(|x| x.handle()),
