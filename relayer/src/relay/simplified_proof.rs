@@ -221,11 +221,12 @@ mod tests {
             let simplified_proof = convert_to_simplified_mmr_proof(
                 item.leaf_index.unwrap(),
                 item.leaf_count.unwrap(),
-                item.mmr_proof
+                &item
+                    .mmr_proof
                     .unwrap()
                     .into_iter()
                     .map(|x| H256::from_slice(&x))
-                    .collect(),
+                    .collect::<Vec<_>>(),
             );
             assert_eq!(
                 simplified_proof.order,
