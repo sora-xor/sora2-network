@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity =0.8.13;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./RewardSource.sol";
 import "./ScaleCodec.sol";
 import "./EthTokenReceiver.sol";
 import "./GenericApp.sol";
 
-contract ETHApp is GenericApp, RewardSource, EthTokenReceiver {
+contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
     using ScaleCodec for uint256;
 
     event Locked(address sender, bytes32 recipient, uint256 amount);
@@ -39,9 +40,10 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver {
         bytes32 _sender,
         address payable _recipient,
         uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+    ) public onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         require(_amount > 0, "Must unlock a positive amount");
-        _recipient.transfer(_amount);
+        (bool success, ) = _recipient.call{value: _amount}("");
+        require(success, "Transfer failed.");
         emit Unlocked(_sender, _recipient, _amount);
     }
 
@@ -65,8 +67,10 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver {
         external
         override
         onlyRole(REWARD_ROLE)
+        nonReentrant
     {
-        _recipient.transfer(_amount);
+        (bool success, ) = _recipient.call{value: _amount}("");
+        require(success, "Transfer failed.");
     }
 
     function receivePayment() external payable override {}
