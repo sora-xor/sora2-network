@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
 
+pub mod migrations;
 pub mod weights;
 
 mod benchmarking;
@@ -34,33 +35,45 @@ pub struct VotingInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PollInfo<BlockNumber> {
+pub struct PollInfo<Moment> {
     /// Number of options
-    number_of_options: u32,
-    /// Poll start block
-    poll_start_block: BlockNumber,
-    /// Poll end block
-    poll_end_block: BlockNumber,
+    pub number_of_options: u32,
+    /// Poll start timestamp
+    pub poll_start_timestamp: Moment,
+    /// Poll end timestamp
+    pub poll_end_timestamp: Moment,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PollInfo, VotingInfo, WeightInfo};
+    use crate::{migrations, PollInfo, StorageVersion, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Vec;
     use frame_support::transactional;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use pallet_timestamp as timestamp;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"ceresgov");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + timestamp::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -72,6 +85,7 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
@@ -87,16 +101,27 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn poll_data)]
     pub type PollData<T: Config> =
-        StorageMap<_, Identity, Vec<u8>, PollInfo<T::BlockNumber>, ValueQuery>;
+        StorageMap<_, Identity, Vec<u8>, PollInfo<T::Moment>, ValueQuery>;
+
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", T::BlockNumber = "BlockNumber")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", T::Moment = "Moment")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option, balance]
         Voted(AccountIdOf<T>, Vec<u8>, u32, Balance),
-        /// Create poll [who, option, start_block, end_block]
-        Created(AccountIdOf<T>, u32, T::BlockNumber, T::BlockNumber),
+        /// Create poll [who, option, start_timestamp, end_timestamp]
+        Created(AccountIdOf<T>, u32, T::Moment, T::Moment),
         /// Withdrawn [who, balance]
         Withdrawn(AccountIdOf<T>, Balance),
     }
@@ -115,10 +140,10 @@ pub mod pallet {
         InvalidNumberOfOption,
         /// Vote denied
         VoteDenied,
-        /// Invalid start block
-        InvalidStartBlock,
-        /// Invalid end block
-        InvalidEndBlock,
+        /// Invalid start timestamp
+        InvalidStartTimestamp,
+        /// Invalid end timestamp
+        InvalidEndTimestamp,
         /// Poll is not finished
         PollIsNotFinished,
         /// Invalid number of votes
@@ -145,15 +170,15 @@ pub mod pallet {
             ensure!(number_of_votes > 0, Error::<T>::InvalidNumberOfVotes);
 
             let poll_info = PollData::<T>::get(&poll_id);
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
-                current_block >= poll_info.poll_start_block,
+                current_timestamp >= poll_info.poll_start_timestamp,
                 Error::<T>::PollIsNotStarted
             );
 
             ensure!(
-                current_block <= poll_info.poll_end_block,
+                current_timestamp <= poll_info.poll_end_timestamp,
                 Error::<T>::PollIsFinished
             );
 
@@ -205,12 +230,12 @@ pub mod pallet {
             origin: OriginFor<T>,
             poll_id: Vec<u8>,
             number_of_options: u32,
-            poll_start_block: T::BlockNumber,
-            poll_end_block: T::BlockNumber,
+            poll_start_timestamp: T::Moment,
+            poll_end_timestamp: T::Moment,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             let poll_info = <PollData<T>>::get(&poll_id);
             ensure!(
@@ -221,19 +246,19 @@ pub mod pallet {
             ensure!(number_of_options >= 2, Error::<T>::InvalidNumberOfOption);
 
             ensure!(
-                poll_start_block >= current_block,
-                Error::<T>::InvalidStartBlock
+                poll_start_timestamp >= current_timestamp,
+                Error::<T>::InvalidStartTimestamp
             );
 
             ensure!(
-                poll_end_block > poll_start_block,
-                Error::<T>::InvalidEndBlock
+                poll_end_timestamp > poll_start_timestamp,
+                Error::<T>::InvalidEndTimestamp
             );
 
             let poll_info = PollInfo {
                 number_of_options,
-                poll_end_block,
-                poll_start_block,
+                poll_end_timestamp,
+                poll_start_timestamp,
             };
 
             <PollData<T>>::insert(&poll_id, poll_info);
@@ -242,8 +267,8 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::Created(
                 user,
                 number_of_options,
-                poll_start_block,
-                poll_end_block,
+                poll_start_timestamp,
+                poll_end_timestamp,
             ));
 
             // Return a successful DispatchResult
@@ -256,10 +281,10 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             let poll_info = PollData::<T>::get(&poll_id);
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
-                current_block > poll_info.poll_end_block,
+                current_timestamp > poll_info.poll_end_timestamp,
                 Error::<T>::PollIsNotFinished
             );
 
@@ -290,7 +315,17 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet

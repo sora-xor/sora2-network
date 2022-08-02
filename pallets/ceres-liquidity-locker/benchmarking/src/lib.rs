@@ -12,6 +12,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use assets::Module as Assets;
+use pallet_timestamp::Module as Timestamp;
 use permissions::Module as Permissions;
 use pool_xyk::Module as XYKPool;
 use trading_pair::Module as TradingPair;
@@ -135,7 +136,7 @@ benchmarks! {
     lock_liquidity {
         setup_benchmark::<T>()?;
         let caller = alice::<T>();
-        let block_number = frame_system::Pallet::<T>::block_number() + 5u32.into();
+        let timestamp = Timestamp::<T>::get() + 5u32.into();
         let lp_percentage = balance!(0.5);
         let ceres_asset_id: T::AssetId = common::AssetId32::from_bytes(hex!(
             "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -145,7 +146,7 @@ benchmarks! {
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
             ceres_asset_id,
-            block_number,
+            timestamp,
             lp_percentage,
             false
         );
@@ -153,7 +154,7 @@ benchmarks! {
     verify {
         let lockups_alice = ceres_liquidity_locker::LockerData::<T>::get(caller.clone());
         assert_eq!(lockups_alice.len(), 1);
-        assert_eq!(lockups_alice.get(0).unwrap().unlocking_block, block_number);
+        assert_eq!(lockups_alice.get(0).unwrap().unlocking_timestamp, timestamp);
     }
 
     change_ceres_fee {

@@ -6,6 +6,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
 pub mod weights;
 
 use codec::{Decode, Encode};
@@ -18,33 +19,43 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct LockInfo<Balance, BlockNumber, AssetId> {
+pub struct LockInfo<Balance, Moment, AssetId> {
     /// Amount of locked pool tokens
-    pool_tokens: Balance,
-    /// The time (block height) at which the tokens will be unlock
-    pub unlocking_block: BlockNumber,
+    pub pool_tokens: Balance,
+    /// The timestamp at which the tokens will be unlocked
+    pub unlocking_timestamp: Moment,
     /// Base asset of locked liquidity
-    asset_a: AssetId,
+    pub asset_a: AssetId,
     /// Target asset of locked liquidity
-    asset_b: AssetId,
+    pub asset_b: AssetId,
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{LockInfo, WeightInfo};
+    use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, PoolXykPallet};
+    use common::{balance, DemeterFarmingPallet, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
+    use pallet_timestamp as timestamp;
     use sp_std::vec::Vec;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + timestamp::Config {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
@@ -54,6 +65,9 @@ pub mod pallet {
         /// Reference to pool_xyk pallet
         type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
 
+        /// Reference to demeter_farming_platform pallet
+        type DemeterFarmingPlatform: DemeterFarmingPallet<Self::AccountId, Self::AssetId>;
+
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
 
@@ -62,8 +76,9 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
+    pub type Timestamp<T> = timestamp::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -116,36 +131,48 @@ pub mod pallet {
     pub type AuthorityAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
+    /// Contains data about lockups for each account
     #[pallet::storage]
     #[pallet::getter(fn locker_data)]
     pub type LockerData<T: Config> = StorageMap<
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<LockInfo<Balance, T::BlockNumber, AssetIdOf<T>>>,
+        Vec<LockInfo<Balance, T::Moment, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::Moment = "Moment")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Funds Locked [who, amount, block]
-        Locked(AccountIdOf<T>, Balance, T::BlockNumber),
+        /// Funds Locked [who, amount, timestamp]
+        Locked(AccountIdOf<T>, Balance, T::Moment),
     }
 
     #[pallet::error]
     pub enum Error<T> {
-        ///Pool does not exist
+        /// Pool does not exist
         PoolDoesNotExist,
-        ///Insufficient liquidity to lock
+        /// Insufficient liquidity to lock
         InsufficientLiquidityToLock,
-        ///Percentage greater than 100%
+        /// Percentage greater than 100%
         InvalidPercentage,
-        ///Unauthorized access
+        /// Unauthorized access
         Unauthorized,
-        ///Block number in past,
-        InvalidUnlockingBlock,
+        /// Unlocking date cannot be in past
+        InvalidUnlockingTimestamp,
     }
 
     #[pallet::call]
@@ -156,7 +183,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
-            unlocking_block: T::BlockNumber,
+            unlocking_timestamp: T::Moment,
             percentage_of_pool_tokens: Balance,
             option: bool,
         ) -> DispatchResultWithPostInfo {
@@ -166,18 +193,18 @@ pub mod pallet {
                 Error::<T>::InvalidPercentage
             );
 
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
+            // Get current timestamp
+            let current_timestamp = Timestamp::<T>::get();
             ensure!(
-                unlocking_block > current_block,
-                Error::<T>::InvalidUnlockingBlock
+                unlocking_timestamp > current_timestamp,
+                Error::<T>::InvalidUnlockingTimestamp
             );
 
             let mut lock_info = LockInfo {
                 pool_tokens: 0,
                 asset_a,
                 asset_b,
-                unlocking_block,
+                unlocking_timestamp,
             };
 
             // Get pool account
@@ -186,7 +213,7 @@ pub mod pallet {
                 .0;
 
             // Calculate number of pool tokens to be locked
-            let pool_tokens =
+            let mut pool_tokens =
                 T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                     .unwrap_or(0);
             if pool_tokens == 0 {
@@ -204,7 +231,7 @@ pub mod pallet {
 
             for locks in lockups.iter() {
                 if locks.asset_a == asset_a && locks.asset_b == asset_b {
-                    if current_block < locks.unlocking_block {
+                    if current_timestamp < locks.unlocking_timestamp {
                         locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
                     }
                 }
@@ -220,7 +247,7 @@ pub mod pallet {
             if option {
                 // Transfer 1% of LP tokens
                 Self::pay_fee_in_lp_tokens(
-                    pool_account,
+                    pool_account.clone(),
                     asset_a,
                     asset_b,
                     user.clone(),
@@ -238,7 +265,7 @@ pub mod pallet {
                 )?;
                 // Transfer 0.5% of LP tokens
                 Self::pay_fee_in_lp_tokens(
-                    pool_account,
+                    pool_account.clone(),
                     asset_a,
                     asset_b,
                     user.clone(),
@@ -248,6 +275,10 @@ pub mod pallet {
                 )?;
             }
 
+            pool_tokens = T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                .unwrap_or(0);
+            T::DemeterFarmingPlatform::update_pool_tokens(user.clone(), pool_tokens, asset_b)?;
+
             // Put updated address info into storage
             // Get lock info of extrinsic caller
             <LockerData<T>>::append(&user, lock_info);
@@ -256,7 +287,7 @@ pub mod pallet {
             Self::deposit_event(Event::Locked(
                 user,
                 percentage_of_pool_tokens,
-                current_block,
+                current_timestamp,
             ));
 
             // Return a successful DispatchResult
@@ -286,12 +317,13 @@ pub mod pallet {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                let current_timestamp = Timestamp::<T>::get();
                 for (account_id, mut lockups) in <LockerData<T>>::iter() {
                     let mut expired_locks = Vec::new();
 
                     // Save expired lock
                     for (index, lock) in lockups.iter().enumerate() {
-                        if lock.unlocking_block <= now.into() {
+                        if lock.unlocking_timestamp <= current_timestamp {
                             expired_locks.push(index);
                         }
                     }
@@ -309,6 +341,16 @@ pub mod pallet {
                 .reads(1)
                 .saturating_add(T::DbWeight::get().writes(counter))
         }
+
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -321,7 +363,7 @@ pub mod pallet {
         ) -> bool {
             // Get lock info of extrinsic caller
             let lockups = <LockerData<T>>::get(&user);
-            let current_block = frame_system::Pallet::<T>::block_number();
+            let current_timestamp = Timestamp::<T>::get();
 
             // Get pool account
             let pool_account: AccountIdOf<T> =
@@ -342,7 +384,7 @@ pub mod pallet {
             let mut locked_pool_tokens = 0;
             for locks in lockups.iter() {
                 if locks.asset_a == asset_a && locks.asset_b == asset_b {
-                    if current_block < locks.unlocking_block {
+                    if current_timestamp < locks.unlocking_timestamp {
                         locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
                     }
                 }
