@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use bridge_types::types::LeafExtraData;
 use bridge_types::H256;
 use codec::IoReader;
 use common::{AssetId32, PredefinedAssetId};
@@ -21,7 +22,7 @@ pub type Extrinsic = <DefaultConfig as subxt::Config>::Extrinsic;
 pub type SignedBlock = subxt::sp_runtime::generic::SignedBlock<Block>;
 pub type Block = subxt::sp_runtime::generic::Block<Header, Extrinsic>;
 pub type MmrHash = H256;
-pub type LeafExtra = H256;
+pub type LeafExtra = LeafExtraData<H256, H256>;
 pub type BeefySignedCommitment =
     beefy_primitives::SignedCommitment<BlockNumber, beefy_primitives::crypto::Signature>;
 pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber>;

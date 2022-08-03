@@ -34,6 +34,9 @@
 
 pub use pallet::*;
 
+/// Subject for randomness.
+pub const RANDOMNESS_SUBJECT: &[u8] = b"beefy-leaf-extra";
+
 /// A type that is able to return current list of parachain heads that end up in the MMR leaf.
 
 #[frame_support::pallet]
@@ -41,12 +44,16 @@ pub mod pallet {
     #![allow(missing_docs)]
 
     use beefy_primitives::mmr::BeefyDataProvider;
-    use bridge_types::types::AuxiliaryDigest;
+    use bridge_types::types::{AuxiliaryDigest, LeafExtraData};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Randomness;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
 
+    use crate::RANDOMNESS_SUBJECT;
+
     type HashOf<T> = <T as Config>::Hash;
+    type RandomnessOutputOf<T> = <T as frame_system::Config>::Hash;
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
@@ -86,16 +93,23 @@ pub mod pallet {
             + codec::EncodeLike
             + scale_info::TypeInfo
             + MaxEncodedLen;
+
+        type Randomness: Randomness<RandomnessOutputOf<Self>, Self::BlockNumber>;
     }
 
     #[pallet::event]
     pub enum Event<T: Config> {}
 
-    impl<T: Config> BeefyDataProvider<HashOf<T>> for Pallet<T> {
-        fn extra_data() -> HashOf<T> {
+    impl<T: Config> BeefyDataProvider<LeafExtraData<HashOf<T>, RandomnessOutputOf<T>>> for Pallet<T> {
+        fn extra_data() -> LeafExtraData<HashOf<T>, RandomnessOutputOf<T>> {
             let digest = Pallet::<T>::latest_digest();
             let digest_encoded = digest.encode();
-            <T as Config>::Hashing::hash(&digest_encoded)
+            let (random_seed, _) = T::Randomness::random(&RANDOMNESS_SUBJECT);
+            let digest_hash = <T as Config>::Hashing::hash(&digest_encoded);
+            LeafExtraData {
+                random_seed,
+                digest_hash,
+            }
         }
     }
 }

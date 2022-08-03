@@ -25,50 +25,6 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "address",
-        "name": "prover",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "name": "FinalVerificationSuccessful",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "prover",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "name": "InitialVerificationSuccessful",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
         "internalType": "bytes32",
         "name": "mmrRoot",
         "type": "bytes32"
@@ -103,17 +59,23 @@
     "type": "event"
   },
   {
-    "inputs": [],
-    "name": "BLOCK_WAIT_PERIOD",
-    "outputs": [
+    "anonymous": false,
+    "inputs": [
       {
-        "internalType": "uint64",
-        "name": "",
-        "type": "uint64"
+        "indexed": false,
+        "internalType": "address",
+        "name": "prover",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "blockNumber",
+        "type": "uint32"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "name": "VerificationSuccessful",
+    "type": "event"
   },
   {
     "inputs": [],
@@ -229,131 +191,18 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "id",
+        "name": "numOfValidators",
         "type": "uint256"
       },
       {
-        "components": [
-          {
-            "internalType": "bytes",
-            "name": "payloadPrefix",
-            "type": "bytes"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "payload",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes",
-            "name": "payloadSuffix",
-            "type": "bytes"
-          },
-          {
-            "internalType": "uint32",
-            "name": "blockNumber",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint64",
-            "name": "validatorSetId",
-            "type": "uint64"
-          }
-        ],
-        "internalType": "struct BeefyLightClient.Commitment",
-        "name": "commitment",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "bytes[]",
-            "name": "signatures",
-            "type": "bytes[]"
-          },
-          {
-            "internalType": "uint256[]",
-            "name": "positions",
-            "type": "uint256[]"
-          },
-          {
-            "internalType": "address[]",
-            "name": "publicKeys",
-            "type": "address[]"
-          },
-          {
-            "internalType": "bytes32[][]",
-            "name": "publicKeyMerkleProofs",
-            "type": "bytes32[][]"
-          }
-        ],
-        "internalType": "struct BeefyLightClient.ValidatorProof",
-        "name": "validatorProof",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint8",
-            "name": "version",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint32",
-            "name": "parentNumber",
-            "type": "uint32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "parentHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint64",
-            "name": "nextAuthoritySetId",
-            "type": "uint64"
-          },
-          {
-            "internalType": "uint32",
-            "name": "nextAuthoritySetLen",
-            "type": "uint32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "nextAuthoritySetRoot",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "digestHash",
-            "type": "bytes32"
-          }
-        ],
-        "internalType": "struct BeefyLightClient.BeefyMMRLeaf",
-        "name": "latestMMRLeaf",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "bytes32[]",
-            "name": "merkleProofItems",
-            "type": "bytes32[]"
-          },
-          {
-            "internalType": "uint64",
-            "name": "merkleProofOrderBitField",
-            "type": "uint64"
-          }
-        ],
-        "internalType": "struct SimplifiedMMRProof",
-        "name": "proof",
-        "type": "tuple"
+        "internalType": "uint256[]",
+        "name": "validatorClaimsBitfield",
+        "type": "uint256[]"
       }
     ],
-    "name": "completeSignatureCommitment",
+    "name": "checkCommitmentSignaturesThreshold",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -429,9 +278,9 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
+        "internalType": "uint256[]",
+        "name": "validatorClaimsBitfield",
+        "type": "uint256[]"
       }
     ],
     "name": "createRandomBitfield",
@@ -440,19 +289,6 @@
         "internalType": "uint256[]",
         "name": "",
         "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "currentId",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -490,6 +326,11 @@
           {
             "internalType": "bytes32",
             "name": "nextAuthoritySetRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "randomSeed",
             "type": "bytes32"
           },
           {
@@ -612,6 +453,19 @@
   },
   {
     "inputs": [],
+    "name": "latestRandomSeed",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "mmrVerification",
     "outputs": [
       {
@@ -621,44 +475,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "commitmentHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "validatorClaimsBitfield",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bytes",
-        "name": "validatorSignature",
-        "type": "bytes"
-      },
-      {
-        "internalType": "uint256",
-        "name": "validatorPosition",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "validatorPublicKey",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes32[]",
-        "name": "validatorPublicKeyMerkleProof",
-        "type": "bytes32[]"
-      }
-    ],
-    "name": "newSignatureCommitment",
-    "outputs": [],
-    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -744,6 +560,142 @@
   {
     "inputs": [
       {
+        "components": [
+          {
+            "internalType": "bytes",
+            "name": "payloadPrefix",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "payload",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes",
+            "name": "payloadSuffix",
+            "type": "bytes"
+          },
+          {
+            "internalType": "uint32",
+            "name": "blockNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "validatorSetId",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.Commitment",
+        "name": "commitment",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256[]",
+            "name": "validatorClaimsBitfield",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes[]",
+            "name": "signatures",
+            "type": "bytes[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "positions",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "address[]",
+            "name": "publicKeys",
+            "type": "address[]"
+          },
+          {
+            "internalType": "bytes32[][]",
+            "name": "publicKeyMerkleProofs",
+            "type": "bytes32[][]"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.ValidatorProof",
+        "name": "validatorProof",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint8",
+            "name": "version",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "parentNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nextAuthoritySetId",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "nextAuthoritySetLen",
+            "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "nextAuthoritySetRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "randomSeed",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "digestHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.BeefyMMRLeaf",
+        "name": "latestMMRLeaf",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32[]",
+            "name": "merkleProofItems",
+            "type": "bytes32[]"
+          },
+          {
+            "internalType": "uint64",
+            "name": "merkleProofOrderBitField",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct SimplifiedMMRProof",
+        "name": "proof",
+        "type": "tuple"
+      }
+    ],
+    "name": "submitSignatureCommitment",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "newOwner",
         "type": "address"
@@ -752,35 +704,6 @@
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "validationData",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "senderAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "commitmentHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -864,6 +787,11 @@
           {
             "internalType": "bytes32",
             "name": "nextAuthoritySetRoot",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "randomSeed",
             "type": "bytes32"
           },
           {
