@@ -133,7 +133,7 @@ fn test_submit_exceeds_queue_limit() {
                 target,
                 &vec![0, 1, 2],
             )
-            .unwrap()
+            .unwrap();
         });
 
         common::assert_noop_transactional!(

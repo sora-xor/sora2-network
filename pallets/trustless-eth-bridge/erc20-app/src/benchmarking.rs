@@ -55,7 +55,7 @@ benchmarks! {
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
-        let origin = dispatch::RawOrigin::from((BASE_NETWORK_ID, caller));
+        let origin = dispatch::RawOrigin::from((BASE_NETWORK_ID, Default::default(), caller));
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -109,7 +109,7 @@ benchmarks! {
     register_asset_internal {
         let asset_id: T::AssetId = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, who);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), who);
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
     }: _(origin, asset_id, address)

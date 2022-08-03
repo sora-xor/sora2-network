@@ -3,7 +3,7 @@ use super::*;
 
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use common::{AssetName, AssetSymbol};
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
 use sp_core::H160;
@@ -36,7 +36,7 @@ benchmarks! {
     // * `mint` successfully adds amount to recipient account
     mint {
         let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, contract);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), contract);
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -66,6 +66,6 @@ benchmarks! {
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id)));
     }
-}
 
-impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);
+    impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);
+}

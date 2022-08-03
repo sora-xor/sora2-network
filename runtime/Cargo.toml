@@ -39,6 +39,8 @@ migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", defaul
 erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
 leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
 leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
+evm-bridge-proxy = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy", default-features = false }
+evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -185,6 +187,8 @@ std = [
     "erc20-app/std",
     "leaf-provider/std",
     "leaf-provider-runtime-api/std",
+    "evm-bridge-proxy/std",
+    "evm-bridge-proxy-runtime-api/std",
     "bridge-types/std",
     "farming/std",
     "faucet/std",
@@ -276,6 +280,7 @@ runtime-benchmarks = [
     "migration-app/runtime-benchmarks",
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
+    "evm-bridge-proxy/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",

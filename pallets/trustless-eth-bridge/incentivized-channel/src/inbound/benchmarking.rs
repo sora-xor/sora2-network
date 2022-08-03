@@ -56,8 +56,8 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
-        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
+        let message_id = MessageId::inbound(ChannelId::Incentivized, envelope.nonce);
+        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
     }
@@ -95,8 +95,8 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
-        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
+        let message_id = MessageId::inbound(ChannelId::Incentivized, envelope.nonce);
+        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
     }
@@ -122,8 +122,8 @@ benchmarks! {
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
-        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id) {
+        let message_id = MessageId::inbound(ChannelId::Incentivized, envelope.nonce);
+        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
     }

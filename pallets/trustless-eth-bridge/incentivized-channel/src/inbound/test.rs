@@ -231,10 +231,10 @@ impl incentivized_inbound_channel::Config for Test {
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
-    type WeightInfo = ();
     type OutboundRouter = MockOutboundRouter<Self::AccountId>;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type WeightInfo = ();
 }
 
 pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
@@ -247,8 +247,8 @@ impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
         _: H160,
         _: U256,
         _: &[u8],
-    ) -> DispatchResult {
-        Ok(())
+    ) -> Result<H256, DispatchError> {
+        Ok(Default::default())
     }
 }
 

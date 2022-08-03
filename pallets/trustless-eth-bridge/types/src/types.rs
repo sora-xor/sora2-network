@@ -4,6 +4,8 @@ use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
 use enum_iterator::IntoEnumIterator;
 use frame_support::RuntimeDebug;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
@@ -11,14 +13,41 @@ use sp_std::vec::Vec;
 pub use crate::EthNetworkId;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum MessageDirection {
+    Inbound,
+    Outbound,
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
-    pub channel_id: ChannelId,
-    pub nonce: u64,
+    channel_id: ChannelId,
+    direction: MessageDirection,
+    nonce: MessageNonce,
+}
+
+impl From<(ChannelId, MessageDirection, MessageNonce)> for MessageId {
+    fn from((channel_id, direction, nonce): (ChannelId, MessageDirection, MessageNonce)) -> Self {
+        MessageId {
+            channel_id,
+            direction,
+            nonce,
+        }
+    }
+}
+
+impl From<MessageId> for MessageNonce {
+    fn from(id: MessageId) -> Self {
+        id.nonce
+    }
 }
 
 impl MessageId {
-    pub fn new(channel_id: ChannelId, nonce: u64) -> Self {
-        Self { channel_id, nonce }
+    pub fn inbound(channel_id: ChannelId, nonce: MessageNonce) -> Self {
+        MessageId::from((channel_id, MessageDirection::Inbound, nonce))
+    }
+
+    pub fn outbound(channel_id: ChannelId, nonce: MessageNonce) -> Self {
+        MessageId::from((channel_id, MessageDirection::Outbound, nonce))
     }
 }
 
@@ -125,6 +154,23 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 pub enum AssetKind {
     Thischain,
     Sidechain,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum MessageStatus {
+    InQueue,
+    Committed,
+    Done,
+    // TODO: add extrinsic to track status of committed messages
+    Failed,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum AppKind {
+    EthApp,
+    ERC20App,
+    SidechainApp,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

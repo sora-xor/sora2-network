@@ -23,7 +23,7 @@ fn mints_after_handling_ethereum_event() {
         let amount = balance!(10);
         let old_balance = Assets::total_balance(&XOR, &recipient).unwrap();
         assert_ok!(EthApp::mint(
-            dispatch::RawOrigin(BASE_NETWORK_ID, peer_contract).into(),
+            dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
             sender,
             recipient.clone(),
             amount.into()
