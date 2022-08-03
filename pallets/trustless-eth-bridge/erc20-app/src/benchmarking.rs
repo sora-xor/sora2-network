@@ -3,7 +3,10 @@
 use crate::*;
 use bridge_types::types::{AssetKind, ChannelId};
 use bridge_types::EthNetworkId;
-use common::{balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, ETH, XOR};
+use common::{
+    balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
+    ETH, XOR,
+};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
@@ -94,7 +97,7 @@ benchmarks! {
         let symbol = AssetSymbol(b"ETH".to_vec());
         let name = AssetName(b"ETH".to_vec());
         assert!(!AssetsByAddresses::<T>::contains_key(network_id, address));
-    }: _(RawOrigin::Root, network_id, address, symbol, name, 18)
+    }: _(RawOrigin::Root, network_id, address, symbol, name, DEFAULT_BALANCE_PRECISION)
     verify {
         assert!(AssetsByAddresses::<T>::contains_key(network_id, address));
     }

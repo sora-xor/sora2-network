@@ -2,7 +2,7 @@
 use super::*;
 
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
-use common::{AssetName, AssetSymbol};
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
@@ -54,7 +54,7 @@ benchmarks! {
         let contract = H160::repeat_byte(6);
         let asset_name = AssetName(b"ETH".to_vec());
         let asset_symbol = AssetSymbol(b"ETH".to_vec());
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, 18, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, DEFAULT_BALANCE_PRECISION, contract)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
     }
