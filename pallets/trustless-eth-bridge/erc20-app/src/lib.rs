@@ -53,7 +53,7 @@ pub mod pallet {
     use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundRouter};
     use bridge_types::types::{AppKind, AssetKind, ChannelId};
     use bridge_types::{EthNetworkId, H256};
-    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
+    use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
@@ -270,6 +270,7 @@ pub mod pallet {
             address: H160,
             symbol: AssetSymbol,
             name: AssetName,
+            decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -284,7 +285,7 @@ pub mod pallet {
                 &bridge_account,
                 symbol,
                 name,
-                DEFAULT_BALANCE_PRECISION,
+                decimals,
                 Balance::from(0u32),
                 true,
                 None,

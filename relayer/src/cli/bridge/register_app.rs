@@ -29,6 +29,8 @@ pub(crate) enum Commands {
         name: String,
         #[clap(long)]
         symbol: String,
+        #[clap(long)]
+        decimals: u8,
     },
     EthAppExisting {
         #[clap(long)]
@@ -73,13 +75,14 @@ impl Commands {
                 }
             )
             }
-            Self::EthAppNew { contract, name, symbol } => {
+            Self::EthAppNew { contract, name, symbol, decimals } => {
                 runtime::runtime_types::framenode_runtime::Call::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network {
                     network_id,
                     contract: *contract,
                     name: AssetName::from_str(name.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
                     symbol: AssetSymbol::from_str(symbol.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
+                    decimals: *decimals
                 }
             )
             }
