@@ -41,6 +41,7 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
         address payable _recipient,
         uint256 _amount
     ) public onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
+        require(_recipient != address(0x0), "Recipient must not be a zero address");
         require(_amount > 0, "Must unlock a positive amount");
         (bool success, ) = _recipient.call{value: _amount}("");
         require(success, "Transfer failed.");
@@ -69,6 +70,7 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
         onlyRole(REWARD_ROLE)
         nonReentrant
     {
+        require(_recipient != address(0x0), "Recipient must not be a zero address");
         (bool success, ) = _recipient.call{value: _amount}("");
         require(success, "Transfer failed.");
     }
