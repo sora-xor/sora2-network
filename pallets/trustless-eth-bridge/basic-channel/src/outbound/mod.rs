@@ -43,6 +43,7 @@ pub mod pallet {
     use super::*;
 
     use bridge_types::types::AuxiliaryDigestItem;
+    use bridge_types::types::MessageId;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -203,7 +204,7 @@ pub mod pallet {
             network_id: EthNetworkId,
             target: H160,
             payload: &[u8],
-        ) -> DispatchResult {
+        ) -> Result<H256, DispatchError> {
             match who {
                 RawOrigin::Signed(who) => {
                     if !ChannelOperators::<T>::get(network_id, who) {
@@ -225,7 +226,7 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> Result<H256, DispatchError> {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
@@ -242,8 +243,13 @@ pub mod pallet {
                     },
                 );
                 Self::deposit_event(Event::MessageAccepted(*nonce));
-                Ok(())
+                Ok(Self::make_message_id(*nonce))
             })
+        }
+
+        fn make_message_id(nonce: u64) -> H256 {
+            MessageId::outbound(ChannelId::Basic, nonce)
+                .using_encoded(|v| <T as Config>::Hashing::hash(v))
         }
 
         fn commit(network_id: EthNetworkId) -> Weight {

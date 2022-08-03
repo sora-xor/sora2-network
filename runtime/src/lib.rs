@@ -93,7 +93,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    DispatchResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -1875,6 +1875,7 @@ impl dispatch::Config for Runtime {
     type Origin = Origin;
     type Event = Event;
     type MessageId = bridge_types::types::MessageId;
+    type Hashing = Keccak256;
     type Call = Call;
     type CallFilter = CallFilter;
 }
@@ -1899,7 +1900,7 @@ where
         target: H160,
         max_gas: U256,
         payload: &[u8],
-    ) -> DispatchResult {
+    ) -> Result<H256, DispatchError> {
         match channel_id {
             // TODO: use only incentivized with specifiable `max_gas`
             ChannelId::Basic => {
@@ -1971,6 +1972,7 @@ impl incentivized_channel_outbound::Config for Runtime {
     type MaxTotalGasLimit = IncentivizedMaxTotalGasLimit;
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2022,6 +2024,7 @@ impl eth_app::Config for Runtime {
     type OutboundRouter = OutboundRouter<Runtime>;
     type CallOrigin = EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
 }
 
@@ -2031,12 +2034,20 @@ impl erc20_app::Config for Runtime {
     type CallOrigin = EnsureEthereumAccount;
     type AppRegistry = ChannelAppRegistry;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
 }
 
 impl migration_app::Config for Runtime {
     type Event = Event;
     type OutboundRouter = OutboundRouter<Runtime>;
+    type WeightInfo = ();
+}
+
+impl evm_bridge_proxy::Config for Runtime {
+    type Event = Event;
+    type ERC20App = ERC20App;
+    type EthApp = EthApp;
     type WeightInfo = ();
 }
 
@@ -2127,6 +2138,7 @@ construct_runtime! {
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
+        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
     }
 }
 
@@ -2214,6 +2226,7 @@ construct_runtime! {
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
+        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
     }
 }
 
@@ -2854,6 +2867,16 @@ impl_runtime_apis! {
 
     }
 
+    impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
+        fn list_apps(network_id: bridge_types::EthNetworkId) -> Vec<(bridge_types::types::AppKind, H160)> {
+            EvmBridgeProxy::list_apps(network_id)
+        }
+
+        fn list_supported_assets(network_id: bridge_types::EthNetworkId) -> Vec<(bridge_types::types::AppKind, AssetId)> {
+            EvmBridgeProxy::list_supported_assets(network_id)
+        }
+    }
+
     #[cfg(feature = "runtime-benchmarks")]
     impl frame_benchmarking::Benchmark<Block> for Runtime {
         fn benchmark_metadata(extra: bool) -> (
@@ -2889,6 +2912,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2952,6 +2976,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
+            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

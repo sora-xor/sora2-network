@@ -11,15 +11,15 @@ use sp_std::prelude::*;
 
 use bridge_types::traits::MessageDispatch;
 
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H256};
 use codec::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct RawOrigin(pub EthNetworkId, pub H160);
+pub struct RawOrigin(pub EthNetworkId, pub H256, pub H160);
 
-impl From<(EthNetworkId, H160)> for RawOrigin {
-    fn from(origin: (EthNetworkId, H160)) -> RawOrigin {
-        RawOrigin(origin.0, origin.1)
+impl From<(EthNetworkId, H256, H160)> for RawOrigin {
+    fn from(origin: (EthNetworkId, H256, H160)) -> RawOrigin {
+        RawOrigin(origin.0, origin.1, origin.2)
     }
 }
 
@@ -29,15 +29,15 @@ impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
 where
     OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
 {
-    type Success = (EthNetworkId, H160);
+    type Success = (EthNetworkId, H256, H160);
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-        o.into().and_then(|o| Ok((o.0, o.1)))
+        o.into().and_then(|o| Ok((o.0, o.1, o.2)))
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_origin() -> OuterOrigin {
-        OuterOrigin::from(RawOrigin(2u32.into(), H160::repeat_byte(2)))
+    fn try_successful_origin() -> Result<OuterOrigin, ()> {
+        Err(())
     }
 }
 
@@ -47,9 +47,11 @@ pub use pallet::*;
 pub mod pallet {
 
     use super::*;
+    use bridge_types::types::MessageId;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::Hash;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -71,6 +73,8 @@ pub mod pallet {
         /// Id of the message. Whenever message is passed to the dispatch module, it emits
         /// event with this id + dispatch result.
         type MessageId: Parameter;
+
+        type Hashing: Hash<Output = H256>;
 
         /// The overarching dispatch call type.
         type Call: Parameter
@@ -95,46 +99,47 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Message has been dispatched with given result.
-        MessageDispatched(T::MessageId, DispatchResult),
+        MessageDispatched(MessageId, DispatchResult),
         /// Message has been rejected
-        MessageRejected(T::MessageId),
+        MessageRejected(MessageId),
         /// We have failed to decode a Call from the message.
-        MessageDecodeFailed(T::MessageId),
+        MessageDecodeFailed(MessageId),
     }
 
     #[pallet::origin]
     pub type Origin = RawOrigin;
 
-    pub type MessageIdOf<T> = <T as Config>::MessageId;
-
-    impl<T: Config> MessageDispatch<T, MessageIdOf<T>> for Pallet<T> {
-        fn dispatch(network_id: EthNetworkId, source: H160, id: MessageIdOf<T>, payload: &[u8]) {
+    impl<T: Config> MessageDispatch<T, MessageId> for Pallet<T> {
+        fn dispatch(network_id: EthNetworkId, source: H160, message_id: MessageId, payload: &[u8]) {
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
-                    Self::deposit_event(Event::MessageDecodeFailed(id));
+                    Self::deposit_event(Event::MessageDecodeFailed(message_id));
                     return;
                 }
             };
 
             if !T::CallFilter::contains(&call) {
-                Self::deposit_event(Event::MessageRejected(id));
+                Self::deposit_event(Event::MessageRejected(message_id));
                 return;
             }
 
-            let origin = RawOrigin(network_id, source).into();
+            let origin = RawOrigin(
+                network_id,
+                message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
+                source,
+            )
+            .into();
             let result = call.dispatch(origin);
 
             Self::deposit_event(Event::MessageDispatched(
-                id,
+                message_id,
                 result.map(drop).map_err(|e| e.error),
             ));
         }
 
         #[cfg(feature = "runtime-benchmarks")]
-        fn successful_dispatch_event(
-            id: MessageIdOf<T>,
-        ) -> Option<<T as frame_system::Config>::Event> {
+        fn successful_dispatch_event(id: MessageId) -> Option<<T as frame_system::Config>::Event> {
             let event: <T as Config>::Event = Event::<T>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
@@ -144,13 +149,14 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bridge_types::types::{ChannelId, MessageId};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
     use frame_system::{EventRecord, Phase};
     use sp_core::H256;
     use sp_runtime::testing::Header;
-    use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+    use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Keccak256};
 
     use crate as dispatch;
 
@@ -215,6 +221,7 @@ mod tests {
         type Origin = Origin;
         type Event = Event;
         type MessageId = u64;
+        type Hashing = Keccak256;
         type Call = Call;
         type CallFilter = CallFilter;
     }
@@ -229,7 +236,7 @@ mod tests {
     #[test]
     fn test_dispatch_bridge_message() {
         new_test_ext().execute_with(|| {
-            let id = 37;
+            let id = MessageId::inbound(ChannelId::Basic, 37);
             let source = H160::repeat_byte(7);
 
             let message =
@@ -256,7 +263,7 @@ mod tests {
     #[test]
     fn test_message_decode_failed() {
         new_test_ext().execute_with(|| {
-            let id = 37;
+            let id = MessageId::inbound(ChannelId::Basic, 37);
             let source = H160::repeat_byte(7);
 
             let message: Vec<u8> = vec![1, 2, 3];
@@ -278,7 +285,7 @@ mod tests {
     #[test]
     fn test_message_rejected() {
         new_test_ext().execute_with(|| {
-            let id = 37;
+            let id = MessageId::inbound(ChannelId::Basic, 37);
             let source = H160::repeat_byte(7);
 
             let message =

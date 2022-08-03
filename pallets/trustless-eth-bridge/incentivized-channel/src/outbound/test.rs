@@ -168,6 +168,7 @@ impl incentivized_outbound_channel::Config for Test {
     type MaxTotalGasLimit = MaxTotalGasLimit;
     type FeeCurrency = ();
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type MessageStatusNotifier = ();
     type WeightInfo = ();
 }
 
@@ -328,7 +329,7 @@ fn test_submit_exceeds_queue_limit() {
                 100000.into(),
                 &vec![0, 1, 2],
             )
-            .unwrap()
+            .unwrap();
         });
 
         common::assert_noop_transactional!(

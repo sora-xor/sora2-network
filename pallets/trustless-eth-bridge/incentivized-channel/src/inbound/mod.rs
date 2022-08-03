@@ -154,11 +154,11 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer);
 
-            let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
+            let message_id = MessageId::inbound(ChannelId::Incentivized, envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 envelope.source,
-                message_id,
+                message_id.into(),
                 &envelope.payload,
             );
 

@@ -99,6 +99,7 @@ prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https:
 beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 leaf-provider-rpc = { path = "../pallets/trustless-eth-bridge/leaf-provider/rpc" }
+evm-bridge-proxy-rpc = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/rpc" }
 basic-channel-rpc = { path = "../pallets/trustless-eth-bridge/basic-channel/rpc" }
 incentivized-channel-rpc = { path = "../pallets/trustless-eth-bridge/incentivized-channel/rpc" }
 
