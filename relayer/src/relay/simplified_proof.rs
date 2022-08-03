@@ -1,6 +1,24 @@
+#[derive(Debug)]
 pub struct Proof<T> {
     pub order: u64,
     pub items: Vec<T>,
+}
+
+impl<T: Clone> Proof<T> {
+    pub fn root(&self, hash: impl Fn(T, T) -> T, node_hash: T) -> T {
+        let mut current_hash = node_hash;
+
+        for (i, item) in self.items.iter().cloned().enumerate() {
+            let is_sibling_left = (self.order >> i) & 1 == 1;
+
+            if is_sibling_left {
+                current_hash = hash(item, current_hash);
+            } else {
+                current_hash = hash(current_hash, item);
+            }
+        }
+        current_hash
+    }
 }
 
 pub fn leaf_index_to_pos(index: u64) -> u64 {
@@ -108,7 +126,7 @@ fn calculate_merkle_proof_order<T>(leave: u64, proof: &Vec<T>) -> u64 {
 pub fn convert_to_simplified_mmr_proof<T: Clone>(
     leaf_index: u64,
     leaf_count: u64,
-    proof_items: Vec<T>,
+    proof_items: &[T],
 ) -> Proof<T> {
     let leaf_pos = leaf_index_to_pos(leaf_index);
 
@@ -203,11 +221,12 @@ mod tests {
             let simplified_proof = convert_to_simplified_mmr_proof(
                 item.leaf_index.unwrap(),
                 item.leaf_count.unwrap(),
-                item.mmr_proof
+                &item
+                    .mmr_proof
                     .unwrap()
                     .into_iter()
                     .map(|x| H256::from_slice(&x))
-                    .collect(),
+                    .collect::<Vec<_>>(),
             );
             assert_eq!(
                 simplified_proof.order,

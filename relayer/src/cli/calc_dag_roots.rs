@@ -60,7 +60,7 @@ fn calc_dataset_root(epoch: u64, epoch_length: u64) -> H128 {
 }
 
 impl Command {
-    pub(super) async fn run(&self, _args: &BaseArgs) -> AnyResult<()> {
+    pub(super) async fn run(&self) -> AnyResult<()> {
         for epoch in self.start..self.epochs {
             let root = calc_dataset_root(epoch, self.length);
             println!("{:?}", root);

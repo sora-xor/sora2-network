@@ -1,15 +1,21 @@
-use std::str::FromStr;
-
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use bridge_types::H160;
-use clap::*;
 use common::{AssetId32, AssetName, AssetSymbol, PredefinedAssetId};
-use ethers::prelude::Middleware;
+use std::str::FromStr;
 use substrate_gen::runtime;
 
+#[derive(Args, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    #[clap(subcommand)]
+    asset_kind: AssetKind,
+}
+
 #[derive(Subcommand, Debug)]
-pub(crate) enum Commands {
+pub(crate) enum AssetKind {
     ExistingERC20 {
         #[clap(long)]
         asset_id: AssetId32<PredefinedAssetId>,
@@ -32,20 +38,20 @@ pub(crate) enum Commands {
     },
 }
 
-impl Commands {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
-        let call = match self {
-            Self::ExistingERC20 { asset_id, address } => {
+        let call = match &self.asset_kind {
+            AssetKind::ExistingERC20 { asset_id, address } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_existing_erc20_asset {
                     network_id,
                     asset_id: asset_id.clone(),
                     address: *address,
                 }
             }
-            Self::ERC20 {
+            AssetKind::ERC20 {
                 address,
                 name,
                 symbol,
@@ -57,7 +63,7 @@ impl Commands {
                 symbol: AssetSymbol::from_str(symbol.as_str()).unwrap(),
                 decimals: *decimals,
             },
-            Self::Native { asset_id } => {
+            AssetKind::Native { asset_id } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_asset {
                     network_id,
                     asset_id: asset_id.clone(),

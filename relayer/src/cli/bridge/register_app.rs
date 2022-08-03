@@ -1,15 +1,22 @@
 use std::str::FromStr;
 
-use super::*;
-use crate::{prelude::*, substrate::AssetId};
+use crate::{cli::prelude::*, substrate::AssetId};
 use bridge_types::H160;
-use clap::*;
 use common::{AssetName, AssetSymbol, ETH};
-use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
+#[derive(Args, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    #[clap(subcommand)]
+    apps: Apps,
+}
+
 #[derive(Subcommand, Debug)]
-pub(crate) enum Commands {
+pub(crate) enum Apps {
     ERC20App {
         #[clap(long)]
         contract: H160,
@@ -44,13 +51,13 @@ pub(crate) enum Commands {
     },
 }
 
-impl Commands {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
-        let call = match self {
-            Self::ERC20App { contract } => {
+        let call = match &self.apps {
+            Apps::ERC20App { contract } => {
                 runtime::runtime_types::framenode_runtime::Call::ERC20App(
                 runtime::runtime_types::erc20_app::pallet::Call::register_erc20_app {
                     network_id,
@@ -58,7 +65,7 @@ impl Commands {
                 }
             )
             }
-            Self::NativeApp { contract } => {
+            Apps::NativeApp { contract } => {
                 runtime::runtime_types::framenode_runtime::Call::ERC20App(
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_app {
                     network_id,
@@ -66,7 +73,7 @@ impl Commands {
                 }
             )
             }
-            Self::EthAppPredefined { contract } => {
+            Apps::EthAppPredefined { contract } => {
                 runtime::runtime_types::framenode_runtime::Call::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
@@ -75,7 +82,7 @@ impl Commands {
                 }
             )
             }
-            Self::EthAppNew { contract, name, symbol, decimals } => {
+            Apps::EthAppNew { contract, name, symbol, decimals } => {
                 runtime::runtime_types::framenode_runtime::Call::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network {
                     network_id,
@@ -86,7 +93,7 @@ impl Commands {
                 }
             )
             }
-            Self::EthAppExisting { contract, asset_id } => {
+            Apps::EthAppExisting { contract, asset_id } => {
                 runtime::runtime_types::framenode_runtime::Call::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
@@ -95,7 +102,7 @@ impl Commands {
                 }
             )
             }
-            Self::MigrationApp { contract } => {
+            Apps::MigrationApp { contract } => {
                 runtime::runtime_types::framenode_runtime::Call::MigrationApp(
                 runtime::runtime_types::migration_app::pallet::Call::register_network {
                     network_id,

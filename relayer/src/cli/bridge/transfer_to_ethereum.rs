@@ -1,12 +1,14 @@
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use assets_rpc::AssetsAPIClient;
 use bridge_types::H160;
 use common::{AssetId32, PredefinedAssetId};
-use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(short, long)]
     recipient: H160,
     #[clap(short, long)]
@@ -16,9 +18,9 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
         let (_, native_asset_id) = sub
             .api()

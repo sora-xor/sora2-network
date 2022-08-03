@@ -114,11 +114,10 @@ impl Relay {
             .call()
             .await?;
 
-        let (prefix, payload, suffix) = justification.get_payload().expect("should be checked");
         let eth_commitment = beefy_light_client::Commitment {
-            payload_prefix: prefix.into(),
-            payload,
-            payload_suffix: suffix.into(),
+            payload_prefix: justification.payload.prefix.clone().into(),
+            payload: justification.payload.mmr_root.into(),
+            payload_suffix: justification.payload.suffix.clone().into(),
             block_number: justification.commitment.block_number as u32,
             validator_set_id: justification.commitment.validator_set_id as u64,
         };
@@ -236,7 +235,7 @@ impl Relay {
         debug!("Digest: {}", digest_hex);
 
         let proof =
-            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, proof.items);
+            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, &proof.items);
         let proof = beefy_light_client::SimplifiedMMRProof {
             merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
             merkle_proof_order_bit_field: proof.order,
@@ -468,12 +467,18 @@ impl Relay {
                         if &engine == b"BEEF" {
                             let VersionedFinalityProof::V1(commitment) =
                                 VersionedFinalityProof::decode(&mut justification.as_slice())?;
-                            let justification = BeefyJustification::create(
+                            let justification = match BeefyJustification::create(
                                 self.sub.clone(),
                                 commitment,
-                                self.beefy_start_block as u32,
                             )
-                            .await?;
+                            .await
+                            {
+                                Ok(justification) => justification,
+                                Err(err) => {
+                                    warn!("failed to create justification: {}", err);
+                                    continue;
+                                }
+                            };
                             debug!("Justification: {:?}", justification);
 
                             let _ =
@@ -511,15 +516,16 @@ impl Relay {
             .context("sync historical commitments")?;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
-            let justification = BeefyJustification::create(
-                self.sub.clone(),
-                encoded_commitment.decode()?,
-                self.beefy_start_block as u32,
-            )
-            .await?;
-            if !justification.is_supported() {
-                continue;
-            }
+            let justification =
+                match BeefyJustification::create(self.sub.clone(), encoded_commitment.decode()?)
+                    .await
+                {
+                    Ok(justification) => justification,
+                    Err(err) => {
+                        warn!("failed to create justification: {}", err);
+                        continue;
+                    }
+                };
             let latest_block = self.beefy.latest_beefy_block().call().await?;
             let has_messages = self
                 .check_new_messages(justification.commitment.block_number - 1)

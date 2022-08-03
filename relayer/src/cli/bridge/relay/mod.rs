@@ -1,7 +1,7 @@
 mod ethereum_relay;
 mod substrate_relay;
 
-use crate::{cli::BaseArgs, prelude::*};
+use crate::cli::prelude::*;
 use clap::*;
 
 #[derive(Debug, Subcommand)]
@@ -11,10 +11,10 @@ pub(crate) enum Commands {
 }
 
 impl Commands {
-    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+    pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Commands::Ethereum(cmd) => cmd.run(args).await,
-            Commands::Substrate(cmd) => cmd.run(args).await,
+            Commands::Ethereum(cmd) => cmd.run().await,
+            Commands::Substrate(cmd) => cmd.run().await,
         }
     }
 }

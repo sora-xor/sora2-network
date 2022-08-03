@@ -1,13 +1,15 @@
-use crate::cli::BaseArgs;
+use crate::cli::prelude::*;
 use crate::ethereum::proof_loader::ProofLoader;
-use crate::prelude::*;
 use crate::relay::ethereum::Relay;
 use crate::relay::ethereum_messages::SubstrateMessagesRelay;
-use clap::*;
 use std::path::PathBuf;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(long)]
     base_path: PathBuf,
     #[clap(long)]
@@ -15,9 +17,9 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+    pub async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());
         let relay = Relay::new(sub.clone(), eth.clone(), proof_loader.clone()).await?;
         if self.disable_message_relay {

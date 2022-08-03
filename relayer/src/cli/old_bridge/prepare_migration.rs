@@ -2,13 +2,15 @@ use crate::cli::prelude::*;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
     #[clap(short, long)]
     network: u32,
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
 
         sub.api()
             .tx()

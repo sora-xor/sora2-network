@@ -1,19 +1,20 @@
-use crate::cli::BaseArgs;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use crate::relay::substrate::RelayBuilder;
-use clap::*;
-use ethers::prelude::Middleware;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(short, long)]
     send_unneeded_commitments: bool,
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_signed_ethereum().await?;
-        let sub = args.get_unsigned_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_signed_ethereum().await?;
+        let sub = self.sub.get_unsigned_substrate().await?;
         let network_id = eth.inner().get_chainid().await.context("fetch chain id")?;
         let eth_app = sub
             .api()

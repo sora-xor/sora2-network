@@ -1,8 +1,8 @@
 #!/bin/bash -v
 
-jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/InboundChannel.sol/InboundChannel.json > ethereum-gen/src/bytes/InboundChannel.abi.json
-jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/OutboundChannel.sol/OutboundChannel.json > ethereum-gen/src/bytes/OutboundChannel.abi.json
-jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/BeefyLightClient.sol/BeefyLightClient.json > ethereum-gen/src/bytes/BeefyLightClient.abi.json
+jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/test/TestInboundChannel.sol/TestInboundChannel.json > ethereum-gen/src/bytes/InboundChannel.abi.json
+jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/test/TestOutboundChannel.sol/TestOutboundChannel.json > ethereum-gen/src/bytes/OutboundChannel.abi.json
+jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/test/TestBeefyLightClient.sol/TestBeefyLightClient.json > ethereum-gen/src/bytes/BeefyLightClient.abi.json
 jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/ValidatorRegistry.sol/ValidatorRegistry.json > ethereum-gen/src/bytes/ValidatorRegistry.abi.json
 jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/ETHApp.sol/ETHApp.json > ethereum-gen/src/bytes/ETHApp.abi.json
 jq ".abi" ../ethereum-bridge-contracts/artifacts/contracts/SidechainApp.sol/SidechainApp.json > ethereum-gen/src/bytes/SidechainApp.abi.json

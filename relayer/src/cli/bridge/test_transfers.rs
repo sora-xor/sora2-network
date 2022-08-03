@@ -1,14 +1,15 @@
-use std::collections::HashMap;
-
-use super::*;
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use crate::substrate::AssetId;
-use clap::*;
-use ethers::prelude::Middleware;
+use std::collections::HashMap;
 use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
-pub(crate) struct Command {}
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+}
 
 #[derive(Debug, Default)]
 struct Stats {
@@ -19,10 +20,10 @@ struct Stats {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
+    pub(super) async fn run(&self) -> AnyResult<()> {
         let mut stats = HashMap::<AssetId, Stats>::new();
-        let eth = args.get_signed_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+        let eth = self.eth.get_signed_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
 
         let sidechain_app = sub

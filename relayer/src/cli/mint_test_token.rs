@@ -1,9 +1,5 @@
-use crate::prelude::*;
+use crate::cli::prelude::*;
 use bridge_types::H160;
-use clap::*;
-use ethers::prelude::Middleware;
-
-use super::BaseArgs;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
@@ -13,11 +9,13 @@ pub(super) struct Command {
     amount: u128,
     #[clap(long)]
     dry_run: bool,
+    #[clap(flatten)]
+    eth: EthereumClient,
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_signed_ethereum().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_signed_ethereum().await?;
         let token = ethereum_gen::TestToken::new(self.token, eth.inner());
         let balance = token.balance_of(eth.address()).call().await?;
         let name = token.name().call().await?;

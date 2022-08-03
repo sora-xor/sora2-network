@@ -1,14 +1,13 @@
-use super::*;
-use crate::{
-    prelude::*,
-    substrate::{AccountId, AssetId},
-};
-use clap::*;
-use ethers::prelude::Middleware;
+use crate::cli::prelude::*;
+use crate::substrate::{AccountId, AssetId};
 use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(long)]
     asset_id: AssetId,
     #[clap(long, short)]
@@ -20,9 +19,9 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_signed_ethereum().await?;
-        let sub = args.get_unsigned_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_signed_ethereum().await?;
+        let sub = self.sub.get_unsigned_substrate().await?;
         let recipient: [u8; 32] = *self.recipient.as_ref();
         let network_id = eth.get_chainid().await?;
         let (eth_app_address, eth_asset) = sub

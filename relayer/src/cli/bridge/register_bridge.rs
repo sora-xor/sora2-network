@@ -1,14 +1,14 @@
-use super::*;
-use crate::cli::Network;
+use crate::cli::prelude::*;
 use crate::ethereum::make_header;
-use crate::prelude::*;
 use bridge_types::H160;
-use clap::*;
-use ethers::prelude::Middleware;
 use substrate_gen::runtime;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(long, short)]
     descendants_until_final: u64,
     #[clap(long)]
@@ -18,9 +18,9 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let eth = args.get_unsigned_ethereum().await?;
-        let sub = args.get_signed_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
 
         let network_id = eth.get_chainid().await?;
         let network_config = self.network.config()?;

@@ -5,6 +5,8 @@ use substrate_gen::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
     #[clap(long, short)]
     output: PathBuf,
 }
@@ -24,8 +26,8 @@ struct AssetsDump {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_unsigned_substrate().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_unsigned_substrate().await?;
         let mut asset_iter = sub
             .api()
             .storage()

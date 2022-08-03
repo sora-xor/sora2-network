@@ -5,6 +5,10 @@ use substrate_gen::SignatureParams;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
     #[clap(short, long)]
     network: u32,
     #[clap(long)]
@@ -12,9 +16,9 @@ pub struct Command {
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_signed_substrate().await?;
-        let eth = args.get_signed_ethereum().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
+        let eth = self.eth.get_signed_ethereum().await?;
         if let Some(hash) = self.hash {
             self.relay_request(&eth, &sub, hash).await?;
             return Ok(());

@@ -1,7 +1,5 @@
-use super::*;
+use crate::cli::prelude::*;
 use crate::ethereum::make_header;
-use crate::prelude::*;
-use clap::*;
 use ethers::prelude::*;
 
 #[derive(Args, Clone, Debug)]
@@ -10,11 +8,13 @@ pub(super) struct Command {
     descendants_until_final: Option<usize>,
     #[clap(long, short)]
     number: Option<usize>,
+    #[clap(flatten)]
+    eth: EthereumClient,
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let client = args.get_unsigned_ethereum().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let client = self.eth.get_unsigned_ethereum().await?;
         let number = match (self.descendants_until_final, self.number) {
             (Some(v), None) => {
                 let latest_block = client
