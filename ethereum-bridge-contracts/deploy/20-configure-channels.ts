@@ -9,64 +9,39 @@ module.exports = async ({
 }: HardhatRuntimeEnvironment) => {
   let [deployer] = await getUnnamedAccounts();
 
-  if (!("BASIC_CHANNEL_PRINCIPAL" in process.env)) {
-    throw "Missing BASIC_CHANNEL_PRINCIPAL in environment config"
+  if (!("CHANNEL_FEE" in process.env)) {
+    throw "Missing CHANNEL_FEE in environment config"
   }
-  const principal = process.env.BASIC_CHANNEL_PRINCIPAL
-
-  if (!("INCENTIVIZED_CHANNEL_FEE" in process.env)) {
-    throw "Missing INCENTIVIZED_CHANNEL_FEE in environment config"
-  }
-  const fee = process.env.INCENTIVIZED_CHANNEL_FEE
+  const fee = process.env.CHANNEL_FEE
 
   let channels = {
-    basic: {
-      inbound: await deployments.get("BasicInboundChannel"),
-      outbound: await deployments.get("BasicOutboundChannel")
-    },
-    incentivized: {
-      inbound: await deployments.get("IncentivizedInboundChannel"),
-      outbound: await deployments.get("IncentivizedOutboundChannel")
-    }
+    inbound: await deployments.get("InboundChannel"),
+    outbound: await deployments.get("OutboundChannel")
   };
 
   let ethApp = await deployments.get("ETHApp");
 
-  console.log("Configuring BasicOutboundChannel")
+  console.log("Configuring OutboundChannel")
   await deployments.execute(
-    "BasicOutboundChannel",
+    "OutboundChannel",
     {
       from: deployer,
       autoMine: true,
     },
     "initialize",
-    [channels.basic.inbound.address, channels.incentivized.inbound.address],
-    principal,
-    [ethApp.address],
-  );
-
-  console.log("Configuring IncentivizedOutboundChannel")
-  await deployments.execute(
-    "IncentivizedOutboundChannel",
-    {
-      from: deployer,
-      autoMine: true,
-    },
-    "initialize",
-    [channels.basic.inbound.address, channels.incentivized.inbound.address],
+    [channels.inbound.address],
     [ethApp.address],
     fee
   );
 
-  console.log("Configuring IncentivizedInboundChannel")
+  console.log("Configuring InboundChannel")
   await deployments.execute(
-    "IncentivizedInboundChannel",
+    "InboundChannel",
     {
       from: deployer,
       autoMine: true,
     },
     "initialize",
-    deployer,
     ethApp.address
   );
 

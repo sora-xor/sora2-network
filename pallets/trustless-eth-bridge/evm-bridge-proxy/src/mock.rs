@@ -29,18 +29,16 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::AppRegistry;
-use bridge_types::types::{AssetKind, ChannelId};
+use bridge_types::types::AssetKind;
 use bridge_types::{EthNetworkId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
     PredefinedAssetId, DAI, ETH, XOR,
 };
-use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
@@ -51,7 +49,6 @@ use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
 use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
-use system::RawOrigin;
 
 use crate as proxy;
 
@@ -73,7 +70,7 @@ frame_support::construct_runtime!(
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
-        IncentivizedOutboundChannel: incentivized_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         ERC20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         EvmBridgeProxy: proxy::{Pallet, Call, Storage, Event},
@@ -204,31 +201,6 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-pub struct MockOutboundRouter<T>(PhantomData<T>);
-
-impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for MockOutboundRouter<T>
-where
-    T: incentivized_channel::outbound::Config,
-{
-    fn submit(
-        network_id: bridge_types::EthNetworkId,
-        channel_id: ChannelId,
-        who: &RawOrigin<T::AccountId>,
-        target: H160,
-        max_gas: U256,
-        payload: &[u8],
-    ) -> Result<H256, DispatchError> {
-        match channel_id {
-            ChannelId::Basic => {
-                unimplemented!()
-            }
-            ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, max_gas, payload,
-            ),
-        }
-    }
-}
-
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
     pub const MaxMessagesPerCommit: u64 = 3;
@@ -247,7 +219,7 @@ parameter_types! {
     pub const MaxTotalGasLimit: u64 = 5_000_000;
 }
 
-impl incentivized_channel::outbound::Config for Test {
+impl bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
@@ -293,7 +265,7 @@ parameter_types! {
 
 impl eth_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Test>;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -314,7 +286,7 @@ impl AppRegistry for AppRegistryImpl {
 
 impl erc20_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Test>;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;

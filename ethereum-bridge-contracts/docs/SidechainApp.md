@@ -5,13 +5,13 @@
 
 
 
-### `constructor(struct SidechainApp.Channel _basic, struct SidechainApp.Channel _incentivized, address migrationApp)` (public)
+### `constructor(address inbound, contract OutboundChannel _outbound, address migrationApp)` (public)
 
 
 
 
 
-### `lock(address _token, bytes32 _recipient, uint256 _amount, enum ChannelId _channelId)` (public)
+### `lock(address _token, bytes32 _recipient, uint256 _amount)` (public)
 
 
 

@@ -21,8 +21,7 @@ use frame_support::weights::Weight;
 use sp_core::H160;
 use sp_std::prelude::*;
 
-use bridge_types::traits::OutboundRouter;
-use bridge_types::types::ChannelId;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 
 mod payload;
@@ -79,7 +78,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type WeightInfo: WeightInfo;
     }
@@ -165,9 +164,8 @@ pub mod pallet {
                 erc20_tokens,
             };
 
-            <T as Config>::OutboundRouter::submit(
+            <T as Config>::OutboundChannel::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -212,9 +210,8 @@ pub mod pallet {
                 sidechain_tokens,
             };
 
-            <T as Config>::OutboundRouter::submit(
+            <T as Config>::OutboundChannel::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -236,9 +233,8 @@ pub mod pallet {
 
             let message = payload::MigrateEthPayload { contract_address };
 
-            <T as Config>::OutboundRouter::submit(
+            <T as Config>::OutboundChannel::submit(
                 network_id,
-                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),

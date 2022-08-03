@@ -31,8 +31,7 @@ sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branc
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
-basic-channel = { path = "../pallets/trustless-eth-bridge/basic-channel", default-features = false }
-incentivized-channel = { path = "../pallets/trustless-eth-bridge/incentivized-channel", default-features = false }
+bridge-channel = { path = "../pallets/trustless-eth-bridge/channel", default-features = false }
 dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
@@ -179,8 +178,7 @@ std = [
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
     "ethereum-light-client/std",
-    "basic-channel/std",
-    "incentivized-channel/std",
+    "bridge-channel/std",
     "dispatch/std",
     "eth-app/std",
     "migration-app/std",
@@ -273,8 +271,7 @@ runtime-benchmarks = [
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "ethereum-light-client/runtime-benchmarks",
-    "basic-channel/runtime-benchmarks",
-    "incentivized-channel/runtime-benchmarks",
+    "bridge-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
     "eth-app/runtime-benchmarks",
     "migration-app/runtime-benchmarks",

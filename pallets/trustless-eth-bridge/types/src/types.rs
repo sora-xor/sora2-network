@@ -2,7 +2,6 @@
 
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
-use enum_iterator::IntoEnumIterator;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -20,18 +19,13 @@ pub enum MessageDirection {
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
-    channel_id: ChannelId,
     direction: MessageDirection,
     nonce: MessageNonce,
 }
 
-impl From<(ChannelId, MessageDirection, MessageNonce)> for MessageId {
-    fn from((channel_id, direction, nonce): (ChannelId, MessageDirection, MessageNonce)) -> Self {
-        MessageId {
-            channel_id,
-            direction,
-            nonce,
-        }
+impl From<(MessageDirection, MessageNonce)> for MessageId {
+    fn from((direction, nonce): (MessageDirection, MessageNonce)) -> Self {
+        MessageId { direction, nonce }
     }
 }
 
@@ -42,26 +36,16 @@ impl From<MessageId> for MessageNonce {
 }
 
 impl MessageId {
-    pub fn inbound(channel_id: ChannelId, nonce: MessageNonce) -> Self {
-        MessageId::from((channel_id, MessageDirection::Inbound, nonce))
+    pub fn inbound(nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Inbound, nonce))
     }
 
-    pub fn outbound(channel_id: ChannelId, nonce: MessageNonce) -> Self {
-        MessageId::from((channel_id, MessageDirection::Outbound, nonce))
+    pub fn outbound(nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Outbound, nonce))
     }
 }
 
 pub type MessageNonce = u64;
-
-#[repr(u8)]
-#[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, IntoEnumIterator, RuntimeDebug, scale_info::TypeInfo,
-)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub enum ChannelId {
-    Basic,
-    Incentivized,
-}
 
 /// A message relayed from Ethereum.
 #[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -110,7 +94,7 @@ impl From<Digest> for AuxiliaryDigest {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(EthNetworkId, ChannelId, H256),
+    Commitment(EthNetworkId, H256),
 }
 
 impl Into<DigestItem> for AuxiliaryDigestItem {

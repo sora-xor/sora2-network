@@ -2,8 +2,7 @@ use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
-use bridge_types::traits::OutboundRouter;
-use bridge_types::types::ChannelId;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
 use common::{
@@ -167,20 +166,22 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
 
-impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+impl OutboundChannel<AccountId> for MockOutboundChannel<AccountId> {
     fn submit(
         _: EthNetworkId,
-        channel: ChannelId,
-        _: &RawOrigin<AccountId>,
+        who: &RawOrigin<AccountId>,
         _: H160,
         _: U256,
         _: &[u8],
     ) -> Result<H256, DispatchError> {
-        if channel == ChannelId::Basic {
-            return Err(DispatchError::Other("some error!"));
+        if let RawOrigin::Signed(who) = who {
+            if *who == Keyring::Eve.to_account_id() {
+                return Err(DispatchError::Other("some error!".into()));
+            }
         }
+
         Ok(Default::default())
     }
 }
@@ -204,7 +205,7 @@ parameter_types! {
 
 impl eth_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = ();

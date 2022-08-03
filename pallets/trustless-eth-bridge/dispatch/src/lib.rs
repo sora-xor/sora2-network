@@ -149,7 +149,7 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bridge_types::types::{ChannelId, MessageId};
+    use bridge_types::types::MessageId;
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn test_dispatch_bridge_message() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(ChannelId::Basic, 37);
+            let id = MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message =
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_message_decode_failed() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(ChannelId::Basic, 37);
+            let id = MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message: Vec<u8> = vec![1, 2, 3];
@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn test_message_rejected() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(ChannelId::Basic, 37);
+            let id = MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message =

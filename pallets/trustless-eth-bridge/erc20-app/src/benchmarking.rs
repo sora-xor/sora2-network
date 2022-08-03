@@ -1,7 +1,7 @@
 //! ERC20App pallet benchmarking
 
 use crate::*;
-use bridge_types::types::{AssetKind, ChannelId};
+use bridge_types::types::AssetKind;
 use bridge_types::EthNetworkId;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
@@ -18,35 +18,20 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
-    where_clause {where T: basic_channel::outbound::Config + incentivized_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
-    burn_basic_channel {
+    burn {
         let caller: T::AccountId = whitelisted_caller();
         let asset_id: T::AssetId = XOR.into();
         let recipient = H160::repeat_byte(2);
         let amount = balance!(500);
 
-        basic_channel::outbound::Pallet::<T>::register_operator(RawOrigin::Root.into(), BASE_NETWORK_ID, caller.clone()).unwrap();
-
-        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-
-    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Basic, asset_id.clone(), recipient, amount)
-    verify {
-        assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &caller).unwrap(), 0);
-    }
-
-    burn_incentivized_channel {
-        let caller: T::AccountId = whitelisted_caller();
-        let asset_id: T::AssetId = XOR.into();
-        let recipient = H160::repeat_byte(2);
-        let amount = balance!(500);
-
-        let fee_asset = <T as incentivized_channel::outbound::Config>::FeeCurrency::get();
+        let fee_asset = <T as bridge_channel::outbound::Config>::FeeCurrency::get();
 
         // deposit enough money to cover fees
-        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, incentivized_channel::outbound::Fee::<T>::get())?;
+        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_channel::outbound::Fee::<T>::get())?;
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Incentivized, asset_id.clone(), recipient, amount)
+    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount)
     verify {
         assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &caller).unwrap(), 0);
     }

@@ -5,13 +5,13 @@
 
 
 
-### `constructor(address rewarder, struct ETHApp.Channel _basic, struct ETHApp.Channel _incentivized)` (public)
+### `constructor(address rewarder, address inbound, contract OutboundChannel _outbound)` (public)
 
 
 
 
 
-### `lock(bytes32 _recipient, enum ChannelId _channelId)` (public)
+### `lock(bytes32 _recipient)` (public)
 
 
 

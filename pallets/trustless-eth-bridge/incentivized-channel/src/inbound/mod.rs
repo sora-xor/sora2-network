@@ -34,7 +34,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::traits::{AppRegistry, OutboundRouter};
+    use bridge_types::traits::{AppRegistry, OutboundChannel};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -60,7 +60,7 @@ pub mod pallet {
 
         type TreasuryTechAccountId: Get<Self::TechAccountId>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -194,7 +194,7 @@ pub mod pallet {
 
             let message = bridge_types::channel_abi::RegisterOperatorPayload { operator: app };
 
-            T::OutboundRouter::submit(
+            T::OutboundChannel::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,
@@ -214,7 +214,7 @@ pub mod pallet {
 
             let message = bridge_types::channel_abi::DeregisterOperatorPayload { operator: app };
 
-            T::OutboundRouter::submit(
+            T::OutboundChannel::submit(
                 network_id,
                 ChannelId::Basic,
                 &RawOrigin::Root,

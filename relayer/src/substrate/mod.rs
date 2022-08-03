@@ -84,25 +84,12 @@ impl UnsignedClient {
         self.rpc()
     }
 
-    pub async fn basic_commitments(
+    pub async fn bridge_commitments(
         &self,
         hash: H256,
-    ) -> AnyResult<Vec<basic_channel_rpc::Message>> {
+    ) -> AnyResult<bridge_channel_rpc::Commitment> {
         Ok(
-            basic_channel_rpc::BasicChannelAPIClient::commitment(self.rpc(), hash)
-                .await?
-                .ok_or(anyhow!(
-                    "Connect to substrate server with enabled offhcain indexing"
-                ))?,
-        )
-    }
-
-    pub async fn incentivized_commitments(
-        &self,
-        hash: H256,
-    ) -> AnyResult<incentivized_channel_rpc::Commitment> {
-        Ok(
-            incentivized_channel_rpc::IncentivizedChannelAPIClient::commitment(self.rpc(), hash)
+            bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
                 .await?
                 .ok_or(anyhow!(
                     "Connect to substrate server with enabled offhcain indexing"

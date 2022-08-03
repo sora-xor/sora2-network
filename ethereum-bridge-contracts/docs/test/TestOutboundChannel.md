@@ -1,0 +1,14 @@
+## `TestOutboundChannel`
+
+
+
+
+
+
+### `reset()` (public)
+
+
+
+
+
+

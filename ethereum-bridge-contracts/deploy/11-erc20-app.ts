@@ -10,14 +10,8 @@ module.exports = async ({
   let [deployer] = await getUnnamedAccounts();
 
   let channels = {
-    basic: {
-      inbound: await deployments.get("BasicInboundChannel"),
-      outbound: await deployments.get("BasicOutboundChannel")
-    },
-    incentivized: {
-      inbound: await deployments.get("IncentivizedInboundChannel"),
-      outbound: await deployments.get("IncentivizedOutboundChannel")
-    }
+    inbound: await deployments.get("InboundChannel"),
+    outbound: await deployments.get("OutboundChannel")
   }
 
   let migrationApp = await deployments.get("MigrationApp")
@@ -27,14 +21,8 @@ module.exports = async ({
   await deployments.deploy("ERC20App", {
     from: deployer,
     args: [
-      {
-        inbound: channels.basic.inbound.address,
-        outbound: channels.basic.outbound.address,
-      },
-      {
-        inbound: channels.incentivized.inbound.address,
-        outbound: channels.incentivized.outbound.address,
-      },
+      channels.inbound.address,
+      channels.outbound.address,
       migrationApp.address
     ],
     libraries: {
@@ -47,14 +35,8 @@ module.exports = async ({
   await deployments.deploy("SidechainApp", {
     from: deployer,
     args: [
-      {
-        inbound: channels.basic.inbound.address,
-        outbound: channels.basic.outbound.address,
-      },
-      {
-        inbound: channels.incentivized.inbound.address,
-        outbound: channels.incentivized.outbound.address,
-      },
+      channels.inbound.address,
+      channels.outbound.address,
       migrationApp.address
     ],
     libraries: {

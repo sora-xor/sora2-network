@@ -27,7 +27,7 @@ benchmarks! {
 
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
 
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Incentivized, recipient, amount)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount)
     verify {
         assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &caller).unwrap(), balance!(0));
     }

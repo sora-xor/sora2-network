@@ -27,8 +27,7 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use bridge_types::traits::OutboundRouter;
-use bridge_types::types::ChannelId;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 
 mod payload;
@@ -91,7 +90,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
 
@@ -151,12 +150,11 @@ pub mod pallet {
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
-            channel_id: ChannelId,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Pallet::<T>::burn_inner(who, network_id, channel_id, recipient, amount)?;
+            Pallet::<T>::burn_inner(who, network_id, recipient, amount)?;
             Ok(())
         }
 
@@ -274,7 +272,6 @@ pub mod pallet {
         pub fn burn_inner(
             who: T::AccountId,
             network_id: EthNetworkId,
-            channel_id: ChannelId,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
@@ -289,9 +286,8 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            let message_id = T::OutboundRouter::submit(
+            let message_id = T::OutboundChannel::submit(
                 network_id,
-                channel_id,
                 &RawOrigin::Signed(who.clone()),
                 target,
                 TRANSFER_MAX_GAS.into(),
@@ -349,13 +345,7 @@ pub mod pallet {
             amount: Balance,
         ) -> Result<H256, DispatchError> {
             if Self::is_asset_supported(network_id, asset_id) {
-                Pallet::<T>::burn_inner(
-                    sender,
-                    network_id,
-                    ChannelId::Incentivized,
-                    recipient,
-                    amount,
-                )
+                Pallet::<T>::burn_inner(sender, network_id, recipient, amount)
             } else {
                 Err(Error::<T>::AppIsNotRegistered.into())
             }

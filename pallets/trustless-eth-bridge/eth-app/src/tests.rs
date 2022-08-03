@@ -8,8 +8,6 @@ use frame_support::dispatch::DispatchError;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
-use bridge_types::types::ChannelId;
-
 fn last_event() -> Event {
     System::events().pop().expect("Event expected").event
 }
@@ -56,7 +54,6 @@ fn burn_should_emit_bridge_event() {
         assert_ok!(EthApp::burn(
             Origin::signed(bob.clone()),
             BASE_NETWORK_ID,
-            ChannelId::Incentivized,
             recipient.clone(),
             amount.into()
         ));
@@ -76,17 +73,21 @@ fn burn_should_emit_bridge_event() {
 #[test]
 fn should_not_burn_on_commitment_failure() {
     new_tester().execute_with(|| {
-        let sender: AccountId = Keyring::Bob.into();
+        let sender: AccountId = Keyring::Eve.into();
         let recipient = H160::repeat_byte(9);
         let amount = balance!(20);
 
-        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, balance!(500)));
+        assert_ok!(Assets::mint_to(
+            &XOR,
+            &Keyring::Bob.to_account_id(),
+            &sender,
+            balance!(500)
+        ));
 
         common::assert_noop_transactional!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
-                ChannelId::Basic,
                 recipient.clone(),
                 amount
             ),

@@ -13,7 +13,7 @@ use frame_system::{Config, RawOrigin};
 use sp_core::{H160, U256};
 use sp_std::prelude::*;
 
-use crate::types::{ChannelId, Message};
+use crate::types::Message;
 
 /// A trait for verifying messages.
 ///
@@ -29,20 +29,14 @@ pub trait Verifier {
 }
 
 /// Outbound submission for applications
-pub trait OutboundRouter<AccountId> {
+pub trait OutboundChannel<AccountId> {
     fn submit(
         network_id: EthNetworkId,
-        channel_id: ChannelId,
         who: &RawOrigin<AccountId>,
         target: H160,
         max_gas: U256,
         payload: &[u8],
     ) -> Result<H256, DispatchError>;
-}
-
-/// Add a message to a commitment
-pub trait MessageCommitment {
-    fn add(channel_id: ChannelId, target: H160, nonce: u64, payload: &[u8]) -> DispatchResult;
 }
 
 /// Dispatch a message

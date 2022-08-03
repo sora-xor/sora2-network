@@ -12,9 +12,7 @@ pub(crate) struct Command {
     #[clap(long, short)]
     descendants_until_final: u64,
     #[clap(long)]
-    basic_outbound: H160,
-    #[clap(long)]
-    incentivized_outbound: H160,
+    outbound_channel: H160,
     #[clap(flatten)]
     network: Network,
 }
@@ -62,29 +60,10 @@ impl Command {
             .tx()
             .sudo()
             .sudo(false,
-                runtime::runtime_types::framenode_runtime::Call::BasicInboundChannel(
-                    runtime::runtime_types::basic_channel::inbound::pallet::Call::register_channel {
+                runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
+                    runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
                         network_id,
-                        channel: self.basic_outbound
-                    },
-                ),
-            )?
-            .sign_and_submit_then_watch_default(&sub)
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
-            .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
-        let result = sub
-            .api()
-            .tx()
-            .sudo()
-            .sudo(false,
-                runtime::runtime_types::framenode_runtime::Call::IncentivizedInboundChannel(
-                    runtime::runtime_types::incentivized_channel::inbound::pallet::Call::register_channel {
-                        network_id,
-                        channel: self.incentivized_outbound
+                        channel: self.outbound_channel
                     },
                 ),
             )?
