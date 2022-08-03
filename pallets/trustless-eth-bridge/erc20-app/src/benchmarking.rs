@@ -1,9 +1,12 @@
 //! ERC20App pallet benchmarking
 
 use crate::*;
-use bridge_types::types::{AssetKind, ChannelId};
+use bridge_types::types::AssetKind;
 use bridge_types::EthNetworkId;
-use common::{balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, ETH, XOR};
+use common::{
+    balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
+    ETH, XOR,
+};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
@@ -15,35 +18,20 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
-    where_clause {where T: basic_channel::outbound::Config + incentivized_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
-    burn_basic_channel {
+    burn {
         let caller: T::AccountId = whitelisted_caller();
         let asset_id: T::AssetId = XOR.into();
         let recipient = H160::repeat_byte(2);
         let amount = balance!(500);
 
-        basic_channel::outbound::Pallet::<T>::register_operator(RawOrigin::Root.into(), BASE_NETWORK_ID, caller.clone()).unwrap();
-
-        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-
-    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Basic, asset_id.clone(), recipient, amount)
-    verify {
-        assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &caller).unwrap(), 0);
-    }
-
-    burn_incentivized_channel {
-        let caller: T::AccountId = whitelisted_caller();
-        let asset_id: T::AssetId = XOR.into();
-        let recipient = H160::repeat_byte(2);
-        let amount = balance!(500);
-
-        let fee_asset = <T as incentivized_channel::outbound::Config>::FeeCurrency::get();
+        let fee_asset = <T as bridge_channel::outbound::Config>::FeeCurrency::get();
 
         // deposit enough money to cover fees
-        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, incentivized_channel::outbound::Fee::<T>::get())?;
+        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_channel::outbound::Fee::<T>::get())?;
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Incentivized, asset_id.clone(), recipient, amount)
+    }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount)
     verify {
         assert_eq!(assets::Pallet::<T>::free_balance(&asset_id, &caller).unwrap(), 0);
     }
@@ -55,7 +43,7 @@ benchmarks! {
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
-        let origin = dispatch::RawOrigin::from((BASE_NETWORK_ID, caller));
+        let origin = dispatch::RawOrigin::from((BASE_NETWORK_ID, Default::default(), caller));
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -94,7 +82,7 @@ benchmarks! {
         let symbol = AssetSymbol(b"ETH".to_vec());
         let name = AssetName(b"ETH".to_vec());
         assert!(!AssetsByAddresses::<T>::contains_key(network_id, address));
-    }: _(RawOrigin::Root, network_id, address, symbol, name)
+    }: _(RawOrigin::Root, network_id, address, symbol, name, DEFAULT_BALANCE_PRECISION)
     verify {
         assert!(AssetsByAddresses::<T>::contains_key(network_id, address));
     }
@@ -109,7 +97,7 @@ benchmarks! {
     register_asset_internal {
         let asset_id: T::AssetId = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, who);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), who);
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
     }: _(origin, asset_id, address)

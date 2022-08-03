@@ -3,22 +3,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_basic_inbound",
+        "name": "_inbound",
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "_basic_outbound",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_incentivized_inbound",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_incentivized_outbound",
+        "internalType": "contract OutboundChannel",
+        "name": "_outbound",
         "type": "address"
       }
     ],
@@ -168,30 +158,6 @@
   {
     "inputs": [
       {
-        "internalType": "enum ChannelId",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "name": "channels",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "inbound",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "outbound",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -251,6 +217,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "inbound",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -297,6 +276,19 @@
     "name": "migrateSidechain",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "outbound",
+    "outputs": [
+      {
+        "internalType": "contract OutboundChannel",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

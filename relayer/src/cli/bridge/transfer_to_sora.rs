@@ -42,7 +42,7 @@ impl Command {
             let eth_app = ethereum_gen::ETHApp::new(eth_app_address, eth.inner());
             let balance = eth.get_balance(eth_app_address, None).await?;
             info!("EthApp balance: {}", balance);
-            eth_app.lock(recipient, 1).value(self.amount)
+            eth_app.lock(recipient).value(self.amount)
         } else {
             let asset_kind = sub
                 .api()
@@ -69,7 +69,7 @@ impl Command {
                 AssetKind::Thischain => {
                     info!("Transfer native Sora token");
                     let sidechain_app = ethereum_gen::SidechainApp::new(app_address, eth.inner());
-                    sidechain_app.lock(token_address, recipient, self.amount.into(), 1)
+                    sidechain_app.lock(token_address, recipient, self.amount.into())
                 }
                 AssetKind::Sidechain => {
                     info!("Transfer native ERC20 token");
@@ -101,7 +101,7 @@ impl Command {
                     if !registered {
                         warn!("Token not registered");
                     }
-                    erc20_app.lock(token_address, recipient, self.amount.into(), 1)
+                    erc20_app.lock(token_address, recipient, self.amount.into())
                 }
             }
         }

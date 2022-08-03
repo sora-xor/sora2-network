@@ -2,8 +2,8 @@
 use super::*;
 
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
-use common::{AssetName, AssetSymbol};
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
 use sp_core::H160;
@@ -27,7 +27,7 @@ benchmarks! {
 
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
 
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, ChannelId::Incentivized, recipient, amount)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount)
     verify {
         assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &caller).unwrap(), balance!(0));
     }
@@ -36,7 +36,7 @@ benchmarks! {
     // * `mint` successfully adds amount to recipient account
     mint {
         let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, contract);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), contract);
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -54,7 +54,7 @@ benchmarks! {
         let contract = H160::repeat_byte(6);
         let asset_name = AssetName(b"ETH".to_vec());
         let asset_symbol = AssetSymbol(b"ETH".to_vec());
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, DEFAULT_BALANCE_PRECISION, contract)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
     }
@@ -66,6 +66,6 @@ benchmarks! {
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id)));
     }
-}
 
-impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);
+    impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);
+}

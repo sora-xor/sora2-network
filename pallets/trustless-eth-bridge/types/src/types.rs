@@ -2,8 +2,9 @@
 
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
-use enum_iterator::IntoEnumIterator;
 use frame_support::RuntimeDebug;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
@@ -11,28 +12,40 @@ use sp_std::vec::Vec;
 pub use crate::EthNetworkId;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum MessageDirection {
+    Inbound,
+    Outbound,
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
-    pub channel_id: ChannelId,
-    pub nonce: u64,
+    direction: MessageDirection,
+    nonce: MessageNonce,
+}
+
+impl From<(MessageDirection, MessageNonce)> for MessageId {
+    fn from((direction, nonce): (MessageDirection, MessageNonce)) -> Self {
+        MessageId { direction, nonce }
+    }
+}
+
+impl From<MessageId> for MessageNonce {
+    fn from(id: MessageId) -> Self {
+        id.nonce
+    }
 }
 
 impl MessageId {
-    pub fn new(channel_id: ChannelId, nonce: u64) -> Self {
-        Self { channel_id, nonce }
+    pub fn inbound(nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Inbound, nonce))
+    }
+
+    pub fn outbound(nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Outbound, nonce))
     }
 }
 
 pub type MessageNonce = u64;
-
-#[repr(u8)]
-#[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, IntoEnumIterator, RuntimeDebug, scale_info::TypeInfo,
-)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub enum ChannelId {
-    Basic,
-    Incentivized,
-}
 
 /// A message relayed from Ethereum.
 #[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -52,6 +65,7 @@ pub struct Proof {
     // The block hash of the block in which the receipt was included.
     pub block_hash: H256,
     // The index of the transaction (and receipt) within the block.
+    // !!! Untrusted value used just for logging purposes.
     pub tx_index: u32,
     // Proof values
     pub data: Vec<Vec<u8>>,
@@ -80,7 +94,7 @@ impl From<Digest> for AuxiliaryDigest {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(EthNetworkId, ChannelId, H256),
+    Commitment(EthNetworkId, H256),
 }
 
 impl Into<DigestItem> for AuxiliaryDigestItem {
@@ -124,6 +138,23 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 pub enum AssetKind {
     Thischain,
     Sidechain,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum MessageStatus {
+    InQueue,
+    Committed,
+    Done,
+    // TODO: add extrinsic to track status of committed messages
+    Failed,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum AppKind {
+    EthApp,
+    ERC20App,
+    SidechainApp,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

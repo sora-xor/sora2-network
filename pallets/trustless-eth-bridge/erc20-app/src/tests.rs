@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
-use bridge_types::types::{AssetKind, ChannelId};
-use common::{balance, AssetName, AssetSymbol, ETH, XOR};
+use bridge_types::types::AssetKind;
+use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_ok;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
@@ -26,14 +26,13 @@ fn mints_after_handling_ethereum_event() {
         assert_ok!(Erc20App::burn(
             Origin::signed(bob.clone()),
             BASE_NETWORK_ID,
-            ChannelId::Incentivized,
             asset_id,
             H160::repeat_byte(9),
             amount
         ));
 
         assert_ok!(Erc20App::mint(
-            dispatch::RawOrigin(BASE_NETWORK_ID, peer_contract).into(),
+            dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
             token,
             sender,
             recipient.clone(),
@@ -69,7 +68,6 @@ fn burn_should_emit_bridge_event() {
         assert_ok!(Erc20App::burn(
             Origin::signed(bob.clone()),
             BASE_NETWORK_ID,
-            ChannelId::Incentivized,
             asset_id,
             recipient.clone(),
             amount
@@ -102,7 +100,6 @@ fn should_not_burn_on_commitment_failure() {
             let _ = Erc20App::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
-                ChannelId::Incentivized,
                 asset_id,
                 recipient.clone(),
                 amount,
@@ -114,16 +111,15 @@ fn should_not_burn_on_commitment_failure() {
             Erc20App::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
-                ChannelId::Incentivized,
                 asset_id,
                 recipient.clone(),
                 amount,
             ),
-            incentivized_channel::outbound::Error::<Test>::QueueSizeLimitReached
+            bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         );
         // let call = crate::mock::Call::Erc20App(crate::Call::<Test>::burn {
         //     network_id: BASE_NETWORK_ID,
-        //     channel_id: ChannelId::Incentivized,
+        //     channel_id: ChannelId::Bridge,
         //     asset_id,
         //     recipient: recipient.clone(),
         //     amount,
@@ -131,7 +127,7 @@ fn should_not_burn_on_commitment_failure() {
 
         // common::assert_noop_transactional!(
         //     call.dispatch(Origin::signed(sender.clone())),
-        //     incentivized_channel::outbound::Error::<Test>::QueueSizeLimitReached
+        //     bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         // );
     });
 }
@@ -141,7 +137,7 @@ fn test_register_asset_internal() {
     new_tester().execute_with(|| {
         let asset_id = ETH;
         let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, who);
+        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), who);
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<Test>::contains_key(
             BASE_NETWORK_ID,
@@ -173,6 +169,7 @@ fn test_register_erc20_asset() {
             address,
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"ETH".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
         )
         .unwrap();
         assert!(AssetsByAddresses::<Test>::contains_key(network_id, address));

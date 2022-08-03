@@ -139,6 +139,7 @@ where
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
+    C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
 
     P: TransactionPool + Send + Sync + 'static,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
@@ -153,8 +154,8 @@ where
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     // use farming_rpc::*;
-    use basic_channel_rpc::{BasicChannelAPIServer, BasicChannelClient};
-    use incentivized_channel_rpc::{IncentivizedChannelAPIServer, IncentivizedChannelClient};
+    use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
+    use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
@@ -194,9 +195,9 @@ where
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
+    io.merge(EvmBridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
-        io.merge(BasicChannelClient::new(storage.clone()).into_rpc())?;
-        io.merge(IncentivizedChannelClient::new(storage).into_rpc())?;
+        io.merge(BridgeChannelClient::new(storage).into_rpc())?;
     }
     io.merge(VestedRewardsClient::new(client).into_rpc())?;
     Ok(io)

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity =0.8.13;
+
+import "../InboundChannel.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract TestInboundChannel is InboundChannel, Ownable {
+    constructor(BeefyLightClient _beefyLightClient)
+        InboundChannel(_beefyLightClient)
+    {}
+
+    function reset() public onlyOwner {
+        nonce = 0;
+    }
+}

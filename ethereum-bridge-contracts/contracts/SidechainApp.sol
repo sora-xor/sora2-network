@@ -1,25 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity =0.8.13;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./MasterToken.sol";
 import "./ScaleCodec.sol";
-import "./OutboundChannel.sol";
 import "./IAssetRegister.sol";
+import "./GenericApp.sol";
 
-enum ChannelId {
-    Basic,
-    Incentivized
-}
-
-contract SidechainApp is AccessControl, IAssetRegister {
+contract SidechainApp is GenericApp, IAssetRegister {
     using ScaleCodec for uint256;
 
     mapping(address => bool) public tokens;
-
-    mapping(ChannelId => Channel) public channels;
 
     bytes2 constant MINT_CALL = 0x6500;
     bytes2 constant REGISTER_ASSET_CALL = 0x6501;
@@ -38,44 +30,20 @@ contract SidechainApp is AccessControl, IAssetRegister {
         uint256 amount
     );
 
-    struct Channel {
-        address inbound;
-        address outbound;
-    }
-
-    bytes32 public constant INBOUND_CHANNEL_ROLE =
-        keccak256("INBOUND_CHANNEL_ROLE");
-
     constructor(
-        Channel memory _basic,
-        Channel memory _incentivized,
+        address _inbound,
+        OutboundChannel _outbound,
         address migrationApp
-    ) {
-        Channel storage c1 = channels[ChannelId.Basic];
-        c1.inbound = _basic.inbound;
-        c1.outbound = _basic.outbound;
-
-        Channel storage c2 = channels[ChannelId.Incentivized];
-        c2.inbound = _incentivized.inbound;
-        c2.outbound = _incentivized.outbound;
-
-        _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
-        _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
+    ) GenericApp(_inbound, _outbound) {
         _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
         address _token,
         bytes32 _recipient,
-        uint256 _amount,
-        ChannelId _channelId
+        uint256 _amount
     ) public {
         require(tokens[_token], "Token is not registered");
-        require(
-            _channelId == ChannelId.Basic ||
-                _channelId == ChannelId.Incentivized,
-            "Invalid channel ID"
-        );
 
         ERC20Burnable mtoken = ERC20Burnable(_token);
         mtoken.burnFrom(msg.sender, _amount);
@@ -83,10 +51,7 @@ contract SidechainApp is AccessControl, IAssetRegister {
 
         bytes memory call = mintCall(_token, msg.sender, _recipient, _amount);
 
-        OutboundChannel channel = OutboundChannel(
-            channels[_channelId].outbound
-        );
-        channel.submit(msg.sender, call);
+        outbound.submit(msg.sender, call);
     }
 
     function unlock(
@@ -153,10 +118,7 @@ contract SidechainApp is AccessControl, IAssetRegister {
 
         bytes memory call = registerAssetCall(tokenAddress, sidechainAssetId);
 
-        OutboundChannel channel = OutboundChannel(
-            channels[ChannelId.Basic].outbound
-        );
-        channel.submit(msg.sender, call);
+        outbound.submit(msg.sender, call);
     }
 
     function registerExistingAsset(address token)

@@ -13,9 +13,7 @@ pub(crate) struct Command {
     #[clap(long)]
     base_path: PathBuf,
     #[clap(long)]
-    disable_incentivized: bool,
-    #[clap(long)]
-    disable_basic: bool,
+    disable_message_relay: bool,
 }
 
 impl Command {
@@ -24,15 +22,12 @@ impl Command {
         let sub = self.sub.get_signed_substrate().await?;
         let proof_loader = ProofLoader::new(eth.clone(), self.base_path.clone());
         let relay = Relay::new(sub.clone(), eth.clone(), proof_loader.clone()).await?;
-        let messages_relay = SubstrateMessagesRelay::new(
-            sub,
-            eth,
-            proof_loader,
-            self.disable_basic,
-            self.disable_incentivized,
-        )
-        .await?;
-        tokio::try_join!(relay.run(), messages_relay.run())?;
+        if self.disable_message_relay {
+            relay.run().await?;
+        } else {
+            let messages_relay = SubstrateMessagesRelay::new(sub, eth, proof_loader).await?;
+            tokio::try_join!(relay.run(), messages_relay.run())?;
+        }
         Ok(())
     }
 }

@@ -1,6 +1,5 @@
 use crate::cli::prelude::*;
 use crate::substrate::AssetId;
-use bridge_types::types::ChannelId;
 use std::collections::HashMap;
 use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
@@ -130,14 +129,14 @@ impl Command {
                 let mut call = if let Some((kind, address)) = info {
                     match kind {
                         AssetKind::Thischain => {
-                            sidechain_app.lock(*address, sub.account_id().into(), 11u128.into(), 1)
+                            sidechain_app.lock(*address, sub.account_id().into(), 11u128.into())
                         }
                         AssetKind::Sidechain => {
-                            erc20_app.lock(*address, sub.account_id().into(), 1100u128.into(), 1)
+                            erc20_app.lock(*address, sub.account_id().into(), 1100u128.into())
                         }
                     }
                 } else {
-                    eth_app.lock(sub.account_id().into(), 1).value(100000u128)
+                    eth_app.lock(sub.account_id().into()).value(100000u128)
                 }
                 .legacy();
                 let eth_res = eth.fill_transaction(&mut call.tx, call.block).await;
@@ -165,14 +164,7 @@ impl Command {
                         .api()
                         .tx()
                         .erc20_app()
-                        .burn(
-                            false,
-                            network_id,
-                            ChannelId::Incentivized,
-                            *asset,
-                            eth.address(),
-                            110,
-                        )?
+                        .burn(false, network_id, *asset, eth.address(), 110)?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()
@@ -194,7 +186,7 @@ impl Command {
                         .api()
                         .tx()
                         .eth_app()
-                        .burn(false, network_id, ChannelId::Incentivized, eth.address(), 9)?
+                        .burn(false, network_id, eth.address(), 9)?
                         .sign_and_submit_then_watch_default(&sub)
                         .await?
                         .wait_for_in_block()

@@ -29,6 +29,8 @@ pub(crate) enum AssetKind {
         name: String,
         #[clap(long)]
         symbol: String,
+        #[clap(long)]
+        decimals: u8,
     },
     Native {
         #[clap(long)]
@@ -53,11 +55,13 @@ impl Command {
                 address,
                 name,
                 symbol,
+                decimals,
             } => runtime::runtime_types::erc20_app::pallet::Call::register_erc20_asset {
                 network_id,
                 address: address.clone(),
                 name: AssetName::from_str(name.as_str()).unwrap(),
                 symbol: AssetSymbol::from_str(symbol.as_str()).unwrap(),
+                decimals: *decimals,
             },
             AssetKind::Native { asset_id } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_asset {
