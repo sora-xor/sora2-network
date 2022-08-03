@@ -160,6 +160,7 @@ pub enum MessageStatus {
     InQueue,
     Committed,
     Done,
+    // TODO: add extrinsic to track status of committed messages
     Failed,
 }
 

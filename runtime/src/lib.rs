@@ -2912,6 +2912,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2975,6 +2976,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
+            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

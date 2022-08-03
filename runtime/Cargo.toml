@@ -280,6 +280,7 @@ runtime-benchmarks = [
     "migration-app/runtime-benchmarks",
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
+    "evm-bridge-proxy/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",
