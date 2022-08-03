@@ -61,11 +61,6 @@ impl RelayBuilder {
                 .expect("inbound channel address is needed"),
             eth.inner(),
         );
-        let blocks_until_finalized = beefy
-            .block_wait_period()
-            .call()
-            .await
-            .context("fetch block_wait_period")?;
         let beefy_start_block = sub
             .beefy_start_block()
             .await
@@ -76,7 +71,6 @@ impl RelayBuilder {
             eth,
             beefy,
             beefy_start_block,
-            blocks_until_finalized,
             inbound_channel,
             lost_gas: Default::default(),
             successful_sent: Default::default(),
@@ -92,7 +86,6 @@ pub struct Relay {
     beefy: BeefyLightClient<SignedClientInner>,
     inbound_channel: InboundChannel<SignedClientInner>,
     beefy_start_block: u64,
-    blocks_until_finalized: u64,
     chain_id: EthNetworkId,
     lost_gas: Arc<AtomicU64>,
     successful_sent: Arc<AtomicU64>,
@@ -100,11 +93,18 @@ pub struct Relay {
 }
 
 impl Relay {
-    async fn new_signature_commitment(
+    async fn create_random_bitfield(&self, initial_bitfield: Vec<U256>) -> AnyResult<Vec<U256>> {
+        let call = self.beefy.create_random_bitfield(initial_bitfield).legacy();
+        let random_bitfield = call.call().await?;
+        debug!("Random bitfield: {:?}", random_bitfield);
+        Ok(random_bitfield)
+    }
+
+    async fn submit_signature_commitment(
         &self,
         justification: &BeefyJustification,
     ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
-        let initial_bit_field = self
+        let initial_bitfield = self
             .beefy
             .create_initial_bitfield(
                 justification.signed_validators.clone(),
@@ -113,36 +113,7 @@ impl Relay {
             .legacy()
             .call()
             .await?;
-        let pos = justification.signed_validators[0];
-        let pos_usize = pos.as_usize();
-        let pubkey = justification.validator_pubkey(pos_usize);
-        let proof = justification.validator_pubkey_proof(pos_usize);
-        let validator_signature = justification.validator_eth_signature(pos_usize);
 
-        let mut call = self.beefy.new_signature_commitment(
-            justification.commitment_hash.into(),
-            initial_bit_field,
-            validator_signature.into(),
-            pos,
-            pubkey,
-            proof,
-        );
-        call.tx.set_from(self.eth.address());
-        Ok(call)
-    }
-
-    async fn create_random_bitfield(&self, id: U256) -> AnyResult<Vec<U256>> {
-        let call = self.beefy.create_random_bitfield(id).legacy();
-        let random_bitfield = call.call().await?;
-        debug!("Random bitfield {}: {:?}", id, random_bitfield);
-        Ok(random_bitfield)
-    }
-
-    async fn complete_signature_commitment(
-        &self,
-        id: U256,
-        justification: &BeefyJustification,
-    ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
         let (prefix, payload, suffix) = justification.get_payload().expect("should be checked");
         let eth_commitment = beefy_light_client::Commitment {
             payload_prefix: prefix.into(),
@@ -152,12 +123,13 @@ impl Relay {
             validator_set_id: justification.commitment.validator_set_id as u64,
         };
 
-        let random_bitfield = self.create_random_bitfield(id).await?;
-        let validator_proof = justification.validators_proof(random_bitfield);
+        let random_bitfield = self
+            .create_random_bitfield(initial_bitfield.clone())
+            .await?;
+        let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;
 
-        let mut call = self.beefy.complete_signature_commitment(
-            id,
+        let mut call = self.beefy.submit_signature_commitment(
             eth_commitment,
             validator_proof,
             latest_mmr_leaf,
@@ -209,19 +181,9 @@ impl Relay {
             return Ok(());
         }
         debug!("New justification: {:?}", justification);
-        let call = self.new_signature_commitment(&justification).await?;
-        let event = self
-            .call_with_event::<beefy_light_client::InitialVerificationSuccessfulFilter>(
-                "New signature commitment",
-                call,
-                self.blocks_until_finalized as usize + 1,
-            )
-            .await?;
-        let call = self
-            .complete_signature_commitment(event.id, &justification)
-            .await?;
+        let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
-            .call_with_event::<beefy_light_client::FinalVerificationSuccessfulFilter>(
+            .call_with_event::<beefy_light_client::VerificationSuccessfulFilter>(
                 "Complete signature commitment",
                 call,
                 1,
@@ -439,7 +401,7 @@ impl Relay {
                     continue;
                 }
                 if data.as_ref()
-                    != ethereum_gen::beefy_light_client::CompleteSignatureCommitmentCall::selector()
+                    != ethereum_gen::beefy_light_client::SubmitSignatureCommitmentCall::selector()
                         .as_slice()
                 {
                     continue;

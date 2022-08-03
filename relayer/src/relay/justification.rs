@@ -130,7 +130,11 @@ impl BeefyJustification {
         proof
     }
 
-    pub fn validators_proof(&self, random_bitfield: Vec<U256>) -> ValidatorProof {
+    pub fn validators_proof(
+        &self,
+        initial_bitfield: Vec<U256>,
+        random_bitfield: Vec<U256>,
+    ) -> ValidatorProof {
         let mut positions = vec![];
         let mut signatures = vec![];
         let mut public_keys = vec![];
@@ -149,6 +153,7 @@ impl BeefyJustification {
             positions,
             public_keys,
             public_key_merkle_proofs,
+            validator_claims_bitfield: initial_bitfield,
         };
         validator_proof
     }
@@ -169,7 +174,8 @@ impl BeefyJustification {
             next_authority_set_id: leaf.beefy_next_authority_set.id,
             next_authority_set_len: leaf.beefy_next_authority_set.len,
             next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
-            digest_hash: leaf.leaf_extra.0,
+            digest_hash: leaf.leaf_extra.digest_hash.0,
+            random_seed: leaf.leaf_extra.random_seed.0,
         };
 
         let proof =
