@@ -27,7 +27,7 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use bridge_types::traits::OutboundRouter;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 
 mod payload;
@@ -90,7 +90,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
 
@@ -286,7 +286,7 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            let message_id = T::OutboundRouter::submit(
+            let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
                 target,

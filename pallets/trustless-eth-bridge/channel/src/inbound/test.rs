@@ -13,7 +13,7 @@ use sp_runtime::{AccountId32, MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
-use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundRouter};
+use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
 use bridge_types::types::{Message, Proof};
 use bridge_types::{Log, U256};
 
@@ -231,15 +231,15 @@ impl bridge_inbound_channel::Config for Test {
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
     type WeightInfo = ();
 }
 
-pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
 
-impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+impl<AccountId> OutboundChannel<AccountId> for MockOutboundChannel<AccountId> {
     fn submit(
         _: EthNetworkId,
         _: &RawOrigin<AccountId>,

@@ -1907,7 +1907,7 @@ impl bridge_channel_inbound::Config for Runtime {
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
@@ -1948,7 +1948,7 @@ impl ethereum_light_client::Config for Runtime {
 
 impl eth_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -1957,7 +1957,7 @@ impl eth_app::Config for Runtime {
 
 impl erc20_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
@@ -1967,7 +1967,7 @@ impl erc20_app::Config for Runtime {
 
 impl migration_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type WeightInfo = ();
 }
 

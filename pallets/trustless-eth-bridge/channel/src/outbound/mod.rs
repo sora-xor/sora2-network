@@ -61,7 +61,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::traits::MessageStatusNotifier;
-    use bridge_types::traits::OutboundRouter;
+    use bridge_types::traits::OutboundChannel;
     use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
@@ -318,7 +318,7 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> OutboundRouter<T::AccountId> for Pallet<T> {
+    impl<T: Config> OutboundChannel<T::AccountId> for Pallet<T> {
         /// Submit message on the outbound channel
         fn submit(
             network_id: EthNetworkId,

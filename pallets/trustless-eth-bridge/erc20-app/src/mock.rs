@@ -248,7 +248,7 @@ impl AppRegistry for AppRegistryImpl {
 
 impl erc20_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();

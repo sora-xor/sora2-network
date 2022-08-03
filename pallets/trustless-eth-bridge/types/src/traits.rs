@@ -29,7 +29,7 @@ pub trait Verifier {
 }
 
 /// Outbound submission for applications
-pub trait OutboundRouter<AccountId> {
+pub trait OutboundChannel<AccountId> {
     fn submit(
         network_id: EthNetworkId,
         who: &RawOrigin<AccountId>,
