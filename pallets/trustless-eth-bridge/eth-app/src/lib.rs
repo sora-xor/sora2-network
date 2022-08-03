@@ -27,7 +27,7 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use bridge_types::traits::OutboundRouter;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 
 mod payload;
@@ -74,7 +74,7 @@ pub mod pallet {
     use bridge_types::traits::{EvmBridgeApp, MessageStatusNotifier};
     use bridge_types::types::AppKind;
     use bridge_types::H256;
-    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
+    use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
@@ -90,7 +90,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
 
@@ -194,6 +194,7 @@ pub mod pallet {
             network_id: EthNetworkId,
             name: AssetName,
             symbol: AssetSymbol,
+            decimals: u8,
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -206,7 +207,7 @@ pub mod pallet {
                 &bridge_account,
                 symbol,
                 name,
-                DEFAULT_BALANCE_PRECISION,
+                decimals,
                 Balance::from(0u32),
                 true,
                 None,
@@ -285,7 +286,7 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            let message_id = T::OutboundRouter::submit(
+            let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
                 target,

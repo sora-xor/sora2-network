@@ -1,7 +1,7 @@
 //! Channel for passing messages from ethereum to substrate.
 
 use bridge_types::traits::{MessageDispatch, Verifier};
-use bridge_types::types::{Message, MessageId};
+use bridge_types::types::{ChannelId, Message, MessageId};
 use bridge_types::EthNetworkId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
@@ -154,7 +154,7 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer);
 
-            let message_id = MessageId::inbound(envelope.nonce);
+            let message_id = MessageId::inbound(ChannelId::Incentivized, envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
                 envelope.source,
@@ -196,6 +196,7 @@ pub mod pallet {
 
             T::OutboundChannel::submit(
                 network_id,
+                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),
@@ -215,6 +216,7 @@ pub mod pallet {
 
             T::OutboundChannel::submit(
                 network_id,
+                ChannelId::Basic,
                 &RawOrigin::Root,
                 target,
                 2000000u64.into(),

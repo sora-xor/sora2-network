@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::AssetKind;
-use common::{balance, AssetName, AssetSymbol, ETH, XOR};
+use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_ok;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
@@ -169,6 +169,7 @@ fn test_register_erc20_asset() {
             address,
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"ETH".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
         )
         .unwrap();
         assert!(AssetsByAddresses::<Test>::contains_key(network_id, address));

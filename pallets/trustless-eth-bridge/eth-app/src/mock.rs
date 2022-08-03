@@ -2,7 +2,7 @@ use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
-use bridge_types::traits::OutboundRouter;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
 use common::{
@@ -166,9 +166,9 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
+pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
 
-impl OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
+impl OutboundChannel<AccountId> for MockOutboundChannel<AccountId> {
     fn submit(
         _: EthNetworkId,
         who: &RawOrigin<AccountId>,
@@ -205,7 +205,7 @@ parameter_types! {
 
 impl eth_app::Config for Test {
     type Event = Event;
-    type OutboundRouter = MockOutboundRouter<Self::AccountId>;
+    type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = ();

@@ -50,10 +50,10 @@ pub mod pallet {
     use super::*;
 
     use assets::AssetIdOf;
-    use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundRouter};
+    use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::{AppKind, AssetKind};
     use bridge_types::{EthNetworkId, H256};
-    use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
+    use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
@@ -73,7 +73,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundRouter: OutboundRouter<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
 
@@ -263,6 +263,7 @@ pub mod pallet {
             address: H160,
             symbol: AssetSymbol,
             name: AssetName,
+            decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -277,7 +278,7 @@ pub mod pallet {
                 &bridge_account,
                 symbol,
                 name,
-                DEFAULT_BALANCE_PRECISION,
+                decimals,
                 Balance::from(0u32),
                 true,
                 None,
@@ -288,7 +289,7 @@ pub mod pallet {
 
             let message = RegisterErc20AssetPayload { address };
 
-            T::OutboundRouter::submit(
+            T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
                 target,
@@ -318,7 +319,7 @@ pub mod pallet {
 
             let message = RegisterErc20AssetPayload { address };
 
-            T::OutboundRouter::submit(
+            T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
                 target,
@@ -350,7 +351,7 @@ pub mod pallet {
                 symbol: asset_symbol.0,
             };
 
-            T::OutboundRouter::submit(
+            T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
                 target,
@@ -465,7 +466,7 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            let message_id = T::OutboundRouter::submit(
+            let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
                 target,

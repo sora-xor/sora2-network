@@ -1,7 +1,7 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
-use bridge_types::traits::OutboundRouter;
+use bridge_types::traits::OutboundChannel;
 use common::mock::ExistentialDeposits;
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::dispatch::DispatchError;

@@ -1909,7 +1909,7 @@ impl bridge_channel_inbound::Config for Runtime {
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
@@ -1950,7 +1950,7 @@ impl ethereum_light_client::Config for Runtime {
 
 impl eth_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -1959,7 +1959,7 @@ impl eth_app::Config for Runtime {
 
 impl erc20_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = EnsureEthereumAccount;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
@@ -1969,7 +1969,7 @@ impl erc20_app::Config for Runtime {
 
 impl migration_app::Config for Runtime {
     type Event = Event;
-    type OutboundRouter = BridgeOutboundChannel;
+    type OutboundChannel = BridgeOutboundChannel;
     type WeightInfo = ();
 }
 
@@ -2837,6 +2837,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2900,6 +2901,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
+            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
