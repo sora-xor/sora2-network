@@ -65,6 +65,7 @@ pub struct Proof {
     // The block hash of the block in which the receipt was included.
     pub block_hash: H256,
     // The index of the transaction (and receipt) within the block.
+    // !!! Untrusted value used just for logging purposes.
     pub tx_index: u32,
     // Proof values
     pub data: Vec<Vec<u8>>,
@@ -144,6 +145,7 @@ pub enum MessageStatus {
     InQueue,
     Committed,
     Done,
+    // TODO: add extrinsic to track status of committed messages
     Failed,
 }
 
