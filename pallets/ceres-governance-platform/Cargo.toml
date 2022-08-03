@@ -26,6 +26,7 @@ permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
 frame-benchmarking = { version = "3", default-features = false, optional = true }
+pallet-timestamp = { version = "3", default-features = false }
 
 [dev-dependencies]
 assets = { path = "../assets" }

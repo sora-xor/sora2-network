@@ -39,10 +39,12 @@ use common::{
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
+use frame_support::traits::{
+    Currency, ExistenceRequirement, GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote,
+    WithdrawReasons,
+};
 use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight};
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use pallet_session::historical;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
@@ -63,6 +65,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 use frame_support::sp_runtime::testing::TestSignature;
 use frame_system::offchain::{Account, AppCrypto, SigningTypes};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use sp_core::H160;
 
@@ -121,6 +124,7 @@ parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
+    pub const ReferralsReservesAcc: AccountId = 22;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -139,8 +143,8 @@ construct_runtime! {
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Config<T>, Storage},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        ReferralSystem: referrals::{Module, Call, Config<T>, Storage},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
@@ -151,20 +155,27 @@ construct_runtime! {
         Historical: historical::{Module},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         XorFee: xor_fee::{Module, Call, Event<T>},
         LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
 impl xor_fee::ExtractProxySwap for Call {
+    type AccountId = AccountId;
     type DexId = DEXId;
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
 
-    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
+    fn extract(
+        &self,
+    ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
         if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
             dex_id,
             input_asset_id,
@@ -175,6 +186,7 @@ impl xor_fee::ExtractProxySwap for Call {
         )) = self
         {
             Some(xor_fee::SwapInfo {
+                fee_source: None,
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
@@ -276,6 +288,7 @@ impl eth_bridge::Config for Runtime {
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
+    type WeightToFee = XorFee;
 }
 
 impl bridge_multisig::Config for Runtime {
@@ -338,7 +351,10 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = ();
+}
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
@@ -368,7 +384,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl currencies::Config for Runtime {
@@ -388,6 +404,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -403,6 +420,54 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+}
+
+impl demeter_farming_platform::Config for Runtime {
+    type Event = Event;
+    type DemeterAssetId = ();
+    const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
+    type WeightInfo = ();
+}
+
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
+    type GetIncentiveAssetId = ();
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = ();
+    type GetBurnUpdateFrequency = ();
+    type GetTechnicalAccountId = ();
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type DemeterFarmingPlatform = DemeterFarmingPlatform;
+    type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl pallet_session::Config for Runtime {
@@ -490,6 +555,26 @@ where
     }
 }
 
+pub struct WithdrawFee;
+
+impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
+    fn withdraw_fee(
+        who: &AccountId,
+        _call: &Call,
+        fee: Balance,
+    ) -> Result<(AccountId, Option<crate::NegativeImbalanceOf<Runtime>>), DispatchError> {
+        Ok((
+            who.clone(),
+            Some(Balances::withdraw(
+                who,
+                fee,
+                WithdrawReasons::TRANSACTION_PAYMENT,
+                ExistenceRequirement::KeepAlive,
+            )?),
+        ))
+    }
+}
+
 impl Config for Runtime {
     type Event = Event;
     type XorCurrency = Balances;
@@ -506,6 +591,8 @@ impl Config for Runtime {
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WithdrawFee = WithdrawFee;
+    type WeightInfo = ();
 }
 
 // Allow dead_code because we never call swap, just use its Call variant
@@ -596,8 +683,6 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     }
 }
 
-pub const MOCK_WEIGHT: Weight = 600_000_000;
-
 pub const REFERRER_ACCOUNT: u64 = 3;
 pub const FROM_ACCOUNT: u64 = 1;
 pub const TO_ACCOUNT: u64 = 2;
@@ -605,7 +690,6 @@ pub const STASH_ACCOUNT: u64 = 11;
 pub const STASH_ACCOUNT2: u64 = 21;
 pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
-pub const TRANSFER_AMOUNT: u64 = 69;
 pub const SORA_PARLIAMENT_ACCOUNT: u64 = 7;
 pub const EMPTY_ACCOUNT: u64 = 420;
 
@@ -672,7 +756,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        referral_system::GenesisConfig::<Runtime> {
+        referrals::GenesisConfig::<Runtime> {
             referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
         }
         .assimilate_storage(&mut t)
@@ -712,6 +796,8 @@ impl ExtBuilder {
                     18,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     VAL,
@@ -721,6 +807,8 @@ impl ExtBuilder {
                     18,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }
