@@ -5,58 +5,54 @@ labels: ["bug"]
 
 body:
   - type: markdown
-  attributes:
-  value: |
-    Thank you for helping us improving SORA!
+    attributes:
+      value: |
+        Thank you for helping us improving SORA!
     
   - type: textarea
-  id: preconditions
-  attributes:
-    label: Preconditions
-    description: What are the preconditions to reproduce the bug ?
-  validations:
-    required: true
-   
-  - type: textarea
-  id: steps-to-reproduce
-  attributes:
-    label: Steps to reproduce
-    description: What are the steps to reproduce the bug ?
-    placeholder: >
-    (e.g.)
-    1. Go to 
-    2. Click on 
-  validations:
-    required: true
-
-  - type: textarea
-  id: actual-behavior
-  attributes:
-    label: Actual behavior
-    description: What is the actual behavior when encountering the bug ?
-  validations:
-    required: true
-
-  - type: textarea
-  id: expected-behavior
-  attributes:
-    label: Expected behavior
-    description: A clear and concise description of what you expected to happen.
-  validations:
-    required: true
-
-# Do we inform about OS and version in dropdown or single-line text ? (overhead to ensure all OS/versions are represented)
-  - type: input
-  id: os
-  attributes:
-    label: OS
-    description: What operating system version of the OS are you using when encountering the bug ?
+    id: preconditions
+    attributes:
+      label: Preconditions
+      description: What are the preconditions to reproduce the bug ?
     validations:
       required: true
+   
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: What are the steps to reproduce the bug ?
+      placeholder: >
+        (e.g.)
+        1. Go to 
+        2. Click on 
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What is the actual behavior when encountering the bug ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: What operating system version of the OS are you using when encountering the bug ?
 
   - type: textarea
     id: additional-context
     attributes:
       label: Additional context
       description: Add any other context about the problem here. If applicable, add screenshots to help explain your problem.
-
