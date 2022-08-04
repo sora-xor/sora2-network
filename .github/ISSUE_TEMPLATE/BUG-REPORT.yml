@@ -45,14 +45,11 @@ body:
     validations:
       required: true
 
-# Do we inform about OS and version in dropdown or single-line text ? (overhead to ensure all OS/versions are represented)
   - type: input
     id: os
     attributes:
       label: OS
       description: What operating system version of the OS are you using when encountering the bug ?
-    validations:
-      required: true
 
   - type: textarea
     id: additional-context
