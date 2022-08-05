@@ -180,6 +180,10 @@ pub fn staging_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
 }
 
+pub fn bridge_staging_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_bridge_staging.json")[..])
+}
+
 pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
@@ -291,6 +295,107 @@ pub fn dev_net_coded() -> ChainSpec {
         vec![],
         None,
         Some("sora-substrate-dev"),
+        None,
+        Some(properties),
+        None,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn bridge_staging_net_coded() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
+    let protocol = "sora-substrate-bridge-staging";
+    ChainSpec::from_genesis(
+        "SORA-bridge Testnet",
+        "sora-substrate-bridge",
+        ChainType::Live,
+        move || {
+            let eth_bridge_params = EthBridgeParams {
+                xor_master_contract_address: Default::default(),
+                xor_contract_address: Default::default(),
+                val_master_contract_address: Default::default(),
+                val_contract_address: Default::default(),
+                bridge_contract_address: Default::default(),
+            };
+            testnet_genesis(
+                false,
+                hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
+                vec![
+                    authority_keys_from_public_keys(
+                        hex!("ee806e5ed183345d5986ea31d93aa1afc6cbe48f128ac864e158d51f5ccda538"),
+                        hex!("3cac6a8a5a4045e9bcd30f19b7d1ab1649ca3092c3cc0b36f64011d3dc610552"),
+                        hex!("3cac6a8a5a4045e9bcd30f19b7d1ab1649ca3092c3cc0b36f64011d3dc610552"),
+                        hex!("55b2663327d8143b45a666c904c1a6621ae2d77604cabfcd3431fd0b975de480"),
+                        hex!("034405a66d5b3aa47946ee49ad23c8ef1dfabcbbc99ea30d6abe8cebe16d3561ef"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("628a21efe6c21f41d6e04b313ac779a74870dbba27ab404d921d2f09467e5258"),
+                        hex!("b4720fbf3ef701532b238f3335864d4fe185f2a82769ab2764b50165a112b057"),
+                        hex!("b4720fbf3ef701532b238f3335864d4fe185f2a82769ab2764b50165a112b057"),
+                        hex!("311646bc40d9b5ec724ff2deebeba9ff0d1866dd0d8f2db371dd2e5fc7ecf462"),
+                        hex!("03ec5ede1a45c754093a878d87ff30b28f6e9594a8b0e03e0a8b3ec6db7846e6a6"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("ce36d1ac5e9d8da1f2e0a4f8a26b102394dd35c352e2b960f56168cc10478c3c"),
+                        hex!("8e296982f9f4e67c07e0cfe990d67416773aec6c95ca708c95e852938a0d2877"),
+                        hex!("8e296982f9f4e67c07e0cfe990d67416773aec6c95ca708c95e852938a0d2877"),
+                        hex!("9448e9b714635de2158d1d7e2413c6f844793db970e76b3af40622325355e510"),
+                        hex!("031d86e31c78bcc4350e781961216d44f36550d8c8826a3805bb9915a79386018d"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("4e7ffd5823ea6ee8c0b4d69e9104cf375cbe63f0d13175d31a02fbed76393448"),
+                        hex!("0aa79e7b16d34c4cc2dc18f1d1018a4413f3d55e4543786121022700e983d972"),
+                        hex!("0aa79e7b16d34c4cc2dc18f1d1018a4413f3d55e4543786121022700e983d972"),
+                        hex!("9ad0bfa8282b9b1b324ee394e5335e0e98c3722653f45f61535d65b9514c6f7c"),
+                        hex!("0268ec544e1cf933f2ac54de6362930ee0c7a571ad87809cd72b4ce93dcf14f8bb"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("b4ea29407e2dc0dfde55e7e823db250f3165a02d794c3672bd32c64278cbc13f"),
+                        hex!("4a76a3e2c1fb07860c48099c1bbcb94984ff414988e96d26f1594a74a2e10f3e"),
+                        hex!("4a76a3e2c1fb07860c48099c1bbcb94984ff414988e96d26f1594a74a2e10f3e"),
+                        hex!("f694905813600d496d05bd9d12487498e7ed4716ee65a60f667e5535bfe43c36"),
+                        hex!("03e5181b1c9acec5aed73e8c14e3104792c722caadcfcb9a813edaf7fe0613e86d"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("284b92d3cfa7bfdffb5a905c8f9e2bdc38315a9f45f13267ab285632684ab709"),
+                        hex!("12be644497c1bb9f58d4f8bdb85b43e5b5e9762b7e2d3b9a87ed99be523b5c23"),
+                        hex!("12be644497c1bb9f58d4f8bdb85b43e5b5e9762b7e2d3b9a87ed99be523b5c23"),
+                        hex!("99bac188e04592d31059c612c386106393d2c2103747c8da3badeee0fc130627"),
+                        hex!("03367a1882741e54b7ddf082f1a23173a92f38f66897000b7689d6552e5397e4d2"),
+                    ),
+                ],
+                vec![],
+                vec![],
+                eth_bridge_params,
+                vec![
+                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
+                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
+                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
+                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
+                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
+                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
+                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
+                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
+                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
+                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
+                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
+                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
+                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                ],
+                vec![
+                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
+                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
+                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                ],
+                69,
+            )
+        },
+        vec![],
+        None,
+        Some(protocol),
         None,
         Some(properties),
         None,
