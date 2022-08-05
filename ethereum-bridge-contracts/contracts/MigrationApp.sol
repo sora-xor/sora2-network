@@ -3,6 +3,7 @@ pragma solidity =0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./MasterToken.sol";
 import "./ScaleCodec.sol";
 import "./IAssetRegister.sol";
@@ -11,6 +12,7 @@ import "./GenericApp.sol";
 
 contract MigrationApp is GenericApp, EthTokenReceiver {
     using ScaleCodec for uint256;
+    using SafeERC20 for IERC20;
 
     constructor(address _inbound, OutboundChannel _outbound)
         GenericApp(_inbound, _outbound)
@@ -25,7 +27,7 @@ contract MigrationApp is GenericApp, EthTokenReceiver {
         IAssetRegister app = IAssetRegister(contractAddress);
         for (uint256 i = 0; i < erc20nativeTokens.length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
-            token.transfer(contractAddress, token.balanceOf(address(this)));
+            token.safeTransfer(contractAddress, token.balanceOf(address(this)));
             app.registerExistingAsset(erc20nativeTokens[i]);
         }
         emit MigratedNativeErc20(contractAddress);
