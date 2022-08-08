@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Code from https://github.com/ethereum/solidity-examples
-pragma solidity =0.8.13;
+pragma solidity 0.8.15;
 
 library Bits {
     uint256 internal constant ONE = uint256(1);
