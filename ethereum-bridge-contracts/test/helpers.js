@@ -6,7 +6,7 @@ const MerkleProof = artifacts.require("MerkleProof");
 const Bitfield = artifacts.require("Bitfield");
 const ScaleCodec = artifacts.require("ScaleCodec");
 const ValidatorRegistry = artifacts.require("ValidatorRegistry");
-const MMRVerification = artifacts.require("MMRVerification");
+const MMRVerification = artifacts.require("SimplifiedMMRVerification");
 const BeefyLightClient = artifacts.require("BeefyLightClient");
 
 const fixture = require('./fixtures/full-flow-basic.json');
