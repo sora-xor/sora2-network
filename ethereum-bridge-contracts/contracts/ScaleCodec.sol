@@ -2,8 +2,8 @@
 pragma solidity =0.8.13;
 
 library ScaleCodec {
-    // Decodes a SCALE encoded uint256 by converting bytes (bid endian) to little endian format
-    function decodeUint256(bytes memory data) public pure returns (uint256) {
+    // Decodes a SCALE encoded uint256 by converting bytes (big endian) to little endian format
+    function decodeUint256(bytes memory data) external pure returns (uint256) {
         uint256 number;
         for (uint256 i = data.length; i > 0; i--) {
             number = number + uint256(uint8(data[i - 1])) * (2**(8 * (i - 1)));
@@ -13,7 +13,7 @@ library ScaleCodec {
 
     // Decodes a SCALE encoded compact unsigned integer
     function decodeUintCompact(bytes memory data)
-        public
+        external
         pure
         returns (uint256 v)
     {
@@ -21,17 +21,20 @@ library ScaleCodec {
         uint8 mode = b & 3; // bitwise operation
 
         if (mode == 0) {
-            // [0, 63]
+            // Single byte mode: [0, 63]
+            require(data.length == 1, "UintCompact decode error: Invalid data, expected 1 byte");
             return b >> 2; // right shift to remove mode bits
         } else if (mode == 1) {
-            // [64, 16383]
+            // Two-byte mode: [64, 16383]
+            require(data.length == 2, "UintCompact decode error: Invalid data, expected 2 bytes");
             uint8 bb = readByteAtIndex(data, 1); // read the second byte
             uint64 r = bb; // convert to uint64
             r <<= 6; // multiply by * 2^6
             r += b >> 2; // right shift to remove mode bits
             return r;
         } else if (mode == 2) {
-            // [16384, 1073741823]
+            // Four-byte mode [16384, 1073741823]
+            require(data.length == 4, "UintCompact decode error: Invalid data, expected 4 bytes");
             uint8 b2 = readByteAtIndex(data, 1); // read the next 3 bytes
             uint8 b3 = readByteAtIndex(data, 2);
             uint8 b4 = readByteAtIndex(data, 3);
@@ -44,11 +47,18 @@ library ScaleCodec {
             return uint256(x3);
         } else if (mode == 3) {
             // [1073741824, 4503599627370496]
-            uint8 l = b >> 2; // remove mode bits
+            uint8 len = (b >> 2) + 4; // remove mode bits
+            require(len + 1 == data.length, "UintCompact decode error: Invalid data, wrong byte number");
             require(
-                l > 32,
-                "Not supported: number cannot be greater than 32 bytes"
+                readByteAtIndex(data, uint8(data.length - 1)) != 0,
+                "UintCompact decode error: The final byte must not be a zero"
             );
+            uint256 result = 0;
+            for (uint8 i = 1; i < data.length; i++) {
+                uint256 bb = readByteAtIndex(data, i);
+                result += bb << (8 * (i - 1));
+            }
+            return result;
         } else {
             revert("Code should be unreachable");
         }
@@ -162,27 +172,27 @@ library ScaleCodec {
         v = (v >> 8) | (v << 8);
     }
 
-    function encode256(uint256 input) public pure returns (bytes32) {
+    function encode256(uint256 input) external pure returns (bytes32) {
         return bytes32(reverse256(input));
     }
 
-    function encode128(uint128 input) public pure returns (bytes16) {
+    function encode128(uint128 input) external pure returns (bytes16) {
         return bytes16(reverse128(input));
     }
 
-    function encode64(uint64 input) public pure returns (bytes8) {
+    function encode64(uint64 input) external pure returns (bytes8) {
         return bytes8(reverse64(input));
     }
 
-    function encode32(uint32 input) public pure returns (bytes4) {
+    function encode32(uint32 input) external pure returns (bytes4) {
         return bytes4(reverse32(input));
     }
 
-    function encode16(uint16 input) public pure returns (bytes2) {
+    function encode16(uint16 input) external pure returns (bytes2) {
         return bytes2(reverse16(input));
     }
 
-    function encode8(uint8 input) public pure returns (bytes1) {
+    function encode8(uint8 input) external pure returns (bytes1) {
         return bytes1(input);
     }
 }
