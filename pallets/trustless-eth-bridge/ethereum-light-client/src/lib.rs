@@ -471,11 +471,14 @@ pub mod pallet {
                     header.number,
                 );
 
-                let validity = ValidTransaction::with_tag_prefix("ImportHeaderETH")
+                let mut validity = ValidTransaction::with_tag_prefix("ImportHeaderETH")
                     .priority(T::UnsignedPriority::get())
                     .longevity(T::UnsignedLongevity::get())
-                    .and_provides(header.number)
+                    .and_provides((network_id, header.compute_hash()))
                     .propagate(true);
+                if !Headers::<T>::contains_key(network_id, header.parent_hash) {
+                    validity = validity.and_requires((network_id, header.parent_hash));
+                }
                 validity.build()
             } else {
                 log::warn!(

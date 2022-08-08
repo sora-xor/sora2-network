@@ -12,20 +12,6 @@ use substrate_gen::runtime::runtime_types::bridge_types::ethashproof::MixNonce;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
-pub fn get_verification_indices(
-    epoch_length: u64,
-    epoch: u64,
-    header_hash: H256,
-    nonce: H64,
-) -> [usize; ethash::ACCESSES] {
-    let cache_size = ethash::get_cache_size(epoch as usize);
-    let mut cache = vec![0u8; cache_size];
-    let seed = calc_seedhash(epoch_length, epoch);
-    ethash::make_cache(&mut cache[..], seed);
-    let full_size = ethash::get_full_size(epoch as usize);
-    ethash::hashimoto_light_indices(header_hash, nonce, full_size, &cache[..])
-}
-
 #[derive(Debug, Clone)]
 pub struct ProofLoader {
     base_dir: PathBuf,
@@ -64,8 +50,9 @@ impl ProofLoader {
         let epoch = header.number / epoch_length;
         let cache_merkle = self.get_cache_merkle(epoch_length, epoch).await?;
         let start = Instant::now();
-        let indexes =
-            get_verification_indices(epoch_length, epoch, header.compute_partial_hash(), nonce);
+        let indexes = self
+            .get_verification_indices(epoch_length, epoch, header.compute_partial_hash(), nonce)
+            .await;
         let mut futures = FuturesOrdered::new();
         for index in indexes {
             futures.push(super::ethashproof::dag_merkle_root::calculate_proof(
@@ -88,7 +75,7 @@ impl ProofLoader {
         let start = Instant::now();
         // It seems that the cache used here and before diffe
         // so we need to work with it separately
-        let cache_ethash = self.get_cache_ethash(epoch as usize).await;
+        let cache_ethash = self.get_cache_ethash(epoch_length, epoch).await;
         let (mix_nonce, _) = ethash::hashimoto_light(
             header.compute_partial_hash(),
             nonce,
@@ -97,6 +84,18 @@ impl ProofLoader {
         );
         debug!("Calculate mix nonce: {}s", start.elapsed().as_secs_f64());
         Ok((res, MixNonce(mix_nonce)))
+    }
+
+    pub async fn get_verification_indices(
+        &self,
+        epoch_length: u64,
+        epoch: u64,
+        header_hash: H256,
+        nonce: H64,
+    ) -> [usize; ethash::ACCESSES] {
+        let cache = self.get_cache_ethash(epoch_length, epoch).await;
+        let full_size = ethash::get_full_size(epoch as usize);
+        ethash::hashimoto_light_indices(header_hash, nonce, full_size, &cache[..])
     }
 
     async fn get_cache_merkle(
@@ -121,14 +120,14 @@ impl ProofLoader {
         Ok(cache)
     }
 
-    async fn get_cache_ethash(&self, epoch: usize) -> Arc<Vec<u8>> {
+    async fn get_cache_ethash(&self, epoch_length: u64, epoch: u64) -> Arc<Vec<u8>> {
         let mut lock = self.cache_ethash.lock().await;
-        if let Some(cache) = lock.get(&(epoch as u64)).cloned() {
+        if let Some(cache) = lock.get(&epoch).cloned() {
             return cache;
         }
-        let cache_size = ethash::get_cache_size(epoch);
+        let cache_size = ethash::get_cache_size(epoch as usize);
         let mut cache_raw: Vec<u8> = vec![0u8; cache_size];
-        let seed = ethash::get_seedhash(epoch);
+        let seed = calc_seedhash(epoch_length, epoch);
         ethash::make_cache(&mut cache_raw, seed);
         let cache = Arc::new(cache_raw);
         lock.put(epoch as u64, cache.clone());
