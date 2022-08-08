@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
-    "@nomiclabs/hardhat-etherscan": "^3.0.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@openzeppelin/contracts": "^4.3.2",
     "@openzeppelin/test-helpers": "https://github.com/Snowfork/openzeppelin-test-helpers.git#3f9c4b8",
     "@polkadot/api": "^8.3.2",
@@ -24,7 +24,7 @@
     "secp256k1": "^4.0.2",
     "solc": "^0.8.13",
     "solidity-bytes-utils": "^0.8.0",
-    "solidity-docgen": "^0.5.10",
+    "solidity-docgen": "^0.5.17",
     "temp": "^0.9.1",
     "unique-filename": "^1.1.1",
     "web3-core-helpers": "^1.7.3",
@@ -45,9 +45,10 @@
     "hardhat": "^2.9.3",
     "hardhat-deploy": "^0.11.4",
     "hardhat-gas-reporter": "^1.0.8",
+    "solc-0.8": "npm:solc@^0.8.15",
     "solidity-coverage": "^0.7.21",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.3",
-    "web3": "^1.7.3"
+    "web3": "^1.7.5"
   }
 }
