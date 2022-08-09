@@ -20,7 +20,7 @@ body:
     attributes:
       label: Steps to reproduce
       description: What are the steps to reproduce the bug ?
-      placeholder: >
+      placeholder: |
         (e.g.)
         1. Go to 
         2. Click on 
