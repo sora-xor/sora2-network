@@ -14,8 +14,6 @@ body:
     attributes:
       label: Preconditions
       description: What are the preconditions to reproduce the bug ?
-    validations:
-      required: true
    
   - type: textarea
     id: steps-to-reproduce
@@ -44,11 +42,24 @@ body:
       description: A clear and concise description of what you expected to happen.
     validations:
       required: true
+      
+  - type: dropdown
+    attributes:
+      label: Environment
+      description: In which environment did the bug occur ?
+      multiple: false
+      options:
+        - label: Development
+        - label: Test
+        - label: Stage
+        - label: Production
+      validations:
+        required: true
 
   - type: input
     id: os
     attributes:
-      label: OS
+      label: Operating System
       description: What operating system version of the OS are you using when encountering the bug ?
 
   - type: textarea
