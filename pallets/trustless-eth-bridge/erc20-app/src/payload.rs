@@ -43,7 +43,7 @@ fn unlock_function() -> Function {
 
 fn register_native_asset_function() -> Function {
     Function {
-        name: "registerAsset".into(),
+        name: "createNewToken".into(),
         state_mutability: StateMutability::NonPayable,
         constant: None,
         outputs: vec![],
@@ -69,7 +69,7 @@ fn register_native_asset_function() -> Function {
 
 fn register_erc20_asset_function() -> Function {
     Function {
-        name: "registerAsset".into(),
+        name: "addTokenToWhitelist".into(),
         state_mutability: StateMutability::NonPayable,
         constant: None,
         outputs: vec![],

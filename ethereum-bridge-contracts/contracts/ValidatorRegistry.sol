@@ -2,7 +2,8 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./utils/MerkleProof.sol";
+import "./libraries/MerkleProof.sol";
+import "./interfaces/IValidatorRegistry.sol";
 
 /**
  * @title A contract storing state on the current validator set
@@ -10,15 +11,7 @@ import "./utils/MerkleProof.sol";
  * @dev Inherits `Ownable` to ensure it can only be callable by the
  * instantiating contract account (which is the BeefyLightClient contract)
  */
-contract ValidatorRegistry is Ownable {
-    /* Events */
-
-    event ValidatorRegistryUpdated(
-        bytes32 root,
-        uint256 numOfValidators,
-        uint64 id
-    );
-
+contract ValidatorRegistry is IValidatorRegistry, Ownable {
     /* State */
 
     bytes32 public root;
@@ -34,7 +27,7 @@ contract ValidatorRegistry is Ownable {
         bytes32 _root,
         uint256 _numOfValidators,
         uint64 _id
-    ) public onlyOwner {
+    ) external override onlyOwner {
         root = _root;
         numOfValidators = _numOfValidators;
         id = _id;
@@ -52,7 +45,7 @@ contract ValidatorRegistry is Ownable {
         address addr,
         uint256 pos,
         bytes32[] memory proof
-    ) public view returns (bool) {
+    ) external view override returns (bool) {
         bytes32 hashedLeaf = keccak256(abi.encodePacked(addr));
         return
             MerkleProof.verifyMerkleLeafAtPosition(

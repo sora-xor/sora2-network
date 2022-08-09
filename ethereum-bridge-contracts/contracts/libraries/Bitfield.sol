@@ -25,7 +25,6 @@ library Bitfield {
     uint256 internal constant M128 =
         0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
 
-    uint256 internal constant ONE = uint256(1);
     using Bits for uint256;
 
     /**
@@ -37,14 +36,14 @@ library Bitfield {
         uint256[] memory prior,
         uint256 n,
         uint256 length
-    ) public pure returns (uint256[] memory bitfield) {
+    ) external pure returns (uint256[] memory bitfield) {
         require(
             n <= countSetBits(prior),
             "`n` must be <= number of set bits in `prior`"
         );
 
         bitfield = new uint256[](prior.length);
-        uint256 found = 0;
+        uint256 found;
 
         for (uint256 i = 0; found < n; i++) {
             bytes32 randomness = keccak256(abi.encode(seed + i));
@@ -69,7 +68,7 @@ library Bitfield {
     }
 
     function createBitfield(uint256[] calldata bitsToSet, uint256 length)
-        public
+        external
         pure
         returns (uint256[] memory bitfield)
     {
@@ -91,7 +90,7 @@ library Bitfield {
      * Further improvements are possible, see the article above.
      */
     function countSetBits(uint256[] memory self) public pure returns (uint256) {
-        uint256 count = 0;
+        uint256 count;
         for (uint256 i = 0; i < self.length; i++) {
             uint256 x = self[i];
 

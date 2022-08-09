@@ -24,7 +24,8 @@ cargo run --bin relayer --release -- \
 	bridge register-asset erc20 \
 	--address $USDT \
 	--name "Tether USD" \
-	--symbol "USDT"
+	--symbol "USDT" \
+	--decimals 18
 
 sleep 60
 

@@ -2,16 +2,17 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "./utils/Bits.sol";
-import "./utils/Bitfield.sol";
-import "./ValidatorRegistry.sol";
-import "./SimplifiedMMRVerification.sol";
-import "./ScaleCodec.sol";
+import "./libraries/Bits.sol";
+import "./libraries/Bitfield.sol";
+import "./libraries/ScaleCodec.sol";
+import "./interfaces/ISimplifiedMMRProof.sol";
+import "./interfaces/IValidatorRegistry.sol";
+import "./interfaces/ISimplifiedMMRVerification.sol";
 
 /**
  * @title A entry contract for the Ethereum light client
  */
-contract BeefyLightClient {
+contract BeefyLightClient is ISimplifiedMMRProof {
     using Bits for uint256;
     using Bitfield for uint256[];
     using ScaleCodec for uint256;
@@ -80,22 +81,23 @@ contract BeefyLightClient {
     struct BeefyMMRLeaf {
         uint8 version;
         uint32 parentNumber;
-        bytes32 parentHash;
         uint64 nextAuthoritySetId;
-        uint32 nextAuthoritySetLen;
+        uint32 nextAuthoritySetLen; // More tightly packed, `version` 1byte, `parentNumber` 4byte,
+        // `nextAuthoritySetId` 8byte,
+        // `nextAuthoritySetLen` 4byte now use single storage slot.
+        bytes32 parentHash;
         bytes32 nextAuthoritySetRoot;
         bytes32 randomSeed;
         bytes32 digestHash;
     }
 
     /* State */
-
-    ValidatorRegistry public validatorRegistry;
-    SimplifiedMMRVerification public mmrVerification;
+    IValidatorRegistry public validatorRegistry;
+    ISimplifiedMMRVerification public mmrVerification;
 
     // Ring buffer of latest MMR Roots
     mapping(uint256 => bytes32) public latestMMRRoots;
-    uint32 public latestMMRRootIndex = 0;
+    uint32 public latestMMRRootIndex; // default value is 0
     uint32 public constant MMR_ROOT_HISTORY_SIZE = 30;
 
     uint64 public latestBeefyBlock;
@@ -123,13 +125,13 @@ contract BeefyLightClient {
      * @param _mmrVerification The contract to be used for MMR verification
      */
     constructor(
-        ValidatorRegistry _validatorRegistry,
-        SimplifiedMMRVerification _mmrVerification,
+        address _validatorRegistry,
+        address _mmrVerification,
         uint64 _startingBeefyBlock
     ) {
-        validatorRegistry = _validatorRegistry;
-        mmrVerification = _mmrVerification;
-        latestRandomSeed = bytes32(uint(42));
+        validatorRegistry = IValidatorRegistry(_validatorRegistry);
+        mmrVerification = ISimplifiedMMRVerification(_mmrVerification);
+        latestRandomSeed = bytes32(uint256(42));
         latestBeefyBlock = _startingBeefyBlock;
     }
 
@@ -168,7 +170,7 @@ contract BeefyLightClient {
     /**
      *@notice Returns the last added root
      */
-    function getLatestMMRRoot() public view returns (bytes32) {
+    function getLatestMMRRoot() external view returns (bytes32) {
         return latestMMRRoots[latestMMRRootIndex];
     }
 
@@ -191,7 +193,7 @@ contract BeefyLightClient {
     }
 
     function createRandomBitfield(uint256[] memory validatorClaimsBitfield)
-        public
+        external
         view
         returns (uint256[] memory)
     {
@@ -207,7 +209,7 @@ contract BeefyLightClient {
     }
 
     function createInitialBitfield(uint256[] calldata bitsToSet, uint256 length)
-        public
+        external
         pure
         returns (uint256[] memory)
     {
@@ -226,21 +228,20 @@ contract BeefyLightClient {
         ValidatorProof calldata validatorProof,
         BeefyMMRLeaf calldata latestMMRLeaf,
         SimplifiedMMRProof calldata proof
-    ) public {
+    ) external {
         verifyCommitment(commitment, validatorProof);
         verifyNewestMMRLeaf(latestMMRLeaf, commitment.payload, proof);
 
         processPayload(commitment.payload, commitment.blockNumber);
 
         latestRandomSeed = latestMMRLeaf.randomSeed;
-
+        
+        emit VerificationSuccessful(msg.sender, commitment.blockNumber);
         applyValidatorSetChanges(
             latestMMRLeaf.nextAuthoritySetId,
             latestMMRLeaf.nextAuthoritySetLen,
             latestMMRLeaf.nextAuthoritySetRoot
         );
-
-        emit VerificationSuccessful(msg.sender, commitment.blockNumber);
     }
 
     /* Private Functions */
@@ -320,7 +321,7 @@ contract BeefyLightClient {
         }
     }
 
-    function requiredNumberOfSignatures() public view returns (uint256) {
+    function requiredNumberOfSignatures() external view returns (uint256) {
         return
             (validatorRegistry.numOfValidators() *
                 THRESHOLD_NUMERATOR +

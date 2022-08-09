@@ -18,7 +18,7 @@ library MerkleProof {
         uint256 pos,
         uint256 width,
         bytes32[] calldata proof
-    ) public pure returns (bool) {
+    ) external pure returns (bool) {
         bytes32 computedHash = computeRootFromProofAtPosition(
             leaf,
             pos,
@@ -41,7 +41,7 @@ library MerkleProof {
         bytes32 leaf,
         bytes32[] calldata proof,
         bool[] calldata side
-    ) public pure returns (bytes32) {
+    ) external pure returns (bytes32) {
         bytes32 node = leaf;
         for (uint256 i = 0; i < proof.length; i++) {
             if (side[i]) {
@@ -58,36 +58,30 @@ library MerkleProof {
         uint256 pos,
         uint256 width,
         bytes32[] calldata proof
-    ) public pure returns (bytes32) {
-        bytes32 computedHash = leaf;
-
+    ) public pure returns (bytes32 computedHash) {
         require(pos < width, "Merkle position is too high");
-
-        uint256 i = 0;
+        computedHash = leaf;
+        uint256 i;
+        bool computedHashLeft;
+        bytes32 proofElement;
         for (uint256 height = 0; width > 1; height++) {
-            bool computedHashLeft = pos % 2 == 0;
+            computedHashLeft = pos % 2 == 0;
 
             // check if at rightmost branch and whether the computedHash is left
             if (pos + 1 == width && computedHashLeft) {
                 // there is no sibling and also no element in proofs, so we just go up one layer in the tree
                 pos /= 2;
-                width = ((width - 1) / 2) + 1;
+                width = ((width - 1) / 2) + 1; 
+                                              
                 continue;
             }
 
             require(i < proof.length, "Merkle proof is too short");
 
-            bytes32 proofElement = proof[i];
-
-            if (computedHashLeft) {
-                computedHash = keccak256(
-                    abi.encodePacked(computedHash, proofElement)
-                );
-            } else {
-                computedHash = keccak256(
-                    abi.encodePacked(proofElement, computedHash)
-                );
-            }
+            proofElement = proof[i];
+            computedHash = computedHashLeft
+                ? keccak256(abi.encodePacked(computedHash, proofElement))
+                : keccak256(abi.encodePacked(proofElement, computedHash));
 
             pos /= 2;
             width = ((width - 1) / 2) + 1;

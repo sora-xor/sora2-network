@@ -25,8 +25,6 @@ cargo run --bin relayer --release -- \
 	-d 10 \
 	$REGISTER_ADDITIONAL_ARGS
 
-sleep 60
-
 cargo run --bin relayer --release -- \
 	--ethereum-url ws://localhost:8546 \
 	--substrate-url ws://localhost:9944 \

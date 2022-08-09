@@ -3,11 +3,12 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./ScaleCodec.sol";
-import "./IAssetRegister.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./libraries/ScaleCodec.sol";
+import "./interfaces/IAssetRegister.sol";
 import "./GenericApp.sol";
 
-contract ERC20App is GenericApp, IAssetRegister {
+contract ERC20App is GenericApp, IAssetRegister, ReentrancyGuard {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
 
@@ -31,7 +32,7 @@ contract ERC20App is GenericApp, IAssetRegister {
 
     constructor(
         address _inbound,
-        OutboundChannel _outbound,
+        address _outbound, // an address of an IOutboundChannel contract
         address migrationApp
     ) GenericApp(_inbound, _outbound) {
         _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
@@ -41,13 +42,13 @@ contract ERC20App is GenericApp, IAssetRegister {
         address _token,
         bytes32 _recipient,
         uint256 _amount
-    ) public {
+    ) external {
         require(tokens[_token], "Token is not registered");
         require(_amount > 0, "Must lock a positive amount");
 
         IERC20 token = IERC20(_token);
         uint256 beforeBalance = token.balanceOf(address(this));
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        token.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 transferredAmount = token.balanceOf(address(this)) -
             beforeBalance;
 
@@ -68,7 +69,7 @@ contract ERC20App is GenericApp, IAssetRegister {
         bytes32 _sender,
         address _recipient,
         uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         require(tokens[_token], "Token is not registered");
         require(
             _recipient != address(0x0),
@@ -76,7 +77,7 @@ contract ERC20App is GenericApp, IAssetRegister {
         );
         require(_amount > 0, "Must unlock a positive amount");
         IERC20(_token).safeTransfer(_recipient, _amount);
-        emit Unlocked(_token, _sender, _recipient, _amount);
+        emit Unlocked(_token, _sender, _recipient, _amount);  
     }
 
     // SCALE-encode payload
@@ -97,22 +98,14 @@ contract ERC20App is GenericApp, IAssetRegister {
     }
 
     /**
-     * Add new token from sidechain to the bridge white list.
-     *
+     * @dev Adds a new token from sidechain to the bridge whitelist.
      * @param token token address
      */
-    function registerAsset(address token)
-        public
+    function addTokenToWhitelist(address token)
+        external
         onlyRole(INBOUND_CHANNEL_ROLE)
     {
-        tokens[token] = true;
-    }
-
-    function registerExistingAsset(address token)
-        public
-        override
-        onlyRole(INBOUND_CHANNEL_ROLE)
-    {
+        require(!tokens[token], "Token is already registered");
         tokens[token] = true;
     }
 }

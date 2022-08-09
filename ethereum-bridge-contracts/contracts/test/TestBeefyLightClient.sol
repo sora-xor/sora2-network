@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TestBeefyLightClient is BeefyLightClient, Ownable {
     constructor(
-        ValidatorRegistry _validatorRegistry,
-        SimplifiedMMRVerification _mmrVerification,
+        address _validatorRegistry,
+        address _mmrVerification,
         uint64 _startingBeefyBlock
     )
         BeefyLightClient(
@@ -22,7 +22,7 @@ contract TestBeefyLightClient is BeefyLightClient, Ownable {
         bytes32 _authoritySetRoot,
         uint256 _authoritySetLen,
         uint64 _authoritySetId
-    ) public onlyOwner {
+    ) external onlyOwner {
         latestBeefyBlock = _startingBeefyBlock;
         latestMMRRoots[0] = bytes32(0);
         latestMMRRootIndex = 0;

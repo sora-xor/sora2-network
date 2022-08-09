@@ -3,12 +3,13 @@ pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MasterToken.sol";
-import "./ScaleCodec.sol";
-import "./IAssetRegister.sol";
+import "./libraries/ScaleCodec.sol";
+import "./interfaces/IAssetRegister.sol";
 import "./GenericApp.sol";
 
-contract SidechainApp is GenericApp, IAssetRegister {
+contract SidechainApp is GenericApp, IAssetRegister, ReentrancyGuard {
     using ScaleCodec for uint256;
 
     mapping(address => bool) public tokens;
@@ -32,7 +33,7 @@ contract SidechainApp is GenericApp, IAssetRegister {
 
     constructor(
         address _inbound,
-        OutboundChannel _outbound,
+        address _outbound,
         address migrationApp
     ) GenericApp(_inbound, _outbound) {
         _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
@@ -42,7 +43,7 @@ contract SidechainApp is GenericApp, IAssetRegister {
         address _token,
         bytes32 _recipient,
         uint256 _amount
-    ) public {
+    ) external nonReentrant {
         require(tokens[_token], "Token is not registered");
 
         ERC20Burnable mtoken = ERC20Burnable(_token);
@@ -50,7 +51,6 @@ contract SidechainApp is GenericApp, IAssetRegister {
         emit Burned(_token, msg.sender, _recipient, _amount);
 
         bytes memory call = mintCall(_token, msg.sender, _recipient, _amount);
-
         outbound.submit(msg.sender, call);
     }
 
@@ -59,7 +59,7 @@ contract SidechainApp is GenericApp, IAssetRegister {
         bytes32 _sender,
         address _recipient,
         uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         require(tokens[_token], "Token is not registered");
 
         MasterToken tokenInstance = MasterToken(_token);
@@ -95,16 +95,17 @@ contract SidechainApp is GenericApp, IAssetRegister {
 
     /**
      * Add new token from sidechain to the bridge white list.
-     *
+     * @dev Should be called from a contract or an instance (INBOUND_CHANNEL_ROLE) which performs necessary checks.
+     * No extra checks are applied to the token deploying process.
      * @param name token title
      * @param symbol token symbol
      * @param sidechainAssetId token id on the sidechain
      */
-    function registerAsset(
+    function createNewToken(
         string memory name,
         string memory symbol,
         bytes32 sidechainAssetId
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) {
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(
             name,
@@ -121,11 +122,12 @@ contract SidechainApp is GenericApp, IAssetRegister {
         outbound.submit(msg.sender, call);
     }
 
-    function registerExistingAsset(address token)
-        public
+    function addTokenToWhitelist(address token)
+        external
         override
         onlyRole(INBOUND_CHANNEL_ROLE)
     {
+        require(!tokens[token], "Token is already registered");
         tokens[token] = true;
     }
 }

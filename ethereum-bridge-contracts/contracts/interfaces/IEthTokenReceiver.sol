@@ -2,6 +2,6 @@
 
 pragma solidity 0.8.15;
 
-interface EthTokenReceiver {
+interface IEthTokenReceiver {
     function receivePayment() external payable;
 }

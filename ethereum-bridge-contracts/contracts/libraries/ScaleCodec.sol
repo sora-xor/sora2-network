@@ -12,7 +12,7 @@ library ScaleCodec {
     }
 
     // Decodes a SCALE encoded compact unsigned integer
-    function decodeUintCompact(bytes memory data)
+    function decodeUintCompact(bytes calldata data)
         external
         pure
         returns (uint256 v)
@@ -48,13 +48,14 @@ library ScaleCodec {
         } else if (mode == 3) {
             // [1073741824, 4503599627370496]
             uint8 len = (b >> 2) + 4; // remove mode bits
-            require(len + 1 == data.length, "UintCompact decode error: Invalid data, wrong byte number");
+            uint dataLength = data.length;
+            require(len + 1 == dataLength, "UintCompact decode error: Invalid data, wrong byte number");
             require(
-                readByteAtIndex(data, uint8(data.length - 1)) != 0,
+                readByteAtIndex(data, uint8(dataLength - 1)) != 0,
                 "UintCompact decode error: The final byte must not be a zero"
             );
-            uint256 result = 0;
-            for (uint8 i = 1; i < data.length; i++) {
+            uint256 result;
+            for (uint8 i = 1; i < dataLength; i++) {
                 uint256 bb = readByteAtIndex(data, i);
                 result += bb << (8 * (i - 1));
             }

@@ -2,12 +2,17 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./RewardSource.sol";
-import "./ScaleCodec.sol";
-import "./EthTokenReceiver.sol";
+import "./interfaces/IRewardSource.sol";
+import "./libraries/ScaleCodec.sol";
+import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
-contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
+contract ETHApp is
+    GenericApp,
+    IRewardSource,
+    IEthTokenReceiver,
+    ReentrancyGuard
+{
     using ScaleCodec for uint256;
 
     event Locked(address sender, bytes32 recipient, uint256 amount);
@@ -21,12 +26,12 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
     constructor(
         address rewarder,
         address _inbound,
-        OutboundChannel _outbound
+        address _outbound // an address of an IOutboundChannel contract
     ) GenericApp(_inbound, _outbound) {
         _setupRole(REWARD_ROLE, rewarder);
     }
 
-    function lock(bytes32 _recipient) public payable {
+    function lock(bytes32 _recipient) external payable {
         require(msg.value > 0, "Value of transaction must be positive");
 
         emit Locked(msg.sender, _recipient, msg.value);
@@ -40,8 +45,11 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
         bytes32 _sender,
         address payable _recipient,
         uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(_recipient != address(0x0), "Recipient must not be a zero address");
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
+        require(
+            _recipient != address(0x0),
+            "Recipient must not be a zero address"
+        );
         require(_amount > 0, "Must unlock a positive amount");
         (bool success, ) = _recipient.call{value: _amount}("");
         require(success, "Transfer failed.");
@@ -70,9 +78,15 @@ contract ETHApp is GenericApp, RewardSource, EthTokenReceiver, ReentrancyGuard {
         onlyRole(REWARD_ROLE)
         nonReentrant
     {
-        require(_recipient != address(0x0), "Recipient must not be a zero address");
-        (bool success, ) = _recipient.call{value: _amount}("");
-        require(success, "Transfer failed.");
+        if (address(this).balance >= _amount) {
+            require(
+                _recipient != address(0x0),
+                "Recipient must not be a zero address"
+            );
+            (bool success, ) = _recipient.call{value: _amount}("");
+            require(success, "Transfer failed.");
+            emit Rewarded(_recipient, _amount);
+        }
     }
 
     function receivePayment() external payable override {}

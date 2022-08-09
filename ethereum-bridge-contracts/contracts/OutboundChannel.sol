@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./IOutboundChannel.sol";
+import "./interfaces/IOutboundChannel.sol";
 import "./ChannelAccess.sol";
 
 // OutboundChannel is a channel that sends ordered messages with an increasing nonce. It will have
@@ -17,18 +17,14 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
 
     uint256 private _fee;
 
-    event Message(address source, uint64 nonce, uint256 fee, bytes payload);
-
-    event FeeChanged(uint256 oldFee, uint256 newFee);
-
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     // Once-off post-construction call to set initial configuration.
     function initialize(
-        address[] memory configUpdaters,
-        address[] memory defaultOperators,
+        address[] calldata configUpdaters,
+        address[] calldata defaultOperators,
         uint256 initial_fee
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Set initial configuration

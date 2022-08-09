@@ -10,7 +10,7 @@ contract TestToken721 is ERC721URIStorage {
         _mint(to, tokenId);
     }
 
-    function mintWithTokenURI(address to, uint256 tokenId, string memory _tokenURI) public {
+    function mintWithTokenURI(address to, uint256 tokenId, string memory _tokenURI) external {
         mint(to, tokenId);
         _setTokenURI(tokenId, _tokenURI);
     }

@@ -11,6 +11,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
+import '@typechain/hardhat';
 import { HardhatUserConfig, task } from "hardhat/config";
 
 const getenv = (name: string) => {
@@ -47,7 +48,7 @@ const config: HardhatUserConfig = {
       chainId: 3,
       url: `https://ropsten.infura.io/v3/${infuraKey}`,
       accounts: [ropstenPrivateKey],
-    }
+    },
   },
   solidity: {
     version: "0.8.15"
@@ -64,7 +65,12 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: etherscanKey
-  }
+  },
+  typechain: {
+    outDir: './typechain',
+    target: 'ethers-v5',
+    dontOverrideCompile: false,
+  },
 };
 
 task("contracts", "List of contracts").setAction(contracts.main);

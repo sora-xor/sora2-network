@@ -12,7 +12,7 @@
         "type": "address"
       },
       {
-        "internalType": "contract OutboundChannel",
+        "internalType": "address",
         "name": "_outbound",
         "type": "address"
       }
@@ -276,7 +276,7 @@
     "name": "outbound",
     "outputs": [
       {
-        "internalType": "contract OutboundChannel",
+        "internalType": "contract IOutboundChannel",
         "name": "",
         "type": "address"
       }

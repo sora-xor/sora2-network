@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TestOutboundChannel is OutboundChannel, Ownable {
     constructor() OutboundChannel() {}
 
-    function reset() public onlyOwner {
+    function reset() external onlyOwner {
         nonce = 0;
     }
 }

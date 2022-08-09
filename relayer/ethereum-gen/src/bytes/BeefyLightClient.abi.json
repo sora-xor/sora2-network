@@ -2,12 +2,12 @@
   {
     "inputs": [
       {
-        "internalType": "contract ValidatorRegistry",
+        "internalType": "address",
         "name": "_validatorRegistry",
         "type": "address"
       },
       {
-        "internalType": "contract SimplifiedMMRVerification",
+        "internalType": "address",
         "name": "_mmrVerification",
         "type": "address"
       },
@@ -309,11 +309,6 @@
             "type": "uint32"
           },
           {
-            "internalType": "bytes32",
-            "name": "parentHash",
-            "type": "bytes32"
-          },
-          {
             "internalType": "uint64",
             "name": "nextAuthoritySetId",
             "type": "uint64"
@@ -322,6 +317,11 @@
             "internalType": "uint32",
             "name": "nextAuthoritySetLen",
             "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentHash",
+            "type": "bytes32"
           },
           {
             "internalType": "bytes32",
@@ -469,7 +469,7 @@
     "name": "mmrVerification",
     "outputs": [
       {
-        "internalType": "contract SimplifiedMMRVerification",
+        "internalType": "contract ISimplifiedMMRVerification",
         "name": "",
         "type": "address"
       }
@@ -636,11 +636,6 @@
             "type": "uint32"
           },
           {
-            "internalType": "bytes32",
-            "name": "parentHash",
-            "type": "bytes32"
-          },
-          {
             "internalType": "uint64",
             "name": "nextAuthoritySetId",
             "type": "uint64"
@@ -649,6 +644,11 @@
             "internalType": "uint32",
             "name": "nextAuthoritySetLen",
             "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentHash",
+            "type": "bytes32"
           },
           {
             "internalType": "bytes32",
@@ -683,7 +683,7 @@
             "type": "uint64"
           }
         ],
-        "internalType": "struct SimplifiedMMRProof",
+        "internalType": "struct ISimplifiedMMRProof.SimplifiedMMRProof",
         "name": "proof",
         "type": "tuple"
       }
@@ -711,7 +711,7 @@
     "name": "validatorRegistry",
     "outputs": [
       {
-        "internalType": "contract ValidatorRegistry",
+        "internalType": "contract IValidatorRegistry",
         "name": "",
         "type": "address"
       }
@@ -739,7 +739,7 @@
             "type": "uint64"
           }
         ],
-        "internalType": "struct SimplifiedMMRProof",
+        "internalType": "struct ISimplifiedMMRProof.SimplifiedMMRProof",
         "name": "proof",
         "type": "tuple"
       }
@@ -770,11 +770,6 @@
             "type": "uint32"
           },
           {
-            "internalType": "bytes32",
-            "name": "parentHash",
-            "type": "bytes32"
-          },
-          {
             "internalType": "uint64",
             "name": "nextAuthoritySetId",
             "type": "uint64"
@@ -783,6 +778,11 @@
             "internalType": "uint32",
             "name": "nextAuthoritySetLen",
             "type": "uint32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentHash",
+            "type": "bytes32"
           },
           {
             "internalType": "bytes32",
@@ -822,7 +822,7 @@
             "type": "uint64"
           }
         ],
-        "internalType": "struct SimplifiedMMRProof",
+        "internalType": "struct ISimplifiedMMRProof.SimplifiedMMRProof",
         "name": "proof",
         "type": "tuple"
       }

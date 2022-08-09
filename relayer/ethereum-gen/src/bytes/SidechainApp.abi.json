@@ -7,7 +7,7 @@
         "type": "address"
       },
       {
-        "internalType": "contract OutboundChannel",
+        "internalType": "address",
         "name": "_outbound",
         "type": "address"
       },
@@ -186,6 +186,42 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "addTokenToWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "sidechainAssetId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "createNewToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "role",
         "type": "bytes32"
@@ -285,48 +321,12 @@
     "name": "outbound",
     "outputs": [
       {
-        "internalType": "contract OutboundChannel",
+        "internalType": "contract IOutboundChannel",
         "name": "",
         "type": "address"
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "sidechainAssetId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registerAsset",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "registerExistingAsset",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

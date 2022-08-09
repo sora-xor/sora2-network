@@ -8,7 +8,7 @@ contract TestToken721Enumerable is ERC721Enumerable {
         ERC721(_name, _symbol)
     {}
 
-    function mint(address to, uint256 tokenId) public {
+    function mint(address to, uint256 tokenId) external {
         _mint(to, tokenId);
     }
 }

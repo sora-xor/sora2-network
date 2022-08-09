@@ -2,7 +2,7 @@
   {
     "inputs": [
       {
-        "internalType": "contract BeefyLightClient",
+        "internalType": "address",
         "name": "_beefyLightClient",
         "type": "address"
       }
@@ -406,7 +406,7 @@
             "type": "uint64"
           }
         ],
-        "internalType": "struct SimplifiedMMRProof",
+        "internalType": "struct ISimplifiedMMRProof.SimplifiedMMRProof",
         "name": "proof",
         "type": "tuple"
       }
