@@ -53,8 +53,8 @@ body:
         - label: Test
         - label: Stage
         - label: Production
-      validations:
-        required: true
+    validations:
+      required: true
 
   - type: input
     id: os
