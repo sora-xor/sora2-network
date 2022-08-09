@@ -31,7 +31,7 @@ body:
     id: feature-result
     attributes:
       label: So that
-      description: Who is going to use the new feature ?
+      description: What is the goal of the new feature ? What problem does the new feature solve ?
       placeholder: I can get rewards by supporting the SORA ecosystem
     validations:
       required: true
@@ -58,5 +58,5 @@ body:
     attributes:
       label: Postconditions
       description: Is there any postcondition that should be fulfilled after the feature has been used ?
-      placeholder: Account needs to have 1337 XOR
+      placeholder: Account has the chosen amount of XOR locked
       
