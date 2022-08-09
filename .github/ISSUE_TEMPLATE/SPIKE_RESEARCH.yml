@@ -17,7 +17,7 @@ body:
       placeholder: |
         We don''t understand how technology X works and so we cannot implement Y.
         - What does Z do in technology X
-        - How does S interacts with M ?
+        - How does S interact with M ?
     validations:
       required: true
    
