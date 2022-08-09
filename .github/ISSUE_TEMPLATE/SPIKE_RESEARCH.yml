@@ -9,7 +9,7 @@ body:
       value: |
         Let us guide you through the creation of the issue that will make sure we have everything setted to give an answer to your question :)
     
-  - type: input
+  - type: textarea
     id: spike-problem
     attributes:
       label: Problem statement
