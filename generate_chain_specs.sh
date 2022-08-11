@@ -25,5 +25,5 @@ if [ "$build_stage" = 1 ]; then
 fi
 
 if [ "$build_bridge_stage" = 1 ]; then
-  cargo run --bin framenode --release --features "private-net include-real-files" -- build-spec --chain bridge-staging-coded --raw > node/chain_spec/src/bytes/chain_spec_bridge_staging.json || exit 1
+  cargo run --bin framenode --release --features "private-net include-real-files enable-beefy" -- build-spec --chain bridge-staging-coded --raw > node/chain_spec/src/bytes/chain_spec_bridge_staging.json || exit 1
 fi
