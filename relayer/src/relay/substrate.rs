@@ -412,7 +412,7 @@ impl Relay {
     }
 
     pub async fn sync_historical_commitments(&self) -> AnyResult<()> {
-        let beefy_block_gap = self.beefy.maximum_block_gap().call().await?;
+        let beefy_block_gap = self.beefy.maximum_block_gap().call().await? - 1;
         let epoch_duration = self.sub.api().constants().babe().epoch_duration(false)?;
         let sessions_per_era = self
             .sub
@@ -530,10 +530,13 @@ impl Relay {
             let has_messages = self
                 .check_new_messages(justification.commitment.block_number - 1)
                 .await?;
+            let is_mandatory = justification.commitment.validator_set_id
+                < justification.leaf_proof.leaf.beefy_next_authority_set.id;
             let should_send = !ignore_unneeded_commitments
                 || has_messages
+                || is_mandatory
                 || (justification.commitment.block_number as u64
-                    > latest_block + beefy_block_gap - 10);
+                    > latest_block + beefy_block_gap - 20);
             if should_send {
                 // TODO: Better async message handler
                 let _ = self
