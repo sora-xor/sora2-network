@@ -7,10 +7,13 @@ use std::path::PathBuf;
 pub struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
+    /// Bridge contract address
     #[clap(short, long)]
     contract: H160,
+    /// Assets to migrate
     #[clap(short, long)]
     input: PathBuf,
 }

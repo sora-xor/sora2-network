@@ -16,23 +16,33 @@ pub(crate) struct Command {
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum AssetKind {
+    /// Register ERC20 asset with given asset id
     ExistingERC20 {
+        /// ERC20 asset id
         #[clap(long)]
         asset_id: AssetId32<PredefinedAssetId>,
+        /// ERC20 token address
         #[clap(long)]
         address: H160,
     },
+    /// Register ERC20 asset with creating new asset
     ERC20 {
+        /// ERC20 token address
         #[clap(long)]
         address: H160,
+        /// ERC20 asset name
         #[clap(long)]
         name: String,
+        /// ERC20 asset symbol
         #[clap(long)]
         symbol: String,
+        /// ERC20 asset decimals
         #[clap(long)]
         decimals: u8,
     },
+    /// Register native asset with given asset id
     Native {
+        /// Native asset id
         #[clap(long)]
         asset_id: AssetId32<PredefinedAssetId>,
     },

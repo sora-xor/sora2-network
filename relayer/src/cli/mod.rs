@@ -7,6 +7,8 @@ mod old_bridge;
 mod subscribe_beefy;
 pub mod utils;
 
+use std::path::PathBuf;
+
 pub use utils::*;
 
 use crate::prelude::*;
@@ -20,18 +22,27 @@ pub struct Cli {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Substrate account derive URI
     #[clap(long, global = true)]
     substrate_key: Option<String>,
+    /// File with Substrate account derive URI
     #[clap(long, global = true)]
     substrate_key_file: Option<String>,
+    /// Substrate node endpoint
     #[clap(long, global = true)]
     substrate_url: Option<String>,
+    /// Ethereum private key
     #[clap(long, global = true)]
     ethereum_key: Option<String>,
+    /// File with Ethereum private key
     #[clap(long, global = true)]
     ethereum_key_file: Option<String>,
+    /// Ethereum node endpoint
     #[clap(long, global = true)]
     ethereum_url: Option<Url>,
+    /// Path for gas estimations
+    #[clap(long, global = true)]
+    gas_metrics_path: Option<PathBuf>,
     #[clap(subcommand)]
     commands: Commands,
 }
@@ -44,13 +55,19 @@ impl Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Subscribe beefy to new commitments
     SubscribeBeefy(subscribe_beefy::Command),
+    /// Fetch Ethereum header
     FetchEthereumHeader(fetch_ethereum_header::Command),
+    /// Mint test token (work for tokens with mint method)
     MintTestToken(mint_test_token::Command),
+    /// Operations with bridge
     #[clap(subcommand)]
     Bridge(bridge::Commands),
+    /// Operations with old bridge
     #[clap(subcommand)]
     OldBridge(old_bridge::Commands),
+    /// Calculate DAG roots for light client
     CalcDagRoots(calc_dag_roots::Command),
 }
 

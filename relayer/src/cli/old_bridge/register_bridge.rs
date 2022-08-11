@@ -6,10 +6,13 @@ use bridge_types::H160;
 pub struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
+    /// Bridge peers
     #[clap(short, long)]
     peers: Vec<AccountId>,
+    /// Bridge contract address
     #[clap(short, long)]
     contract: H160,
 }

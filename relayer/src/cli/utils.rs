@@ -154,6 +154,8 @@ pub struct EthereumClient {
     ethereum_key_file: Option<String>,
     #[clap(long, global = true, from_global)]
     ethereum_url: Option<Url>,
+    #[clap(long, global = true, from_global)]
+    gas_metrics_path: Option<PathBuf>,
 }
 
 impl EthereumClient {
@@ -182,7 +184,10 @@ impl EthereumClient {
         let eth = self
             .get_unsigned_ethereum()
             .await?
-            .sign_with_string(self.get_key_string()?.as_str())
+            .sign_with_string(
+                self.get_key_string()?.as_str(),
+                self.gas_metrics_path.clone(),
+            )
             .await?;
         Ok(eth)
     }

@@ -13,12 +13,19 @@ use crate::substrate::AssetId;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Download registered asset list
     DumpAssets(dump_assets::Command),
+    /// Send messages from Sora to Ethereum
     Relay(relay::Command),
+    /// Send tokens from Ethereum to Sora
     SendToSora(send_to_sora::Command),
+    /// Register assets
     RegisterAssets(register_assets::Command),
+    /// Register bridge
     RegisterBridge(register_bridge::Command),
+    /// Prepare bridge for migration
     PrepareForMigration(prepare_migration::Command),
+    /// Migrate bridge to another contract
     Migrate(migrate::Command),
 }
 

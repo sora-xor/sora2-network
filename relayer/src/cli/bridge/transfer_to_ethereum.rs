@@ -9,10 +9,13 @@ pub(crate) struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Recipient address
     #[clap(short, long)]
     recipient: H160,
+    /// Amount of tokens to transfer
     #[clap(short, long)]
     amount: u128,
+    /// Asset id to transfer
     #[clap(long)]
     asset_id: AssetId32<PredefinedAssetId>,
 }

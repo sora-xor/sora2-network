@@ -6,8 +6,10 @@ use std::path::PathBuf;
 pub struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
+    /// Assets to register
     #[clap(short, long)]
     input: PathBuf,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
 }

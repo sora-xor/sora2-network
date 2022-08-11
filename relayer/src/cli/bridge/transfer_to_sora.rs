@@ -8,12 +8,16 @@ pub(crate) struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Asset id to transfer
     #[clap(long)]
     asset_id: AssetId,
+    /// Recipient account id
     #[clap(long, short)]
     recipient: AccountId,
+    /// Amount of tokens to transfer
     #[clap(long, short)]
     amount: u128,
+    /// Not send transaction to Ethereum
     #[clap(long)]
     dry_run: bool,
 }

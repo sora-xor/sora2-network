@@ -10,6 +10,7 @@ pub use ethers::core::k256::ecdsa::SigningKey;
 use ethers::prelude::builders::ContractCall;
 pub use ethers::prelude::*;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -36,18 +37,29 @@ impl UnsignedClient {
         Ok(Self(Arc::new(provider)))
     }
 
-    pub async fn signed(&self, key: SigningKey) -> AnyResult<SignedClient> {
+    pub async fn signed(
+        &self,
+        key: SigningKey,
+        gas_metrics: Option<PathBuf>,
+    ) -> AnyResult<SignedClient> {
         let wallet = Wallet::from(key);
         let chain_id = self.get_chainid().await?;
         let wallet = wallet.with_chain_id(chain_id.as_u64());
         let client = SignerMiddleware::new(self.0.deref().clone(), wallet);
-        Ok(SignedClient(Arc::new(client)))
+        Ok(SignedClient {
+            inner: Arc::new(client),
+            gas_metrics,
+        })
     }
 
-    pub async fn sign_with_string(&self, key: &str) -> AnyResult<SignedClient> {
+    pub async fn sign_with_string(
+        &self,
+        key: &str,
+        gas_metrics: Option<PathBuf>,
+    ) -> AnyResult<SignedClient> {
         let key =
             SigningKey::from_bytes(hex::decode(key.trim()).context("hex decode")?.as_slice())?;
-        Ok(self.signed(key).await?)
+        Ok(self.signed(key, gas_metrics).await?)
     }
 
     pub fn inner(&self) -> Arc<UnsignedClientInner> {
@@ -56,17 +68,20 @@ impl UnsignedClient {
 }
 
 #[derive(Clone, Debug)]
-pub struct SignedClient(Arc<SignedClientInner>);
+pub struct SignedClient {
+    inner: Arc<SignedClientInner>,
+    gas_metrics: Option<PathBuf>,
+}
 
 impl Deref for SignedClient {
     type Target = SignedClientInner;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.inner
     }
 }
 
 impl SignedClient {
-    pub async fn new(url: Url, key: SigningKey) -> AnyResult<Self> {
+    pub async fn new(url: Url, key: SigningKey, gas_metrics: Option<PathBuf>) -> AnyResult<Self> {
         debug!("Connect to {}", url);
         let provider =
             Provider::new(UniversalClient::new(url).await?).interval(Duration::from_millis(100));
@@ -74,15 +89,18 @@ impl SignedClient {
         let chain_id = provider.get_chainid().await?;
         let wallet = wallet.with_chain_id(chain_id.as_u64());
         let client = SignerMiddleware::new(provider, wallet);
-        Ok(Self(Arc::new(client)))
+        Ok(Self {
+            inner: Arc::new(client),
+            gas_metrics,
+        })
     }
 
     pub fn unsigned(&self) -> UnsignedClient {
-        UnsignedClient(Arc::new(self.0.inner().clone()))
+        UnsignedClient(Arc::new(self.inner.inner().clone()))
     }
 
     pub fn inner(&self) -> Arc<SignedClientInner> {
-        self.0.clone()
+        self.inner.clone()
     }
 
     pub async fn save_gas_price<D, M>(
@@ -103,11 +121,14 @@ impl SignedClient {
             additional,
             gas
         );
-        let mut file = std::fs::OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open("gas_prices")?;
-        file.write_all(metric.as_bytes())?;
+        debug!("Gas metric: {}", metric);
+        if let Some(path) = &self.gas_metrics {
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(path)?;
+            file.write_all(metric.as_bytes())?;
+        }
         Ok(())
     }
 }

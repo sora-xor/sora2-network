@@ -11,14 +11,22 @@ use crate::cli::prelude::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
+    /// Relay operations for bridge
     #[clap(subcommand)]
     Relay(relay::Commands),
+    /// Register bridge
     RegisterBridge(register_bridge::Command),
+    /// Register bridge app
     RegisterApp(register_app::Command),
+    /// Register asset
     RegisterAsset(register_asset::Command),
+    /// Make test transfers through bridge
     TestTransfers(test_transfers::Command),
+    /// Transfer tokens from Ethereum to Sora
     TransferToSora(transfer_to_sora::Command),
+    /// Transfer tokens from Sora to Ethereum
     TransferToEthereum(transfer_to_ethereum::Command),
+    /// Reset bridge contracts
     Reset(reset::Command),
 }
 

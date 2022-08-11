@@ -11,10 +11,13 @@ use rayon::slice::ParallelSlice;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
+    /// Start epoch for calculation
     #[clap(long, short)]
     start: u64,
+    /// Amount of epochs to calculate
     #[clap(long, short)]
     epochs: u64,
+    /// Length of epoch
     #[clap(long, short)]
     length: u64,
 }

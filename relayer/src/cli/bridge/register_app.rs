@@ -17,35 +17,50 @@ pub(crate) struct Command {
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum Apps {
+    /// Register ERC20App
     ERC20App {
+        /// ERC20App contract address
         #[clap(long)]
         contract: H160,
     },
+    /// Register NativeApp
     NativeApp {
+        /// SidechainApp contract address
         #[clap(long)]
         contract: H160,
     },
+    /// Register EthApp with predefined ETH asset id
     EthAppPredefined {
         #[clap(long)]
         contract: H160,
     },
+    /// Register EthApp with creating new ETH asset
     EthAppNew {
+        /// EthApp contract address
         #[clap(long)]
         contract: H160,
+        /// ETH asset name
         #[clap(long)]
         name: String,
+        /// ETH asset symbol
         #[clap(long)]
         symbol: String,
+        /// ETH asset decimals
         #[clap(long)]
         decimals: u8,
     },
+    /// Register EthApp with existing ETH asset
     EthAppExisting {
+        /// EthApp contract address
         #[clap(long)]
         contract: H160,
+        /// ETH asset id
         #[clap(long)]
         asset_id: AssetId,
     },
+    /// Register MigrationApp
     MigrationApp {
+        /// MigrationApp contract address
         #[clap(long)]
         contract: H160,
     },

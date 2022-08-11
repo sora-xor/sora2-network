@@ -6,7 +6,9 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
+    /// Relay Etheerum headers and messages to Sora
     Ethereum(ethereum_relay::Command),
+    /// Relay Beefy commitments and bridge messages to Ethereum
     Substrate(substrate_relay::Command),
 }
 

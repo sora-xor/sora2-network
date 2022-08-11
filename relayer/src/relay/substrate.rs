@@ -128,12 +128,10 @@ impl Relay {
         let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;
 
-        let mut call = self.beefy.submit_signature_commitment(
-            eth_commitment,
-            validator_proof,
-            latest_mmr_leaf,
-            proof,
-        );
+        let mut call = self
+            .beefy
+            .submit_signature_commitment(eth_commitment, validator_proof, latest_mmr_leaf, proof)
+            .legacy();
         call.tx.set_from(self.eth.address());
         Ok(call)
     }
@@ -146,6 +144,7 @@ impl Relay {
     ) -> AnyResult<E> {
         debug!("Call '{}' check", name);
         call.call().await?;
+        debug!("Call '{}' estimate gas", name);
         self.eth.save_gas_price(&call, "relay").await?;
         debug!("Call '{}' send", name);
         let tx = call
@@ -282,7 +281,8 @@ impl Relay {
             let messages_total_gas = batch.total_max_gas;
             let mut call = self
                 .inbound_channel
-                .submit(batch, leaf_bytes, proof.clone());
+                .submit(batch, leaf_bytes, proof.clone())
+                .legacy();
 
             debug!("Fill submit messages");
             self.eth.fill_transaction(&mut call.tx, call.block).await?;

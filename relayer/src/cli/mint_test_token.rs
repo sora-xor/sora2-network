@@ -3,10 +3,13 @@ use bridge_types::H160;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
+    /// Token address
     #[clap(long)]
     token: H160,
+    /// Amount of tokens to mint
     #[clap(long, short)]
     amount: u128,
+    /// Not send transaction to Ethereum
     #[clap(long)]
     dry_run: bool,
     #[clap(flatten)]

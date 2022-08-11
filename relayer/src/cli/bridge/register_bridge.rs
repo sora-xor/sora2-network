@@ -9,8 +9,10 @@ pub(crate) struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Confirmations until block is considered finalized
     #[clap(long, short)]
     descendants_until_final: u64,
+    /// OutboundChannel contract address
     #[clap(long)]
     outbound_channel: H160,
     #[clap(flatten)]

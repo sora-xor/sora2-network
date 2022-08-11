@@ -4,6 +4,7 @@ use crate::cli::prelude::*;
 pub struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
 }

@@ -8,6 +8,7 @@ pub(crate) struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// EthApp contract address
     #[clap(long)]
     eth_app: H160,
 }

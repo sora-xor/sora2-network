@@ -7,6 +7,7 @@ use substrate_gen::AssetKind;
 pub struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
+    /// Output file path
     #[clap(long, short)]
     output: PathBuf,
 }

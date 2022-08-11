@@ -6,18 +6,25 @@ use bridge_types::H160;
 pub struct Command {
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Bridge contract address
     #[clap(short, long)]
     contract: H160,
+    /// Token address to transfer
     #[clap(short, long)]
     token: Option<H160>,
+    /// Asset id to transfer
     #[clap(short, long)]
     asset_id: Option<AssetId>,
+    /// Approve ERC20 token transfer
     #[clap(long)]
     approval: bool,
+    /// Mint ERC20 token
     #[clap(long)]
     mint: bool,
+    /// Recipient account id
     #[clap(short, long)]
     to: AccountId,
+    /// Amount of tokens to transfer
     #[clap(short, long)]
     amount: u128,
 }

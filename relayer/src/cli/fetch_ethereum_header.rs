@@ -4,8 +4,10 @@ use ethers::prelude::*;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
+    /// Blocks until the Ethereum header is considered final
     #[clap(long, short)]
     descendants_until_final: Option<usize>,
+    /// Block number to fetch
     #[clap(long, short)]
     number: Option<usize>,
     #[clap(flatten)]

@@ -9,8 +9,10 @@ pub struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
+    /// Relay transaction with given hash
     #[clap(long)]
     hash: Option<H256>,
 }

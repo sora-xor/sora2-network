@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::cli::prelude::*;
 use crate::relay::substrate::RelayBuilder;
 
@@ -7,6 +9,7 @@ pub(crate) struct Command {
     sub: SubstrateClient,
     #[clap(flatten)]
     eth: EthereumClient,
+    /// Send all Beefy commitments
     #[clap(short, long)]
     send_unneeded_commitments: bool,
 }
@@ -16,14 +19,19 @@ impl Command {
         let eth = self.eth.get_signed_ethereum().await?;
         let sub = self.sub.get_unsigned_substrate().await?;
         let network_id = eth.inner().get_chainid().await.context("fetch chain id")?;
-        let eth_app = sub
-            .api()
-            .storage()
-            .eth_app()
-            .addresses(false, &network_id, None)
-            .await?
-            .ok_or(anyhow!("Network is not registered"))?
-            .0;
+        let eth_app = loop {
+            let eth_app = sub
+                .api()
+                .storage()
+                .eth_app()
+                .addresses(false, &network_id, None)
+                .await?;
+            if let Some((eth_app, _)) = eth_app {
+                break eth_app;
+            }
+            debug!("Waiting for bridge to be available");
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        };
         let eth_app = ethereum_gen::ETHApp::new(eth_app, eth.inner());
         let inbound_channel_address = eth_app
             .inbound()
