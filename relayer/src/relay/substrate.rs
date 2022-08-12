@@ -514,6 +514,7 @@ impl Relay {
         self.sync_historical_commitments()
             .await
             .context("sync historical commitments")?;
+        let mut validator_set_id = 0;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification =
@@ -530,8 +531,8 @@ impl Relay {
             let has_messages = self
                 .check_new_messages(justification.commitment.block_number - 1)
                 .await?;
-            let is_mandatory = justification.commitment.validator_set_id
-                < justification.leaf_proof.leaf.beefy_next_authority_set.id;
+            let is_mandatory =
+                validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
             let should_send = !ignore_unneeded_commitments
                 || has_messages
                 || is_mandatory
@@ -539,6 +540,7 @@ impl Relay {
                     > latest_block + beefy_block_gap - 20);
             if should_send {
                 // TODO: Better async message handler
+                validator_set_id = justification.leaf_proof.leaf.beefy_next_authority_set.id;
                 let _ = self
                     .clone()
                     .send_commitment(justification)
