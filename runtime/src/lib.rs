@@ -2677,14 +2677,7 @@ impl_runtime_apis! {
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
-            #[cfg(feature = "enable-beefy")]
-            {
                 Beefy::validator_set()
-            }
-            #[cfg(not(feature = "enable-beefy"))]
-            {
-                None
-            }
         }
     }
 

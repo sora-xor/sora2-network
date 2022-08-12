@@ -308,5 +308,3 @@ runtime-benchmarks = [
 reduced-pswap-reward-periods = []
 
 build-wasm-binary = []
-
-enable-beefy = []
