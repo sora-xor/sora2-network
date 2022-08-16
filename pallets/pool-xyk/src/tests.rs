@@ -304,8 +304,8 @@ fn can_exchange_all_directions() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         assert!(crate::Pallet::<Runtime>::can_exchange(&dex_id, &gt, &bp));
         assert!(crate::Pallet::<Runtime>::can_exchange(&dex_id, &bp, &gt));
@@ -322,8 +322,8 @@ fn quote_case_exact_input_for_output_base_first() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -351,8 +351,8 @@ fn test_deducing_fee() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         let (amount_a, fee_a): (Balance, Balance) =
             simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -419,8 +419,8 @@ fn quote_case_exact_input_for_output_base_second() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -451,8 +451,8 @@ fn quote_case_exact_output_for_input_base_first() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -480,8 +480,8 @@ fn quote_case_exact_output_for_input_base_second() {
             BlackPepper.into(),
             balance!(100000),
             balance!(200000),
-            0,
-            0,
+            balance!(100000),
+            balance!(200000),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
@@ -612,6 +612,108 @@ fn depositliq_valid_range_but_desired_is_corrected() {
                 balance!(350000),
                 balance!(143000),
             ));
+        },
+    )]);
+}
+
+#[test]
+fn cannot_deposit_zero_values() {
+    crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(0),
+                    balance!(100),
+                    balance!(100),
+                    balance!(100),
+                ),
+                crate::Error::<Runtime>::InvalidDepositLiquidityBasicAssetAmount
+            );
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(100),
+                    balance!(0),
+                    balance!(100),
+                    balance!(100),
+                ),
+                crate::Error::<Runtime>::InvalidDepositLiquidityTargetAssetAmount
+            );
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(100),
+                    balance!(100),
+                    balance!(0),
+                    balance!(100),
+                ),
+                crate::Error::<Runtime>::InvalidDepositLiquidityBasicAssetAmount
+            );
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(1000),
+                    balance!(100),
+                    balance!(100),
+                    balance!(0),
+                ),
+                crate::Error::<Runtime>::InvalidDepositLiquidityTargetAssetAmount
+            );
+        },
+    )]);
+}
+
+#[test]
+fn cannot_withdraw_zero_values() {
+    crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(360000),
+                balance!(999000),
+                balance!(350000),
+                balance!(143000),
+            ));
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::withdraw_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(8784),
+                    balance!(0),
+                    balance!(4300)
+                ),
+                crate::Error::<Runtime>::InvalidWithdrawLiquidityBasicAssetAmount
+            );
+            common::assert_noop_transactional!(
+                crate::Pallet::<Runtime>::withdraw_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(8784),
+                    balance!(4300),
+                    balance!(0)
+                ),
+                crate::Error::<Runtime>::InvalidWithdrawLiquidityTargetAssetAmount
+            );
         },
     )]);
 }
@@ -1196,8 +1298,8 @@ fn withdraw_all_liquidity() {
                     GoldenTicket.into(),
                     BlackPepper.into(),
                     balance!(227683.9915321233119025),
-                    0,
-                    0
+                    1,
+                    1
                 ),
                 crate::Error::<Runtime>::SourceBalanceOfLiquidityTokensIsNotLargeEnough
             );
@@ -1208,8 +1310,8 @@ fn withdraw_all_liquidity() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 balance!(227683.9915321233119024),
-                0,
-                0
+                balance!(1),
+                balance!(1),
             ));
 
             assert_eq!(PoolProviders::<Runtime>::get(repr, &ALICE()), None);
@@ -1745,8 +1847,8 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             base_asset,
             target_asset_a,
             user_balance_a,
-            balance!(0),
-            balance!(0)
+            balance!(1),
+            balance!(1)
         ));
 
         assert_eq!(

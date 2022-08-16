@@ -720,8 +720,8 @@ pub mod pallet {
                 asset_id.into(),
                 funds_for_liquidity,
                 tokens_for_liquidity,
-                balance!(0),
-                balance!(0),
+                funds_for_liquidity,
+                tokens_for_liquidity,
             )?;
 
             // Burn unused tokens for liquidity

@@ -277,10 +277,6 @@ impl<T: Config> Pallet<T> {
             input_asset_a,
             input_asset_b,
         )?;
-        ensure!(
-            input_a_desired >= input_a_min && input_b_desired >= input_b_min,
-            Error::<T>::InvalidMinimumBoundValueOfBalance
-        );
         let action = PolySwapActionStructOf::<T>::DepositLiquidity(DepositLiquidityActionOf::<T> {
             client_account: None,
             receiver_account: None,
@@ -681,13 +677,23 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
-
             ensure!(
                 assets::AssetInfos::<T>::get(input_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
-
+            ensure!(
+                input_a_desired > 0 && input_a_min > 0,
+                Error::<T>::InvalidDepositLiquidityBasicAssetAmount
+            );
+            ensure!(
+                input_b_desired > 0 && input_b_min > 0,
+                Error::<T>::InvalidDepositLiquidityTargetAssetAmount
+            );
+            ensure!(
+                input_a_desired >= input_a_min && input_b_desired >= input_b_min,
+                Error::<T>::InvalidMinimumBoundValueOfBalance
+            );
             Pallet::<T>::deposit_liquidity_unchecked(
                 source,
                 dex_id,
@@ -712,13 +718,19 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
-
             ensure!(
                 assets::AssetInfos::<T>::get(output_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
                 Error::<T>::UnableToOperateWithIndivisibleAssets
             );
-
+            ensure!(
+                output_a_min > 0,
+                Error::<T>::InvalidWithdrawLiquidityBasicAssetAmount
+            );
+            ensure!(
+                output_b_min > 0,
+                Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
+            );
             Pallet::<T>::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
