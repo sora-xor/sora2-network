@@ -73,7 +73,7 @@ pub struct FullDeps<C, P> {
 /// Instantiate full RPC extensions.
 pub fn create_full<C, P, B>(
     deps: FullDeps<C, P>,
-    backend: Arc<B>,
+    _backend: Arc<B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -138,8 +138,6 @@ where
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
-    C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
-
     P: TransactionPool + Send + Sync + 'static,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
     B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
@@ -149,17 +147,13 @@ where
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
+    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
+    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pallet_mmr_rpc::{Mmr, MmrApiServer};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
-    use substrate_frame_rpc_system::{System, SystemApiServer};
-    // use farming_rpc::*;
-    use basic_channel_rpc::{BasicChannelAPIServer, BasicChannelClient};
-    use incentivized_channel_rpc::{IncentivizedChannelAPIServer, IncentivizedChannelClient};
-    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
-    use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
-    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use substrate_frame_rpc_system::{System, SystemApiServer};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
 
@@ -193,11 +187,6 @@ where
     io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
-    io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
-    if let Some(storage) = backend.offchain_storage() {
-        io.merge(BasicChannelClient::new(storage.clone()).into_rpc())?;
-        io.merge(IncentivizedChannelClient::new(storage).into_rpc())?;
-    }
     io.merge(VestedRewardsClient::new(client).into_rpc())?;
     Ok(io)
 }

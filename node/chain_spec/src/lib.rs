@@ -48,15 +48,14 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BasicInboundChannelConfig, BasicOutboundChannelConfig, BeefyConfig,
-    BeefyId, BridgeMultisigConfig, CouncilConfig, CrowdloanReward, DEXAPIConfig, DEXManagerConfig,
-    DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
-    GrandpaConfig, ImOnlineId, IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
+    CrowdloanReward, DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig,
+    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId,
+    GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
+    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
+    TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
@@ -621,7 +620,6 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    use framenode_runtime::EthAppConfig;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -662,18 +660,6 @@ fn testnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
-
-    let trustless_eth_bridge_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
-    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
-
-    let trustless_eth_bridge_fees_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
-    let trustless_eth_bridge_fees_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
-
-    let treasury_tech_account_id = framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
-    let treasury_account_id = framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -742,18 +728,6 @@ fn testnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
-        ),
-        (
-            trustless_eth_bridge_account_id.clone(),
-            trustless_eth_bridge_tech_account_id.clone(),
-        ),
-        (
-            trustless_eth_bridge_fees_account_id.clone(),
-            trustless_eth_bridge_fees_tech_account_id.clone(),
-        ),
-        (
-            treasury_account_id.clone(),
-            treasury_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -950,24 +924,6 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
-        migration_app: Default::default(),
-        erc20_app: Default::default(),
-        eth_app: Default::default(),
-        ethereum_light_client: Default::default(),
-        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(80),
-            ..Default::default()
-        },
-        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            fee: 10000,
-            interval: 10,
-            ..Default::default()
-        },
-        basic_inbound_channel: Default::default(),
-        basic_outbound_channel: BasicOutboundChannelConfig {
-            interval: 10,
-            ..Default::default()
-        },
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -1509,15 +1465,6 @@ fn mainnet_genesis(
         )
         .unwrap();
 
-    let trustless_eth_bridge_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
-    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
-
-    let trustless_eth_bridge_fees_tech_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
-    let trustless_eth_bridge_fees_account_id =
-        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
-
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
@@ -1583,14 +1530,6 @@ fn mainnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
-        ),
-        (
-            trustless_eth_bridge_account_id.clone(),
-            trustless_eth_bridge_tech_account_id.clone(),
-        ),
-        (
-            trustless_eth_bridge_fees_account_id.clone(),
-            trustless_eth_bridge_fees_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -1760,25 +1699,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        migration_app: Default::default(),
         vested_rewards: Default::default(),
-        erc20_app: Default::default(),
-        eth_app: Default::default(),
-        ethereum_light_client: Default::default(),
-        incentivized_inbound_channel: IncentivizedInboundChannelConfig {
-            reward_fraction: Perbill::from_percent(80),
-            ..Default::default()
-        },
-        incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            fee: 10000,
-            interval: 10,
-            ..Default::default()
-        },
-        basic_inbound_channel: Default::default(),
-        basic_outbound_channel: BasicOutboundChannelConfig {
-            interval: 10,
-            ..Default::default()
-        },
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -1905,8 +1826,6 @@ fn mainnet_genesis(
         balances: BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_account_id.clone(), 0),
-                (trustless_eth_bridge_fees_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),

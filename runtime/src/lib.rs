@@ -48,14 +48,11 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::types::ChannelId;
-use bridge_types::H256;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, XOR};
+use common::Description;
 use constants::currency::deposit;
 use constants::time::*;
-use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
@@ -63,8 +60,6 @@ use frame_support::weights::ConstantMultiplier;
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
-use beefy_primitives::mmr::MmrLeafVersion;
-use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -82,18 +77,18 @@ use pallet_staking::sora::ValBurnedNotifier;
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
-use sp_core::{Encode, OpaqueMetadata, H160, U256};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
-    TransactionLongevity, TransactionPriority, TransactionSource, TransactionValidity,
+    TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    DispatchResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -115,7 +110,6 @@ pub use common::{
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
-pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -140,10 +134,7 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
-use frame_support::traits::{
-    Contains, Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons,
-};
-use sp_runtime::traits::Keccak256;
+use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -1512,48 +1503,6 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeFeesAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTreasuryTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTreasuryAccountId: AccountId = {
-        let tech_account_id = GetTreasuryTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1758,45 +1707,6 @@ impl pallet_beefy::Config for Runtime {
     type MaxAuthorities = MaxAuthorities;
 }
 
-impl pallet_mmr::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = b"mmr";
-    type Hashing = Keccak256;
-    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
-    type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
-    type WeightInfo = ();
-    type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
-}
-
-impl leaf_provider::Config for Runtime {
-    type Event = Event;
-    type Hashing = Keccak256;
-    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
-}
-
-parameter_types! {
-    /// Version of the produced MMR leaf.
-    ///
-    /// The version consists of two parts;
-    /// - `major` (3 bits)
-    /// - `minor` (5 bits)
-    ///
-    /// `major` should be updated only if decoding the previous MMR Leaf format from the payload
-    /// is not possible (i.e. backward incompatible change).
-    /// `minor` should be updated if fields are added to the previous MMR Leaf, which given SCALE
-    /// encoding does not prevent old leafs from being decoded.
-    ///
-    /// Hence we expect `major` to be changed really rarely (think never).
-    /// See [`MmrLeafVersion`] type documentation for more details.
-    pub LeafVersion: MmrLeafVersion = MmrLeafVersion::new(0, 0);
-}
-
-impl pallet_beefy_mmr::Config for Runtime {
-    type LeafVersion = LeafVersion;
-    type BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
-    type LeafExtra = H256;
-    type BeefyDataProvider = leaf_provider::Pallet<Runtime>;
-}
-
 parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
@@ -1860,184 +1770,6 @@ parameter_types! {
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
     pub const SoraParliamentShare: Percent = Percent::from_percent(10);
-}
-
-// Ethereum bridge pallets
-
-pub struct CallFilter;
-impl Contains<Call> for CallFilter {
-    fn contains(_: &Call) -> bool {
-        true
-    }
-}
-
-impl dispatch::Config for Runtime {
-    type Origin = Origin;
-    type Event = Event;
-    type MessageId = bridge_types::types::MessageId;
-    type Call = Call;
-    type CallFilter = CallFilter;
-}
-
-use basic_channel::{inbound as basic_channel_inbound, outbound as basic_channel_outbound};
-use bridge_types::CHANNEL_INDEXING_PREFIX;
-use incentivized_channel::{
-    inbound as incentivized_channel_inbound, outbound as incentivized_channel_outbound,
-};
-
-pub struct OutboundRouter<T>(PhantomData<T>);
-
-pub use frame_system::RawOrigin;
-impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for OutboundRouter<T>
-where
-    T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
-{
-    fn submit(
-        network_id: bridge_types::EthNetworkId,
-        channel_id: ChannelId,
-        who: &RawOrigin<T::AccountId>,
-        target: H160,
-        max_gas: U256,
-        payload: &[u8],
-    ) -> DispatchResult {
-        match channel_id {
-            // TODO: use only incentivized with specifiable `max_gas`
-            ChannelId::Basic => {
-                basic_channel::outbound::Pallet::<T>::submit(who, network_id, target, payload)
-            }
-            ChannelId::Incentivized => incentivized_channel::outbound::Pallet::<T>::submit(
-                who, network_id, target, max_gas, payload,
-            ),
-        }
-    }
-}
-
-parameter_types! {
-    pub const IncentivizedMaxMessagePayloadSize: u64 = 256;
-    pub const IncentivizedMaxMessagesPerCommit: u64 = 20;
-    pub const IncentivizedMaxTotalGasLimit: u64 = 5_000_000;
-    pub const BasicMaxMessagePayloadSize: u64 = 2048;
-    pub const BasicMaxMessagesPerCommit: u64 = 4;
-    pub const Decimals: u32 = 12;
-}
-
-impl basic_channel_inbound::Config for Runtime {
-    type Event = Event;
-    type Verifier = ethereum_light_client::Pallet<Runtime>;
-    type MessageDispatch = dispatch::Pallet<Runtime>;
-    type WeightInfo = ();
-    type OutboundRouter = OutboundRouter<Self>;
-}
-
-impl basic_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
-    type Event = Event;
-    type Hashing = Keccak256;
-    type MaxMessagePayloadSize = BasicMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = BasicMaxMessagesPerCommit;
-    type WeightInfo = ();
-}
-
-pub struct FeeConverter;
-impl Convert<U256, Balance> for FeeConverter {
-    fn convert(amount: U256) -> Balance {
-        common::eth::unwrap_balance(amount, Decimals::get())
-            .expect("Should not panic unless runtime is misconfigured")
-    }
-}
-
-parameter_types! {
-    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
-}
-
-impl incentivized_channel_inbound::Config for Runtime {
-    type Event = Event;
-    type Verifier = ethereum_light_client::Pallet<Runtime>;
-    type MessageDispatch = dispatch::Pallet<Runtime>;
-    type FeeConverter = FeeConverter;
-    type WeightInfo = ();
-    type FeeAssetId = FeeCurrency;
-    type OutboundRouter = OutboundRouter<Self>;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type TreasuryTechAccountId = GetTreasuryTechAccountId;
-}
-
-impl incentivized_channel_outbound::Config for Runtime {
-    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
-    type Event = Event;
-    type Hashing = Keccak256;
-    type MaxMessagePayloadSize = IncentivizedMaxMessagePayloadSize;
-    type MaxMessagesPerCommit = IncentivizedMaxMessagesPerCommit;
-    type MaxTotalGasLimit = IncentivizedMaxTotalGasLimit;
-    type FeeCurrency = FeeCurrency;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const DescendantsUntilFinalized: u8 = 30;
-    pub const VerifyPoW: bool = true;
-    // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
-    // We don't want to have not relevant imports be stuck in transaction pool
-    // for too long
-    pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
-}
-
-impl ethereum_light_client::Config for Runtime {
-    type Event = Event;
-    type DescendantsUntilFinalized = DescendantsUntilFinalized;
-    type VerifyPoW = VerifyPoW;
-    type WeightInfo = ();
-    type UnsignedPriority = EthereumLightClientPriority;
-    type UnsignedLongevity = EthereumLightClientLongevity;
-    type ImportSignature = Signature;
-    type Submitter = <Signature as Verify>::Signer;
-}
-
-pub struct ChannelAppRegistry;
-
-impl bridge_types::traits::AppRegistry for ChannelAppRegistry {
-    fn register_app(
-        network_id: bridge_types::EthNetworkId,
-        app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
-        BasicInboundChannel::register_app(network_id, app)?;
-        IncentivizedInboundChannel::register_app(network_id, app)?;
-        Ok(())
-    }
-
-    fn deregister_app(
-        network_id: bridge_types::EthNetworkId,
-        app: H160,
-    ) -> frame_support::dispatch::DispatchResult {
-        BasicInboundChannel::deregister_app(network_id, app)?;
-        IncentivizedInboundChannel::deregister_app(network_id, app)?;
-        Ok(())
-    }
-}
-
-impl eth_app::Config for Runtime {
-    type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
-    type CallOrigin = EnsureEthereumAccount;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type WeightInfo = ();
-}
-
-impl erc20_app::Config for Runtime {
-    type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
-    type CallOrigin = EnsureEthereumAccount;
-    type AppRegistry = ChannelAppRegistry;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
-    type WeightInfo = ();
-}
-
-impl migration_app::Config for Runtime {
-    type Event = Event;
-    type OutboundRouter = OutboundRouter<Runtime>;
-    type WeightInfo = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -2114,19 +1846,7 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
 
         // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 
@@ -2201,19 +1921,7 @@ construct_runtime! {
 
 
         // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
     }
 }
 
@@ -2265,8 +1973,6 @@ pub type Executive = frame_executive::Executive<
     AllPalletsWithSystem,
     migrations::Migrations,
 >;
-
-pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -2739,77 +2445,54 @@ impl_runtime_apis! {
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
-            #[cfg(feature = "enable-beefy")]
-            {
-                Beefy::validator_set()
-            }
-            #[cfg(not(feature = "enable-beefy"))]
-            {
-                None
-            }
+            // dummy implementation because we don't want to enable BEEFY now
+            None
         }
     }
 
     impl mmr::MmrApi<Block, Hash> for Runtime {
-        fn generate_proof(leaf_index: u64)
+        fn generate_proof(_leaf_index: u64)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(vec![leaf_index])
-                .and_then(|(leaves, proof)| Ok((
-                    mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
-                    mmr::BatchProof::into_single_leaf_proof(proof)?
-                )))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
+        fn verify_proof(_leaf: mmr::EncodableOpaqueLeaf, _proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-            let leaf: MmrLeaf = leaf
-                .into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)?;
-            Mmr::verify_leaves(vec![leaf], mmr::Proof::into_batch_proof(proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn verify_proof_stateless(
-            root: Hash,
-            leaf: mmr::EncodableOpaqueLeaf,
-            proof: mmr::Proof<Hash>
+            _root: Hash,
+            _leaf: mmr::EncodableOpaqueLeaf,
+            _proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
-            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, vec![node], mmr::Proof::into_batch_proof(proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn mmr_root() -> Result<Hash, mmr::Error> {
-            Ok(Mmr::mmr_root())
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn generate_batch_proof(leaf_indices: Vec<mmr::LeafIndex>)
+        fn generate_batch_proof(_leaf_indices: Vec<u64>)
             -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(leaf_indices)
-                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn verify_batch_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::BatchProof<Hash>)
+        fn verify_batch_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::BatchProof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-            let leaves = leaves.into_iter().map(|leaf|
-                leaf.into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)).collect::<Result<Vec<MmrLeaf>, mmr::Error>>()?;
-            Mmr::verify_leaves(leaves, proof)
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn verify_batch_proof_stateless(
-            root: Hash,
-            leaves: Vec<mmr::EncodableOpaqueLeaf>,
-            proof: mmr::BatchProof<Hash>
+            _root: Hash,
+            _leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            _proof: mmr::BatchProof<Hash>
         ) -> Result<(), mmr::Error> {
-            let nodes = leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
-            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, nodes, proof)
+            Err(mmr::Error::PalletNotIncluded)
         }
     }
 
@@ -2847,13 +2530,6 @@ impl_runtime_apis! {
         }
     }
 
-    impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
-        fn latest_digest() -> bridge_types::types::AuxiliaryDigest {
-            LeafProvider::latest_digest()
-        }
-
-    }
-
     #[cfg(feature = "runtime-benchmarks")]
     impl frame_benchmarking::Benchmark<Block> for Runtime {
         fn benchmark_metadata(extra: bool) -> (
@@ -2885,7 +2561,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
             list_benchmark!(list, extra, xor_fee, XorFee);
-            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
@@ -2943,7 +2618,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            // add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
