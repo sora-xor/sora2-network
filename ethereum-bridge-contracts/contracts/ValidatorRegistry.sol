@@ -20,18 +20,18 @@ contract ValidatorRegistry is IValidatorRegistry, Ownable {
 
     /**
      * @notice Updates the validator registry and number of validators
-     * @param _root The new root
-     * @param _numOfValidators The new number of validators
+     * @param newRoot The new root
+     * @param newNumOfValidators The new number of validators
      */
     function update(
-        bytes32 _root,
-        uint256 _numOfValidators,
-        uint64 _id
+        bytes32 newRoot,
+        uint256 newNumOfValidators,
+        uint64 newId
     ) external override onlyOwner {
-        root = _root;
-        numOfValidators = _numOfValidators;
-        id = _id;
-        emit ValidatorRegistryUpdated(_root, _numOfValidators, _id);
+        root = newRoot;
+        numOfValidators = newNumOfValidators;
+        id = newId;
+        emit ValidatorRegistryUpdated(root, numOfValidators, id);
     }
 
     /**

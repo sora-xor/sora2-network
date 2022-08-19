@@ -7,6 +7,10 @@ import "./libraries/ScaleCodec.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
+/** 
+* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
+* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
+*/
 contract ETHApp is
     GenericApp,
     IRewardSource,
@@ -25,67 +29,69 @@ contract ETHApp is
 
     constructor(
         address rewarder,
-        address _inbound,
-        address _outbound // an address of an IOutboundChannel contract
-    ) GenericApp(_inbound, _outbound) {
+        address inboundChannel,
+        address outboundChannel // an address of an IOutboundChannel contract
+    ) GenericApp(inboundChannel, outboundChannel) {
         _setupRole(REWARD_ROLE, rewarder);
     }
 
-    function lock(bytes32 _recipient) external payable {
+    function lock(bytes32 recipient) external payable {
         require(msg.value > 0, "Value of transaction must be positive");
 
-        emit Locked(msg.sender, _recipient, msg.value);
+        emit Locked(msg.sender, recipient, msg.value);
 
-        bytes memory call = encodeCall(msg.sender, _recipient, msg.value);
+        bytes memory call = encodeCall(msg.sender, recipient, msg.value);
 
         outbound.submit(msg.sender, call);
     }
 
     function unlock(
-        bytes32 _sender,
-        address payable _recipient,
-        uint256 _amount
+        bytes32 sender,
+        address payable recipient,
+        uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         require(
-            _recipient != address(0x0),
+            recipient != address(0x0),
             "Recipient must not be a zero address"
         );
-        require(_amount > 0, "Must unlock a positive amount");
-        (bool success, ) = _recipient.call{value: _amount}("");
+        require(amount > 0, "Must unlock a positive amount");
+        // slither-disable-next-line arbitrary-send,low-level-calls
+        (bool success, ) = recipient.call{value: amount}("");
         require(success, "Transfer failed.");
-        emit Unlocked(_sender, _recipient, _amount);
+        emit Unlocked(sender, recipient, amount);
     }
 
     // SCALE-encode payload
     function encodeCall(
-        address _sender,
-        bytes32 _recipient,
-        uint256 _amount
+        address sender,
+        bytes32 recipient,
+        uint256 amount
     ) private pure returns (bytes memory) {
         return
             abi.encodePacked(
                 MINT_CALL,
-                _sender,
+                sender,
                 //bytes1(0x00), // Encode recipient as MultiAddress::Id
-                _recipient,
-                _amount.encode256()
+                recipient,
+                amount.encode256()
             );
     }
 
-    function reward(address payable _recipient, uint256 _amount)
+    function reward(address payable recipient, uint256 amount)
         external
         override
         onlyRole(REWARD_ROLE)
         nonReentrant
     {
-        if (address(this).balance >= _amount) {
+        if (address(this).balance >= amount) {
             require(
-                _recipient != address(0x0),
+                recipient != address(0x0),
                 "Recipient must not be a zero address"
             );
-            (bool success, ) = _recipient.call{value: _amount}("");
+            // slither-disable-next-line arbitrary-send,low-level-calls
+            (bool success, ) = recipient.call{value: amount}("");
             require(success, "Transfer failed.");
-            emit Rewarded(_recipient, _amount);
+            emit Rewarded(recipient, amount);
         }
     }
 

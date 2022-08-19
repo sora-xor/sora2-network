@@ -235,7 +235,7 @@ contract BeefyLightClient is ISimplifiedMMRProof {
         processPayload(commitment.payload, commitment.blockNumber);
 
         latestRandomSeed = latestMMRLeaf.randomSeed;
-        
+
         emit VerificationSuccessful(msg.sender, commitment.blockNumber);
         applyValidatorSetChanges(
             latestMMRLeaf.nextAuthoritySetId,
@@ -322,11 +322,7 @@ contract BeefyLightClient is ISimplifiedMMRProof {
     }
 
     function requiredNumberOfSignatures() external view returns (uint256) {
-        return
-            (validatorRegistry.numOfValidators() *
-                THRESHOLD_NUMERATOR +
-                THRESHOLD_DENOMINATOR -
-                1) / THRESHOLD_DENOMINATOR;
+        return requiredNumberOfSignatures(validatorRegistry.numOfValidators());
     }
 
     function requiredNumberOfSignatures(uint256 numValidators)

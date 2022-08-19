@@ -1,0 +1,4 @@
+{
+    "detectors_to_exclude": "too-many-digits, solc-version, reentrancy-events",
+    "filter_paths": "@openzeppelin"
+}

@@ -52,14 +52,14 @@ abstract contract ChannelAccess {
     }
 
     // Perform the authorization check
-    function isOperatorFor(address _operator, address _origin)
+    function isOperatorFor(address operator, address origin)
         public
         view
         returns (bool)
     {
         return
-            _operator == _origin ||
-            defaultOperators[_operator] ||
-            operators[_origin][_operator];
+            operator == origin ||
+            defaultOperators[operator] ||
+            operators[origin][operator];
     }
 }

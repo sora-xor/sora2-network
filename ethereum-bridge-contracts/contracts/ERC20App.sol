@@ -39,25 +39,25 @@ contract ERC20App is GenericApp, IAssetRegister, ReentrancyGuard {
     }
 
     function lock(
-        address _token,
-        bytes32 _recipient,
-        uint256 _amount
+        address token,
+        bytes32 recipient,
+        uint256 amount
     ) external {
-        require(tokens[_token], "Token is not registered");
-        require(_amount > 0, "Must lock a positive amount");
+        require(tokens[token], "Token is not registered");
+        require(amount > 0, "Must lock a positive amount");
 
-        IERC20 token = IERC20(_token);
-        uint256 beforeBalance = token.balanceOf(address(this));
-        token.safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 transferredAmount = token.balanceOf(address(this)) -
+        IERC20 _token = IERC20(token);
+        uint256 beforeBalance = _token.balanceOf(address(this));
+        _token.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 transferredAmount = _token.balanceOf(address(this)) -
             beforeBalance;
 
-        emit Locked(_token, msg.sender, _recipient, transferredAmount);
+        emit Locked(token, msg.sender, recipient, transferredAmount);
 
         bytes memory call = encodeCall(
-            _token,
+            token,
             msg.sender,
-            _recipient,
+            recipient,
             transferredAmount
         );
 
@@ -65,35 +65,35 @@ contract ERC20App is GenericApp, IAssetRegister, ReentrancyGuard {
     }
 
     function unlock(
-        address _token,
-        bytes32 _sender,
-        address _recipient,
-        uint256 _amount
+        address token,
+        bytes32 sender,
+        address recipient,
+        uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(tokens[_token], "Token is not registered");
+        require(tokens[token], "Token is not registered");
         require(
-            _recipient != address(0x0),
+            recipient != address(0x0),
             "Recipient must not be a zero address"
         );
-        require(_amount > 0, "Must unlock a positive amount");
-        IERC20(_token).safeTransfer(_recipient, _amount);
-        emit Unlocked(_token, _sender, _recipient, _amount);  
+        require(amount > 0, "Must unlock a positive amount");
+        IERC20(token).safeTransfer(recipient, amount);
+        emit Unlocked(token, sender, recipient, amount);  
     }
 
     // SCALE-encode payload
     function encodeCall(
-        address _token,
-        address _sender,
-        bytes32 _recipient,
-        uint256 _amount
+        address token,
+        address sender,
+        bytes32 recipient,
+        uint256 amount
     ) private pure returns (bytes memory) {
         return
             abi.encodePacked(
                 MINT_CALL,
-                _token,
-                _sender,
-                _recipient,
-                _amount.encode256()
+                token,
+                sender,
+                recipient,
+                amount.encode256()
             );
     }
 

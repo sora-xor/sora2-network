@@ -43,6 +43,7 @@ library Bitfield {
         );
 
         bitfield = new uint256[](prior.length);
+        // slither-disable-next-line uninitialized-local
         uint256 found;
 
         for (uint256 i = 0; found < n; i++) {

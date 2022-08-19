@@ -11,6 +11,10 @@ import "./interfaces/IAssetRegister.sol";
 import "./interfaces/IEthTokenReceiver.sol";
 import "./GenericApp.sol";
 
+/** 
+* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
+* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
+*/
 contract MigrationApp is GenericApp, IEthTokenReceiver, ReentrancyGuard {
     using ScaleCodec for uint256;
     using SafeERC20 for IERC20;
@@ -29,10 +33,12 @@ contract MigrationApp is GenericApp, IEthTokenReceiver, ReentrancyGuard {
         address[] calldata erc20nativeTokens
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
         IAssetRegister app = IAssetRegister(contractAddress);
-        uint256 length = erc20nativeTokens.length; // might be cheaper for huge arrays
+        uint256 length = erc20nativeTokens.length; 
         for (uint256 i = 0; i < length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
+            // slither-disable-next-line calls-loop
             token.safeTransfer(contractAddress, token.balanceOf(address(this)));
+            // slither-disable-next-line calls-loop
             app.addTokenToWhitelist(erc20nativeTokens[i]);
         }
         emit MigratedNativeErc20(contractAddress);
@@ -44,8 +50,9 @@ contract MigrationApp is GenericApp, IEthTokenReceiver, ReentrancyGuard {
         nonReentrant
     {
         IEthTokenReceiver receiver = IEthTokenReceiver(contractAddress);
-        emit MigratedEth(contractAddress);
+        // slither-disable-next-line arbitrary-send
         receiver.receivePayment{value: address(this).balance}();
+        emit MigratedEth(contractAddress);
     }
 
     function migrateSidechain(
@@ -53,10 +60,12 @@ contract MigrationApp is GenericApp, IEthTokenReceiver, ReentrancyGuard {
         address[] calldata sidechainTokens
     ) external onlyRole(INBOUND_CHANNEL_ROLE) {
         IAssetRegister app = IAssetRegister(contractAddress);
-        uint256 length = sidechainTokens.length; // might be cheaper for huge arrays
+        uint256 length = sidechainTokens.length; 
         for (uint256 i = 0; i < length; i++) {
             Ownable token = Ownable(sidechainTokens[i]);
+            // slither-disable-next-line calls-loop
             token.transferOwnership(contractAddress);
+            // slither-disable-next-line calls-loop
             app.addTokenToWhitelist(sidechainTokens[i]);
         }
         emit MigratedSidechain(contractAddress);
