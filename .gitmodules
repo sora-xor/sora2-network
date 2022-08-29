@@ -1,0 +1,3 @@
+[submodule "pallets/trustless-eth-bridge/types/tests/fixtures/tests"]
+	path = pallets/trustless-eth-bridge/types/tests/fixtures/tests
+	url = https://github.com/ethereum/tests.git

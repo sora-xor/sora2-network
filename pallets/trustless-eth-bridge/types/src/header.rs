@@ -24,7 +24,7 @@ pub struct HeaderId {
     pub hash: H256,
 }
 
-const EMPTY_OMMERS_HASH: [u8; 32] =
+pub const EMPTY_OMMERS_HASH: [u8; 32] =
     hex!("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347");
 
 /// An Ethereum block header.

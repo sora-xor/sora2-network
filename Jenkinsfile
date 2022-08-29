@@ -48,6 +48,20 @@ pipeline {
                 }
             }
         }
+        stage('Init submodule') {
+            environment {
+                GIT_SSH_COMMAND = "ssh -o UserKnownHostsFile=/dev/null StrictHostKeyChecking=no"
+            }
+            steps {
+                script {
+                    sshagent(['soramitsu-bot-ssh']) {
+                        sh """
+                        git submodule update --init --recursive
+                        """
+                    }
+                }
+            }
+        }
         stage('Build & Tests') {
             environment {
                 PACKAGE = 'framenode-runtime'
