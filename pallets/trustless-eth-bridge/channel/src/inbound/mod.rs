@@ -128,7 +128,7 @@ pub mod pallet {
             message: Message,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
-            debug!("Recieved message from {:?}", relayer);
+            debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
             let log = T::Verifier::verify(network_id, &message)?;
 

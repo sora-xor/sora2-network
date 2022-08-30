@@ -1042,6 +1042,16 @@ pub mod pallet {
                 message.proof.tx_index, message.proof.block_hash,
             );
 
+            // Check transaction status according https://eips.ethereum.org/EIPS/eip-658
+            if receipt.post_state_or_status != vec![1] {
+                log::trace!(
+                    target: "ethereum-light-client",
+                    "Receipt has failed status for transaction at index {} in block {}",
+                    message.proof.tx_index, message.proof.block_hash,
+                );
+                return Err(Error::<T>::InvalidProof.into());
+            }
+
             let log: Log = rlp::decode(&message.data).map_err(|_| Error::<T>::DecodeFailed)?;
 
             if !receipt.contains_log(&log) {
