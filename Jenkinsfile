@@ -1,6 +1,6 @@
 @Library('jenkins-library')
 
-String agentLabel             = 'docker-build-agent-docker-20'
+String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
@@ -13,6 +13,11 @@ String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
+
+String contractsPath          = 'ethereum-bridge-contracts'
+String contractsEnvFile       = 'env.template'
+String solcVersion            = '0.8.14'
+String nodeVersion            = '14.16.1'
 
 pipeline {
     options {
@@ -44,6 +49,15 @@ pipeline {
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
                         }
+                    }
+                }
+            }
+        }
+        stage('Solidity Static Scanner') {
+            steps {
+                script {
+                    docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
+                        slither(contractsPath, contractsEnvFile, solcVersion, nodeVersion)
                     }
                 }
             }
