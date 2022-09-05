@@ -55,7 +55,7 @@ impl ProofLoader {
             .await;
         let mut futures = FuturesOrdered::new();
         for index in indexes {
-            futures.push(super::ethashproof::dag_merkle_root::calculate_proof(
+            futures.push_back(super::ethashproof::dag_merkle_root::calculate_proof(
                 epoch_length,
                 epoch,
                 index as u32,

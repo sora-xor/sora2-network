@@ -106,8 +106,8 @@ bridge-channel-rpc = { path = "../pallets/trustless-eth-bridge/channel/rpc" }
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
-assert_cmd = "0.12"
-nix = "0.20"
+assert_cmd = "2.0.4"
+nix = "^0.22.2"
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies
