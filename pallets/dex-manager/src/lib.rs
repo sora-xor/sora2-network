@@ -104,6 +104,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::{GetPalletVersion, PalletVersion};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -114,7 +115,24 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> frame_support::weights::Weight {
+            let weight = match Pallet::<T>::storage_version() {
+                Some(version) if version == PalletVersion::new(0, 1, 0) => {
+                    <DEXInfos<T>>::insert(
+                        T::DEXId::from(common::DEXId::PolkaswapXSTUSD),
+                        DEXInfo::<T> {
+                            is_public: true,
+                            base_asset_id: T::AssetId::from(common::XSTUSD),
+                        },
+                    );
+                    T::DbWeight::get().writes(1)
+                }
+                _ => Default::default(),
+            };
+            weight
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}

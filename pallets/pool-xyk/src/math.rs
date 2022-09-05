@@ -214,7 +214,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    pub fn get_xor_part_from_pool_account(
+    pub fn get_base_asset_part_from_pool_account(
         pool_acc: &T::AccountId,
         trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,

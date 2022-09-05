@@ -1081,13 +1081,22 @@ fn testnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig { balances }),
         dex_manager: Some(DEXManagerConfig {
-            dex_list: vec![(
-                0,
-                DEXInfo {
-                    base_asset_id: GetBaseAssetId::get(),
-                    is_public: true,
-                },
-            )],
+            dex_list: vec![
+                (
+                    0,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    1,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
         }),
         faucet: Some(faucet_config),
         tokens: Some(TokensConfig {
@@ -1775,6 +1784,11 @@ fn mainnet_genesis(
                 0,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    is_public: true,
+                },
+                1,
+                DEXInfo {
+                    base_asset_id: XSTUSD.into(),
                     is_public: true,
                 },
             )],

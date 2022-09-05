@@ -139,10 +139,13 @@ impl<T: Config> Pallet<T> {
                 return 0;
             };
 
-        let xor =
-            pool_xyk::Module::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
-                .unwrap_or(0);
-        if xor < balance!(1) {
+        let base_asset_amt = pool_xyk::Module::<T>::get_base_asset_part_from_pool_account(
+            pool,
+            &trading_pair,
+            pool_tokens,
+        )
+        .unwrap_or(0);
+        if base_asset_amt < balance!(1) {
             return 0;
         }
 
@@ -151,9 +154,9 @@ impl<T: Config> Pallet<T> {
             .any(|asset_id| trading_pair.consists_of(asset_id));
 
         if pool_doubles_reward {
-            xor * 2
+            base_asset_amt * 2
         } else {
-            xor
+            base_asset_amt
         }
     }
 

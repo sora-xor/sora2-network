@@ -31,11 +31,14 @@
 use crate::mock::*;
 use crate::{Error, Module};
 use common::prelude::DEXInfo;
-use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR};
+use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR, XSTUSD};
+use frame_support::traits::{Hooks, PalletVersion};
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MANAGE_DEX};
 
 type DEXModule = Module<Runtime>;
+
+type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 #[test]
 fn test_initialize_dex_should_pass() {
@@ -330,6 +333,34 @@ fn test_queries_for_nonexistant_dex_should_fail() {
         assert_noop!(
             DEXModule::ensure_dex_exists(&DEX_A_ID),
             Error::<Runtime>::DEXDoesNotExist
+        );
+    })
+}
+
+#[test]
+fn test_migration() {
+    let mut ext = ExtBuilder {
+        initial_dex_list: vec![(
+            common::DEXId::Polkaswap as u32,
+            DEXInfo {
+                base_asset_id: XOR,
+                is_public: true,
+            },
+        )],
+        ..Default::default()
+    }
+    .build();
+    ext.execute_with(|| {
+        PalletVersion::new(0, 1, 0).put_into_storage::<PalletInfoOf<Runtime>, DEXModule>();
+        DEXModule::on_runtime_upgrade();
+
+        assert_eq!(
+            crate::DEXInfos::<Runtime>::get(common::DEXId::PolkaswapXSTUSD as u32)
+                .expect("DEXInfo not found"),
+            DEXInfo {
+                base_asset_id: XSTUSD.into(),
+                is_public: true,
+            }
         );
     })
 }

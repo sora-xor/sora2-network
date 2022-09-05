@@ -1,6 +1,6 @@
 [package]
 description = 'Pallet for creation of DEXes, managing their specific parameters and ownership.'
-version = '0.1.0'
+version = '0.2.0'
 name = 'dex-manager'
 edition = '2018'
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
@@ -12,8 +12,12 @@ repository = 'https://github.com/sora-xor/sora2-network'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+] }
+serde = { version = "1.0.101", optional = true, features = [
+    "derive",
+], default-features = false }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 pallet-balances = { version = "3", default-features = false }
@@ -29,7 +33,9 @@ permissions = { path = "../permissions", default-features = false }
 hex-literal = { version = "0.3.1", optional = true }
 
 [dev-dependencies]
-common = { path = "../../common", default-features = false, features = ["test"] }
+common = { path = "../../common", default-features = false, features = [
+    "test",
+] }
 sp-core = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 
