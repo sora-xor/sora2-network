@@ -38,7 +38,7 @@ use common::{
     XOR,
 };
 use core::convert::TryInto;
-use frame_support::assert_noop;
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError;
 
 #[inline]
@@ -2739,5 +2739,200 @@ fn test_quote_does_not_overflow_with_desired_input() {
             true,
         )
         .expect("Failed to get a quote");
+    });
+}
+
+#[test]
+fn test_enable_correct_liquidity_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        // Only XST & TBC sources could be enabled/disabled
+        assert_noop!(
+            LiquidityProxy::enable_liquidity_source(Origin::root(), LiquiditySourceType::XYKPool),
+            Error::<Runtime>::UnableToEnableLiquiditySource
+        );
+
+        // User cannot enable liquidity source if it was not disabled
+        assert_noop!(
+            LiquidityProxy::enable_liquidity_source(Origin::root(), LiquiditySourceType::XSTPool),
+            Error::<Runtime>::LiquiditySourceAlreadyEnabled
+        );
+
+        // Disable XST & TBC that allows us to enable them
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::XSTPool
+        ));
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Enable success
+        assert_ok!(LiquidityProxy::enable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::XSTPool
+        ));
+        assert_ok!(LiquidityProxy::enable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+    });
+}
+
+#[test]
+fn test_double_enable_liquidity_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        // Disable TBC that allows us to enable it
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Enable success
+        assert_ok!(LiquidityProxy::enable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Second enabling failed
+        assert_noop!(
+            LiquidityProxy::enable_liquidity_source(
+                Origin::root(),
+                LiquiditySourceType::MulticollateralBondingCurvePool
+            ),
+            Error::<Runtime>::LiquiditySourceAlreadyEnabled
+        );
+    });
+}
+
+#[test]
+fn test_disable_correct_liquidity_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        // Only XST & TBC sources could be enabled/disabled
+        assert_noop!(
+            LiquidityProxy::disable_liquidity_source(Origin::root(), LiquiditySourceType::XYKPool),
+            Error::<Runtime>::UnableToDisableLiquiditySource
+        );
+
+        // Disable success
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::XSTPool
+        ));
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+    });
+}
+
+#[test]
+fn test_double_disable_liquidity_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        // Disable success
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Second disabling failed
+        assert_noop!(
+            LiquidityProxy::disable_liquidity_source(
+                Origin::root(),
+                LiquiditySourceType::MulticollateralBondingCurvePool
+            ),
+            Error::<Runtime>::LiquiditySourceAlreadyDisabled
+        );
+    });
+}
+
+#[test]
+fn test_disable_enable_liquidity_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::XYKPool,
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
+
+        // Check that TBC is enabled
+        assert_ok!(LiquidityProxy::quote_single(
+            &GetBaseAssetId::get(),
+            &DOT,
+            QuoteAmount::with_desired_output(balance!(300)),
+            LiquiditySourceFilter::with_allowed(
+                DEX_C_ID,
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into()
+            ),
+            false,
+            true,
+        ));
+
+        // Disable TBC
+        assert_ok!(LiquidityProxy::disable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Check that TBC is disabled
+        assert_noop!(
+            LiquidityProxy::quote_single(
+                &GetBaseAssetId::get(),
+                &DOT,
+                QuoteAmount::with_desired_output(balance!(300)),
+                LiquiditySourceFilter::with_allowed(
+                    DEX_C_ID,
+                    [LiquiditySourceType::MulticollateralBondingCurvePool].into()
+                ),
+                false,
+                true,
+            ),
+            Error::<Runtime>::UnavailableExchangePath
+        );
+
+        // Enable TBC
+        assert_ok!(LiquidityProxy::enable_liquidity_source(
+            Origin::root(),
+            LiquiditySourceType::MulticollateralBondingCurvePool
+        ));
+
+        // Check that TBC is enabled again
+        assert_ok!(LiquidityProxy::quote_single(
+            &GetBaseAssetId::get(),
+            &DOT,
+            QuoteAmount::with_desired_output(balance!(300)),
+            LiquiditySourceFilter::with_allowed(
+                DEX_C_ID,
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into()
+            ),
+            false,
+            true,
+        ));
     });
 }

@@ -45,7 +45,7 @@ use common::{
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
-use frame_system::RawOrigin;
+use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
@@ -73,6 +73,14 @@ pub trait Config:
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+}
+
+fn assert_last_event<T: Config>(generic_event: <T as liquidity_proxy::Config>::Event) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
 }
 
 // Prepare Runtime for running benchmarks
@@ -399,6 +407,42 @@ benchmarks! {
             Into::<u128>::into(initial_to_balance) + balance!(0.999999999999999996) // FIXME: this happens because routing via two pools can't guarantee exact amount
         );
     }
+
+    enable_liquidity_source {
+        setup_benchmark::<T>()?;
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        )?;
+    }: {
+        liquidity_proxy::Pallet::<T>::enable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceEnabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
+
+    disable_liquidity_source {
+        setup_benchmark::<T>()?;
+    }: {
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceDisabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
 }
 
 #[cfg(test)]
@@ -416,6 +460,8 @@ mod tests {
             assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_output_multiple::<Runtime>());
+            assert_ok!(test_benchmark_enable_liquidity_source::<Runtime>());
+            assert_ok!(test_benchmark_disable_liquidity_source::<Runtime>());
         });
     }
 }
