@@ -525,7 +525,7 @@ pub fn local_testnet_config() -> ChainSpec {
     ChainSpec::from_genesis(
         "SORA-local Testnet",
         "sora-substrate-local",
-        ChainType::Local,
+        ChainType::Development,
         move || {
             testnet_genesis(
                 false,
