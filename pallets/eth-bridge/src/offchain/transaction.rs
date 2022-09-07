@@ -146,7 +146,7 @@ impl<T: Config> SignedTransactionData<T> {
 }
 
 impl<T: Config> Pallet<T> {
-    pub(in crate) fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
+    pub(crate) fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
             debug::error!("[Ethereum bridge] No local account available");
@@ -173,7 +173,7 @@ impl<T: Config> Pallet<T> {
     /// information about the extrinsic is added to pending transactions storage, because according
     /// to [`sp_runtime::ApplyExtrinsicResult`](https://substrate.dev/rustdocs/v3.0.0/sp_runtime/type.ApplyExtrinsicResult.html)
     /// an extrinsic may not be imported to the block and thus should be re-sent.
-    pub(in crate) fn send_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
+    pub(crate) fn send_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<LocalCall>,
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
@@ -202,7 +202,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub(in crate) fn send_multisig_transaction(
+    pub(crate) fn send_multisig_transaction(
         call: crate::Call<T>,
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
@@ -231,7 +231,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Send a transaction to finalize the incoming request.
-    pub(in crate) fn send_finalize_incoming_request(
+    pub(crate) fn send_finalize_incoming_request(
         hash: H256,
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
         Self::send_multisig_transaction(transfer_call, timepoint, network_id)
     }
 
-    pub(in crate) fn send_import_incoming_request(
+    pub(crate) fn send_import_incoming_request(
         load_incoming_request: LoadIncomingRequest<T>,
         incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
         network_id: T::NetworkId,
@@ -259,7 +259,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Send 'abort request' transaction.
-    pub(in crate) fn send_abort_request(
+    pub(crate) fn send_abort_request(
         request_hash: H256,
         request_error: Error<T>,
         timepoint: Timepoint<T>,
@@ -276,7 +276,7 @@ impl<T: Config> Pallet<T> {
         Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
     }
 
-    pub(in crate) fn add_pending_extrinsic<LocalCall>(
+    pub(crate) fn add_pending_extrinsic<LocalCall>(
         call: LocalCall,
         account: &Account<T>,
         added_to_pool: bool,
@@ -306,7 +306,7 @@ impl<T: Config> Pallet<T> {
 
     /// Sends a multisig transaction to register the parsed (from pre-incoming) incoming request.
     /// (see `register_incoming_request`).
-    pub(in crate) fn send_register_incoming_request(
+    pub(crate) fn send_register_incoming_request(
         incoming_request: IncomingRequest<T>,
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
@@ -315,7 +315,7 @@ impl<T: Config> Pallet<T> {
         Self::send_multisig_transaction(register_call, timepoint, network_id)
     }
 
-    pub(in crate) fn send_signed_transaction<LocalCall: Clone>(
+    pub(crate) fn send_signed_transaction<LocalCall: Clone>(
         signer: &Signer<T, T::PeerId>,
         call: &LocalCall,
     ) -> <Signer<T, T::PeerId> as SendSignedTransaction<T, T::PeerId, LocalCall>>::Result

@@ -189,6 +189,8 @@ pub const DEPOSIT_TOPIC: H256 = H256(hex!(
 pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
+/// Minimum peers required to start bridge migration
+pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
@@ -323,6 +325,14 @@ impl<AssetId> AssetConfig<AssetId> {
     }
 }
 
+/// Bridge function signature version
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub enum BridgeSignatureVersion {
+    V1,
+    V2,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -444,6 +454,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             bridge_contract_address: EthAddress,
             initial_peers: Vec<T::AccountId>,
+            signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
@@ -455,6 +466,7 @@ pub mod pallet {
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
             BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
+            BridgeSignatureVersions::<T>::insert(net_id, signature_version);
             Peers::<T>::insert(net_id, initial_peers.into_iter().collect::<BTreeSet<_>>());
             NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             Ok(().into())
@@ -771,6 +783,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             ensure_root(origin)?;
+            if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
+                && Peers::<T>::get(network_id).len() < MINIMUM_PEERS_FOR_MIGRATION
+            {
+                return Err(Error::<T>::UnsafeMigration.into());
+            }
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
@@ -801,6 +818,7 @@ pub mod pallet {
             new_contract_address: EthAddress,
             erc20_native_tokens: Vec<EthAddress>,
             network_id: BridgeNetworkId<T>,
+            new_signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             ensure_root(origin)?;
@@ -815,6 +833,7 @@ pub mod pallet {
                     nonce,
                     network_id,
                     timepoint,
+                    new_signature_version,
                 },
             )))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
@@ -1209,6 +1228,8 @@ pub mod pallet {
         RemovedAndRefunded,
         /// Not enough peers provided, need at least 1
         NotEnoughPeers,
+        /// Bridge needs to have at least 3 peers for migration. Add new peer
+        UnsafeMigration,
     }
 
     impl<T: Config> Error<T> {
@@ -1413,6 +1434,27 @@ pub mod pallet {
     /// `RequestsQueue` before migration procedure started.
     #[pallet::storage]
     pub(super) type MigratingRequests<T: Config> = StorageValue<_, Vec<H256>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_signature_version)]
+    pub(super) type BridgeSignatureVersions<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        BridgeSignatureVersion,
+        ValueQuery,
+        DefaultForBridgeSignatureVersion,
+    >;
+
+    #[pallet::type_value]
+    pub fn DefaultForBridgeSignatureVersion() -> BridgeSignatureVersion {
+        BridgeSignatureVersion::V1
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn pending_bridge_signature_version)]
+    pub(super) type PendingBridgeSignatureVersions<T: Config> =
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BridgeSignatureVersion>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
