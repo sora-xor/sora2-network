@@ -71,6 +71,19 @@ impl Command {
                 .expect("should be registered");
             match asset_kind {
                 AssetKind::Thischain => {
+                    info!("Approve");
+                    let token = ethereum_gen::TestToken::new(token_address, eth.inner());
+                    let mut call = token.approve(app_address, self.amount.into()).legacy();
+                    eth.inner()
+                        .fill_transaction(&mut call.tx, call.block)
+                        .await?;
+                    debug!("Check {:?}", call);
+                    call.call().await?;
+                    if !self.dry_run {
+                        debug!("Send");
+                        let tx = call.send().await?.confirmations(1).await?.unwrap();
+                        debug!("Tx: {:?}", tx);
+                    }
                     info!("Transfer native Sora token");
                     let sidechain_app = ethereum_gen::SidechainApp::new(app_address, eth.inner());
                     sidechain_app.lock(token_address, recipient, self.amount.into())
