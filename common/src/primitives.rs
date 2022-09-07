@@ -359,6 +359,7 @@ where
 #[repr(u8)]
 pub enum DEXId {
     Polkaswap = 0,
+    PolkaswapXSTUSD = 1,
 }
 
 impl From<DEXId> for u32 {

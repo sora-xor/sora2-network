@@ -1146,13 +1146,22 @@ fn testnet_genesis(
         },
         balances: BalancesConfig { balances },
         dex_manager: DEXManagerConfig {
-            dex_list: vec![(
-                0,
-                DEXInfo {
-                    base_asset_id: GetBaseAssetId::get(),
-                    is_public: true,
-                },
-            )],
+            dex_list: vec![
+                (
+                    0,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    1,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
         },
         faucet: faucet_config,
         tokens: TokensConfig {
@@ -1858,13 +1867,22 @@ fn mainnet_genesis(
             .collect(),
         },
         dex_manager: DEXManagerConfig {
-            dex_list: vec![(
-                0,
-                DEXInfo {
-                    base_asset_id: GetBaseAssetId::get(),
-                    is_public: true,
-                },
-            )],
+            dex_list: vec![
+                (
+                    0,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    1,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
         },
         tokens: TokensConfig {
             balances: vec![
