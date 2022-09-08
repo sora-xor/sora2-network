@@ -37,7 +37,7 @@ extern crate alloc;
 use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
-use frame_support::traits::{Get, IsType};
+use frame_support::traits::IsType;
 use frame_support::weights::Weight;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -189,15 +189,16 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _author =
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
+            let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
+            ensure!(
+                base_asset_id == dex_info.base_asset_id,
+                Error::<T>::ForbiddenBaseAssetId
+            );
             Assets::<T>::ensure_asset_exists(&base_asset_id)?;
             Assets::<T>::ensure_asset_exists(&target_asset_id)?;
             ensure!(
                 base_asset_id != target_asset_id,
                 Error::<T>::IdenticalAssetIds
-            );
-            ensure!(
-                base_asset_id == T::GetBaseAssetId::get(),
-                Error::<T>::ForbiddenBaseAssetId
             );
             let trading_pair = TradingPair::<T> {
                 base_asset_id,

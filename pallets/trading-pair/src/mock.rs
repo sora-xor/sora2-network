@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR,
+    DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -288,15 +288,35 @@ impl Default for ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    XSTUSD,
+                    ALICE,
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XSTUSD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
             endowed_accounts: vec![],
-            dex_list: vec![(
-                DEX_ID,
-                DEXInfo {
-                    base_asset_id: XOR,
-                    is_public: true,
-                },
-            )],
+            dex_list: vec![
+                (
+                    DEX_ID,
+                    DEXInfo {
+                        base_asset_id: XOR,
+                        is_public: true,
+                    },
+                ),
+                (
+                    1,
+                    DEXInfo {
+                        base_asset_id: XSTUSD,
+                        is_public: true,
+                    },
+                ),
+            ],
             initial_permission_owners: vec![
                 (INIT_DEX, Scope::Unlimited, vec![ALICE]),
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_ID)), vec![ALICE]),
