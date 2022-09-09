@@ -303,13 +303,13 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
         move || {
             let eth_bridge_params = if test {
                 EthBridgeParams {
-                    xor_master_contract_address: hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc")
+                    xor_master_contract_address: hex!("09F9c9165A00f9FF3d69cc292848E93f39C50a42")
                         .into(),
-                    xor_contract_address: hex!("83ba842e5e26a4eda2466891221187aabbc33692").into(),
-                    val_master_contract_address: hex!("a55236ad2162a47a52316f86d688fbd71b520945")
+                    xor_contract_address: hex!("9826Ecfcd937C4518E1C42B3703c7CB908B61197").into(),
+                    val_master_contract_address: hex!("517e5DfF04CAD3c81171Dec46Ef9407fbf31b2C5")
                         .into(),
-                    val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
-                    bridge_contract_address: hex!("c3d1366ad8ffd17acc484d66aa403b490b9ef134")
+                    val_contract_address: hex!("88eE18dEfC56D78417B0d331e794EF75799cA6D1").into(),
+                    bridge_contract_address: hex!("10Ce25aE3B05c9Ba860D5aD3544ca62565E7A184")
                         .into(),
                 }
             } else {

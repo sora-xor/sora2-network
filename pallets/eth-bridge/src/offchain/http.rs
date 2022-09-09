@@ -316,6 +316,11 @@ impl<T: Config> Pallet<T> {
         from_block: u64,
         to_block: u64,
     ) -> Result<Vec<Log>, Error<T>> {
+        debug::trace!(
+            "Loading transfer logs from block {:?} to block {:?}",
+            from_block,
+            to_block,
+        );
         Self::eth_json_rpc_request(
             "eth_getLogs",
             &[FilterBuilder::default()
