@@ -229,6 +229,7 @@ contract BeefyLightClient is ISimplifiedMMRProof {
         BeefyMMRLeaf calldata latestMMRLeaf,
         SimplifiedMMRProof calldata proof
     ) external {
+        require(commitment.validatorSetId == validatorRegistry.id(), "Invalid validator set id");
         verifyCommitment(commitment, validatorProof);
         verifyNewestMMRLeaf(latestMMRLeaf, commitment.payload, proof);
 
