@@ -58,7 +58,7 @@ impl BeefyJustification {
                 signed_validators.push(U256::from(i))
             }
         }
-        let block_hash = sub.block_hash(Some(commitment.block_number - 2)).await?;
+        let block_hash = sub.block_hash(Some(commitment.block_number - 1)).await?;
         let validators: Vec<H160> = sub
             .api()
             .storage()
