@@ -67,13 +67,13 @@ pub enum NumberOrHash {
 
 impl From<u32> for NumberOrHash {
     fn from(number: u32) -> Self {
-        Self::Number(number)
+        Self::Number(BlockNumber::try_from(number).unwrap())
     }
 }
 
 impl From<u64> for NumberOrHash {
     fn from(number: u64) -> Self {
-        Self::Number(number as u32)
+        Self::Number(BlockNumber::try_from(number).unwrap())
     }
 }
 

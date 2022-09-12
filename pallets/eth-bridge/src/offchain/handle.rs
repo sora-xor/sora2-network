@@ -448,8 +448,9 @@ impl<T: Config> Pallet<T> {
             Self::handle_failed_transactions_queue();
         }
 
-        let substrate_finalized_height =
-            <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
+        let substrate_finalized_height = <T::BlockNumber>::from(
+            u32::try_from(substrate_finalized_block.number).expect("cannot cast block height"),
+        );
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
