@@ -31,10 +31,11 @@
 use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
+use common::DEXInfo;
 use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
-use frame_support::traits::Everything;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
@@ -219,9 +220,29 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let t = frame_system::GenesisConfig::default()
+        let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XOR,
+                        is_public: true,
+                    },
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         // Add additional pallets genesis
 

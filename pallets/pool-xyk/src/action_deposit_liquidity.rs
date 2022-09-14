@@ -43,15 +43,19 @@ use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 use crate::bounds::*;
 use crate::operations::*;
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.0.amount == Bounds::Dummy || self.source.1.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        _base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
+        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
 
         // Check that client account is same as source, because signature is checked for source.
         // Signature checking is used in extrinsics for example, and source is derived from origin.
@@ -265,10 +269,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+    fn reserve(
+        &self,
+        source: &AccountIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> dispatch::DispatchResult {
         ensure!(
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
@@ -294,7 +302,11 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(&self.source.0.asset, &self.source.1.asset)?;
+            let pair = Pallet::<T>::strict_sort_pair(
+                base_asset_id,
+                &self.source.0.asset,
+                &self.source.1.asset,
+            )?;
             AccountPools::<T>::mutate(receiver_account, |set| set.insert(pair.target_asset_id));
         }
         Pallet::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
@@ -303,6 +315,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         let balance_b =
             <assets::Pallet<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
         Pallet::<T>::update_reserves(
+            base_asset_id,
             &self.source.0.asset,
             &self.source.1.asset,
             (&balance_a, &balance_b),

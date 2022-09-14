@@ -30,7 +30,6 @@
 
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
@@ -49,13 +48,13 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn decide_is_fee_from_destination(
+        base_asset_id: &AssetIdOf<T>,
         asset_a: &AssetIdOf<T>,
         asset_b: &AssetIdOf<T>,
     ) -> Result<bool, DispatchError> {
-        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
-        if &base_asset_id == asset_a {
+        if base_asset_id == asset_a {
             Ok(false)
-        } else if &base_asset_id == asset_b {
+        } else if base_asset_id == asset_b {
             Ok(true)
         } else {
             Err(Error::<T>::UnsupportedQuotePath.into())
@@ -196,17 +195,17 @@ impl<T: Config> Pallet<T> {
 
     /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
     pub fn strict_sort_pair(
+        base_asset_id: &T::AssetId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
-        let base_asset_id = T::GetBaseAssetId::get();
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        if asset_a == &base_asset_id {
+        if asset_a == base_asset_id {
             Ok(TradingPair {
                 base_asset_id: asset_a.clone(),
                 target_asset_id: asset_b.clone(),
             })
-        } else if asset_b == &base_asset_id {
+        } else if asset_b == base_asset_id {
             Ok(TradingPair {
                 base_asset_id: asset_b.clone(),
                 target_asset_id: asset_a.clone(),

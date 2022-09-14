@@ -291,10 +291,10 @@ pub trait Config: frame_system::Config + currencies::Config {
 /// succeeds with best efforts.
 /// - **Claim**: claim any resources reserved in the first phrase.
 /// - **Cancel**: cancel any resources reserved in the first phrase.
-pub trait SwapAction<SourceAccountId, TargetAccountId, T: Config> {
+pub trait SwapAction<SourceAccountId, TargetAccountId, AssetId, T: Config> {
     /// Reserve the resources needed for the swap, from the given `source`. The reservation is
     /// allowed to fail. If that is the case, the the full swap creation operation is cancelled.
-    fn reserve(&self, source: &SourceAccountId) -> DispatchResult;
+    fn reserve(&self, source: &SourceAccountId, base_asset_id: &AssetId) -> DispatchResult;
     /// Claim the reserved resources, with `source`. Returns whether the claim succeeds.
     fn claim(&self, source: &SourceAccountId) -> bool;
     /// Weight for executing the operation.
@@ -304,10 +304,10 @@ pub trait SwapAction<SourceAccountId, TargetAccountId, T: Config> {
 }
 
 /// Dummy implementation for cases then () used in runtime as empty SwapAction.
-impl<SourceAccountId, TargetAccountId, T: Config> SwapAction<SourceAccountId, TargetAccountId, T>
-    for ()
+impl<SourceAccountId, TargetAccountId, AssetId, T: Config>
+    SwapAction<SourceAccountId, TargetAccountId, AssetId, T> for ()
 {
-    fn reserve(&self, _source: &SourceAccountId) -> DispatchResult {
+    fn reserve(&self, _source: &SourceAccountId, _base_asset_id: &AssetId) -> DispatchResult {
         Ok(())
     }
     fn claim(&self, _source: &SourceAccountId) -> bool {
@@ -321,15 +321,19 @@ impl<SourceAccountId, TargetAccountId, T: Config> SwapAction<SourceAccountId, Ta
     }
 }
 
-pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Config>:
-    SwapAction<SourceAccountId, TargetAccountId, T>
+pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, AssetId, T: Config>:
+    SwapAction<SourceAccountId, TargetAccountId, AssetId, T>
 {
     /// If action is only for abstract checking, shoud not apply by `reserve` function.
     fn is_abstract_checking(&self) -> bool;
 
     /// Validate action if next steps must be applied by `reserve` function
     /// or if source account is None, than just ability to do operation is checked.
-    fn prepare_and_validate(&mut self, source: Option<&SourceAccountId>) -> DispatchResult;
+    fn prepare_and_validate(
+        &mut self,
+        source: Option<&SourceAccountId>,
+        base_asset_id: &AssetId,
+    ) -> DispatchResult;
 
     /// Instant auto claim is performed just after reserve.
     /// If triggered is not used, than it is one time auto claim, it will be canceled if it fails.
@@ -343,13 +347,17 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Config>:
     fn is_able_to_claim(&self) -> bool;
 }
 
-impl<SourceAccountId, TargetAccountId, T: Config>
-    SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
+impl<SourceAccountId, TargetAccountId, AssetId, T: Config>
+    SwapRulesValidation<SourceAccountId, TargetAccountId, AssetId, T> for ()
 {
     fn is_abstract_checking(&self) -> bool {
         true
     }
-    fn prepare_and_validate(&mut self, _source: Option<&SourceAccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&SourceAccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {

@@ -1727,20 +1727,20 @@ fn strict_sort_pair() {
         let asset_target = GreenPromise.into();
         let asset_target_2 = BluePromise.into();
 
-        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_target).unwrap();
+        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_base, &asset_target).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
-        let pair = PoolXYK::strict_sort_pair(&asset_target, &asset_base).unwrap();
+        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_target, &asset_base).unwrap();
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
         common::assert_noop_transactional!(
-            PoolXYK::strict_sort_pair(&asset_base, &asset_base),
+            PoolXYK::strict_sort_pair(&asset_base, &asset_base, &asset_base),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
         common::assert_noop_transactional!(
-            PoolXYK::strict_sort_pair(&asset_target, &asset_target_2),
+            PoolXYK::strict_sort_pair(&asset_base, &asset_target, &asset_target_2),
             crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
         );
     });
@@ -2211,4 +2211,54 @@ fn price_without_impact_large_amount() {
             assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
         },
     )]);
+}
+
+#[test]
+fn initialize_pool_with_different_dex() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            AppleTree.into(),
+            AssetSymbol(b"AT".to_vec()),
+            AssetName(b"Apple Tree".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            Origin::signed(BOB()),
+            DEX_B_ID,
+            AppleTree.into(),
+            GoldenTicket.into()
+        ));
+        assert_ok!(PoolXYK::initialize_pool(
+            Origin::signed(ALICE()),
+            DEX_B_ID,
+            AppleTree.into(),
+            GoldenTicket.into()
+        ));
+        assert_ok!(PoolXYK::deposit_liquidity(
+            Origin::signed(ALICE()),
+            DEX_B_ID,
+            AppleTree.into(),
+            GoldenTicket.into(),
+            balance!(1),
+            balance!(1),
+            balance!(1),
+            balance!(1),
+        ));
+    });
 }

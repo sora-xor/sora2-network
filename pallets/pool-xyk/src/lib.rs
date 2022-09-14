@@ -148,7 +148,10 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
             .is_zero()
             && !pool_tokens.is_zero()
         {
-            let pair = Pallet::<T>::strict_sort_pair(&asset_a, &asset_b)?;
+            // TODO: Currently this function is only used by Ceres pallets and they operate with XOR. If that changes, replace GetBaseAssetId
+
+            let pair =
+                Pallet::<T>::strict_sort_pair(&T::GetBaseAssetId::get(), &asset_a, &asset_b)?;
             AccountPools::<T>::mutate(target_account_id.clone(), |set| {
                 set.insert(pair.target_asset_id)
             });
@@ -173,10 +176,10 @@ impl<T: Config> Pallet<T> {
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
     ) -> DispatchResult {
-        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
-        let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
+        let (sorted_asset_a, sorted_asset_b) = if dex_info.base_asset_id == *asset_a {
             (asset_a, asset_b)
-        } else if &base_asset_id == asset_b {
+        } else if dex_info.base_asset_id == *asset_b {
             (asset_b, asset_a)
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
@@ -199,15 +202,15 @@ impl<T: Config> Pallet<T> {
     }
 
     fn update_reserves(
+        base_asset_id: &T::AssetId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
         balance_pair: (&Balance, &Balance),
     ) {
-        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
-        if base_asset_id == asset_a.clone() {
+        if base_asset_id == asset_a {
             Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
             T::OnPoolReservesChanged::reserves_changed(asset_b);
-        } else if base_asset_id == asset_b.clone() {
+        } else if base_asset_id == asset_b {
             Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
             T::OnPoolReservesChanged::reserves_changed(asset_a);
         } else {
@@ -272,6 +275,7 @@ impl<T: Config> Pallet<T> {
         input_a_min: Balance,
         input_b_min: Balance,
     ) -> DispatchResult {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             input_asset_a,
@@ -296,7 +300,7 @@ impl<T: Config> Pallet<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Pallet::<T>::create_swap(source, &mut action)?;
+        technical::Pallet::<T>::create_swap(source, &mut action, &dex_info.base_asset_id)?;
         Ok(())
     }
 
@@ -309,6 +313,7 @@ impl<T: Config> Pallet<T> {
         output_a_min: Balance,
         output_b_min: Balance,
     ) -> DispatchResult {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             output_asset_a,
@@ -334,7 +339,7 @@ impl<T: Config> Pallet<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Pallet::<T>::create_swap(source, &mut action)?;
+        technical::Pallet::<T>::create_swap(source, &mut action, &dex_info.base_asset_id)?;
         Ok(())
     }
 
@@ -356,20 +361,23 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     for Pallet<T>
 {
     fn can_exchange(
-        _dex_id: &T::DEXId,
+        dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        let base_asset_id = T::GetBaseAssetId::get();
-        let target_asset_id = if input_asset_id == &base_asset_id {
-            output_asset_id
-        } else if output_asset_id == &base_asset_id {
-            input_asset_id
-        } else {
-            return false;
-        };
+        if let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) {
+            let target_asset_id = if *input_asset_id == dex_info.base_asset_id {
+                output_asset_id
+            } else if *output_asset_id == dex_info.base_asset_id {
+                input_asset_id
+            } else {
+                return false;
+            };
 
-        Properties::<T>::contains_key(&base_asset_id, &target_asset_id)
+            Properties::<T>::contains_key(&dex_info.base_asset_id, &target_asset_id)
+        } else {
+            false
+        }
     }
 
     fn quote(
@@ -379,6 +387,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -399,8 +408,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         // Decide which side should be used for fee.
-        let get_fee_from_destination =
-            Pallet::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
 
         // Calculate quote.
         match amount {
@@ -437,6 +449,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
@@ -460,9 +473,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fee_account: None,
             get_fee_from_destination: None,
         });
-        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
             &mut action,
             Some(sender),
+            &dex_info.base_asset_id,
         )?;
 
         // It is guarantee that unwrap is always ok.
@@ -484,7 +498,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Pallet::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Pallet::<T>::create_swap_unchecked(
+            sender.clone(),
+            &mut action,
+            &dex_info.base_asset_id,
+        )?;
 
         retval
     }
@@ -507,6 +525,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -527,8 +546,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         // Decide which side should be used for fee.
-        let get_fee_from_destination =
-            Pallet::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
 
         let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
         let fee_fraction = if deduce_fee {
@@ -633,13 +655,13 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         //TODO: implement and use + Into<SwapActionOf<T> for this types.
-        type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;

@@ -126,6 +126,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
     /// Get spot price of tokens based on desired amount, None returned if liquidity source
     /// does not have available exchange methods for indicated path.
     fn quote(
+        dex_id: DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -135,6 +136,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
 
     /// Perform exchange based on desired amount.
     fn exchange(
+        dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
@@ -156,6 +158,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
     for ()
 {
     fn quote(
+        _dex_id: DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
@@ -166,6 +169,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
     }
 
     fn exchange(
+        _dex_id: DEXId,
         _sender: &AccountId,
         _receiver: &AccountId,
         _input_asset_id: &AssetId,
@@ -235,6 +239,7 @@ impl<T: Config> Pallet<T> {
         }
 
         let (outcome, sources) = Self::inner_exchange(
+            dex_id,
             &sender,
             &receiver,
             &input_asset_id,
@@ -270,6 +275,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// This a wrapper for `exchange_single`.
     pub fn inner_exchange(
+        dex_id: T::DEXId,
         sender: &T::AccountId,
         receiver: &T::AccountId,
         input_asset_id: &T::AssetId,
@@ -282,7 +288,12 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnavailableExchangePath
         );
         common::with_transaction(|| {
-            match Self::construct_trivial_path(*input_asset_id, *output_asset_id) {
+            let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+            match Self::construct_trivial_path(
+                &dex_info.base_asset_id,
+                *input_asset_id,
+                *output_asset_id,
+            ) {
                 ExchangePath::Direct {
                     from_asset_id,
                     to_asset_id,
@@ -290,13 +301,18 @@ impl<T: Config> Pallet<T> {
                     let (outcome, sources) = Self::exchange_single(
                         sender,
                         receiver,
+                        &dex_info.base_asset_id,
                         &from_asset_id,
                         &to_asset_id,
                         amount,
                         filter,
                     )?;
-                    let xor_volume =
-                        Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
+                    let xor_volume = Self::get_base_asset_amount(
+                        &dex_info.base_asset_id,
+                        from_asset_id,
+                        amount,
+                        outcome.clone(),
+                    );
                     T::VestedRewardsPallet::update_market_maker_records(
                         &sender,
                         xor_volume,
@@ -320,6 +336,7 @@ impl<T: Config> Pallet<T> {
                         let (first_swap, mut first_sources) = Self::exchange_single(
                             sender,
                             &transit_account,
+                            &dex_info.base_asset_id,
                             &from_asset_id,
                             &intermediate_asset_id,
                             SwapAmount::with_desired_input(desired_amount_in, Balance::zero()),
@@ -328,6 +345,7 @@ impl<T: Config> Pallet<T> {
                         let (second_swap, second_sources) = Self::exchange_single(
                             &transit_account,
                             receiver,
+                            &dex_info.base_asset_id,
                             &intermediate_asset_id,
                             &to_asset_id,
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
@@ -360,6 +378,7 @@ impl<T: Config> Pallet<T> {
                         max_amount_in,
                     } => {
                         let (second_quote, _, _) = Self::quote_single(
+                            &dex_info.base_asset_id,
                             &intermediate_asset_id,
                             &to_asset_id,
                             QuoteAmount::with_desired_output(desired_amount_out),
@@ -368,6 +387,7 @@ impl<T: Config> Pallet<T> {
                             true,
                         )?;
                         let (first_quote, _, _) = Self::quote_single(
+                            &dex_info.base_asset_id,
                             &from_asset_id,
                             &intermediate_asset_id,
                             QuoteAmount::with_desired_output(second_quote.amount),
@@ -383,6 +403,7 @@ impl<T: Config> Pallet<T> {
                         let (first_swap, mut first_sources) = Self::exchange_single(
                             sender,
                             &transit_account,
+                            &dex_info.base_asset_id,
                             &from_asset_id,
                             &intermediate_asset_id,
                             SwapAmount::with_desired_input(first_quote.amount, Balance::zero()),
@@ -391,6 +412,7 @@ impl<T: Config> Pallet<T> {
                         let (second_swap, second_sources) = Self::exchange_single(
                             &transit_account,
                             receiver,
+                            &dex_info.base_asset_id,
                             &intermediate_asset_id,
                             &to_asset_id,
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
@@ -423,6 +445,7 @@ impl<T: Config> Pallet<T> {
     fn exchange_single(
         sender: &T::AccountId,
         receiver: &T::AccountId,
+        base_asset_id: &T::AssetId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
@@ -430,6 +453,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
         common::with_transaction(|| {
             let (outcome, _, sources) = Self::quote_single(
+                base_asset_id,
                 input_asset_id,
                 output_asset_id,
                 amount.into(),
@@ -484,6 +508,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// This a wrapper for `quote_single`.
     pub fn inner_quote(
+        dex_id: T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -503,12 +528,18 @@ impl<T: Config> Pallet<T> {
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
         );
-        match Self::construct_trivial_path(*input_asset_id, *output_asset_id) {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        match Self::construct_trivial_path(
+            &dex_info.base_asset_id,
+            *input_asset_id,
+            *output_asset_id,
+        ) {
             ExchangePath::Direct {
                 from_asset_id,
                 to_asset_id,
             } => {
                 let (aso, rewards, liquidity_sources) = Self::quote_single(
+                    &dex_info.base_asset_id,
                     &from_asset_id,
                     &to_asset_id,
                     amount,
@@ -540,6 +571,7 @@ impl<T: Config> Pallet<T> {
             } => match amount {
                 QuoteAmount::WithDesiredInput { desired_amount_in } => {
                     let (first_quote, rewards_a, mut first_liquidity_sources) = Self::quote_single(
+                        &dex_info.base_asset_id,
                         &from_asset_id,
                         &intermediate_asset_id,
                         QuoteAmount::with_desired_input(desired_amount_in),
@@ -549,6 +581,7 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let (second_quote, mut rewards_b, second_liquidity_sources) =
                         Self::quote_single(
+                            &dex_info.base_asset_id,
                             &intermediate_asset_id,
                             &to_asset_id,
                             QuoteAmount::with_desired_input(first_quote.amount),
@@ -610,6 +643,7 @@ impl<T: Config> Pallet<T> {
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                     let (second_quote, mut rewards_b, mut second_liquidity_sources) =
                         Self::quote_single(
+                            &dex_info.base_asset_id,
                             &intermediate_asset_id,
                             &to_asset_id,
                             QuoteAmount::with_desired_output(desired_amount_out),
@@ -618,6 +652,7 @@ impl<T: Config> Pallet<T> {
                             deduce_fee,
                         )?;
                     let (first_quote, rewards_a, first_liquidity_sources) = Self::quote_single(
+                        &dex_info.base_asset_id,
                         &from_asset_id,
                         &intermediate_asset_id,
                         QuoteAmount::with_desired_output(second_quote.amount),
@@ -690,6 +725,7 @@ impl<T: Config> Pallet<T> {
     /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
     ///
     fn quote_single(
+        base_asset_id: &T::AssetId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -767,6 +803,7 @@ impl<T: Config> Pallet<T> {
                 let outcome = Self::smart_split(
                     &primary_mkt,
                     &xyk,
+                    base_asset_id,
                     input_asset_id,
                     output_asset_id,
                     amount.clone(),
@@ -810,11 +847,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn construct_trivial_path(
+        base_asset_id: &T::AssetId,
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> ExchangePath<T> {
-        let base_asset_id = T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id || output_asset_id == base_asset_id {
+        if input_asset_id == *base_asset_id || output_asset_id == *base_asset_id {
             ExchangePath::Direct {
                 from_asset_id: input_asset_id,
                 to_asset_id: output_asset_id,
@@ -822,7 +859,7 @@ impl<T: Config> Pallet<T> {
         } else {
             ExchangePath::Twofold {
                 from_asset_id: input_asset_id,
-                intermediate_asset_id: base_asset_id,
+                intermediate_asset_id: *base_asset_id,
                 to_asset_id: output_asset_id,
             }
         }
@@ -834,13 +871,16 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<bool, DispatchError> {
-        let path = Self::construct_trivial_path(input_asset_id, output_asset_id);
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let path =
+            Self::construct_trivial_path(&dex_info.base_asset_id, input_asset_id, output_asset_id);
         let path_exists = match path {
             ExchangePath::Direct {
                 from_asset_id,
                 to_asset_id,
             } => {
-                let pair = Self::weak_sort_pair(from_asset_id, to_asset_id);
+                let pair =
+                    Self::weak_sort_pair(&dex_info.base_asset_id, from_asset_id, to_asset_id);
                 !trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
@@ -877,13 +917,16 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let path = Self::construct_trivial_path(input_asset_id, output_asset_id);
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let path =
+            Self::construct_trivial_path(&dex_info.base_asset_id, input_asset_id, output_asset_id);
         match path {
             ExchangePath::Direct {
                 from_asset_id,
                 to_asset_id,
             } => {
-                let pair = Self::weak_sort_pair(from_asset_id, to_asset_id);
+                let pair =
+                    Self::weak_sort_pair(&dex_info.base_asset_id, from_asset_id, to_asset_id);
                 let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
@@ -933,8 +976,12 @@ impl<T: Config> Pallet<T> {
     }
 
     // Not full sort, just ensure that if there is base asset then it's sorted, otherwise order is unchanged.
-    fn weak_sort_pair(asset_a: T::AssetId, asset_b: T::AssetId) -> TradingPair<T::AssetId> {
-        if asset_b == T::GetBaseAssetId::get() {
+    fn weak_sort_pair(
+        base_asset_id: &T::AssetId,
+        asset_a: T::AssetId,
+        asset_b: T::AssetId,
+    ) -> TradingPair<T::AssetId> {
+        if asset_b == *base_asset_id {
             TradingPair {
                 base_asset_id: asset_b,
                 target_asset_id: asset_a,
@@ -948,9 +995,9 @@ impl<T: Config> Pallet<T> {
     }
 
     /// For direct path (when input token or output token are xor), extract xor portions of exchange result.
-    fn get_xor_amount(
+    fn get_base_asset_amount(
+        base_asset_id: &T::AssetId,
         input_asset_id: T::AssetId,
-        _output_asset_id: T::AssetId,
         amount: SwapAmount<Balance>,
         outcome: SwapOutcome<Balance>,
     ) -> Balance {
@@ -958,7 +1005,7 @@ impl<T: Config> Pallet<T> {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
-                if &input_asset_id == &T::GetBaseAssetId::get() {
+                if input_asset_id == *base_asset_id {
                     desired_amount_in
                 } else {
                     outcome.amount
@@ -967,7 +1014,7 @@ impl<T: Config> Pallet<T> {
             SwapAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
-                if &input_asset_id == &T::GetBaseAssetId::get() {
+                if input_asset_id == *base_asset_id {
                     outcome.amount
                 } else {
                     desired_amount_out
@@ -988,6 +1035,7 @@ impl<T: Config> Pallet<T> {
     fn smart_split(
         primary_source_id: &LiquiditySourceIdOf<T>,
         secondary_source_id: &LiquiditySourceIdOf<T>,
+        base_asset_id: &T::AssetId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -1023,24 +1071,23 @@ impl<T: Config> Pallet<T> {
         // Comparing the result with the purely MCBC swap doesn't make sense in this case
         // because the "smart" swap is always at least as good as the 100% MCBC one.
 
-        let base_asset = &T::GetBaseAssetId::get();
-
         ensure!(
-            input_asset_id == base_asset || output_asset_id == base_asset,
+            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
             Error::<T>::UnavailableExchangePath
         );
-        let other_asset = if base_asset == input_asset_id {
+        let other_asset = if base_asset_id == input_asset_id {
             output_asset_id
         } else {
             input_asset_id
         };
 
-        let (reserves_base, reserves_other) = T::SecondaryMarket::reserves(base_asset, other_asset);
+        let (reserves_base, reserves_other) =
+            T::SecondaryMarket::reserves(base_asset_id, other_asset);
 
-        let amount_primary = if output_asset_id == base_asset {
+        let amount_primary = if output_asset_id == base_asset_id {
             // XOR is being bought
             Self::decide_primary_market_amount_buying_base_asset(
-                base_asset,
+                base_asset_id,
                 other_asset,
                 amount.clone(),
                 (reserves_base, reserves_other),
@@ -1052,7 +1099,7 @@ impl<T: Config> Pallet<T> {
         } else {
             // XOR is being sold
             Self::decide_primary_market_amount_selling_base_asset(
-                base_asset,
+                base_asset_id,
                 other_asset,
                 amount.clone(),
                 (reserves_base, reserves_other),
@@ -1386,6 +1433,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
     ///
     /// This is a wrapper for `quote_single`.
     fn quote(
+        dex_id: T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
@@ -1393,6 +1441,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Pallet::<T>::inner_quote(
+            dex_id,
             input_asset_id,
             output_asset_id,
             amount,
@@ -1408,6 +1457,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
     ///
     /// This is a wrapper for `exchange_single`.
     fn exchange(
+        dex_id: T::DEXId,
         sender: &T::AccountId,
         receiver: &T::AccountId,
         input_asset_id: &T::AssetId,
@@ -1416,6 +1466,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let (outcome, _) = Pallet::<T>::inner_exchange(
+            dex_id,
             sender,
             receiver,
             input_asset_id,

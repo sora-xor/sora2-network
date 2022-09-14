@@ -204,6 +204,7 @@ where
         // Quote to see if there will be enough funds for the fee
         let swap =
             <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 amount.into(),
@@ -533,6 +534,7 @@ impl<T: Config> Pallet<T> {
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
+            T::DEXIdValue::get(),
             &tech_account_id,
             &parliament,
             &xor,

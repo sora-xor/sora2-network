@@ -379,7 +379,7 @@ mod tests {
                 - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
+            let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
             let alice = &alice();
@@ -439,7 +439,7 @@ mod tests {
             let pool_reference_amount =
                 FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
+            let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
 
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
@@ -1008,7 +1008,7 @@ mod tests {
 
             let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
             let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
-            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
+            let val_supposed_price = MockDEXApi::quote(DEXId::Polkaswap, &VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
             // compare values, also deduce 20% which are distributed and not stored in reserves
@@ -1268,7 +1268,7 @@ mod tests {
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
-                MockDEXApi::quote(&PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter(),true).unwrap().amount,
+                MockDEXApi::quote(DEXId::Polkaswap, &PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter(),true).unwrap().amount,
                 balance!(10.173469387755102041)
             );
 

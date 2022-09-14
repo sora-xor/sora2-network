@@ -43,14 +43,18 @@ use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 use crate::bounds::*;
 use crate::operations::*;
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.destination.0.amount == Bounds::Dummy || self.destination.1.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        _base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
         //TODO: replace unwrap.
         let source = source_opt.unwrap();
         // Check that client account is same as source, because signature is checked for source.
@@ -213,10 +217,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
-    fn reserve(&self, source: &AccountIdOf<T>) -> DispatchResult {
+    fn reserve(&self, source: &AccountIdOf<T>, base_asset_id: &AssetIdOf<T>) -> DispatchResult {
         ensure!(
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
@@ -243,6 +247,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             && !self.pool_tokens.is_zero()
         {
             let pair = Pallet::<T>::strict_sort_pair(
+                base_asset_id,
                 &self.destination.0.asset,
                 &self.destination.1.asset,
             )?;
@@ -253,6 +258,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         let balance_b =
             <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
         Pallet::<T>::update_reserves(
+            base_asset_id,
             &self.destination.0.asset,
             &self.destination.1.asset,
             (&balance_a, &balance_b),

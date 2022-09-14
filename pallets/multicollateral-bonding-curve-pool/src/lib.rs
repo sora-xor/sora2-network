@@ -788,6 +788,7 @@ impl<T: Config> Pallet<T> {
         common::with_transaction(|| {
             let base_asset_id = T::GetBaseAssetId::get();
             let swapped_xor_amount = <T as pallet::Config>::LiquidityProxy::exchange(
+                DEXId::Polkaswap.into(),
                 holder,
                 holder,
                 &collateral_asset_id,
@@ -829,6 +830,7 @@ impl<T: Config> Pallet<T> {
             Assets::<T>::mint_to(&base_asset_id, &holder, &holder, undistributed_xor_amount)?;
             // undistributed_xor_amount includes xor_allocation and val_holders portions
             let val_amount = <T as pallet::Config>::LiquidityProxy::exchange(
+                DEXId::Polkaswap.into(),
                 holder,
                 holder,
                 &base_asset_id,

@@ -234,8 +234,10 @@ pub struct GenericPairSwapActionExample {
     pub take_account: TechAccountId,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapActionExample {
-    fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime>
+    for GenericPairSwapActionExample
+{
+    fn reserve(&self, source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         //FIXME now in this place exist two operations, and it is not lock.
         crate::Pallet::<Runtime>::transfer_in(
             &self.give_asset.into(),
@@ -264,13 +266,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapAc
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime>
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
     for GenericPairSwapActionExample
 {
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -293,8 +299,8 @@ pub struct MultiSwapActionExample {
     take_amount_e: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
-    fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for MultiSwapActionExample {
+    fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         Ok(())
     }
     fn claim(&self, _source: &AccountId) -> bool {
@@ -308,11 +314,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for MultiSwapActionEx
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for MultiSwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -333,8 +345,8 @@ pub struct CrowdSwapActionExample {
     take_amount: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
-    fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for CrowdSwapActionExample {
+    fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         unimplemented!()
     }
     fn claim(&self, _source: &AccountId) -> bool {
@@ -348,11 +360,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for CrowdSwapActionEx
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for CrowdSwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -373,12 +391,12 @@ pub enum PolySwapActionExample {
     Crowd(CrowdSwapActionExample),
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
-    fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for PolySwapActionExample {
+    fn reserve(&self, source: &AccountId, base_asset_id: &AssetId) -> dispatch::DispatchResult {
         match self {
-            GenericPair(a) => a.reserve(source),
-            Multi(a) => a.reserve(source),
-            Crowd(a) => a.reserve(source),
+            GenericPair(a) => a.reserve(source, base_asset_id),
+            Multi(a) => a.reserve(source, base_asset_id),
+            Crowd(a) => a.reserve(source, base_asset_id),
         }
     }
     fn claim(&self, source: &AccountId) -> bool {
@@ -404,7 +422,9 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for PolySwapActionExa
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for PolySwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         match self {
             GenericPair(a) => a.is_abstract_checking(),
@@ -413,11 +433,15 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for PolySwap
         }
     }
 
-    fn prepare_and_validate(&mut self, source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source: Option<&AccountId>,
+        base_asset_id: &AssetId,
+    ) -> DispatchResult {
         match self {
-            GenericPair(a) => a.prepare_and_validate(source),
-            Multi(a) => a.prepare_and_validate(source),
-            Crowd(a) => a.prepare_and_validate(source),
+            GenericPair(a) => a.prepare_and_validate(source, base_asset_id),
+            Multi(a) => a.prepare_and_validate(source, base_asset_id),
+            Crowd(a) => a.prepare_and_validate(source, base_asset_id),
         }
     }
 

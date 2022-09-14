@@ -2325,6 +2325,7 @@ impl_runtime_apis! {
             }
 
             LiquidityProxy::inner_quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 QuoteAmount::with_variant(swap_variant, amount.into()),
