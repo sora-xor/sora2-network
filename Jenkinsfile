@@ -13,6 +13,11 @@ String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev']
+String gitHubUser             = 'sorabot'
+String gitHubRepo             = 'github.com/soramitsu/sora2-substrate.git'
+String gitHubBranch           = 'doc'
+String gitHubEmail            = 'admin@soramitsu.co.jp'
+String cargoDocImage          = 'rust:1.62.0-slim-bullseye'
 
 pipeline {
     options {
@@ -135,6 +140,22 @@ pipeline {
                             docker tag ${appImageName} sora2/substrate:${baseImageTag}
                             docker push sora2/substrate:${baseImageTag}
                         """
+                    }
+                }
+            }
+        }
+        stage('Build docs & publish') {
+            environment {
+                GH_USER = "${gitHubUser}"
+                GH_TOKEN = credentials('sorabot-github-token')
+                GH_REPOSITORY = "${gitHubRepo}"
+                GH_BRANCH = "${gitHubBranch}"
+                GH_EMAIL  = "${gitHubEmail}"
+            }
+            steps {
+                script {
+                    docker.image("${cargoDocImage}").inside() {
+                             sh './housekeeping/docs.sh'
                     }
                 }
             }

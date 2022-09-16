@@ -29,9 +29,10 @@ RUN add-apt-repository \
 # Install rust
 ENV RUST_VERSION=nightly-2021-03-11
 ENV GRCOV_VERSION=0.8.7
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs  | sh -s -- -y --no-modify-path && \ 
     cargo install sccache && \
     cargo install grcov --version ${GRCOV_VERSION} && \
+    rustup default ${RUST_VERSION} && \
     rustup component add llvm-tools-preview && \
     rustup target add wasm32-unknown-unknown
 
