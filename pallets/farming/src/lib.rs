@@ -69,10 +69,12 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
 
     fn on_pool_created(
         _fee_account: Self::AccountId,
-        _dex_id: Self::DEXId,
+        dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
+        if dex_id == common::DEXId::Polkaswap.into() {
+            Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
+        }
         Ok(())
     }
 }

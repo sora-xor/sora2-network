@@ -1756,7 +1756,10 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         let initial_reserve_target_a = balance!(20);
         let initial_reserve_target_b = balance!(20);
 
-        assert_eq!(PoolXYK::account_pools(&ALICE()), Default::default());
+        assert_eq!(
+            PoolXYK::account_pools(&ALICE(), &base_asset),
+            Default::default()
+        );
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
@@ -1770,7 +1773,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()),
+            PoolXYK::account_pools(&ALICE(), &base_asset),
             [target_asset_a].iter().cloned().collect()
         );
 
@@ -1786,7 +1789,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()),
+            PoolXYK::account_pools(&ALICE(), &base_asset),
             [target_asset_a].iter().cloned().collect()
         );
 
@@ -1831,7 +1834,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()),
+            PoolXYK::account_pools(&ALICE(), &base_asset),
             [target_asset_a, target_asset_b].iter().cloned().collect()
         );
 
@@ -1852,7 +1855,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()),
+            PoolXYK::account_pools(&ALICE(), &base_asset),
             [target_asset_b].iter().cloned().collect()
         );
     })]);

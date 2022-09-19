@@ -251,7 +251,9 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 &self.destination.0.asset,
                 &self.destination.1.asset,
             )?;
-            AccountPools::<T>::mutate(source, |set| set.remove(&pair.target_asset_id));
+            AccountPools::<T>::mutate(source, &pair.base_asset_id, |set| {
+                set.remove(&pair.target_asset_id)
+            });
         }
         let balance_a =
             <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;

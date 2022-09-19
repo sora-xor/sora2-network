@@ -220,7 +220,10 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Check if added to account_pools
         let target_asset_expected =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(fee_account);
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(
+                fee_account,
+                &base_asset,
+            );
         assert_eq!(
             target_asset_expected.get(&target_asset),
             Some(&target_asset)
@@ -313,7 +316,10 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Check if added to account_pools
         let target_asset_expected =
-            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(fee_account);
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(
+                fee_account,
+                &base_asset,
+            );
         assert_eq!(
             target_asset_expected.get(&target_asset),
             Some(&target_asset)

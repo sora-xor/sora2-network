@@ -307,7 +307,9 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf
                 &self.source.0.asset,
                 &self.source.1.asset,
             )?;
-            AccountPools::<T>::mutate(receiver_account, |set| set.insert(pair.target_asset_id));
+            AccountPools::<T>::mutate(receiver_account, &pair.base_asset_id, |set| {
+                set.insert(pair.target_asset_id)
+            });
         }
         Pallet::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
         let balance_a =

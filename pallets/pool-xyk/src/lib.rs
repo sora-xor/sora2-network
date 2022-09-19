@@ -152,7 +152,7 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
 
             let pair =
                 Pallet::<T>::strict_sort_pair(&T::GetBaseAssetId::get(), &asset_a, &asset_b)?;
-            AccountPools::<T>::mutate(target_account_id.clone(), |set| {
+            AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
         }
@@ -975,8 +975,15 @@ pub mod pallet {
     /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
     #[pallet::storage]
     #[pallet::getter(fn account_pools)]
-    pub type AccountPools<T: Config> =
-        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
+    pub type AccountPools<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        AccountIdOf<T>,
+        Blake2_128Concat,
+        AssetIdOf<T>,
+        BTreeSet<AssetIdOf<T>>,
+        ValueQuery,
+    >;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance
