@@ -2332,7 +2332,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, amount_without_impact, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -2340,9 +2340,8 @@ impl_runtime_apis! {
                                     amount,
                                     currency,
                                     reason
-                                })
-                                .collect(),
-                amount_without_impact: amount_without_impact.unwrap_or(0)})
+                                }).collect()
+                })
         }
 
         fn is_path_available(
