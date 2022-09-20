@@ -44,6 +44,25 @@ fn mints_after_handling_ethereum_event() {
 }
 
 #[test]
+fn mint_zero_amount_must_fail() {
+    new_tester().execute_with(|| {
+        let peer_contract = H160::default();
+        let sender = H160::repeat_byte(7);
+        let recipient: AccountId = Keyring::Bob.into();
+        let amount = balance!(0);
+        common::assert_noop_transactional!(
+            EthApp::mint(
+                dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
+                sender,
+                recipient.clone(),
+                amount.into()
+            ),
+            Error::<Test>::WrongAmount
+        );
+    });
+}
+
+#[test]
 fn burn_should_emit_bridge_event() {
     new_tester().execute_with(|| {
         let recipient = H160::repeat_byte(2);
@@ -92,6 +111,25 @@ fn should_not_burn_on_commitment_failure() {
                 amount
             ),
             DispatchError::Other("some error!")
+        );
+    });
+}
+
+#[test]
+fn should_not_burn_zero_amount() {
+    new_tester().execute_with(|| {
+        let sender: AccountId = Keyring::Eve.into();
+        let recipient = H160::repeat_byte(9);
+        let amount = balance!(0);
+
+        common::assert_noop_transactional!(
+            EthApp::burn(
+                Origin::signed(sender.clone()),
+                BASE_NETWORK_ID,
+                recipient.clone(),
+                amount
+            ),
+            Error::<Test>::WrongAmount
         );
     });
 }

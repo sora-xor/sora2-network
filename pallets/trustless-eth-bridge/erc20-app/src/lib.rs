@@ -32,6 +32,7 @@ mod mock;
 mod tests;
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
 use sp_core::{H160, U256};
@@ -128,6 +129,8 @@ pub mod pallet {
         AppAlreadyRegistered,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Amount must be > 0
+        WrongAmount,
     }
 
     #[pallet::genesis_config]
@@ -192,6 +195,7 @@ pub mod pallet {
             }
 
             let amount: BalanceOf<T> = amount.as_u128().into();
+            ensure!(amount > 0, Error::<T>::WrongAmount);
             let recipient = T::Lookup::lookup(recipient)?;
             match asset_kind {
                 AssetKind::Thischain => {
@@ -441,6 +445,7 @@ pub mod pallet {
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(amount > 0, Error::<T>::WrongAmount);
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let target = AppAddresses::<T>::get(network_id, asset_kind)

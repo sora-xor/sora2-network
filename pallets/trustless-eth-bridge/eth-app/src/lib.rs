@@ -20,6 +20,7 @@ pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
@@ -140,6 +141,8 @@ pub mod pallet {
         DestAccountIsNotSet,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Amount must be > 0
+        WrongAmount,
     }
 
     #[pallet::call]
@@ -172,6 +175,7 @@ pub mod pallet {
             ensure!(who == contract, Error::<T>::InvalidAppAddress);
 
             let amount: BalanceOf<T> = amount.as_u128().into();
+            ensure!(amount > 0, Error::<T>::WrongAmount);
             let recipient = T::Lookup::lookup(recipient)?;
             T::Currency::deposit(asset_id, &recipient, amount)?;
             T::MessageStatusNotifier::inbound_request(
@@ -275,6 +279,8 @@ pub mod pallet {
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(amount > 0, Error::<T>::WrongAmount);
+
             let (target, asset_id) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 

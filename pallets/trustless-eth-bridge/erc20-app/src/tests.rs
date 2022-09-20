@@ -1,4 +1,5 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
+use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::AssetKind;
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
@@ -52,6 +53,29 @@ fn mints_after_handling_ethereum_event() {
                 amount.into()
             )),
             last_event()
+        );
+    });
+}
+
+#[test]
+fn mint_zero_amount_must_fail() {
+    new_tester().execute_with(|| {
+        let peer_contract = H160::repeat_byte(2);
+        let asset_id = XOR;
+        let token = TokenAddresses::<Test>::get(BASE_NETWORK_ID, asset_id).unwrap();
+        let sender = H160::repeat_byte(3);
+        let recipient: AccountId = Keyring::Charlie.into();
+        let amount = balance!(0);
+
+        common::assert_noop_transactional!(
+            Erc20App::mint(
+                dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
+                token,
+                sender,
+                recipient.clone(),
+                amount.into(),
+            ),
+            Error::<Test>::WrongAmount
         );
     });
 }
@@ -129,6 +153,28 @@ fn should_not_burn_on_commitment_failure() {
         //     call.dispatch(Origin::signed(sender.clone())),
         //     bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         // );
+    });
+}
+
+#[test]
+fn burn_zero_amount_must_fail() {
+    new_tester().execute_with(|| {
+        let asset_id = XOR;
+        let recipient = H160::repeat_byte(2);
+        let bob: AccountId = Keyring::Bob.into();
+        let amount = balance!(0);
+        <Test as assets::Config>::Currency::deposit(asset_id, &bob, balance!(500)).unwrap();
+
+        common::assert_noop_transactional!(
+            Erc20App::burn(
+                Origin::signed(bob.clone()),
+                BASE_NETWORK_ID,
+                asset_id,
+                recipient.clone(),
+                amount
+            ),
+            Error::<Test>::WrongAmount
+        );
     });
 }
 
