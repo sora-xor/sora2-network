@@ -16,8 +16,16 @@ updates:
       time: "06:00"
     open-pull-requests-limit: 0
 
-  - package-ecosystem: "npm"
-    directory: "/ethereum"
+  - package-ecosystem: "gradle"
+    directory: "/ethereum/smart-contracts-bootstrap"
+    target-branch: "master"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "gradle"
+    directory: "/ethereum/java-wrapper"
     target-branch: "master"
     schedule:
       interval: "daily"
