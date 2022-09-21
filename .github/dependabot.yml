@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/ethereum-bridge-contracts"
+    target-branch: "master"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/ethereum"
+    target-branch: "master"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+    open-pull-requests-limit: 0
