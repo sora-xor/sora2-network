@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use super::*;
 
+use frame_support::assert_noop;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_err, assert_ok, parameter_types};
@@ -208,7 +209,7 @@ fn test_submit_with_invalid_source_channel() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidSourceChannel
         );
@@ -281,7 +282,7 @@ fn test_submit_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        common::assert_noop_transactional!(
+        assert_noop!(
             BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
         );
@@ -303,7 +304,7 @@ fn test_submit_with_invalid_network_id() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID + 1, message.clone()),
             Error::<Test>::InvalidNetwork
         );
@@ -329,7 +330,7 @@ fn test_register_channel() {
 #[test]
 fn test_register_existing_channel() {
     new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             BasicInboundChannel::register_channel(
                 Origin::root(),
                 BASE_NETWORK_ID,

@@ -670,7 +670,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path() {
             false,
             true,
         );
-        common::assert_noop_transactional!(result, <Error<Runtime>>::UnavailableExchangePath);
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
@@ -697,7 +697,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
             false,
             true,
         );
-        common::assert_noop_transactional!(result, <Error<Runtime>>::UnavailableExchangePath);
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
@@ -714,7 +714,7 @@ fn test_quote_should_fail_with_aggregation_error() {
             false,
             true,
         );
-        common::assert_noop_transactional!(result, Error::<Runtime>::UnavailableExchangePath);
+        assert_noop!(result, Error::<Runtime>::UnavailableExchangePath);
     });
 }
 
@@ -799,7 +799,7 @@ fn test_swap_should_fail_with_bad_origin() {
             Vec::new(),
             FilterMode::Disabled,
         );
-        common::assert_noop_transactional!(result, DispatchError::BadOrigin);
+        assert_noop!(result, DispatchError::BadOrigin);
     });
 }
 
@@ -2290,10 +2290,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 false,
                 true,
             );
-            common::assert_noop_transactional!(
-                result,
-                crate::Error::<Runtime>::InsufficientLiquidity
-            );
+            assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
@@ -2372,7 +2369,7 @@ fn test_smart_split_error_handling_works() {
                 true,
             );
 
-            common::assert_noop_transactional!(result, expected_error);
+            assert_noop!(result, expected_error);
         });
     }
 

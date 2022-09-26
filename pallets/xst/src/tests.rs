@@ -33,6 +33,7 @@ mod tests {
     use crate::{Error, Pallet, mock::*};
     use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
     use frame_support::assert_ok;
+use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
@@ -107,7 +108,7 @@ mod tests {
             // add some reserves
             XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 XSTPool::sell_price(
                     &XOR,
                     &XSTUSD,
@@ -115,7 +116,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 XSTPool::sell_price(
                     &XOR,
                     &XSTUSD,
@@ -140,7 +141,7 @@ mod tests {
                 Ok(fixed!(0)),
             );
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 XSTPool::buy_price(
                     &XOR,
                     &XSTUSD,
@@ -148,7 +149,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 XSTPool::buy_price(
                     &XOR,
                     &XSTUSD,
@@ -578,7 +579,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
-            common::assert_noop_transactional!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
+            assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
         });
     }
 

@@ -3,6 +3,7 @@ use crate::mock::{
 };
 use crate::{Addresses, Error};
 use common::{balance, XOR};
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;
 use sp_core::H160;
@@ -82,7 +83,7 @@ fn should_not_burn_on_commitment_failure() {
 
         assert_ok!(Assets::mint_to(&XOR, &sender, &sender, balance!(500)));
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
@@ -113,7 +114,7 @@ fn test_register_network() {
 fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::register_network_with_existing_asset(
                 Origin::root(),
                 BASE_NETWORK_ID,

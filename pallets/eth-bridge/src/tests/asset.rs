@@ -14,6 +14,7 @@ use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
 };
+use frame_support::assert_noop;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -727,7 +728,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
             balance!(0.1000009),
         )
         .unwrap();
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthBridge::transfer_to_sidechain(
                 Origin::signed(alice.clone()),
                 asset_id.clone(),
@@ -750,7 +751,7 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
         let ticker = "USDT".into();
         let name = "Tether USD".into();
         let decimals = DEFAULT_BALANCE_PRECISION + 1;
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthBridge::add_sidechain_token(
                 Origin::root(),
                 token_address,

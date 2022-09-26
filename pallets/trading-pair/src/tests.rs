@@ -31,6 +31,7 @@
 use crate::mock::*;
 use crate::{Error, Pallet};
 use common::{EnsureTradingPairExists, LiquiditySourceType, TradingPair, DOT, KSM, XOR, XSTUSD};
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 
 type TradingPairPallet = Pallet<Runtime>;
@@ -65,7 +66,7 @@ fn should_register_with_another_dex_id() {
 fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::register(Origin::signed(ALICE), 1, XOR, DOT),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
@@ -76,7 +77,7 @@ fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
 fn should_not_register_trading_pair_with_wrong_base_asset() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, DOT, XOR),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
@@ -87,7 +88,7 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
 fn should_not_register_trading_pair_with_same_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, XOR),
             Error::<Runtime>::IdenticalAssetIds
         );
@@ -110,11 +111,11 @@ fn should_list_registered_pairs() {
             !TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to query pair state.")
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
             Error::<Runtime>::TradingPairDoesntExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
             Error::<Runtime>::TradingPairDoesntExist
         );
@@ -139,7 +140,7 @@ fn should_list_registered_pairs() {
         assert_ok!(TradingPairPallet::ensure_trading_pair_exists(
             &DEX_ID, &XOR, &DOT
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
             Error::<Runtime>::TradingPairDoesntExist
         );
@@ -314,7 +315,7 @@ fn should_not_enable_source_for_unregistered_pair() {
     ext.execute_with(|| {
         TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::enable_source_for_trading_pair(
                 &DEX_ID,
                 &XOR,
@@ -330,27 +331,27 @@ fn should_not_enable_source_for_unregistered_pair() {
 fn should_fail_with_nonexistent_dex() {
     let mut ext = ExtBuilder::without_initialized_dex().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::list_trading_pairs(&DEX_ID),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::is_source_enabled_for_trading_pair(
                 &DEX_ID,
                 &XOR,
@@ -359,7 +360,7 @@ fn should_fail_with_nonexistent_dex() {
             ),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             TradingPairPallet::enable_source_for_trading_pair(
                 &DEX_ID,
                 &XOR,

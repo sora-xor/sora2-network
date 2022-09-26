@@ -87,7 +87,7 @@ impl Relay {
                     .await
                     .context("send import header transaction")?;
                 if let Some(progress) = progress {
-                    futures.push(self.finalize_transaction(progress, number));
+                    futures.push_back(self.finalize_transaction(progress, number));
                 }
                 current += 1;
             } else {
@@ -117,7 +117,7 @@ impl Relay {
                     .await
                     .context("send import header transaction")?;
                 if let Some(progress) = progress {
-                    futures.push(self.finalize_transaction(progress, number));
+                    futures.push_back(self.finalize_transaction(progress, number));
                 }
             }
         }

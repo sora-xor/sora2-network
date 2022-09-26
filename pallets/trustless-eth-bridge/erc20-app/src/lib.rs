@@ -52,7 +52,7 @@ pub mod pallet {
     use bridge_types::types::{AssetKind, ChannelId};
     use bridge_types::EthNetworkId;
     use common::{AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION};
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, transactional};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
     use traits::currency::MultiCurrency;
@@ -228,6 +228,7 @@ pub mod pallet {
         Common exstrinsics
          */
 
+        #[transactional]
         #[pallet::weight({
 			match channel_id {
 				ChannelId::Basic => <T as Config>::WeightInfo::burn_basic_channel(),

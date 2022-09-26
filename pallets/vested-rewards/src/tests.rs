@@ -38,6 +38,7 @@ use common::{
     balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
     ETH, PSWAP, XOR, XSTUSD,
 };
+use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
 use frame_support::traits::OnInitialize;
 use std::convert::TryFrom;
@@ -200,7 +201,7 @@ fn should_update_market_making_pairs_correctly() {
 
         let origin = Origin::none();
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, true),
             DispatchError::BadOrigin
         );
@@ -212,14 +213,14 @@ fn should_update_market_making_pairs_correctly() {
         assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
 
         // we already have this pair, so it should return an error
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::set_asset_pair(origin.clone(), XOR, ETH, true),
             Error::<Runtime>::MarketMakingPairAlreadyAllowed
         );
 
         let origin = Origin::none();
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false),
             DispatchError::BadOrigin
         );
@@ -229,7 +230,7 @@ fn should_update_market_making_pairs_correctly() {
         VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false).unwrap();
 
         // we don't have this pair anymore, so it should return an error
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::set_asset_pair(origin, ETH, XOR, false),
             Error::<Runtime>::MarketMakingPairAlreadyDisallowed
         );
@@ -681,7 +682,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             Assets::free_balance(&PSWAP, &alice()).unwrap(),
             balance!(60)
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -744,7 +745,7 @@ fn some_rewards_reserves_are_depleted() {
                     .collect(),
             }
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -764,7 +765,7 @@ fn all_rewards_reserves_are_depleted() {
             vesting: balance!(40),
             ..Default::default()
         });
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
@@ -809,12 +810,12 @@ fn claiming_without_rewards() {
                 rewards: Default::default(),
             }
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
         VestedRewards::add_tbc_reward(&bob(), balance!(10)).expect("Failed to add reward.");
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::ClaimLimitExceeded
         );
@@ -1238,15 +1239,15 @@ fn distributing_with_no_accounts_is_postponed() {
             VestedRewards::on_initialize(block_n.into());
         }
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::NothingToClaim
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             VestedRewards::claim_rewards(Origin::signed(eve())),
             Error::<Runtime>::NothingToClaim
         );

@@ -399,6 +399,7 @@ pub mod pallet {
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::UniqueSaturatedFrom;
 
@@ -443,6 +444,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
 
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -451,6 +453,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
 
         pub fn claim_crowdloan_rewards(
@@ -476,6 +479,7 @@ pub mod pallet {
         }
 
         /// Allow/disallow a market making pair.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
 
         pub fn set_asset_pair(

@@ -41,6 +41,7 @@ mod tests {
     use frame_support::traits::OnInitialize;
     use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::assert_err;
+use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
@@ -104,11 +105,11 @@ mod tests {
                     .expect("failed to calculate sell price"),
                     fixed!(429.2601364302331077)
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000))),
                 Error::<Runtime>::NotEnoughReserves,
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(100000))),
                 Error::<Runtime>::NotEnoughReserves,
             );
@@ -140,7 +141,7 @@ mod tests {
             // add some reserves
             MBCPool::exchange(&alice, &alice, &DEXId::Polkaswap, &VAL, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::sell_price(
                     &XOR,
                     &VAL,
@@ -148,7 +149,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::sell_price(
                     &XOR,
                     &VAL,
@@ -173,7 +174,7 @@ mod tests {
                 Ok(fixed!(0)),
             );
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::buy_price(
                     &XOR,
                     &VAL,
@@ -181,7 +182,7 @@ mod tests {
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 MBCPool::buy_price(
                     &XOR,
                     &VAL,

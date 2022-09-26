@@ -30,9 +30,10 @@
 
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    assert_noop_transactional, balance, AssetName, AssetSymbol, Balance, LiquiditySource,
-    LiquiditySourceType, ToFeeAccount, DEFAULT_BALANCE_PRECISION,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
+    DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 
 use crate::mock::*;
@@ -503,7 +504,7 @@ fn quote_case_exact_output_for_input_base_second() {
 // Deposit to an empty pool
 fn deposit_less_than_minimum_1() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -524,7 +525,7 @@ fn deposit_less_than_minimum_1() {
 fn deposit_less_than_minimum_2() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
                     Origin::signed(CHARLIE()),
                     dex_id,
@@ -582,7 +583,7 @@ fn multiple_providers() {
 #[test]
 fn depositliq_large_values() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -620,7 +621,7 @@ fn depositliq_valid_range_but_desired_is_corrected() {
 fn cannot_deposit_zero_values() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -633,7 +634,7 @@ fn cannot_deposit_zero_values() {
                 ),
                 crate::Error::<Runtime>::InvalidDepositLiquidityBasicAssetAmount
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -646,7 +647,7 @@ fn cannot_deposit_zero_values() {
                 ),
                 crate::Error::<Runtime>::InvalidDepositLiquidityTargetAssetAmount
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -659,7 +660,7 @@ fn cannot_deposit_zero_values() {
                 ),
                 crate::Error::<Runtime>::InvalidDepositLiquidityBasicAssetAmount
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -690,7 +691,7 @@ fn cannot_withdraw_zero_values() {
                 balance!(350000),
                 balance!(143000),
             ));
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -702,7 +703,7 @@ fn cannot_withdraw_zero_values() {
                 ),
                 crate::Error::<Runtime>::InvalidWithdrawLiquidityBasicAssetAmount
             );
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -749,7 +750,7 @@ fn cannot_initialize_with_non_divisible_asset() {
             GoldenTicket.into(),
             Mango.into()
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::initialize_pool(
                 Origin::signed(BOB()),
                 DEX_A_ID,
@@ -782,7 +783,7 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
                 0
             );
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::initialize_pool(
                     Origin::signed(BOB()),
                     dex_id.clone(),
@@ -838,7 +839,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
             // fail for each asset min, after this success.
 
             // First minimum is above boundaries.
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -852,7 +853,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
             );
 
             // Second minimum is above boundaries.
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -975,7 +976,7 @@ fn exchange_desired_input() {
 #[test]
 fn exchange_invalid_dex_id() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(|_, _, _, _, _, _, _, _| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::exchange(
                 &ALICE(),
                 &ALICE(),
@@ -996,7 +997,7 @@ fn exchange_invalid_dex_id() {
 fn exchange_different_asset_pair() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::exchange(
                     &ALICE(),
                     &ALICE(),
@@ -1018,7 +1019,7 @@ fn exchange_different_asset_pair() {
 fn exchange_swap_fail_with_invalid_balance() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::exchange(
                     &BOB(),
                     &BOB(),
@@ -1291,7 +1292,7 @@ fn withdraw_all_liquidity() {
                 balance!(227683.9915321233119024),
             );
 
-            common::assert_noop_transactional!(
+            assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -1691,7 +1692,7 @@ fn burn() {
 
     ExtBuilder::default().build().execute_with(|| {
         TotalIssuances::<Runtime>::insert(ALICE(), 10);
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::burn(&ALICE(), &BOB(), 10),
             crate::Error::<Runtime>::AccountBalanceIsInvalid
         );
@@ -1702,7 +1703,7 @@ fn burn() {
     ExtBuilder::default().build().execute_with(|| {
         PoolProviders::<Runtime>::insert(ALICE(), BOB(), 5);
         TotalIssuances::<Runtime>::insert(ALICE(), 10);
-        common::assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::burn(&ALICE(), &BOB(), 10),
             crate::Error::<Runtime>::AccountBalanceIsInvalid
         );
@@ -1735,11 +1736,11 @@ fn strict_sort_pair() {
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             PoolXYK::strict_sort_pair(&asset_base, &asset_base, &asset_base),
             crate::Error::<Runtime>::AssetsMustNotBeSame
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PoolXYK::strict_sort_pair(&asset_base, &asset_target, &asset_target_2),
             crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
         );
@@ -1892,7 +1893,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -1906,7 +1907,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -1920,7 +1921,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -1967,7 +1968,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             None,
         ));
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -1980,7 +1981,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
@@ -1993,7 +1994,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
             crate::Error::<Runtime>::UnableToOperateWithIndivisibleAssets
         );
 
-        assert_noop_transactional!(
+        assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,

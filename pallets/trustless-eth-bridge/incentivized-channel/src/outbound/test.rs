@@ -3,6 +3,7 @@ use currencies::BasicCurrencyAdapter;
 
 use common::mock::ExistentialDeposits;
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
+use frame_support::assert_noop;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_ok, parameter_types};
@@ -297,7 +298,7 @@ fn test_submit_not_enough_funds() {
 
         Assets::mint_to(&XOR, &who, &who, 50u32.into()).unwrap();
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -331,7 +332,7 @@ fn test_submit_exceeds_queue_limit() {
             .unwrap()
         });
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -348,7 +349,7 @@ fn test_submit_exceeds_queue_limit() {
 fn test_set_fee_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
-        common::assert_noop_transactional!(
+        assert_noop!(
             IncentivizedOutboundChannel::set_fee(Origin::signed(bob), 1000u32.into()),
             DispatchError::BadOrigin
         );
@@ -364,7 +365,7 @@ fn test_submit_exceeds_payload_limit() {
         let max_payload_bytes = MaxMessagePayloadSize::get();
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,
@@ -384,7 +385,7 @@ fn test_submit_fails_on_nonce_overflow() {
         let who: AccountId = Keyring::Bob.into();
 
         <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        common::assert_noop_transactional!(
+        assert_noop!(
             IncentivizedOutboundChannel::submit(
                 &RawOrigin::Signed(who),
                 BASE_NETWORK_ID,

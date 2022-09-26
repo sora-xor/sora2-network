@@ -340,6 +340,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -438,6 +439,7 @@ pub mod pallet {
         /// - `bridge_contract_address` - address of smart-contract deployed on a corresponding
         /// network.
         /// - `initial_peers` - a set of initial network peers.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
@@ -466,6 +468,7 @@ pub mod pallet {
         /// Parameters:
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -497,6 +500,7 @@ pub mod pallet {
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -541,6 +545,7 @@ pub mod pallet {
         /// - `to` - sidechain account id.
         /// - `amount` - amount of the asset.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -575,6 +580,7 @@ pub mod pallet {
         /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
@@ -649,6 +655,7 @@ pub mod pallet {
         /// - `address` - account id on sidechain.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -695,6 +702,7 @@ pub mod pallet {
         /// - `account_id` - account id on thischain.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -760,6 +768,7 @@ pub mod pallet {
         /// Parameters:
         /// - `network_id` - bridge network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
@@ -791,6 +800,7 @@ pub mod pallet {
         /// - `erc20_native_tokens` - migrated assets ids.
         /// - `network_id` - bridge network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -911,6 +921,7 @@ pub mod pallet {
         ///
         /// Can only be called by a root account.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
