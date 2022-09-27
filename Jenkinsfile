@@ -145,6 +145,9 @@ pipeline {
             }
         }
         stage('Build docs & publish') {
+            when {
+                expression { return (env.GIT_BRANCH == "master" || env.TAG_NAME) }
+            }
             environment {
                 GH_USER = "${gitHubUser}"
                 GH_TOKEN = credentials('sorabot-github-token')
