@@ -218,7 +218,7 @@ pub mod pallet {
         }
     }
     impl<T: Config> Pallet<T> {
-        fn make_message_id(nonce: u64) -> H256 {
+        pub fn make_message_id(nonce: u64) -> H256 {
             MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
         }
 
@@ -234,6 +234,7 @@ pub mod pallet {
                     network_id,
                     Self::make_message_id(message.nonce),
                     MessageStatus::Committed,
+                    None,
                 );
             }
 

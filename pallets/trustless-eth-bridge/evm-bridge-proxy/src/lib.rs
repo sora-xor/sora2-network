@@ -30,13 +30,15 @@ pub use pallet::*;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub enum BridgeRequest<T: frame_system::Config + assets::Config> {
+pub enum BridgeRequest<T: frame_system::Config + assets::Config + pallet_timestamp::Config> {
     IncomingTransfer {
         source: H160,
         dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
         status: MessageStatus,
+        start_timestamp: u64,
+        end_timestamp: T::Moment,
     },
     OutgoingTransfer {
         source: T::AccountId,
@@ -44,14 +46,19 @@ pub enum BridgeRequest<T: frame_system::Config + assets::Config> {
         asset_id: T::AssetId,
         amount: Balance,
         status: MessageStatus,
+        start_timestamp: T::Moment,
+        end_timestamp: Option<u64>,
     },
 }
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::{traits::EvmBridgeApp, types::AppKind};
-    use frame_support::{pallet_prelude::*, Twox128};
+    use bridge_types::{
+        traits::EvmBridgeApp,
+        types::{BridgeAppInfo, BridgeAssetInfo},
+    };
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use traits::MultiCurrency;
 
@@ -59,7 +66,7 @@ pub mod pallet {
     type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
         type Event: From<Event> + IsType<<Self as frame_system::Config>::Event>;
 
         type EthApp: EvmBridgeApp<Self::AccountId, Self::AssetId, Balance>;
@@ -70,14 +77,29 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn user_transactions)]
-    pub(super) type UserTransactions<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Twox128, T::AccountId, Vec<H256>, ValueQuery>;
+    #[pallet::getter(fn transactions)]
+    pub(super) type Transactions<T: Config> = StorageNMap<
+        _,
+        (
+            NMapKey<Twox64Concat, EthNetworkId>,
+            NMapKey<Blake2_128Concat, AccountIdOf<T>>,
+            NMapKey<Blake2_128Concat, H256>,
+        ),
+        BridgeRequest<T>,
+        OptionQuery,
+    >;
 
     #[pallet::storage]
-    #[pallet::getter(fn transactions)]
-    pub(super) type Transactions<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H256, BridgeRequest<T>, OptionQuery>;
+    #[pallet::getter(fn sender)]
+    pub(super) type Senders<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        EthNetworkId,
+        Blake2_128Concat,
+        H256,
+        AccountIdOf<T>,
+        OptionQuery,
+    >;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -121,14 +143,14 @@ pub mod pallet {
         }
     }
     impl<T: Config> Pallet<T> {
-        pub fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)> {
+        pub fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo> {
             let mut res = vec![];
             res.extend(T::EthApp::list_apps(network_id));
             res.extend(T::ERC20App::list_apps(network_id));
             res
         }
 
-        pub fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, T::AssetId)> {
+        pub fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<T::AssetId>> {
             let mut res = vec![];
             res.extend(T::EthApp::list_supported_assets(network_id));
             res.extend(T::ERC20App::list_supported_assets(network_id));
@@ -138,13 +160,30 @@ pub mod pallet {
 }
 
 impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
-    fn update_status(network_id: EthNetworkId, id: H256, new_status: MessageStatus) {
-        Transactions::<T>::mutate(network_id, id, |req| {
+    fn update_status(
+        network_id: EthNetworkId,
+        id: H256,
+        new_status: MessageStatus,
+        new_end_timestamp: Option<u64>,
+    ) {
+        let sender = match Senders::<T>::get(network_id, id) {
+            Some(sender) => sender,
+            None => return,
+        };
+        Transactions::<T>::mutate((network_id, sender, id), |req| {
             if let Some(req) = req {
                 Self::deposit_event(Event::RequestStatusUpdate(id, new_status));
                 match req {
                     BridgeRequest::IncomingTransfer { status, .. }
                     | BridgeRequest::OutgoingTransfer { status, .. } => *status = new_status,
+                }
+                match req {
+                    BridgeRequest::OutgoingTransfer { end_timestamp, .. } => {
+                        if let Some(timestamp) = new_end_timestamp {
+                            *end_timestamp = Some(timestamp);
+                        }
+                    }
+                    _ => {}
                 }
             }
         });
@@ -157,20 +196,23 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
         dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
+        start_timestamp: u64,
     ) {
         Self::deposit_event(Event::RequestStatusUpdate(message_id, MessageStatus::Done));
+        Senders::<T>::insert(&network_id, &message_id, &dest);
+        let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            network_id,
-            message_id,
+            (&network_id, &dest, &message_id),
             BridgeRequest::IncomingTransfer {
                 source,
                 dest: dest.clone(),
                 asset_id,
                 amount,
                 status: MessageStatus::Done,
+                start_timestamp,
+                end_timestamp: timestamp,
             },
         );
-        UserTransactions::<T>::append(network_id, dest, message_id);
     }
 
     fn outbound_request(
@@ -185,17 +227,19 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
             message_id,
             MessageStatus::InQueue,
         ));
+        Senders::<T>::insert(&network_id, &message_id, &source);
+        let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            network_id,
-            message_id,
+            (&network_id, &source, &message_id),
             BridgeRequest::OutgoingTransfer {
                 source: source.clone(),
                 dest,
                 asset_id,
                 amount,
                 status: MessageStatus::InQueue,
+                start_timestamp: timestamp,
+                end_timestamp: None,
             },
         );
-        UserTransactions::<T>::append(network_id, source, message_id);
     }
 }

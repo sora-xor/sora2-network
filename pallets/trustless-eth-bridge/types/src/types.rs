@@ -2,6 +2,7 @@
 
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
+use ethereum_types::H160;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -161,6 +162,32 @@ pub enum AppKind {
 pub struct LeafExtraData<Hash, RandomSeed> {
     pub random_seed: RandomSeed,
     pub digest_hash: Hash,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BridgeAssetInfo<AssetId> {
+    pub asset_id: AssetId,
+    pub evm_address: Option<H160>,
+    pub app_kind: AppKind,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BridgeAppInfo {
+    pub evm_address: H160,
+    pub app_kind: AppKind,
+}
+
+#[derive(
+    Clone, Copy, RuntimeDebug, Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct EvmCallOriginOutput {
+    pub network_id: EthNetworkId,
+    pub message_id: H256,
+    pub contract: H160,
+    pub timestamp: u64,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

@@ -2786,11 +2786,11 @@ impl_runtime_apis! {
     }
 
     impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
-        fn list_apps(network_id: bridge_types::EthNetworkId) -> Vec<(bridge_types::types::AppKind, H160)> {
+        fn list_apps(network_id: bridge_types::EthNetworkId) -> Vec<bridge_types::types::BridgeAppInfo> {
             EvmBridgeProxy::list_apps(network_id)
         }
 
-        fn list_supported_assets(network_id: bridge_types::EthNetworkId) -> Vec<(bridge_types::types::AppKind, AssetId)> {
+        fn list_supported_assets(network_id: bridge_types::EthNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
             EvmBridgeProxy::list_supported_assets(network_id)
         }
     }

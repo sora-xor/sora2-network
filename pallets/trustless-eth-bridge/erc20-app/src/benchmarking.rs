@@ -2,6 +2,7 @@
 
 use crate::*;
 use bridge_types::types::AssetKind;
+use bridge_types::types::EvmCallOriginOutput;
 use bridge_types::EthNetworkId;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
@@ -43,7 +44,7 @@ benchmarks! {
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
-        let origin = dispatch::RawOrigin::from((BASE_NETWORK_ID, Default::default(), caller));
+        let origin = dispatch::RawOrigin::from(EvmCallOriginOutput {network_id: BASE_NETWORK_ID, contract: caller, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -97,7 +98,7 @@ benchmarks! {
     register_asset_internal {
         let asset_id: T::AssetId = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), who);
+        let origin = dispatch::RawOrigin(EvmCallOriginOutput {network_id: BASE_NETWORK_ID, contract: who, ..Default::default()});
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
     }: _(origin, asset_id, address)

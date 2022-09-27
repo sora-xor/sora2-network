@@ -63,6 +63,7 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -298,6 +299,13 @@ impl proxy::Config for Test {
     type Event = Event;
     type EthApp = EthApp;
     type ERC20App = ERC20App;
+    type WeightInfo = ();
+}
+
+impl pallet_timestamp::Config for Test {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = ();
     type WeightInfo = ();
 }
 

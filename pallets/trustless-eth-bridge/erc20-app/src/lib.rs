@@ -52,7 +52,9 @@ pub mod pallet {
 
     use assets::AssetIdOf;
     use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundChannel};
-    use bridge_types::types::{AppKind, AssetKind};
+    use bridge_types::types::{
+        AppKind, AssetKind, BridgeAppInfo, BridgeAssetInfo, EvmCallOriginOutput,
+    };
     use bridge_types::{EthNetworkId, H256};
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
@@ -76,7 +78,7 @@ pub mod pallet {
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
+        type CallOrigin: EnsureOrigin<Self::Origin, Success = EvmCallOriginOutput>;
 
         type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
@@ -180,7 +182,12 @@ pub mod pallet {
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: U256,
         ) -> DispatchResult {
-            let (network_id, message_id, who) = T::CallOrigin::ensure_origin(origin.clone())?;
+            let EvmCallOriginOutput {
+                network_id,
+                message_id,
+                contract,
+                timestamp,
+            } = T::CallOrigin::ensure_origin(origin.clone())?;
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
                 // should never return this error, because called from Ethereum
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -188,11 +195,12 @@ pub mod pallet {
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let app_address = AppAddresses::<T>::get(network_id, asset_kind)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
-            let bridge_account = Self::bridge_account()?;
 
-            if who != app_address {
+            if contract != app_address {
                 return Err(DispatchError::BadOrigin.into());
             }
+
+            let bridge_account = Self::bridge_account()?;
 
             let amount: BalanceOf<T> = amount.as_u128().into();
             ensure!(amount > 0, Error::<T>::WrongAmount);
@@ -217,6 +225,7 @@ pub mod pallet {
                 recipient.clone(),
                 asset_id,
                 amount,
+                timestamp,
             );
             Self::deposit_event(Event::Minted(
                 network_id, asset_id, sender, recipient, amount,
@@ -231,9 +240,13 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             contract: H160,
         ) -> DispatchResult {
-            let (network_id, _, who) = T::CallOrigin::ensure_origin(origin)?;
+            let EvmCallOriginOutput {
+                network_id,
+                contract: app_contract,
+                ..
+            } = T::CallOrigin::ensure_origin(origin)?;
             let asset_kind = AppAddresses::<T>::iter_prefix(network_id)
-                .find(|(_, address)| *address == who)
+                .find(|(_, address)| *address == app_contract)
                 .ok_or(Error::<T>::AppIsNotRegistered)?
                 .0;
             Self::register_asset_inner(network_id, asset_id, contract, asset_kind)?;
@@ -507,26 +520,38 @@ pub mod pallet {
             Pallet::<T>::burn_inner(sender, network_id, asset_id, recipient, amount)
         }
 
-        fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, T::AssetId)> {
+        fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<T::AssetId>> {
             AssetKinds::<T>::iter_prefix(network_id)
                 .map(|(asset_id, asset_kind)| {
                     let app_kind = match asset_kind {
                         AssetKind::Thischain => AppKind::SidechainApp,
                         AssetKind::Sidechain => AppKind::ERC20App,
                     };
-                    (app_kind, asset_id)
+                    TokenAddresses::<T>::get(network_id, &asset_id)
+                        .map(|evm_address| {
+                            Some(BridgeAssetInfo {
+                                asset_id,
+                                app_kind,
+                                evm_address: Some(evm_address),
+                            })
+                        })
+                        .unwrap_or_default()
                 })
+                .flatten()
                 .collect()
         }
 
-        fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)> {
+        fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo> {
             AppAddresses::<T>::iter_prefix(network_id)
-                .map(|(asset_kind, contract)| {
+                .map(|(asset_kind, evm_address)| {
                     let app_kind = match asset_kind {
                         AssetKind::Thischain => AppKind::SidechainApp,
                         AssetKind::Sidechain => AppKind::ERC20App,
                     };
-                    (app_kind, contract)
+                    BridgeAppInfo {
+                        app_kind,
+                        evm_address,
+                    }
                 })
                 .collect()
         }

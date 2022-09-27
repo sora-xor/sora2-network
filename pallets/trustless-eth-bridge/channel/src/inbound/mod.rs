@@ -35,6 +35,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::traits::{AppRegistry, OutboundChannel};
+    use bridge_types::Log;
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -46,7 +47,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Verifier module for message verification.
-        type Verifier: Verifier;
+        type Verifier: Verifier<Result = (Log, u64)>;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, MessageId>;
@@ -130,7 +131,7 @@ pub mod pallet {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
-            let log = T::Verifier::verify(network_id, &message)?;
+            let (log, timestamp) = T::Verifier::verify(network_id, &message)?;
 
             // Decode log into an Envelope
             let envelope: Envelope<T> =
@@ -159,6 +160,7 @@ pub mod pallet {
                 network_id,
                 envelope.source,
                 message_id.into(),
+                timestamp,
                 &envelope.payload,
             );
 

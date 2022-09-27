@@ -157,9 +157,11 @@ impl assets::Config for Test {
 pub struct MockVerifier;
 
 impl Verifier for MockVerifier {
-    fn verify(_: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
+    type Result = (Log, u64);
+
+    fn verify(_: EthNetworkId, message: &Message) -> Result<Self::Result, DispatchError> {
         let log: Log = rlp::decode(&message.data).unwrap();
-        Ok(log)
+        Ok((log, 0))
     }
 
     fn initialize_storage(
@@ -176,7 +178,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, MessageId> for MockMessageDispatch {
-    fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: &[u8]) {}
+    fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: u64, _: &[u8]) {}
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(_: MessageId) -> Option<<Test as frame_system::Config>::Event> {

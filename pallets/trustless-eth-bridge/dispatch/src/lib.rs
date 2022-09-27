@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_types::types::EvmCallOriginOutput;
 use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
 use frame_support::weights::GetDispatchInfo;
@@ -15,11 +16,11 @@ use bridge_types::{EthNetworkId, H256};
 use codec::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct RawOrigin(pub EthNetworkId, pub H256, pub H160);
+pub struct RawOrigin(pub EvmCallOriginOutput);
 
-impl From<(EthNetworkId, H256, H160)> for RawOrigin {
-    fn from(origin: (EthNetworkId, H256, H160)) -> RawOrigin {
-        RawOrigin(origin.0, origin.1, origin.2)
+impl From<EvmCallOriginOutput> for RawOrigin {
+    fn from(origin: EvmCallOriginOutput) -> RawOrigin {
+        RawOrigin(origin)
     }
 }
 
@@ -29,10 +30,10 @@ impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
 where
     OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
 {
-    type Success = (EthNetworkId, H256, H160);
+    type Success = EvmCallOriginOutput;
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-        o.into().and_then(|o| Ok((o.0, o.1, o.2)))
+        o.into().and_then(|o| Ok(o.0))
     }
 
     #[cfg(feature = "runtime-benchmarks")]
@@ -110,7 +111,13 @@ pub mod pallet {
     pub type Origin = RawOrigin;
 
     impl<T: Config> MessageDispatch<T, MessageId> for Pallet<T> {
-        fn dispatch(network_id: EthNetworkId, source: H160, message_id: MessageId, payload: &[u8]) {
+        fn dispatch(
+            network_id: EthNetworkId,
+            source: H160,
+            message_id: MessageId,
+            timestamp: u64,
+            payload: &[u8],
+        ) {
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
@@ -124,11 +131,12 @@ pub mod pallet {
                 return;
             }
 
-            let origin = RawOrigin(
+            let origin = RawOrigin(EvmCallOriginOutput {
                 network_id,
-                message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
-                source,
-            )
+                message_id: message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
+                contract: source,
+                timestamp,
+            })
             .into();
             let result = call.dispatch(origin);
 
@@ -244,7 +252,7 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
 
             assert_eq!(
                 System::events(),
@@ -269,7 +277,7 @@ mod tests {
             let message: Vec<u8> = vec![1, 2, 3];
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
 
             assert_eq!(
                 System::events(),
@@ -293,7 +301,7 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, &message);
+            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
 
             assert_eq!(
                 System::events(),

@@ -1,6 +1,7 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
+use bridge_types::types::EvmCallOriginOutput;
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
@@ -36,7 +37,7 @@ benchmarks! {
     // * `mint` successfully adds amount to recipient account
     mint {
         let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), contract);
+        let origin = dispatch::RawOrigin(EvmCallOriginOutput{network_id: BASE_NETWORK_ID, contract, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
