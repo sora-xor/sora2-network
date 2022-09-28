@@ -154,7 +154,7 @@ const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
 /// Maximum substrate blocks can be handled during single offchain procedure.
-const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 3;
+const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 20;
 #[cfg(not(test))]
 const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
 #[cfg(test)]
