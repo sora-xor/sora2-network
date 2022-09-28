@@ -38,7 +38,7 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -981,6 +981,17 @@ fn testnet_genesis(
                     None,
                 ),
                 (
+                    XST.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"SORA Synthetics".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
                     XSTUSD.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
@@ -1575,6 +1586,17 @@ fn mainnet_genesis(
             eth_bridge_account_id.clone(),
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"Ether".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            XST.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XST".to_vec()),
+            AssetName(b"SORA Synthetics".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

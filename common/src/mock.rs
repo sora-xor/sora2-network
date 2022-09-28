@@ -88,6 +88,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::DAI => BlackPepper,
             PredefinedAssetId::ETH => AcmeSpyKit,
             PredefinedAssetId::XSTUSD => Mango,
+            PredefinedAssetId::XST => BatteryForMusicPlayer,
         }
     }
 }

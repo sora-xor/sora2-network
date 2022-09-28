@@ -30,14 +30,14 @@
 
 use codec::Decode;
 use frame_support::debug;
-use frame_support::traits::{Get, GetPalletVersion};
+use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
 use permissions::{Scope, BURN, MINT};
 use sp_runtime::traits::Zero;
 
 use common::{
     balance, AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, DAI,
-    DEFAULT_BALANCE_PRECISION, XOR, XSTUSD,
+    DEFAULT_BALANCE_PRECISION, XOR, XST, XSTUSD,
 };
 
 use crate::{Config, EnabledSynthetics, Pallet, PermissionedTechAccount, ReferenceAssetId, Weight};
@@ -61,10 +61,41 @@ pub fn migrate<T: Config>() -> Weight {
             EnabledSynthetics::<T>::mutate(|set| set.insert(initial_synthetic));
             weight = weight.saturating_add(mint_initial_deposit::<T>());
         }
+        Some(PalletVersion {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        }) => weight += register_xst_asset::<T>(),
         _ => (),
     }
 
     weight
+}
+
+pub fn register_xst_asset<T: Config>() -> Weight {
+    let result = assets::Pallet::<T>::register_asset_id(
+        get_assets_owner_account::<T>(),
+        XST.into(),
+        AssetSymbol(b"XST".to_vec()),
+        AssetName(b"SORA Synthetics".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::zero(),
+        true,
+        None,
+        None,
+    );
+    if result.is_err() {
+        debug::error!(
+            target: "runtime",
+            "failed to register SORA Synthetics asset"
+        );
+    } else {
+        debug::info!(
+            target: "runtime",
+            "registered SORA Synthetics asset successfully"
+        );
+    }
+    T::DbWeight::get().writes(1)
 }
 
 pub fn get_assets_owner_account<T: Config>() -> T::AccountId {
