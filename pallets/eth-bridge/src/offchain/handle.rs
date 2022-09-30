@@ -337,6 +337,7 @@ impl<T: Config> Pallet<T> {
             );
             if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
                 // Skip already submitted requests.
+                trace!("Skipped already submitted request: {:?}", tx_hash);
                 continue;
             }
             let at_height = log
@@ -506,6 +507,12 @@ impl<T: Config> Pallet<T> {
         if from_block_opt.is_none() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
+        trace!(
+            "Handle network {:?}: current height {}, from height {:?}",
+            network_id,
+            current_eth_height,
+            from_block_opt
+        );
         let from_block = from_block_opt.unwrap_or(current_eth_height);
         // The upper bound of range of blocks to download logs for. Limit the value to
         // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many

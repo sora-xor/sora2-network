@@ -183,6 +183,8 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
 
 pub trait WeightInfo {
     fn swap(variant: SwapVariant) -> Weight;
+    fn enable_liquidity_source() -> Weight;
+    fn disable_liquidity_source() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -658,9 +660,10 @@ impl<T: Config> Pallet<T> {
         ),
         DispatchError,
     > {
-        let sources =
+        let mut sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
-
+        let locked = trading_pair::LockedLiquiditySources::<T>::get();
+        sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
         // Check if we have exactly one source => no split required
@@ -1485,6 +1488,59 @@ pub mod pallet {
             )?;
             Ok(().into())
         }
+
+        /// Enables XST or TBC liquidity source.
+        ///
+        /// - `liquidity_source`: the liquidity source to be enabled.
+        #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
+        pub fn enable_liquidity_source(
+            origin: OriginFor<T>,
+            liquidity_source: LiquiditySourceType,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            ensure!(
+                liquidity_source == LiquiditySourceType::XSTPool
+                    || liquidity_source == LiquiditySourceType::MulticollateralBondingCurvePool,
+                Error::<T>::UnableToEnableLiquiditySource
+            );
+
+            let mut locked = trading_pair::LockedLiquiditySources::<T>::get();
+
+            ensure!(
+                locked.contains(&liquidity_source),
+                Error::<T>::LiquiditySourceAlreadyEnabled
+            );
+
+            locked.retain(|x| *x != liquidity_source);
+            trading_pair::LockedLiquiditySources::<T>::set(locked);
+            Self::deposit_event(Event::<T>::LiquiditySourceEnabled(liquidity_source));
+            Ok(().into())
+        }
+
+        /// Disables XST or TBC liquidity source. The liquidity source becomes unavailable for swap.
+        ///
+        /// - `liquidity_source`: the liquidity source to be disabled.
+        #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
+        pub fn disable_liquidity_source(
+            origin: OriginFor<T>,
+            liquidity_source: LiquiditySourceType,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            ensure!(
+                liquidity_source == LiquiditySourceType::XSTPool
+                    || liquidity_source == LiquiditySourceType::MulticollateralBondingCurvePool,
+                Error::<T>::UnableToDisableLiquiditySource
+            );
+            ensure!(
+                !trading_pair::LockedLiquiditySources::<T>::get().contains(&liquidity_source),
+                Error::<T>::LiquiditySourceAlreadyDisabled
+            );
+            trading_pair::LockedLiquiditySources::<T>::append(liquidity_source);
+            Self::deposit_event(Event::<T>::LiquiditySourceDisabled(liquidity_source));
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1502,6 +1558,10 @@ pub mod pallet {
             Balance,
             Vec<LiquiditySourceIdOf<T>>,
         ),
+        /// Liquidity source was enabled
+        LiquiditySourceEnabled(LiquiditySourceType),
+        /// Liquidity source was disabled
+        LiquiditySourceDisabled(LiquiditySourceType),
     }
 
     #[pallet::error]
@@ -1526,5 +1586,13 @@ pub mod pallet {
         FailedToCalculatePriceWithoutImpact,
         /// Unable to swap indivisible assets
         UnableToSwapIndivisibleAssets,
+        /// Unable to enable liquidity source
+        UnableToEnableLiquiditySource,
+        /// Liquidity source is already enabled
+        LiquiditySourceAlreadyEnabled,
+        /// Unable to disable liquidity source
+        UnableToDisableLiquiditySource,
+        /// Liquidity source is already disabled
+        LiquiditySourceAlreadyDisabled,
     }
 }

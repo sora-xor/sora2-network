@@ -105,7 +105,13 @@ impl<T: Config> Pallet<T> {
             base_asset_id,
             target_asset_id,
         };
-        Ok(Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?)
+        let mut sources =
+            Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
+        let locked = LockedLiquiditySources::<T>::get();
+        for locked_source in &locked {
+            sources.remove(&locked_source);
+        }
+        Ok(sources)
     }
 
     pub fn is_source_enabled_for_trading_pair(
@@ -247,6 +253,10 @@ pub mod pallet {
         TradingPair<T>,
         BTreeSet<LiquiditySourceType>,
     >;
+
+    #[pallet::storage]
+    pub type LockedLiquiditySources<T: Config> =
+        StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

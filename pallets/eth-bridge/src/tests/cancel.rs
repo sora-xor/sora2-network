@@ -441,6 +441,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     nonce: 0,
                     network_id: net_id,
                     timepoint: Default::default(),
+                    new_signature_version: crate::BridgeSignatureVersion::V1,
                 }
                 .into(),
             ),
@@ -501,7 +502,7 @@ fn should_cancel_incoming_prepared_requests() {
         Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
         Assets::mint_to(&DOT.into(), &alice, bridge_acc, 100u32.into()).unwrap();
         // Paris (preparation requests, testable request).
-        let requests: Vec<(Vec<IncomingRequest<Runtime>>, IncomingRequest<Runtime>)> = vec![
+        let requests: Vec<(Vec<OffchainRequest<Runtime>>, OffchainRequest<Runtime>)> = vec![
             (
                 vec![],
                 IncomingTransfer {
@@ -581,14 +582,26 @@ fn should_cancel_incoming_prepared_requests() {
                 .into(),
             ),
             (
-                vec![IncomingPrepareForMigration {
-                    author: alice.clone(),
-                    tx_hash: Default::default(),
-                    network_id: net_id,
-                    timepoint: Default::default(),
-                    at_height: 0,
-                }
-                .into()],
+                vec![
+                    IncomingPrepareForMigration {
+                        author: alice.clone(),
+                        tx_hash: Default::default(),
+                        network_id: net_id,
+                        timepoint: Default::default(),
+                        at_height: 0,
+                    }
+                    .into(),
+                    OutgoingMigrate {
+                        author: alice.clone(),
+                        new_contract_address: Default::default(),
+                        erc20_native_tokens: vec![],
+                        nonce: Default::default(),
+                        network_id: net_id,
+                        timepoint: Default::default(),
+                        new_signature_version: crate::BridgeSignatureVersion::V1,
+                    }
+                    .into(),
+                ],
                 IncomingMigrate {
                     new_contract_address: Default::default(),
                     author: alice.clone(),

@@ -580,7 +580,8 @@ impl<T: Config> IncomingMigrate<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
             crate::BridgeStatuses::<T>::get(&self.network_id).ok_or(Error::<T>::UnknownNetwork)?
-                == BridgeStatus::Migrating,
+                == BridgeStatus::Migrating
+                && crate::PendingBridgeSignatureVersions::<T>::get(&self.network_id).is_some(),
             Error::<T>::ContractIsNotInMigrationStage
         );
         Ok(())
@@ -594,6 +595,9 @@ impl<T: Config> IncomingMigrate<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::BridgeContractAddress::<T>::insert(self.network_id, self.new_contract_address);
         crate::BridgeStatuses::<T>::insert(self.network_id, BridgeStatus::Initialized);
+        let signature_version = crate::PendingBridgeSignatureVersions::<T>::take(&self.network_id)
+            .ok_or(Error::<T>::ContractIsNotInMigrationStage)?;
+        crate::BridgeSignatureVersions::<T>::insert(self.network_id, signature_version);
         Ok(self.tx_hash)
     }
 

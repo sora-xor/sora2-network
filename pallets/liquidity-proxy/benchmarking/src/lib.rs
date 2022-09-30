@@ -40,7 +40,7 @@ use common::{
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
-use frame_system::RawOrigin;
+use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use liquidity_proxy::Call;
 use sp_std::prelude::*;
@@ -56,6 +56,16 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
+fn assert_last_event<T: liquidity_proxy::Config>(
+    generic_event: <T as liquidity_proxy::Config>::Event,
+) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
+}
+
 pub struct Pallet<T: Config>(liquidity_proxy::Pallet<T>);
 pub trait Config:
     liquidity_proxy::Config
@@ -68,7 +78,7 @@ pub trait Config:
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
 // Prepare Runtime for running benchmarks
@@ -395,6 +405,42 @@ benchmarks! {
             Into::<u128>::into(initial_to_balance) + balance!(0.999999999999999996) // FIXME: this happens because routing via two pools can't guarantee exact amount
         );
     }
+
+    enable_liquidity_source {
+        setup_benchmark::<T>()?;
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        )?;
+    }: {
+        liquidity_proxy::Pallet::<T>::enable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceEnabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
+
+    disable_liquidity_source {
+        setup_benchmark::<T>()?;
+    }: {
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceDisabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
 }
 
 #[cfg(test)]
@@ -412,6 +458,8 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_secondary_only());
             assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_multiple());
             assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_enable_liquidity_source());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_disable_liquidity_source());
         });
     }
 }

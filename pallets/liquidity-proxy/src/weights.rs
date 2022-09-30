@@ -50,10 +50,26 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
                 .saturating_add(T::DbWeight::get().writes(11 as Weight)),
         }
     }
+    fn enable_liquidity_source() -> Weight {
+        (21_575_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn disable_liquidity_source() -> Weight {
+        (20_003_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
     fn swap(_variant: SwapVariant) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn enable_liquidity_source() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
