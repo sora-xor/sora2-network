@@ -7,10 +7,9 @@ mod tests {
         DEMETER_ASSET_ID, XOR,
     };
     use demeter_farming_platform::{PoolData, TokenInfo, UserInfo};
-    use frame_support::{assert_err, assert_ok};
+    use frame_support::{assert_err, assert_ok, PalletId};
     use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
 
     fn preset_initial<Fun>(tests: Fun)
     where
@@ -23,10 +22,10 @@ mod tests {
         let util: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
             "007348eb8f0f3cec730fbf5eec1b6a842c54d1df8bed75a9df084d5ee013e814"
         ));
-        let pallet_account = ModuleId(*b"deofarms").into_account();
+        let pallet_account = PalletId(*b"deofarms").into_account_truncating();
 
         ext.execute_with(|| {
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 XOR.into(),
                 AssetSymbol(b"XOR".to_vec()),
@@ -38,7 +37,7 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 CERES_ASSET_ID.into(),
                 AssetSymbol(b"CERES".to_vec()),
@@ -53,7 +52,7 @@ mod tests {
             frame_system::Pallet::<Runtime>::inc_providers(
                 &demeter_farming_platform::AuthorityAccount::<Runtime>::get(),
             );
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 demeter_farming_platform::AuthorityAccount::<Runtime>::get(),
                 DEMETER_ASSET_ID.into(),
                 AssetSymbol(b"DEO".to_vec()),
@@ -65,7 +64,7 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 util.into(),
                 AssetSymbol(b"UTIL".to_vec()),
@@ -77,14 +76,14 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(trading_pair::Module::<Runtime>::register(
+            assert_ok!(trading_pair::Pallet::<Runtime>::register(
                 Origin::signed(BOB),
                 dex_id.clone(),
                 XOR.into(),
                 CERES_ASSET_ID.into()
             ));
 
-            assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
+            assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
                 Origin::signed(BOB),
                 dex_id.clone(),
                 XOR.into(),
@@ -92,7 +91,7 @@ mod tests {
             ));
 
             assert!(
-                trading_pair::Module::<Runtime>::is_source_enabled_for_trading_pair(
+                trading_pair::Pallet::<Runtime>::is_source_enabled_for_trading_pair(
                     &dex_id,
                     &XOR.into(),
                     &CERES_ASSET_ID.into(),
@@ -102,7 +101,7 @@ mod tests {
             );
 
             let (_tpair, tech_acc_id) =
-                pool_xyk::Module::<Runtime>::tech_account_from_dex_and_asset_pair(
+                pool_xyk::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
                     dex_id.clone(),
                     XOR.into(),
                     CERES_ASSET_ID.into(),
@@ -111,58 +110,58 @@ mod tests {
 
             let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
             let repr: AccountId =
-                technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
             let fee_repr: AccountId =
-                technical::Module::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
 
             assert_eq!(
-                pool_xyk::Module::<Runtime>::properties(xor, ceres),
+                pool_xyk::Pallet::<Runtime>::properties(xor, ceres),
                 Some((repr.clone(), fee_repr.clone()))
             );
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
                 &ALICE,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &ALICE,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
                 &BOB,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &BOB,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &pallet_account,
                 balance!(1000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
                 &pallet_account,
                 balance!(1000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &util,
                 &ALICE,
                 &ALICE,
@@ -170,11 +169,11 @@ mod tests {
             ));
 
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
                 balance!(2000)
             );
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&ceres, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&ceres, &ALICE).unwrap(),
                 balance!(3000)
             );
 
@@ -769,7 +768,7 @@ mod tests {
                 balance!(2990)
             );
 
-            let pallet_account = ModuleId(*b"deofarms").into_account();
+            let pallet_account = PalletId(*b"deofarms").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -2011,7 +2010,7 @@ mod tests {
                 is_core
             ));
 
-            let pallet_account = ModuleId(*b"deofarms").into_account();
+            let pallet_account = PalletId(*b"deofarms").into_account_truncating();
             assert_ok!(assets::Pallet::<Runtime>::transfer_from(
                 &util,
                 &ALICE,
@@ -2104,7 +2103,7 @@ mod tests {
             let token_info =
                 demeter_farming_platform::TokenInfos::<Runtime>::get(&deo).unwrap_or_default();
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&deo, &token_info.team_account).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&deo, &token_info.team_account).unwrap(),
                 balance!(576)
             );
             let user_info_alice = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
@@ -2147,7 +2146,7 @@ mod tests {
             let token_info =
                 demeter_farming_platform::TokenInfos::<Runtime>::get(&util).unwrap_or_default();
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&util, &token_info.team_account).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&util, &token_info.team_account).unwrap(),
                 balance!(14.4)
             );
             for user_info in &user_info_alice {

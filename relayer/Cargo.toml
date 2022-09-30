@@ -1,0 +1,67 @@
+[package]
+name = "relayer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ethereum-gen = { path = "./ethereum-gen" }
+substrate-gen = { path = "./substrate-gen" }
+bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
+ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "polkadot-v0.9.25", features = [
+  "ws",
+  "rustls",
+] }
+common = { path = "../common" }
+subxt = { git = "https://github.com/sora-xor/subxt", branch = "polkadot-v0.9.25" }
+tokio = { version = "1.14.0", features = ["full"] }
+url = "2.2.2"
+http = "0.2.6"
+anyhow = "1.0.51"
+jsonrpsee = { version = "0.14", features = [
+  "macros",
+  "ws-client",
+  "http-client",
+] }
+clap = { git = "https://github.com/clap-rs/clap", rev = "56ed9981", features = [
+  "derive",
+] }
+async-trait = "0.1.56"
+rlp = "0.5.1"
+triehash = "0.8.4"
+eth_trie = "0.1.0"
+keccak-hasher = "0.15.3"
+hex = "0.4.3"
+hex-literal = "0.3.4"
+futures = "0.3.17"
+ethash = { git = "https://github.com/sora-xor/ethash", branch = "polkadot-v0.9.25", default-features = false }
+log = "0.4.14"
+env_logger = "0.9.0"
+sha3 = { version = "0.10.0" }
+sha2 = "0.10.0"
+sha1 = "0.6.0"
+ethereum-types = { version = "0.13.1", features = ["serialize"] }
+rayon = "1.5.1"
+serde = { version = "1.0.131", features = ["derive"] }
+serde_json = "1.0.73"
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+  "derive",
+  "chain-error",
+] }
+thiserror = "1.0.30"
+lru = "0.7.2"
+k256 = "0.10.1"
+assets-rpc = { path = "../pallets/assets/rpc" }
+assets-runtime-api = { path = "../pallets/assets/runtime-api" }
+eth-bridge = { path = "../pallets/eth-bridge" }
+basic-channel-rpc = { path = "../pallets/trustless-eth-bridge/basic-channel/rpc" }
+incentivized-channel-rpc = { path = "../pallets/trustless-eth-bridge/incentivized-channel/rpc" }

@@ -42,19 +42,24 @@ use crate::bounds::*;
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::operations::*;
-use crate::{Config, Error, Module};
+use crate::{Config, Error, Pallet};
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
         let abstract_checking_from_method = common::SwapRulesValidation::<
             AccountIdOf<T>,
             TechAccountIdOf<T>,
+            AssetIdOf<T>,
             T,
         >::is_abstract_checking(self);
         let abstract_checking = source_opt.is_none() || abstract_checking_from_method;
@@ -90,25 +95,25 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+            technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(self.source.asset, &self.pool_account)?;
+        Pallet::<T>::is_pool_account_valid_for(self.source.asset, &self.pool_account)?;
 
         // Source balance of source account.
         let balance_ss = if abstract_checking {
             None
         } else {
-            Some(<assets::Module<T>>::free_balance(
+            Some(<assets::Pallet<T>>::free_balance(
                 &self.source.asset,
                 &source_opt.unwrap(),
             )?)
         };
         // Source balance of technical account.
         let balance_st =
-            <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
         // Destination balance of technical account.
         let balance_tt =
-            <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
         if !abstract_checking {
             ensure!(balance_ss.unwrap() > 0, Error::<T>::AccountBalanceIsInvalid);
         }
@@ -120,7 +125,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         match self.get_fee_from_destination {
             None => {
-                let is_fee_from_d = Module::<T>::decide_is_fee_from_destination(
+                let is_fee_from_d = Pallet::<T>::decide_is_fee_from_destination(
+                    base_asset_id,
                     &self.source.asset,
                     &self.destination.asset,
                 )?;
@@ -138,7 +144,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 (Bounds::Desired(sa), Bounds::Desired(ta)) => {
                     ensure!(sa > 0, Error::<T>::ZeroValueInAmountParameter);
                     ensure!(ta > 0, Error::<T>::ZeroValueInAmountParameter);
-                    let y_out_pair = Module::<T>::calc_output_for_exact_input(
+                    let y_out_pair = Pallet::<T>::calc_output_for_exact_input(
                         T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
@@ -146,7 +152,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                         &sa,
                         true,
                     )?;
-                    let x_in_pair = Module::<T>::calc_input_for_exact_output(
+                    let x_in_pair = Pallet::<T>::calc_input_for_exact_output(
                         T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
@@ -164,7 +170,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     ensure!(sa > 0, Error::<T>::ZeroValueInAmountParameter);
                     match ta_bnd {
                         Bounds::Min(ta_min) => {
-                            let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                            let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
                                 T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
@@ -190,7 +196,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     ensure!(ta > 0, Error::<T>::ZeroValueInAmountParameter);
                     match sa_bnd {
                         Bounds::Max(sa_max) => {
-                            let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                            let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
                                 T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
@@ -222,10 +228,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         match self.fee_account {
             Some(ref fa) => {
                 // Checking that fee account is valid for this set of parameters.
-                Module::<T>::is_fee_account_valid_for(self.source.asset, &self.pool_account, fa)?;
+                Pallet::<T>::is_fee_account_valid_for(self.source.asset, &self.pool_account, fa)?;
             }
             None => {
-                let fa = Module::<T>::get_fee_account(&self.pool_account)?;
+                let fa = Pallet::<T>::get_fee_account(&self.pool_account)?;
                 self.fee_account = Some(fa);
             }
         }
@@ -321,12 +327,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+    fn reserve(
+        &self,
+        source: &AccountIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> dispatch::DispatchResult {
         common::with_transaction(|| {
             if Some(source) != self.client_account.as_ref() {
                 let e = Error::<T>::SourceAndClientAccountDoNotMatchAsEqual.into();
@@ -336,43 +346,43 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
                 Some(source) == self.client_account.as_ref(),
                 Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
             );
-            let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
+            let fee_account_repr_sys = technical::Pallet::<T>::tech_account_id_to_account_id(
                 self.fee_account.as_ref().unwrap(),
             )?;
 
             if self.get_fee_from_destination.unwrap() {
-                technical::Module::<T>::transfer_in(
+                technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
                     &source,
                     &self.pool_account,
                     self.source.amount.unwrap(),
                 )?;
-                technical::Module::<T>::transfer_out(
+                technical::Pallet::<T>::transfer_out(
                     &self.destination.asset,
                     &self.pool_account,
                     &fee_account_repr_sys,
                     self.fee.unwrap(),
                 )?;
-                technical::Module::<T>::transfer_out(
+                technical::Pallet::<T>::transfer_out(
                     &self.destination.asset,
                     &self.pool_account,
                     self.receiver_account.as_ref().unwrap(),
                     self.destination.amount.unwrap(),
                 )?;
             } else {
-                technical::Module::<T>::transfer_in(
+                technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
                     &source,
                     &self.pool_account,
                     self.source.amount.unwrap() - self.fee.unwrap(),
                 )?;
-                technical::Module::<T>::transfer_in(
+                technical::Pallet::<T>::transfer_in(
                     &self.source.asset,
                     &source,
                     self.fee_account.as_ref().unwrap(),
                     self.fee.unwrap(),
                 )?;
-                technical::Module::<T>::transfer_out(
+                technical::Pallet::<T>::transfer_out(
                     &self.destination.asset,
                     &self.pool_account,
                     self.receiver_account.as_ref().unwrap(),
@@ -381,12 +391,13 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             }
 
             let pool_account_repr_sys =
-                technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+                technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
             let balance_a =
-                <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+                <assets::Pallet<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
             let balance_b =
-                <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
-            Module::<T>::update_reserves(
+                <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            Pallet::<T>::update_reserves(
+                base_asset_id,
                 &self.source.asset,
                 &self.destination.asset,
                 (&balance_a, &balance_b),

@@ -32,9 +32,13 @@
 #[macro_export]
 macro_rules! assert_noop_msg {
     ( $x:expr, $msg:expr ) => {
-        let h = frame_support::storage_root();
-        if let Err(e) = $x {
-            if let frame_support::dispatch::DispatchError::Module { message, .. } = e.error {
+        let h = frame_support::storage_root(frame_support::StateVersion::V1);
+        if let Err(e) = $crate::with_transaction(|| $x) {
+            if let frame_support::dispatch::DispatchError::Module(sp_runtime::ModuleError {
+                message,
+                ..
+            }) = e.error
+            {
                 assert_eq!(message, Some($msg));
             } else {
                 panic!("expected DispatchError::Module, got {:?}", e.error);
@@ -42,6 +46,9 @@ macro_rules! assert_noop_msg {
         } else {
             panic!("expected Err(_), got Ok(_)");
         }
-        assert_eq!(h, frame_support::storage_root());
+        assert_eq!(
+            h,
+            frame_support::storage_root(frame_support::StateVersion::V1)
+        );
     };
 }

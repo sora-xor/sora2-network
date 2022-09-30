@@ -49,7 +49,6 @@ extern crate alloc;
 pub mod weights;
 
 mod benchmarking;
-mod migration;
 
 #[cfg(test)]
 mod mock;
@@ -96,7 +95,8 @@ type CurrencyIdOf<T> =
 
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecordArg<T: Config> {
     GenericI32(i32),
     GenericU64(u64),
@@ -109,7 +109,8 @@ pub enum AssetRecordArg<T: Config> {
     Extra(T::ExtraAssetRecordArg),
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecord<T: Config> {
     Arity0,
     Arity1(AssetRecordArg<T>),
@@ -188,6 +189,7 @@ pub mod pallet {
     use super::*;
     use common::{ContentSource, Description};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -200,6 +202,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<Self::AccountId>
@@ -208,6 +211,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
@@ -248,16 +252,17 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -375,7 +380,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New asset has been registered. [Asset Id, Asset Owner Account]
@@ -410,9 +414,9 @@ pub mod pallet {
         InvalidAssetOwner,
         /// Increment account reference error.
         IncRefError,
-        /// Content source is not valid. It must be ascii only.
+        /// Content source is not valid. It must be ascii only and `common::ASSET_CONTENT_SOURCE_MAX_LENGTH` characters long at max.
         InvalidContentSource,
-        /// Description is not valid. It must be 200 characters long at max.
+        /// Description is not valid. It must be `common::ASSET_DESCRIPTION_MAX_LENGTH` characters long at max.
         InvalidDescription,
         /// The asset is not mintable and its initial balance is 0.
         DeadAsset,

@@ -174,7 +174,7 @@ pub mod string_serialization_opt {
 }
 
 /// Generalized filtration mechanism for listing liquidity sources.
-#[derive(Encode, Decode, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, scale_info::TypeInfo)]
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
     pub dex_id: DEXId,

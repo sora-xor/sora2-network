@@ -47,18 +47,18 @@ use crate::Pallet as Assets;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn bob<T: Config>() -> T::AccountId {
     let bytes = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Adds `n` assets to the Assets Pallet
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
@@ -77,7 +77,7 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -88,7 +88,7 @@ benchmarks! {
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = bob::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
     }: _(
         RawOrigin::Signed(caller.clone()),
         AssetSymbol(b"NEWT".to_vec()),
@@ -107,7 +107,7 @@ benchmarks! {
     transfer {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             XOR.into(),
@@ -132,7 +132,7 @@ benchmarks! {
     mint {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
@@ -157,7 +157,7 @@ benchmarks! {
     burn {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
@@ -187,7 +187,7 @@ benchmarks! {
     set_non_mintable {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
@@ -218,11 +218,11 @@ mod tests {
     #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_register::<Runtime>());
-            assert_ok!(test_benchmark_transfer::<Runtime>());
-            assert_ok!(test_benchmark_mint::<Runtime>());
-            assert_ok!(test_benchmark_burn::<Runtime>());
-            assert_ok!(test_benchmark_set_non_mintable::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_register());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_transfer());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_mint());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_burn());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_non_mintable());
         });
     }
 }

@@ -37,7 +37,7 @@ use common::{
     DEFAULT_BALANCE_PRECISION, VAL,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
@@ -81,21 +81,21 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
-        Currencies: currencies::{Module, Call, Storage,  Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Event<T>},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        Referrals: referrals::{Module, Call, Storage, Config<T>},
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>}
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Referrals: referrals::{Pallet, Call, Storage, Config<T>},
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>}
     }
 );
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -117,6 +117,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl technical::Config for Runtime {
@@ -135,7 +137,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -152,7 +154,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -168,6 +169,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -178,6 +181,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl referrals::Config for Runtime {
@@ -249,7 +258,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
         Technical::tech_account_id_to_account_id(&eth_bridge_tech_account_id).unwrap();
 
     tokens::GenesisConfig::<Runtime> {
-        endowed_accounts: vec![
+        balances: vec![
             (ALICE, VAL, 0u128.into()),
             (eth_bridge_account_id, VAL, balance!(1000)),
         ],
@@ -322,7 +331,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     IrohaMigrationConfig {
         iroha_accounts,
-        account_id: MINTING_ACCOUNT,
+        account_id: Some(MINTING_ACCOUNT),
     }
     .assimilate_storage(&mut t)
     .unwrap();

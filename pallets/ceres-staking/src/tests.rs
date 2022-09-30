@@ -3,9 +3,8 @@ mod tests {
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
     use common::{balance, CERES_ASSET_ID};
-    use frame_support::{assert_err, assert_ok};
+    use frame_support::{assert_err, assert_ok, PalletId};
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
 
     #[test]
     fn should_not_allow_deposit_to_full_staking_pool() {
@@ -26,7 +25,7 @@ mod tests {
             assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
 
             // Get staking pool account id
-            let staking_pool = ModuleId(*b"cerstake").into_account();
+            let staking_pool = PalletId(*b"cerstake").into_account_truncating();
 
             // Check Alice's balance
             assert_eq!(
@@ -119,7 +118,7 @@ mod tests {
             assert_eq!(staking_info_alice.deposited, balance!(0));
             assert_eq!(staking_info_alice.rewards, balance!(0));
             // Check staking pool's balance
-            let staking_pool = ModuleId(*b"cerstake").into_account();
+            let staking_pool = PalletId(*b"cerstake").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool)
                     .expect("Failed to query free balance."),

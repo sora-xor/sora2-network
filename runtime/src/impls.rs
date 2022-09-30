@@ -106,6 +106,9 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
 }
 
 impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
+    fn on_initialize_base_with_launch_period(r: u32) -> Weight {
+        <() as pallet_democracy::WeightInfo>::on_initialize_base_with_launch_period(r)
+    }
     fn propose() -> Weight {
         <() as pallet_democracy::WeightInfo>::propose()
     }
@@ -220,18 +223,18 @@ mod test {
             assert!(actual <= MAX_WEIGHT);
         }
 
-        t(u32::MIN, 185073000);
-        t(1, 185077000);
-        t(500_000, 2185073000);
-        t(1_000_000, 4_185_073_000);
-        t(5 * MEBIBYTE, 21_156_593_000);
+        t(u32::MIN, 152986000);
+        t(1, 152988000);
+        t(500_000, 1_152_986_000);
+        t(1_000_000, 2_152_986_000);
+        t(5 * MEBIBYTE, 10_638_746_000);
     }
 
     #[test]
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, 1_459_875_000_001_u64);
+            assert_eq!(actual, 1_459_913_702_001_u64);
             assert!(actual > MAX_WEIGHT);
         }
 

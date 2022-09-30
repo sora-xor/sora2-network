@@ -1,20 +1,18 @@
 [package]
 name = "iroha-migration-rpc"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
-jsonrpc-core = { version = "15.0.0", default-features = false }
-jsonrpc-core-client = "15.0.0"
-jsonrpc-derive = "15.0.0"
-sp-runtime = "3"
-sp-api = "3"
-sp-blockchain = "3"
-sp-rpc = "3"
+jsonrpsee = { version = "0.14", features = ["server", "macros"] }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 
 # Path dependencies
 common = { path = "../../../common" }

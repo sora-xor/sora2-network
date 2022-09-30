@@ -52,7 +52,7 @@ fn should_add_peer_in_eth_network() {
         );
         assert_eq!(
             crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
-            new_peer_id
+            Some(new_peer_id.clone())
         );
         assert_eq!(
             crate::PeerAddress::<Runtime>::get(net_id, &new_peer_id),
@@ -69,7 +69,7 @@ fn should_add_peer_in_eth_network() {
         )
         .unwrap();
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: new_peer_id.clone(),
+            peer_account_id: Some(new_peer_id.clone()),
             peer_address: new_peer_address,
             removed: false,
             author: alice.clone(),
@@ -168,7 +168,7 @@ fn should_add_peer_in_simple_networks() {
         );
         assert_eq!(
             crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
-            new_peer_id
+            Some(new_peer_id.clone())
         );
         assert_eq!(
             crate::PeerAddress::<Runtime>::get(net_id, &new_peer_id),
@@ -183,7 +183,7 @@ fn should_add_peer_in_simple_networks() {
         )
         .unwrap();
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: new_peer_id.clone(),
+            peer_account_id: Some(new_peer_id.clone()),
             peer_address: new_peer_address,
             removed: false,
             author: alice.clone(),
@@ -247,7 +247,7 @@ fn should_remove_peer_in_simple_network() {
         .unwrap();
         let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: peer_id.clone(),
+            peer_account_id: Some(peer_id.clone()),
             peer_address,
             removed: true,
             author: alice.clone(),
@@ -312,7 +312,7 @@ fn should_remove_peer_in_eth_network() {
         .unwrap();
         let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
-            peer_account_id: peer_id.clone(),
+            peer_account_id: Some(peer_id.clone()),
             peer_address,
             removed: true,
             author: alice.clone(),

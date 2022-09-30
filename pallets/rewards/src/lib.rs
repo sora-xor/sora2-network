@@ -48,18 +48,19 @@ use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
 use assets::AssetIdOf;
+#[cfg(feature = "std")]
+use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
-use common::{balance, eth, AccountIdOf, Balance, OnValBurned};
+use common::{eth, AccountIdOf, Balance, OnValBurned};
 
 #[cfg(feature = "include-real-files")]
 use hex_literal::hex;
 
 pub use self::pallet::*;
 
-pub mod migrations;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -72,7 +73,7 @@ mod tests;
 
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RewardInfo {
     claimable: Balance,
@@ -129,10 +130,7 @@ impl<T: Config> Pallet<T> {
         } else {
             let elapsed_u32: u32 = elapsed.unique_saturated_into();
             let time_to_saturation: u32 = T::TIME_TO_SATURATION.unique_saturated_into();
-            Perbill::from_rational_approximation(
-                max_percentage * elapsed_u32,
-                100_u32 * time_to_saturation,
-            )
+            Perbill::from_rational(max_percentage * elapsed_u32, 100_u32 * time_to_saturation)
         }
     }
 
@@ -235,7 +233,7 @@ impl<T: Config> OnValBurned for Pallet<T> {
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
+    use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use secp256k1::util::SIGNATURE_SIZE;
@@ -264,8 +262,13 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -327,25 +330,14 @@ pub mod pallet {
 
             consumed_weight
         }
-
-        fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion {
-                    major: 1, minor: 1, ..
-                }) => migrations::v1_2::migrate::<T>(),
-                Some(PalletVersion {
-                    major: 1, minor: 2, ..
-                }) => migrations::v1_3::migrate::<T>(),
-                _ => T::DbWeight::get().reads(1),
-            }
-        }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Claim the reward with signature.
-        #[pallet::weight(WeightInfoOf::<T>::claim())]
         #[transactional]
+        #[pallet::weight(WeightInfoOf::<T>::claim())]
+
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
             let account_id = ensure_signed(origin)?;
             ensure!(
@@ -359,7 +351,7 @@ pub mod pallet {
             };
             let recovery_id = RecoveryId::parse(recovery_id)
                 .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
-            let signature = Signature::parse_slice(&signature[..SIGNATURE_SIZE])
+            let signature = Signature::parse_standard_slice(&signature[..SIGNATURE_SIZE])
                 .map_err(|_| Error::<T>::SignatureInvalid)?;
             let message = eth::prepare_message(&account_id.encode());
             let public_key = secp256k1::recover(&message, &signature, &recovery_id)
@@ -410,26 +402,10 @@ pub mod pallet {
         }
 
         /// Finalize the update of unclaimed VAL data in storage
-        #[pallet::weight(WeightInfoOf::<T>::finalize_storage_migration(amounts.len() as u32))]
-        #[transactional]
-        pub fn finalize_storage_migration(
-            origin: OriginFor<T>,
-            amounts: Vec<(EthAddress, Balance)>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            // Ensure this call is allowed
-            if MigrationPending::<T>::get() {
-                migrations::v1_2::update_val_owners::<T>(amounts);
-                Self::deposit_event(Event::<T>::MigrationCompleted);
-                Ok(Pays::No.into())
-            } else {
-                Err(Error::<T>::IllegalCall.into())
-            }
-        }
-
         /// Add addresses, who will receive UMI NFT rewards.
-        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
         #[transactional]
+        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
+
         pub fn add_umi_nft_receivers(
             origin: OriginFor<T>,
             receivers: Vec<EthAddress>,
@@ -443,7 +419,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// The account has claimed their rewards. [account]

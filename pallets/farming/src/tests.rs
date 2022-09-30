@@ -31,7 +31,7 @@
 use frame_support::assert_ok;
 
 use common::{balance, RewardReason, DOT, PSWAP, XOR};
-use frame_support::debug::debug;
+use frame_support::log::debug;
 use pool_xyk::Properties;
 use vested_rewards::Rewards;
 
@@ -42,14 +42,14 @@ use crate::mock::{
 use crate::{PoolFarmer, PoolFarmers};
 
 fn init_pool(other_asset: AssetId) {
-    assert_ok!(trading_pair::Module::<Runtime>::register(
+    assert_ok!(trading_pair::Pallet::<Runtime>::register(
         Origin::signed(BOB()),
         DEX_A_ID,
         XOR,
         other_asset
     ));
 
-    assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
+    assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
         Origin::signed(BOB()),
         DEX_A_ID,
         XOR,
@@ -80,7 +80,7 @@ fn test() {
 
         // Add liquidity before the first refresh
         {
-            assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 XOR,
@@ -91,7 +91,7 @@ fn test() {
                 balance!(4.4),
             ));
 
-            assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(BOB()),
                 dex_id,
                 XOR,
@@ -102,7 +102,7 @@ fn test() {
                 balance!(4.4),
             ));
 
-            assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
                 dex_id,
                 XOR,
@@ -154,16 +154,16 @@ fn test() {
         }
 
         // Remove Alice and add Charlie before the second refresh
-        assert_ok!(pool_xyk::Module::<Runtime>::withdraw_liquidity(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::withdraw_liquidity(
             Origin::signed(ALICE()),
             dex_id,
             XOR,
             PSWAP,
             balance!(1),
-            0,
-            0,
+            balance!(0.1),
+            balance!(0.1),
         ));
-        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(CHARLIE()),
             dex_id,
             XOR,
@@ -207,7 +207,7 @@ fn test() {
         }
 
         // Add Alice
-        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
             XOR,
@@ -238,7 +238,7 @@ fn test() {
             .unwrap();
         assert_eq!(charlie_reward, balance!(374054.732519695035739499));
 
-        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
             XOR,
@@ -249,7 +249,7 @@ fn test() {
             balance!(0.5),
         ));
 
-        assert_ok!(pool_xyk::Module::<Runtime>::withdraw_liquidity(
+        assert_ok!(pool_xyk::Pallet::<Runtime>::withdraw_liquidity(
             Origin::signed(BOB()),
             dex_id,
             XOR,

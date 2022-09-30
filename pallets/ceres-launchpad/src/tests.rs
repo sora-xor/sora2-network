@@ -7,10 +7,9 @@ mod tests {
         balance, AssetName, AssetSymbol, Balance, PoolXykPallet, CERES_ASSET_ID,
         DEFAULT_BALANCE_PRECISION, PSWAP, XOR,
     };
-    use frame_support::{assert_err, assert_ok};
+    use frame_support::{assert_err, assert_ok, PalletId};
     use pswap_distribution::{ClaimableShares, ShareholderAccounts};
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
 
     fn preset_initial<Fun>(tests: Fun)
     where
@@ -21,7 +20,7 @@ mod tests {
         let ceres: AssetId = CERES_ASSET_ID.into();
 
         ext.execute_with(|| {
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 XOR.into(),
                 AssetSymbol(b"XOR".to_vec()),
@@ -33,7 +32,7 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 CERES_ASSET_ID.into(),
                 AssetSymbol(b"CERES".to_vec()),
@@ -45,7 +44,7 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
                 ALICE,
                 GetIncentiveAssetId::get().into(),
                 AssetSymbol(b"XOR".to_vec()),
@@ -57,42 +56,42 @@ mod tests {
                 None,
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
                 &ALICE,
                 balance!(900000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &ALICE,
                 balance!(1000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
                 &ALICE,
                 &CHARLES,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &CHARLES,
                 balance!(2000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &ceres,
                 &ALICE,
                 &DAN,
                 balance!(11000)
             ));
 
-            assert_ok!(assets::Module::<Runtime>::mint_to(
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &PSWAP,
                 &ALICE,
                 &GetPswapDistributionAccountId::get(),
@@ -100,20 +99,20 @@ mod tests {
             ));
 
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
                 balance!(900000)
             );
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&ceres, &ALICE).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&ceres, &ALICE).unwrap(),
                 balance!(16000)
             );
 
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&xor, &CHARLES).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&xor, &CHARLES).unwrap(),
                 balance!(2000)
             );
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&ceres, &CHARLES).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&ceres, &CHARLES).unwrap(),
                 balance!(5000)
             );
 
@@ -1019,14 +1018,14 @@ mod tests {
                 balance!(4297)
             );
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
                 balance!(10693)
             );
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             assert_ne!(ilo_info.ilo_price, balance!(0));
             assert_eq!(ilo_info.ilo_organizer, ALICE);
         });
@@ -1455,7 +1454,7 @@ mod tests {
                 funds_to_contribute
             ));
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             assert_eq!(ilo_info.funds_raised, funds_to_contribute);
             let tokens_bought = (FixedWrapper::from(funds_to_contribute)
                 / FixedWrapper::from(ilo_info.ilo_price))
@@ -1663,7 +1662,7 @@ mod tests {
             .unwrap_or(0);
 
             let penalty = contribution_info.funds_contributed - funds_to_claim;
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             assert_eq!(
                 Assets::free_balance(&XOR.into(), &CHARLES).expect("Failed to query free balance."),
@@ -1814,7 +1813,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1827,7 +1826,7 @@ mod tests {
                 balance!(15990)
             );
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             assert_eq!(ilo_info.failed, true);
         });
     }
@@ -1868,7 +1867,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -1881,7 +1880,7 @@ mod tests {
                 balance!(5297)
             );
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             assert_eq!(ilo_info.failed, true);
         });
     }
@@ -1979,7 +1978,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
@@ -2000,7 +1999,7 @@ mod tests {
             .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -2014,8 +2013,8 @@ mod tests {
                     XOR.into(),
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
-                    balance!(0),
-                    balance!(0)
+                    balance!(1),
+                    balance!(1)
                 ),
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );
@@ -2120,7 +2119,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
@@ -2141,7 +2140,7 @@ mod tests {
             .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -2155,8 +2154,8 @@ mod tests {
                     XOR.into(),
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
-                    balance!(0),
-                    balance!(0)
+                    balance!(1),
+                    balance!(1)
                 ),
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );
@@ -2403,7 +2402,7 @@ mod tests {
                 CERES_ASSET_ID.into(),
             ));
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             let contribution_info =
                 pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
 
@@ -2531,7 +2530,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             let mut contribution_info =
                 pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
 
@@ -2712,7 +2711,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
                 .saturating_add(86_400_000u64.saturating_mul(ilo_info.lockup_days.into()));
@@ -2775,7 +2774,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let mut ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let mut ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
@@ -2788,9 +2787,9 @@ mod tests {
                 CERES_ASSET_ID
             ));
 
-            ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             let pool_account =
                 pool_xyk::Pallet::<Runtime>::properties_of_pool(XOR.into(), CERES_ASSET_ID.into())
                     .expect("Pool doesn't exist")
@@ -2856,7 +2855,7 @@ mod tests {
                 CERES_ASSET_ID.into()
             ),);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let unlocking_timestamp = ilo_info
                 .finish_timestamp
@@ -2937,7 +2936,7 @@ mod tests {
 
             run_to_block(20000);
 
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             let share = FixedWrapper::from(1.00).get().unwrap();
             ShareholderAccounts::<Runtime>::mutate(&pallet_account, |current| {
                 *current = current.saturating_add(share)
@@ -3006,8 +3005,8 @@ mod tests {
             );
             run_to_block(300000);
 
-            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
-            let pallet_account = ModuleId(*b"crslaunc").into_account();
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
+            let pallet_account = PalletId(*b"crslaunc").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),

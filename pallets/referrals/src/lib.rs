@@ -33,6 +33,9 @@
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[cfg(test)]
+mod mock;
+
 pub mod weights;
 
 use common::Balance;
@@ -60,7 +63,7 @@ impl WeightInfo for () {
     }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
         referrer: T::AccountId,
@@ -101,7 +104,7 @@ pub use pallet::*;
 pub mod pallet {
     use common::{Balance, XOR};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
 
@@ -113,30 +116,17 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            let mut weight = Weight::default();
-            match Pallet::<T>::storage_version() {
-                Some(PalletVersion {
-                    major: 1,
-                    minor: 0,
-                    patch: 0,
-                }) => {
-                    for (referral, referrer) in Referrers::<T>::iter() {
-                        Referrals::<T>::append(referrer, referral);
-                        weight = weight.saturating_add(T::DbWeight::get().reads_writes(3, 3));
-                    }
-                }
-                _ => {}
-            }
-            weight
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -150,7 +140,7 @@ pub mod pallet {
             }
 
             common::with_transaction(|| {
-                assets::Module::<T>::transfer_from(
+                assets::Pallet::<T>::transfer_from(
                     &XOR.into(),
                     &referrer,
                     &T::ReservesAcc::get(),
@@ -184,7 +174,7 @@ pub mod pallet {
                     }
                 })?;
 
-                assets::Module::<T>::transfer_from(
+                assets::Pallet::<T>::transfer_from(
                     &XOR.into(),
                     &T::ReservesAcc::get(),
                     &referrer,

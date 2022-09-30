@@ -35,10 +35,12 @@
 extern crate alloc;
 use alloc::string::String;
 
+mod bags_thresholds;
 /// Constant values used within the runtime.
 pub mod constants;
 mod extensions;
 mod impls;
+mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -49,30 +51,34 @@ pub mod tests;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::Description;
-use constants::rewards::*;
+use constants::currency::deposit;
 use constants::time::*;
+use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "build-wasm-binary"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+pub use beefy_primitives::crypto::AuthorityId as BeefyId;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-use frame_support::traits::Currency;
+use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
+use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
-use frame_system::{EnsureOneOf, EnsureRoot};
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_session::historical as pallet_session_historical;
+use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
-use sp_core::u32_trait::{_1, _2, _3};
 use sp_core::{Encode, OpaqueMetadata, H160};
+use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
@@ -84,6 +90,7 @@ use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
     FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
+use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -102,6 +109,7 @@ pub use common::{
     ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
+use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -126,7 +134,7 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
-use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
+use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -154,7 +162,7 @@ pub type Index = u32;
 pub type Hash = sp_core::H256;
 
 /// Digest item type.
-pub type DigestItem = generic::DigestItem<Hash>;
+pub type DigestItem = generic::DigestItem;
 
 /// Identification of DEX.
 pub type DEXId = u32;
@@ -166,26 +174,22 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
-type MoreThanHalfCouncil = EnsureOneOf<
-    AccountId,
+type MoreThanHalfCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
-    pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+    pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
 >;
-type AtLeastHalfCouncil = EnsureOneOf<
-    AccountId,
-    pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+type AtLeastHalfCouncil = EitherOfDiverse<
+    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>,
     EnsureRoot<AccountId>,
 >;
-type AtLeastTwoThirdsCouncil = EnsureOneOf<
-    AccountId,
-    pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>,
+type AtLeastTwoThirdsCouncil = EitherOfDiverse<
+    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
     EnsureRoot<AccountId>,
 >;
 
-type SlashCancelOrigin = EnsureOneOf<
-    AccountId,
+type SlashCancelOrigin = EitherOfDiverse<
     EnsureRoot<AccountId>,
-    pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
 >;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
@@ -209,6 +213,7 @@ pub mod opaque {
             pub babe: Babe,
             pub grandpa: Grandpa,
             pub im_online: ImOnline,
+            pub beefy: Beefy,
         }
     }
 }
@@ -222,6 +227,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 39,
+    state_version: 0,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -247,16 +253,16 @@ parameter_types! {
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const UncleGenerations: BlockNumber = 0;
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
-    pub const BondingDuration: pallet_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
+    pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
+    pub const SlashDeferDuration: sp_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
     // 0.05%. The higher the value, the more strict solution acceptance becomes.
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
-    pub const ValRewardCurve: pallet_staking::ValRewardCurve = pallet_staking::ValRewardCurve {
+    pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
+    pub const ValRewardCurve: pallet_staking::sora::ValRewardCurve = pallet_staking::sora::ValRewardCurve {
         duration_to_reward_flatline: Duration::from_secs(5 * 365 * 24 * 60 * 60),
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
@@ -273,6 +279,13 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
+    /// A limit for off-chain phragmen unsigned solution length.
+    ///
+    /// We allow up to 90% of the block's size to be consumed by the solution.
+    pub OffchainSolutionLengthLimit: u32 = Perbill::from_rational(90_u32, 100) *
+        *BlockLength::get()
+        .max
+        .get(DispatchClass::Normal);
     pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
     pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
@@ -304,10 +317,12 @@ parameter_types! {
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
+    pub const MaxAuthorities: u32 = 100_000;
+    pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = BlockWeights;
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type BlockLength = BlockLength;
@@ -344,13 +359,15 @@ impl frame_system::Config for Runtime {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type KeyOwnerProofSystem = Historical;
+    type DisabledValidators = Session;
     type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
         KeyTypeId,
         pallet_babe::AuthorityId,
@@ -359,9 +376,11 @@ impl pallet_babe::Config for Runtime {
         KeyTypeId,
         pallet_babe::AuthorityId,
     )>>::IdentificationTuple;
+    type KeyOwnerProofSystem = Historical;
     type HandleEquivocation =
         pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
+    type MaxAuthorities = MaxAuthorities;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -403,14 +422,12 @@ impl pallet_democracy::Config for Runtime {
     type ExternalDefaultOrigin = AtLeastHalfCouncil;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
-    type FastTrackOrigin = EnsureOneOf<
-        AccountId,
-        pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, TechnicalCollective>,
+    type FastTrackOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 1, 2>,
         EnsureRoot<AccountId>,
     >;
-    type InstantOrigin = EnsureOneOf<
-        AccountId,
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>,
+    type InstantOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;
     type InstantAllowed = DemocracyInstantAllowed;
@@ -431,11 +448,12 @@ impl pallet_democracy::Config for Runtime {
     type MaxVotes = DemocracyMaxVotes;
     type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
+    type VoteLockingPeriod = DemocracyEnactmentPeriod;
 }
 
 impl pallet_elections_phragmen::Config for Runtime {
     type Event = Event;
-    type ModuleId = ElectionsModuleId;
+    type PalletId = ElectionsModuleId;
     type Currency = Balances;
     type ChangeMembers = Council;
     type InitializeMembers = Council;
@@ -460,6 +478,8 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
     type PrimeOrigin = MoreThanHalfCouncil;
     type MembershipInitialized = TechnicalCommittee;
     type MembershipChanged = TechnicalCommittee;
+    type MaxMembers = ();
+    type WeightInfo = ();
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -482,6 +502,7 @@ impl pallet_grandpa::Config for Runtime {
         ReportLongevity,
     >;
     type WeightInfo = ();
+    type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -504,7 +525,6 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = Babe;
     type WeightInfo = ();
 }
@@ -521,9 +541,22 @@ impl pallet_authorship::Config for Runtime {
     type EventHandler = (Staking, ImOnline);
 }
 
+/// A reasonable benchmarking config for staking pallet.
+pub struct StakingBenchmarkingConfig;
+impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
+    type MaxValidators = ConstU32<1000>;
+    type MaxNominators = ConstU32<1000>;
+}
+
+parameter_types! {
+    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
+    pub const MaxNominations: u32 = <NposCompactSolution24 as frame_election_provider_support::NposSolution>::LIMIT as u32;
+}
+
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type MultiCurrency = Tokens;
+    type CurrencyBalance = Balance;
     type ValTokenId = GetValAssetId;
     type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
@@ -536,14 +569,174 @@ impl pallet_staking::Config for Runtime {
     type SlashCancelOrigin = SlashCancelOrigin;
     type SessionInterface = Self;
     type NextNewSession = Session;
-    type ElectionLookahead = ElectionLookahead;
-    type Call = Call;
-    type MaxIterations = MaxIterations;
-    type MinSolutionScoreBump = MinSolutionScoreBump;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type UnsignedPriority = UnsignedPriority;
-    type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
+    type VoterList = BagsList;
+    type ElectionProvider = ElectionProviderMultiPhase;
+    type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type MaxUnlockingChunks = ConstU32<32>;
+    type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
+    type MaxNominations = MaxNominations;
+    type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type OnStakerSlash = ();
     type WeightInfo = ();
+}
+
+/// The numbers configured here could always be more than the the maximum limits of staking pallet
+/// to ensure election snapshot will not run out of memory. For now, we set them to smaller values
+/// since the staking is bounded and the weight pipeline takes hours for this single pallet.
+pub struct ElectionBenchmarkConfig;
+impl pallet_election_provider_multi_phase::BenchmarkingConfig for ElectionBenchmarkConfig {
+    const VOTERS: [u32; 2] = [1000, 2000];
+    const TARGETS: [u32; 2] = [500, 1000];
+    const ACTIVE_VOTERS: [u32; 2] = [500, 800];
+    const DESIRED_TARGETS: [u32; 2] = [200, 400];
+    const SNAPSHOT_MAXIMUM_VOTERS: u32 = 1000;
+    const MINER_MAXIMUM_VOTERS: u32 = 1000;
+    const MAXIMUM_TARGETS: u32 = 300;
+}
+
+parameter_types! {
+    // phase durations. 1/4 of the last session for each.
+    // in testing: 1min or half of the session for each
+    pub SignedPhase: u32 = EPOCH_DURATION_IN_BLOCKS / 4;
+    pub UnsignedPhase: u32 = EPOCH_DURATION_IN_BLOCKS / 4;
+
+    // signed config
+    pub const SignedMaxSubmissions: u32 = 16;
+    pub const SignedMaxRefunds: u32 = 16 / 4;
+    pub const SignedDepositBase: Balance = deposit(2, 0);
+    pub const SignedDepositByte: Balance = deposit(0, 10) / 1024;
+    pub SignedRewardBase: Balance =  constants::currency::UNITS / 10;
+    pub SolutionImprovementThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
+    pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
+
+    // 1 hour session, 15 minutes unsigned phase, 8 offchain executions.
+    pub OffchainRepeat: BlockNumber = UnsignedPhase::get() / 8;
+
+    /// We take the top 12500 nominators as electing voters..
+    pub const MaxElectingVoters: u32 = 12_500;
+    /// ... and all of the validators as electable targets. Whilst this is the case, we cannot and
+    /// shall not increase the size of the validator intentions.
+    pub const MaxElectableTargets: u16 = u16::MAX;
+    pub NposSolutionPriority: TransactionPriority =
+        Perbill::from_percent(90) * TransactionPriority::max_value();
+}
+
+generate_solution_type!(
+    #[compact]
+    pub struct NposCompactSolution24::<
+        VoterIndex = u32,
+        TargetIndex = u16,
+        Accuracy = sp_runtime::PerU16,
+        MaxVoters = MaxElectingVoters,
+    >(24)
+);
+
+/// The accuracy type used for genesis election provider;
+pub type OnChainAccuracy = sp_runtime::Perbill;
+
+pub struct OnChainSeqPhragmen;
+impl onchain::Config for OnChainSeqPhragmen {
+    type System = Runtime;
+    type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
+    type DataProvider = Staking;
+    type WeightInfo = ();
+}
+
+impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
+    type AccountId = AccountId;
+    type MaxLength = OffchainSolutionLengthLimit;
+    type MaxWeight = OffchainSolutionWeightLimit;
+    type Solution = NposCompactSolution24;
+    type MaxVotesPerVoter = <
+		<Self as pallet_election_provider_multi_phase::Config>::DataProvider
+		as
+		frame_election_provider_support::ElectionDataProvider
+	>::MaxVotesPerVoter;
+
+    // The unsigned submissions have to respect the weight of the submit_unsigned call, thus their
+    // weight estimate function is wired to this call's weight.
+    fn solution_weight(v: u32, t: u32, a: u32, d: u32) -> Weight {
+        <
+			<Self as pallet_election_provider_multi_phase::Config>::WeightInfo
+			as
+			pallet_election_provider_multi_phase::WeightInfo
+		>::submit_unsigned(v, t, a, d)
+    }
+}
+
+impl pallet_election_provider_multi_phase::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type EstimateCallFee = TransactionPayment;
+    type UnsignedPhase = UnsignedPhase;
+    type SignedMaxSubmissions = SignedMaxSubmissions;
+    type SignedMaxRefunds = SignedMaxRefunds;
+    type SignedRewardBase = SignedRewardBase;
+    type SignedDepositBase = SignedDepositBase;
+    type SignedDepositByte = SignedDepositByte;
+    type SignedDepositWeight = ();
+    type SignedMaxWeight =
+        <Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+    type MinerConfig = Self;
+    type SlashHandler = (); // burn slashes
+    type RewardHandler = (); // nothing to do upon rewards
+    type SignedPhase = SignedPhase;
+    type BetterUnsignedThreshold = BetterUnsignedThreshold;
+    type BetterSignedThreshold = ();
+    type OffchainRepeat = OffchainRepeat;
+    type MinerTxPriority = NposSolutionPriority;
+    type DataProvider = Staking;
+    type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
+    type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type Solver = SequentialPhragmen<
+        AccountId,
+        pallet_election_provider_multi_phase::SolutionAccuracyOf<Self>,
+        (),
+    >;
+    type BenchmarkingConfig = ElectionBenchmarkConfig;
+    type ForceOrigin = EitherOfDiverse<
+        EnsureRoot<AccountId>,
+        pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+    >;
+    type WeightInfo = ();
+    type MaxElectingVoters = MaxElectingVoters;
+    type MaxElectableTargets = MaxElectableTargets;
+}
+
+parameter_types! {
+    pub const BagThresholds: &'static [u64] = &bags_thresholds::THRESHOLDS;
+}
+
+impl pallet_bags_list::Config for Runtime {
+    type Event = Event;
+    type ScoreProvider = Staking;
+    type WeightInfo = ();
+    type BagThresholds = BagThresholds;
+    type Score = sp_npos_elections::VoteWeight;
+}
+
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // Check which one has more yes votes.
+            (
+                OriginCaller::Council(pallet_collective::RawOrigin::Members(l_yes_votes, l_count)),
+                OriginCaller::Council(pallet_collective::RawOrigin::Members(r_yes_votes, r_count)),
+            ) => Some((l_yes_votes * r_count).cmp(&(r_yes_votes * l_count))),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -555,6 +748,9 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = NoPreimagePostponement;
 }
 
 parameter_types! {
@@ -567,13 +763,15 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
     /// The type for recording an account's balance.
     type Balance = Balance;
+    type DustRemoval = ();
     /// The ubiquitous event type.
     type Event = Event;
-    type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = MaxLocks;
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 pub type Amount = i128;
@@ -592,6 +790,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
@@ -610,7 +814,6 @@ parameter_types! {
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -641,7 +844,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
@@ -649,7 +852,7 @@ impl assets::Config for Runtime {
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -681,7 +884,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
@@ -699,7 +902,7 @@ parameter_types! {
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -716,7 +919,7 @@ parameter_types! {
             b"main".to_vec(),
         );
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -724,52 +927,52 @@ parameter_types! {
 
 impl liquidity_proxy::Config for Runtime {
     type Event = Event;
-    type LiquidityRegistry = dex_api::Module<Runtime>;
+    type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
-    type PrimaryMarketXST = xst::Module<Runtime>;
-    type SecondaryMarket = pool_xyk::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+    type PrimaryMarketXST = xst::Pallet<Runtime>;
+    type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = VestedRewards;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl dex_api::Config for Runtime {
     type MockLiquiditySource =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance2>;
     type MockLiquiditySource3 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
-    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
-    type XYKPool = pool_xyk::Module<Runtime>;
-    type XSTPool = xst::Module<Runtime>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
+    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+    type XYKPool = pool_xyk::Pallet<Runtime>;
+    type XSTPool = xst::Pallet<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
@@ -848,7 +1051,7 @@ where
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
-                debug::native::warn!("SignedPayload error: {:?}", e);
+                frame_support::log::warn!("SignedPayload error: {:?}", e);
             })
             .ok()?;
 
@@ -895,18 +1098,18 @@ impl rewards::Config for Runtime {
 impl<T> xor_fee::ApplyCustomFees<Call> for xor_fee::Pallet<T> {
     fn compute_fee(call: &Call) -> Option<Balance> {
         let result = match call {
-            Call::Assets(assets::Call::register(..))
-            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
-            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..))
-            | Call::VestedRewards(vested_rewards::Call::claim_rewards(..)) => Some(BIG_FEE),
+            Call::Assets(assets::Call::register { .. })
+            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | Call::Rewards(rewards::Call::claim { .. })
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
             | Call::MulticollateralBondingCurvePool(..)
             | Call::PoolXYK(..)
             | Call::Rewards(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
             | Call::TradingPair(..)
             | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
@@ -924,36 +1127,37 @@ impl xor_fee::ExtractProxySwap for Call {
         &self,
     ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
         match self {
-            Call::LiquidityProxy(liquidity_proxy::Call::swap(
+            Call::LiquidityProxy(liquidity_proxy::Call::swap {
                 dex_id,
                 input_asset_id,
                 output_asset_id,
-                amount,
+                swap_amount,
                 selected_source_types,
                 filter_mode,
-            )) => Some(xor_fee::SwapInfo {
+            }) => Some(xor_fee::SwapInfo {
                 fee_source: None,
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
-                amount: *amount,
+                amount: *swap_amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
             }),
-            Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer(
-                target,
+            Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
+                receiver,
                 dex_id,
                 input_asset_id,
                 output_asset_id,
-                amount,
+                swap_amount,
                 selected_source_types,
                 filter_mode,
-            )) => Some(xor_fee::SwapInfo {
-                fee_source: Some(target.clone()),
+                ..
+            }) => Some(xor_fee::SwapInfo {
+                fee_source: Some(receiver.clone()),
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
-                amount: *amount,
+                amount: *swap_amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
             }),
@@ -966,27 +1170,32 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
             Call::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi(multisig_id, ..)
-                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
+                bridge_multisig::Call::as_multi {
+                    id: multisig_id, ..
                 }
+                | bridge_multisig::Call::as_multi_threshold_1 {
+                    id: multisig_id, ..
+                } => bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                    .map(|acc| acc.is_signatory(&who)),
                 _ => None,
             },
             Call::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
-                eth_bridge::Call::register_incoming_request(request) => {
-                    let net_id = request.network_id();
+                eth_bridge::Call::register_incoming_request { incoming_request } => {
+                    let net_id = incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::import_incoming_request(load_request, _) => {
-                    let net_id = load_request.network_id();
+                eth_bridge::Call::import_incoming_request {
+                    load_incoming_request,
+                    ..
+                } => {
+                    let net_id = load_incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::finalize_incoming_request(_, network_id)
-                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                eth_bridge::Call::finalize_incoming_request { network_id, .. }
+                | eth_bridge::Call::abort_request { network_id, .. } => {
                     eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
                 }
                 _ => None,
@@ -1001,7 +1210,7 @@ pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
 where
-    T: pallet_staking::ValBurnedNotifier<Balance>,
+    T: ValBurnedNotifier<Balance>,
 {
     fn on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
@@ -1018,7 +1227,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
         match call {
-            Call::Referrals(referrals::Call::set_referrer(referrer))
+            Call::Referrals(referrals::Call::set_referrer { referrer })
                 if Referrals::can_set_referrer(who) =>
             {
                 Referrals::withdraw_fee(referrer, fee)?;
@@ -1089,11 +1298,16 @@ impl Convert<Multiplier, Multiplier> for ConstantFeeMultiplier {
     }
 }
 
+parameter_types! {
+    pub const OperationalFeeMultiplier: u8 = 5;
+}
+
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
-    type TransactionByteFee = TransactionByteFee;
     type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
+    type OperationalFeeMultiplier = OperationalFeeMultiplier;
+    type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
 }
 
 #[cfg(feature = "private-net")]
@@ -1110,6 +1324,7 @@ impl pallet_utility::Config for Runtime {
     type Event = Event;
     type Call = Call;
     type WeightInfo = ();
+    type PalletsOrigin = OriginCaller;
 }
 
 parameter_types! {
@@ -1258,7 +1473,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = {
         let tech_account_id = GetPswapDistributionTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1271,7 +1486,7 @@ parameter_types! {
     };
     pub GetXorFeeAccountId: AccountId = {
         let tech_account_id = GetXorFeeTechAccountId::get();
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
@@ -1284,7 +1499,7 @@ parameter_types! {
     pub GetXSTPoolPermissionedAccountId: AccountId = {
         let tech_account_id = GetXSTPoolPermissionedTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1350,7 +1565,7 @@ parameter_types! {
     pub GetMbcReservesAccountId: AccountId = {
         let tech_account_id = GetMbcReservesTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1364,7 +1579,7 @@ parameter_types! {
     pub GetMbcPoolRewardsAccountId: AccountId = {
         let tech_account_id = GetMbcPoolRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1378,7 +1593,7 @@ parameter_types! {
     pub GetMbcPoolFreeReservesAccountId: AccountId = {
         let tech_account_id = GetMbcPoolFreeReservesTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1392,7 +1607,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = {
         let tech_account_id = GetMarketMakerRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1406,7 +1621,7 @@ parameter_types! {
     pub GetCrowdloanRewardsAccountId: AccountId = {
         let tech_account_id = GetCrowdloanRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1420,7 +1635,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = {
         let tech_account_id = GetFarmingRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1445,21 +1660,29 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const MaxKeys: u32 = 10_000;
+    pub const MaxPeerInHeartbeats: u32 = 10_000;
+    pub const MaxPeerDataEncodingSize: u32 = 1_000;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
-    type SessionDuration = SessionDuration;
     type ValidatorSet = Historical;
+    type NextSessionRotation = Babe;
     type ReportUnresponsiveness = Offences;
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
+    type MaxKeys = MaxKeys;
+    type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
+    type MaxPeerDataEncodingSize = MaxPeerDataEncodingSize;
 }
 
 impl pallet_offences::Config for Runtime {
     type Event = Event;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
     type OnOffenceHandler = Staking;
-    type WeightSoftLimit = OffencesWeightSoftLimit;
 }
 
 impl vested_rewards::Config for Runtime {
@@ -1475,6 +1698,13 @@ impl price_tools::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = LiquidityProxy;
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+}
+
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
+impl pallet_beefy::Config for Runtime {
+    type BeefyId = BeefyId;
+    type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -1536,7 +1766,6 @@ impl demeter_farming_platform::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 parameter_types! {
-    pub const UnsignedPriority: u64 = 100;
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
@@ -1550,66 +1779,74 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
+        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>} = 3,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        Referrals: referrals::{Module, Call, Storage} = 7,
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Module, Call, Event} = 11,
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
+        Referrals: referrals::{Pallet, Call, Storage} = 7,
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Module} = 13,
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
+        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
+        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>} = 19,
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>, Config} = 40,
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Module, Call, Storage} = 42,
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
-        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
-        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
-        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
-        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
+        Currencies: currencies::{Pallet, Call} = 19,
+        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
+        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Pallet, Storage} = 42,
+        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Pallet, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Pallet, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>} = 50,
+        // Provides a semi-sorted list of nominators for staking.
+        BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
+        ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
 
         // Available only for test net
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
+        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
+
+        // Trustless ethereum bridge
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
     }
 }
 
@@ -1620,62 +1857,71 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
+        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        Referrals: referrals::{Module, Call, Storage} = 7,
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Module, Call, Event} = 11,
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
+        Referrals: referrals::{Pallet, Call, Storage} = 7,
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Module} = 13,
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
+        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
+        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>} = 19,
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config} = 30,
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Module, Call, Storage} = 42,
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
-        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
-        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
-        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 48,
-        CeresLaunchpad: ceres_launchpad::{Module, Call, Storage, Event<T>} = 49,
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>} = 50,
+        Currencies: currencies::{Pallet, Call} = 19,
+        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
+        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Pallet, Storage} = 42,
+        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Pallet, Call, Storage, Event<T>} = 47,
+        CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>} = 48,
+        CeresLaunchpad: ceres_launchpad::{Pallet, Call, Storage, Event<T>} = 49,
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>} = 50,
+        // Provides a semi-sorted list of nominators for staking.
+        BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
+        ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+
+
+        // Trustless ethereum bridge
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
     }
 }
 
@@ -1724,7 +1970,8 @@ pub type Executive = frame_executive::Executive<
     Block,
     frame_system::ChainContext<Runtime>,
     Runtime,
-    AllModules,
+    AllPalletsWithSystem,
+    migrations::Migrations,
 >;
 
 impl_runtime_apis! {
@@ -1744,7 +1991,7 @@ impl_runtime_apis! {
 
     impl sp_api::Metadata<Block> for Runtime {
         fn metadata() -> OpaqueMetadata {
-            Runtime::metadata().into()
+            OpaqueMetadata::new(Runtime::metadata().into())
         }
     }
 
@@ -1767,9 +2014,9 @@ impl_runtime_apis! {
             data.check_extrinsics(&block)
         }
 
-        fn random_seed() -> <Block as BlockT>::Hash {
-            RandomnessCollectiveFlip::random_seed()
-        }
+        // fn random_seed() -> <Block as BlockT>::Hash {
+        //     RandomnessCollectiveFlip::random_seed()
+        // }
     }
 
     impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
@@ -2078,13 +2325,14 @@ impl_runtime_apis! {
             }
 
             LiquidityProxy::inner_quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -2092,9 +2340,8 @@ impl_runtime_apis! {
                                     amount,
                                     currency,
                                     reason
-                                })
-                                .collect(),
-                amount_without_impact: amount_without_impact.unwrap_or(0)})
+                                }).collect()
+                })
         }
 
         fn is_path_available(
@@ -2150,7 +2397,7 @@ impl_runtime_apis! {
                             slot_duration: Babe::slot_duration(),
                             epoch_length: EpochDuration::get(),
                             c: PRIMARY_PROBABILITY,
-                            genesis_authorities: Babe::authorities(),
+                            genesis_authorities: Babe::authorities().to_vec(),
                             randomness: Babe::randomness(),
                             allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
                     }
@@ -2196,9 +2443,66 @@ impl_runtime_apis! {
         }
     }
 
+    impl beefy_primitives::BeefyApi<Block> for Runtime {
+        fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
+            // dummy implementation because we don't want to enable BEEFY now
+            None
+        }
+    }
+
+    impl mmr::MmrApi<Block, Hash> for Runtime {
+        fn generate_proof(_leaf_index: u64)
+            -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_proof(_leaf: mmr::EncodableOpaqueLeaf, _proof: mmr::Proof<Hash>)
+            -> Result<(), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_proof_stateless(
+            _root: Hash,
+            _leaf: mmr::EncodableOpaqueLeaf,
+            _proof: mmr::Proof<Hash>
+        ) -> Result<(), mmr::Error> {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn mmr_root() -> Result<Hash, mmr::Error> {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn generate_batch_proof(_leaf_indices: Vec<u64>)
+            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_batch_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::BatchProof<Hash>)
+            -> Result<(), mmr::Error>
+        {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+
+        fn verify_batch_proof_stateless(
+            _root: Hash,
+            _leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            _proof: mmr::BatchProof<Hash>
+        ) -> Result<(), mmr::Error> {
+            Err(mmr::Error::PalletNotIncluded)
+        }
+    }
+
     impl fg_primitives::GrandpaApi<Block> for Runtime {
         fn grandpa_authorities() -> GrandpaAuthorityList {
             Grandpa::grandpa_authorities()
+        }
+
+        fn current_set_id() -> fg_primitives::SetId {
+            Grandpa::current_set_id()
         }
 
         fn submit_report_equivocation_unsigned_extrinsic(
@@ -2228,16 +2532,54 @@ impl_runtime_apis! {
 
     #[cfg(feature = "runtime-benchmarks")]
     impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn benchmark_metadata(extra: bool) -> (
+            Vec<frame_benchmarking::BenchmarkList>,
+            Vec<frame_support::traits::StorageInfo>,
+        ) {
+            use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+            use frame_support::traits::StorageInfoTrait;
+
+            use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Pallet as XYKPoolBench;
+            use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
+            use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
+
+            let mut list = Vec::<BenchmarkList>::new();
+
+            list_benchmark!(list, extra, assets, Assets);
+            #[cfg(feature = "private-net")]
+            list_benchmark!(list, extra, faucet, Faucet);
+            list_benchmark!(list, extra, farming, Farming);
+            list_benchmark!(list, extra, iroha_migration, IrohaMigration);
+            list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
+            list_benchmark!(list, extra, pswap_distribution, PswapDistributionBench::<Runtime>);
+            list_benchmark!(list, extra, rewards, Rewards);
+            list_benchmark!(list, extra, trading_pair, TradingPair);
+            list_benchmark!(list, extra, pool_xyk, XYKPoolBench::<Runtime>);
+            list_benchmark!(list, extra, eth_bridge, EthBridge);
+            list_benchmark!(list, extra, vested_rewards, VestedRewards);
+            list_benchmark!(list, extra, price_tools, PriceTools);
+            list_benchmark!(list, extra, xor_fee, XorFee);
+            list_benchmark!(list, extra, referrals, Referrals);
+            list_benchmark!(list, extra, ceres_staking, CeresStaking);
+            list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+
+            let storage_info = AllPalletsWithSystem::storage_info();
+
+            return (list, storage_info)
+        }
+
         fn dispatch_benchmark(
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
-            use pool_xyk_benchmarking::Module as XYKPoolBench;
-            use pswap_distribution_benchmarking::Module as PswapDistributionBench;
-            use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
-            use demeter_farming_platform_benchmarking::Module as DemeterFarmingPlatformBench;
+            use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Pallet as XYKPoolBench;
+            use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
+            use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
@@ -2276,9 +2618,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
+            // add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
-            // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);

@@ -39,7 +39,6 @@ mod mock;
 mod tests;
 
 mod benchmarking;
-mod migration;
 
 use core::convert::TryInto;
 
@@ -72,15 +71,15 @@ pub trait WeightInfo {
     fn enable_synthetic_asset() -> Weight;
 }
 
-type Assets<T> = assets::Module<T>;
-type Technical<T> = technical::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
@@ -93,7 +92,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
@@ -122,6 +121,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -147,18 +147,19 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_number: T::BlockNumber) -> Weight {
             <T as Config>::WeightInfo::on_initialize(0)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
         }
     }
 
@@ -203,7 +204,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Pool is initialized for pair. [DEX Id, Synthetic Asset Id]
@@ -305,7 +305,7 @@ pub mod pallet {
 }
 
 #[allow(non_snake_case)]
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     #[inline]
     #[allow(unused)]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
@@ -329,7 +329,7 @@ impl<T: Config> Module<T> {
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
             )?;
-            trading_pair::Module::<T>::enable_source_for_trading_pair(
+            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
@@ -621,7 +621,7 @@ impl<T: Config> Module<T> {
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
             let permissions = [BURN, MINT];
             for permission in &permissions {
-                permissions::Module::<T>::assign_permission(
+                permissions::Pallet::<T>::assign_permission(
                     account_id.clone(),
                     &account_id,
                     *permission,
@@ -661,7 +661,7 @@ impl<T: Config> Module<T> {
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
-    for Module<T>
+    for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -748,7 +748,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,

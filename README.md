@@ -7,6 +7,8 @@ This repo contains code of node, pallets, runtime.
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
 
+[BRIDGE.md](BRIDGE.md) - Quick start for Ethereum bridge
+
 # System requirements
 
 ## Minimum (for example for small docker container)
@@ -58,7 +60,7 @@ access running network via polkadot.js/apps (select Development -> Local Node, e
 
 ```sh
 # example: run benchmarks for all extrinsics of trading-pair pallet
-cargo run --release --features private-net,runtime-benchmarks benchmark --chain=local  --execution=wasm --wasm-execution=compiled --pallet trading_pair --extrinsic "*" --steps 50 --repeat 20 --output ./
+cargo run --release --bin framenode --features private-net,runtime-benchmarks benchmark pallet --chain=local  --execution=wasm --wasm-execution=compiled --pallet trading_pair --extrinsic "*" --steps 50 --repeat 20 --output ./
 ```
 produces `trading_pair.rs` file in `./` (project root)
 

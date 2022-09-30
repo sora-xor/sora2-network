@@ -13,26 +13,26 @@ use hex_literal::hex;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
-use assets::Module as Assets;
+use assets::Pallet as Assets;
 use demeter_farming_platform::Pallet as DemeterFarmingPlatform;
 use frame_support::traits::Hooks;
-use permissions::Module as Permissions;
-use sp_runtime::ModuleId;
+use frame_support::PalletId;
+use permissions::Pallet as Permissions;
 
 #[cfg(test)]
 mod mock;
 
 pub use demeter_farming_platform::Config;
-pub struct Module<T: Config>(demeter_farming_platform::Module<T>);
+pub struct Pallet<T: Config>(demeter_farming_platform::Pallet<T>);
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -41,7 +41,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
 
     let _ = Permissions::<T>::assign_permission(
         owner.clone(),
@@ -221,7 +221,7 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let reward_asset = CERES_ASSET_ID;
         let is_farm = false;
-        let pallet_account: AccountIdOf<T> = ModuleId(*b"deofarms").into_account();
+        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account_truncating();
 
         setup_benchmark_assets_only::<T>()?;
 
@@ -295,7 +295,7 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let is_farm = false;
         let reward_asset = CERES_ASSET_ID;
-        let pallet_account: AccountIdOf<T> = ModuleId(*b"deofarms").into_account();
+        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account_truncating();
 
         setup_benchmark_assets_only::<T>()?;
 
@@ -514,26 +514,10 @@ benchmarks! {
     verify {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_register_token::<Runtime>());
-            assert_ok!(test_benchmark_add_pool::<Runtime>());
-            assert_ok!(test_benchmark_deposit::<Runtime>());
-            assert_ok!(test_benchmark_get_rewards::<Runtime>());
-            assert_ok!(test_benchmark_withdraw::<Runtime>());
-            assert_ok!(test_benchmark_remove_pool::<Runtime>());
-            assert_ok!(test_benchmark_change_pool_multiplier::<Runtime>());
-            assert_ok!(test_benchmark_change_pool_deposit_fee::<Runtime>());
-            assert_ok!(test_benchmark_change_token_info::<Runtime>());
-        });
-    }
+    impl_benchmark_test_suite!(
+        Pallet,
+        crate::mock::ExtBuilder::default().build(),
+        crate::mock::Runtime,
+    );
 }

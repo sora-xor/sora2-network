@@ -1,0 +1,16 @@
+{
+  "Custom": {
+    "chain_id": "1080",
+    "consensus": {
+      "Ethash": {
+        "fork_config": {
+            "byzantium_fork_block": 0,
+            "constantinople_fork_block": 0,
+            "muir_glacier_fork_block": 0,
+            "london_fork_block": 0,
+            "arrow_glacier_fork_block": 0
+        }
+      }
+    }
+  }
+}

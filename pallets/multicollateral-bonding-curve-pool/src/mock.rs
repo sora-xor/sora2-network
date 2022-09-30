@@ -35,11 +35,11 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, DAI,
     DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -92,9 +92,6 @@ pub fn get_pool_reserves_account_id() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
-    "0200060000000000000000000000000000000000000000000000000000000111"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -127,28 +124,28 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Storage},
-        TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        // VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        Mcbcp: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Module, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>}
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
+        // VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        Mcbcp: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>}
     }
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -170,13 +167,15 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -189,8 +188,8 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type Event = Event;
     type LiquidityProxy = MockDEXApi;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
     type WeightInfo = ();
@@ -239,10 +238,15 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -261,7 +265,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -288,6 +292,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -322,7 +328,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -536,6 +542,7 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn exchange(
+        _dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
@@ -554,6 +561,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     }
 
     fn quote(
+        _dex_id: DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -692,6 +700,88 @@ impl ExtBuilder {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn bench_init() -> Self {
+        Self {
+            endowed_accounts: vec![
+                (
+                    alice(),
+                    XOR,
+                    balance!(350000),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    VAL,
+                    balance!(500000),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(100),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100000),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+            ],
+            dex_list: vec![(
+                DEX_A_ID,
+                DEXInfo {
+                    base_asset_id: GetBaseAssetId::get(),
+                    is_public: true,
+                },
+            )],
+            initial_permission_owners: vec![
+                (INIT_DEX, Scope::Unlimited, vec![alice()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![alice()]),
+            ],
+            initial_permissions: vec![
+                (
+                    alice(),
+                    Scope::Unlimited,
+                    vec![INIT_DEX, permissions::MINT, permissions::BURN],
+                ),
+                (
+                    alice(),
+                    Scope::Limited(hash(&DEX_A_ID)),
+                    vec![MANAGE_DEX, permissions::MINT, permissions::BURN],
+                ),
+                (
+                    assets_owner(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    free_reserves_account(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+            ],
+            reference_asset_id: USDT,
+        }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -724,9 +814,9 @@ impl ExtBuilder {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
-            incentives_account_id: incentives_account(),
+            incentives_account_id: Some(incentives_account()),
             initial_collateral_assets: Default::default(),
-            free_reserves_account_id: free_reserves_account(),
+            free_reserves_account_id: Some(free_reserves_account()),
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -768,11 +858,113 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self
+            balances: self
                 .endowed_accounts
                 .into_iter()
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        t.into()
+    }
+
+    #[allow(dead_code)]
+    pub fn build_for_benchmarks(self) -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Runtime>()
+            .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .chain(vec![
+                    (bob(), 0),
+                    (assets_owner(), 0),
+                    (incentives_account(), 0),
+                    (free_reserves_account(), 0),
+                ])
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        crate::GenesisConfig::<Runtime> {
+            distribution_accounts: Default::default(),
+            reserves_account_id: Default::default(),
+            reference_asset_id: self.reference_asset_id,
+            incentives_account_id: Some(incentives_account()),
+            initial_collateral_assets: Default::default(),
+            free_reserves_account_id: Some(free_reserves_account()),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                    (
+                        asset_id, account_id, symbol, name, precision, 100000, true, None, None,
+                    )
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .into_iter()
+                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: DAI,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: VAL,
+                    },
+                ),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();

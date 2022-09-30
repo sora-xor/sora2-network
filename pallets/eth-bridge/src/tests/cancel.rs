@@ -18,7 +18,7 @@ use crate::tests::{
 use crate::{AssetConfig, EthAddress};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR};
 use frame_support::assert_ok;
-use frame_support::sp_runtime::TransactionOutcome;
+use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};
 use frame_support::traits::Currency;
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
@@ -363,7 +363,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     }
                     .into(),
                     IncomingChangePeers {
-                        peer_account_id: test_acc.clone(),
+                        peer_account_id: Some(test_acc.clone()),
                         peer_address: EthAddress::from([10u8; 20]),
                         removed: false,
                         author: alice.clone(),
@@ -464,16 +464,18 @@ fn should_cancel_outgoing_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before = frame_support::storage_root();
+                let state_hash_before =
+                    frame_support::storage_root(frame_support::StateVersion::V1);
                 println!("{:?}", request);
                 request.validate().unwrap();
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root();
+                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
-                TransactionOutcome::Rollback(())
-            });
+                TransactionOutcome::Rollback(DispatchResult::Ok(()))
+            })
+            .unwrap();
         }
     });
 }
@@ -621,14 +623,16 @@ fn should_cancel_incoming_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before = frame_support::storage_root();
+                let state_hash_before =
+                    frame_support::storage_root(frame_support::StateVersion::V1);
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root();
+                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
-                TransactionOutcome::Rollback(())
-            });
+                TransactionOutcome::Rollback(DispatchResult::Ok(()))
+            })
+            .unwrap();
         }
     });
 }

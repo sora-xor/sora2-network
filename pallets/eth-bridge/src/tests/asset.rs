@@ -14,8 +14,9 @@ use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
 };
+use frame_support::assert_noop;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::H256;
 use std::str::FromStr;

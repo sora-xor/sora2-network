@@ -32,8 +32,9 @@
 
 use common::prelude::SwapAmount;
 use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
+use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
+use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
     DispatchInfo, GetDispatchInfo, Pays, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -51,6 +52,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::{DispatchError, FixedPointNumber, FixedU128, Perbill, Percent};
 use sp_staking::SessionIndex;
+use sp_std::vec::Vec;
 
 mod benchmarking;
 pub mod weights;
@@ -82,6 +84,8 @@ pub enum LiquidityInfo<T: Config> {
     Paid((T::AccountId, Option<NegativeImbalanceOf<T>>)),
     /// The fee payment has been postponed to after the transaction
     Postponed(T::AccountId, BalanceOf<T>),
+    /// Default value
+    NotPaid,
 }
 
 impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
@@ -92,6 +96,9 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
             }
             LiquidityInfo::Postponed(account_id, b) => {
                 write!(f, "Postponed({:?}, {:?})", account_id, b)
+            }
+            LiquidityInfo::NotPaid => {
+                write!(f, "NotPaid")
             }
         }
     }
@@ -113,7 +120,7 @@ impl<T: Config> PartialEq for LiquidityInfo<T> {
 
 impl<T: Config> Default for LiquidityInfo<T> {
     fn default() -> Self {
-        LiquidityInfo::Paid((T::AccountId::default(), None))
+        LiquidityInfo::NotPaid
     }
 }
 
@@ -197,6 +204,7 @@ where
         // Quote to see if there will be enough funds for the fee
         let swap =
             <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 amount.into(),
@@ -256,6 +264,7 @@ where
                 .ok();
                 (fee_source, result)
             }
+            LiquidityInfo::NotPaid => (who.clone(), None),
         };
 
         if let Some(paid) = withdrawn {
@@ -287,6 +296,7 @@ where
             // Offset the imbalance caused by paying the fees against the refunded amount.
             let adjusted_paid = paid
                 .offset(refund_imbalance)
+                .same()
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
             Self::deposit_event(Event::FeeWithdrawn(
@@ -339,6 +349,12 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
             start_index,
         )
     }
+
+    fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
+        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::new_session_genesis(
+            new_index,
+        )
+    }
 }
 
 impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::FullIdentification>
@@ -352,7 +368,7 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
         let xor_to_val = XorToVal::<T>::take();
         if xor_to_val != 0 {
             if let Err(e) = Self::remint(xor_to_val) {
-                frame_support::debug::error!("xor fee remint failed: {:?}", e);
+                error!("xor fee remint failed: {:?}", e);
             }
         }
 
@@ -361,6 +377,12 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
 
     fn start_session(start_index: SessionIndex) {
         <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::start_session(start_index)
+    }
+
+    fn new_session_genesis(
+        new_index: SessionIndex,
+    ) -> Option<Vec<(T::AccountId, T::FullIdentification)>> {
+        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::new_session_genesis(new_index)
     }
 }
 
@@ -512,6 +534,7 @@ impl<T: Config> Pallet<T> {
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         match T::LiquidityProxy::exchange(
+            T::DEXIdValue::get(),
             &tech_account_id,
             &parliament,
             &xor,
@@ -533,10 +556,9 @@ impl<T: Config> Pallet<T> {
                 Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
             }
             Err(e) => {
-                frame_support::debug::error!(
+                error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
-                    xor_to_val,
-                    e
+                    xor_to_val, e
                 );
                 Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
@@ -556,6 +578,7 @@ pub trait WeightInfo {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -592,8 +615,13 @@ pub mod pallet {
         type WithdrawFee: WithdrawFee<Self>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -618,7 +646,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]

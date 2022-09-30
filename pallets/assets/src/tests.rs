@@ -34,13 +34,13 @@ mod tests {
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
     use common::{
-        balance, AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL,
-        XOR,
+        AssetId32, ContentSource, Description, ASSET_CONTENT_SOURCE_MAX_LENGTH,
+        ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
     };
-    use frame_support::{assert_err, assert_noop, assert_ok};
+    use frame_support::assert_noop;
+    use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
-    use traits::MultiCurrency;
 
     #[test]
     fn should_gen_and_register_asset() {
@@ -583,19 +583,6 @@ mod tests {
     }
 
     #[test]
-    fn migration_v0_1_0_to_v0_2_0() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let expected_minted = balance!(3000000000);
-            Currencies::deposit(PSWAP, &GetTeamReservesAccountId::get(), balance!(1000)).unwrap();
-            let balance_before = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            crate::migration::mint_team_rewards::<Runtime>().expect("Failed to migrate");
-            let balance_after = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            assert_eq!(balance_after - balance_before, expected_minted);
-        });
-    }
-
-    #[test]
     fn should_register_indivisible() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -636,6 +623,29 @@ mod tests {
     }
 
     #[test]
+    fn should_fail_content_source() {
+        let mut ext = ExtBuilder::default().build();
+        let source: Vec<u8> = vec![0; ASSET_CONTENT_SOURCE_MAX_LENGTH + 1];
+        let content_src = ContentSource(source);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    Some(content_src.clone()),
+                    None,
+                ),
+                Error::<Runtime>::InvalidContentSource
+            );
+        })
+    }
+
+    #[test]
     fn should_associate_desciption() {
         let mut ext = ExtBuilder::default().build();
         let desc = Description(b"Lorem ipsum".to_vec());
@@ -652,6 +662,29 @@ mod tests {
                 Some(desc.clone()),
             ));
             assert_eq!(Assets::get_asset_description(&XOR), Some(desc));
+        })
+    }
+
+    #[test]
+    fn should_fail_description() {
+        let mut ext = ExtBuilder::default().build();
+        let text: Vec<u8> = vec![0; ASSET_DESCRIPTION_MAX_LENGTH + 1];
+        let desc = Description(text);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    None,
+                    Some(desc.clone()),
+                ),
+                Error::<Runtime>::InvalidDescription
+            );
         })
     }
 }

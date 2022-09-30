@@ -30,14 +30,14 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Module, migration::get_permissioned_tech_account_id, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, LiquiditySourceType, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
-    use frame_support::{assert_noop, assert_ok};
-    use permissions::{BURN, MINT};
+    use crate::{Error, Pallet, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
+    use frame_support::assert_ok;
+use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
-    type XSTPool = Module<Runtime>;
+    type XSTPool = Pallet<Runtime>;
 
     /// Sets up the tech account so that mint permission is enabled
     fn xst_pool_init() -> Result<TechAccountId, DispatchError> {
@@ -467,28 +467,6 @@ mod tests {
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
             assert_eq!(price_c.fee, balance!(0.002970822306383637));
-        });
-    }
-
-    #[test]
-    fn migration_none_to_v1_0_0() {
-        let mut ext = ExtBuilder::minimal().build();
-        ext.execute_with(|| {
-            // technical account existance fix
-            System::inc_providers(&crate::migration::get_assets_owner_account::<Runtime>());
-            let (_, account_id) = get_permissioned_tech_account_id::<Runtime>();
-
-            System::inc_consumers(&account_id).unwrap_err();
-            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
-
-            // version is initially None for tests
-            crate::migration::migrate::<Runtime>();
-            assert_ok!(Assets::ensure_asset_exists(&XSTUSD.into()));
-            assert_ok!(System::inc_consumers(&account_id));
-            assert_ok!(Permissions::check_permission(account_id.clone(), MINT));
-            assert_ok!(Permissions::check_permission(account_id, BURN));
-
-            assert!(DEXApi::get_supported_types().contains(&LiquiditySourceType::XSTPool));
         });
     }
 

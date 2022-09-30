@@ -28,9 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::Balance;
 use secp256k1::{Message, PublicKey};
-use sp_core::H160;
+use sp_core::{H160, U256};
 use sp_io::hashing::keccak_256;
+use sp_runtime::traits::CheckedConversion;
 
 pub type EthAddress = H160;
 
@@ -45,4 +47,20 @@ pub fn prepare_message(msg: &[u8]) -> Message {
     prefix.extend(&msg);
     let hash = keccak_256(&prefix);
     Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
+}
+
+fn granularity(decimals: u32) -> Option<U256> {
+    Some(U256::from(u64::checked_pow(10, 18 - decimals)?))
+}
+
+pub fn unwrap_balance(value: U256, decimals: u32) -> Option<Balance> {
+    let granularity = granularity(decimals)?;
+    let unwrapped = value.checked_div(granularity)?;
+    unwrapped.low_u128().checked_into()
+}
+
+pub fn wrap_balance(value: Balance, decimals: u32) -> Option<U256> {
+    let granularity = granularity(decimals)?;
+    let value_u256 = U256::from(value.checked_into::<u128>()?);
+    value_u256.checked_mul(granularity)
 }

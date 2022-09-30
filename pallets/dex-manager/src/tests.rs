@@ -29,16 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, Module};
+use crate::{Error, Pallet};
 use common::prelude::DEXInfo;
-use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR, XSTUSD};
-use frame_support::traits::{Hooks, PalletVersion};
-use frame_support::{assert_noop, assert_ok};
+use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR};
+use frame_support::assert_noop;
+use frame_support::assert_ok;
 use permissions::{Scope, MANAGE_DEX};
 
-type DEXModule = Module<Runtime>;
-
-type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
+type DEXPallet = Pallet<Runtime>;
 
 #[test]
 fn test_initialize_dex_should_pass() {
@@ -66,14 +64,14 @@ fn test_initialize_dex_should_pass() {
     .build();
     ext.execute_with(|| {
         assert_eq!(
-            DEXModule::dex_id(DEX_A_ID),
+            DEXPallet::dex_id(DEX_A_ID),
             Some(DEXInfo {
                 base_asset_id: XOR,
                 is_public: true,
             })
         );
         assert_eq!(
-            DEXModule::dex_id(DEX_B_ID),
+            DEXPallet::dex_id(DEX_B_ID),
             Some(DEXInfo {
                 base_asset_id: VAL,
                 is_public: false,
@@ -99,12 +97,12 @@ fn test_share_manage_dex_permission_should_pass() {
     .build();
     ext.execute_with(|| {
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_ok!(result);
-        permissions::Module::<Runtime>::grant_permission_with_scope(
+        permissions::Pallet::<Runtime>::grant_permission_with_scope(
             BOB,
             ALICE,
             permissions::MANAGE_DEX,
@@ -112,10 +110,10 @@ fn test_share_manage_dex_permission_should_pass() {
         )
         .expect("Failed to transfer permission.");
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_ok!(result);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_ok!(result);
     })
 }
@@ -152,10 +150,10 @@ fn test_own_multiple_dexes_should_pass() {
     .build();
     ext.execute_with(|| {
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_ok!(result);
         let result =
-            DEXModule::ensure_can_manage(&DEX_B_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_B_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_ok!(result);
     })
 }
@@ -178,26 +176,26 @@ fn test_can_manage_on_private_dex_should_pass() {
     ext.execute_with(|| {
         // owner has full access
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_ok!(result);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
         assert_ok!(result);
 
         // another account has no access
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
 
         // sudo account is not handled
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -220,26 +218,26 @@ fn test_can_manage_on_public_dex_should_pass() {
     ext.execute_with(|| {
         // owner has full access
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_ok!(result);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
         assert_ok!(result);
 
         // another account has only access in public mode
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
         assert_ok!(result);
 
         // sudo account is not handled
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -260,9 +258,9 @@ fn test_ensure_dex_exists_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        assert_ok!(DEXModule::ensure_dex_exists(&DEX_A_ID));
+        assert_ok!(DEXPallet::ensure_dex_exists(&DEX_A_ID));
         assert_noop!(
-            DEXModule::ensure_dex_exists(&DEX_B_ID),
+            DEXPallet::ensure_dex_exists(&DEX_B_ID),
             Error::<Runtime>::DEXDoesNotExist
         );
     })
@@ -275,7 +273,7 @@ fn test_list_dex_ids_empty_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        assert_eq!(DEXModule::list_dex_ids(), Vec::<DEXId>::new());
+        assert_eq!(DEXPallet::list_dex_ids(), Vec::<DEXId>::new());
     })
 }
 
@@ -310,7 +308,7 @@ fn test_list_dex_ids_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        assert_eq!(DEXModule::list_dex_ids(), vec![DEX_A_ID, DEX_B_ID]);
+        assert_eq!(DEXPallet::list_dex_ids(), vec![DEX_A_ID, DEX_B_ID]);
     })
 }
 
@@ -319,48 +317,20 @@ fn test_queries_for_nonexistant_dex_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private),
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public),
+            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            DEXModule::get_dex_info(&DEX_A_ID),
+            DEXPallet::get_dex_info(&DEX_A_ID),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            DEXModule::ensure_dex_exists(&DEX_A_ID),
+            DEXPallet::ensure_dex_exists(&DEX_A_ID),
             Error::<Runtime>::DEXDoesNotExist
-        );
-    })
-}
-
-#[test]
-fn test_migration() {
-    let mut ext = ExtBuilder {
-        initial_dex_list: vec![(
-            common::DEXId::Polkaswap as u32,
-            DEXInfo {
-                base_asset_id: XOR,
-                is_public: true,
-            },
-        )],
-        ..Default::default()
-    }
-    .build();
-    ext.execute_with(|| {
-        PalletVersion::new(0, 1, 0).put_into_storage::<PalletInfoOf<Runtime>, DEXModule>();
-        DEXModule::on_runtime_upgrade();
-
-        assert_eq!(
-            crate::DEXInfos::<Runtime>::get(common::DEXId::PolkaswapXSTUSD as u32)
-                .expect("DEXInfo not found"),
-            DEXInfo {
-                base_asset_id: XSTUSD.into(),
-                is_public: true,
-            }
         );
     })
 }

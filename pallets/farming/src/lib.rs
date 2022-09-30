@@ -32,12 +32,11 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(feature = "runtime-benchmarks")]
 mod utils;
 mod weights;
 
@@ -70,10 +69,12 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
 
     fn on_pool_created(
         _fee_account: Self::AccountId,
-        _dex_id: Self::DEXId,
+        dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        Self::add_pool(pool_account, frame_system::Module::<T>::block_number());
+        if dex_id == common::DEXId::Polkaswap.into() {
+            Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
+        }
         Ok(())
     }
 }
@@ -133,13 +134,13 @@ impl<T: Config> Pallet<T> {
 
     fn get_account_weight(pool: &T::AccountId, pool_tokens: Balance) -> Balance {
         let trading_pair =
-            if let Ok(trading_pair) = pool_xyk::Module::<T>::get_pool_trading_pair(&pool) {
+            if let Ok(trading_pair) = pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
                 trading_pair
             } else {
                 return 0;
             };
 
-        let base_asset_amt = pool_xyk::Module::<T>::get_base_asset_part_from_pool_account(
+        let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part_from_pool_account(
             pool,
             &trading_pair,
             pool_tokens,
@@ -258,7 +259,7 @@ impl<T: Config> Pallet<T> {
         let rewards = Self::prepare_account_rewards(accounts);
 
         for (account, reward) in rewards {
-            let _ = vested_rewards::Module::<T>::add_pending_reward(
+            let _ = vested_rewards::Pallet::<T>::add_pending_reward(
                 &account,
                 RewardReason::LiquidityProvisionFarming,
                 reward,
@@ -275,9 +276,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
-    use frame_support::traits::PalletVersion;
-    use frame_system::ensure_root;
-    use frame_system::pallet_prelude::OriginFor;
+    use frame_support::traits::StorageVersion;
     use sp_runtime::traits::Zero;
     use sp_runtime::AccountId32;
 
@@ -299,7 +298,7 @@ pub mod pallet {
         /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
-        type Call: Parameter + From<Call<Self>>;
+        type Call: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
@@ -307,8 +306,13 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -326,26 +330,6 @@ pub mod pallet {
             }
 
             total_weight
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-                Some(PalletVersion {
-                    major: 1, minor: 0, ..
-                }) => migrations::v1_2::migrate::<T>(),
-                _ => 0,
-            }
-        }
-    }
-
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
-        fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let weight = migrations::v1_1::migrate::<T>();
-            Ok(Some(weight).into())
         }
     }
 
@@ -366,8 +350,9 @@ pub mod pallet {
         StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(test, derive(PartialEq))]
+#[scale_info(skip_type_params(T))]
 /// The specific farmer in the specific pool
 pub struct PoolFarmer<T: Config> {
     /// The account of the farmer

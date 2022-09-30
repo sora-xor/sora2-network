@@ -36,17 +36,29 @@ use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
     FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
 };
+use jsonrpsee::RpcModule;
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
+use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
-/// JsonRpcHandler
-pub type JsonRpcHandler = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
+/// A type representing all RPC extensions.
+pub type RpcExtension = RpcModule<()>;
 
-/// Full client dependencies.
+use beefy_gadget::notification::{BeefyBestBlockStream, BeefySignedCommitmentStream};
+/// Dependencies for BEEFY
+pub struct BeefyDeps {
+    /// Receives notifications about signed commitment events from BEEFY.
+    pub beefy_commitment_stream: BeefySignedCommitmentStream<Block>,
+    /// Receives notifications about best block events from BEEFY.
+    pub beefy_best_block_stream: BeefyBestBlockStream<Block>,
+    /// Executor to drive the subscription manager in the BEEFY RPC handler.
+    pub subscription_executor: sc_rpc::SubscriptionTaskExecutor,
+}
+
+/// Full client dependencies
 pub struct FullDeps<C, P> {
     /// The client instance to use.
     pub client: Arc<C>,
@@ -54,10 +66,15 @@ pub struct FullDeps<C, P> {
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
     pub deny_unsafe: DenyUnsafe,
+    /// BEEFY specific dependencies.
+    pub beefy: BeefyDeps,
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(deps: FullDeps<C, P>) -> JsonRpcHandler
+pub fn create_full<C, P, B>(
+    deps: FullDeps<C, P>,
+    _backend: Arc<B>,
+) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
@@ -119,56 +136,57 @@ where
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: BlockBuilder<Block>,
+    C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
+    C::Api: beefy_primitives::BeefyApi<Block>,
     P: TransactionPool + Send + Sync + 'static,
+    B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
-    use assets_rpc::{AssetsAPI, AssetsClient};
-    use dex_api_rpc::{DEX, DEXAPI};
-    use dex_manager_rpc::{DEXManager, DEXManagerAPI};
-    use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
-    // use farming_rpc::*;
-    use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
-    use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
-    use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
-    use pswap_distribution_rpc::{PswapDistributionAPI, PswapDistributionClient};
-    use rewards_rpc::{RewardsAPI, RewardsClient};
-    use substrate_frame_rpc_system::{FullSystem, SystemApi};
-    use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
-    use vested_rewards_rpc::{VestedRewardsApi, VestedRewardsClient};
+    use assets_rpc::{AssetsAPIServer, AssetsClient};
+    use beefy_gadget_rpc::{Beefy, BeefyApiServer};
+    use dex_api_rpc::{DEXAPIServer, DEX};
+    use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
+    use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
+    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
+    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
+    use pallet_mmr_rpc::{Mmr, MmrApiServer};
+    use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+    use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
+    use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use substrate_frame_rpc_system::{System, SystemApiServer};
+    use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
+    use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
 
-    let mut io = jsonrpc_core::IoHandler::default();
+    let mut io = RpcModule::new(());
     let FullDeps {
         client,
         pool,
         deny_unsafe,
+        beefy,
     } = deps;
-    io.extend_with(SystemApi::to_delegate(FullSystem::new(
-        client.clone(),
-        pool,
-        deny_unsafe,
-    )));
-    io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
-        client.clone(),
-    )));
-    io.extend_with(DEXAPI::to_delegate(DEX::new(client.clone())));
-    io.extend_with(DEXManagerAPI::to_delegate(DEXManager::new(client.clone())));
-    io.extend_with(TradingPairAPI::to_delegate(TradingPairClient::new(
-        client.clone(),
-    )));
-    io.extend_with(AssetsAPI::to_delegate(AssetsClient::new(client.clone())));
-    io.extend_with(LiquidityProxyAPI::to_delegate(LiquidityProxyClient::new(
-        client.clone(),
-    )));
-    // io.extend_with(FarmingApi::to_delegate(FarmingRpc::new(client.clone())));
-    io.extend_with(EthBridgeApi::to_delegate(EthBridgeRpc::new(client.clone())));
-    io.extend_with(IrohaMigrationAPI::to_delegate(IrohaMigrationClient::new(
-        client.clone(),
-    )));
-    io.extend_with(PswapDistributionAPI::to_delegate(
-        PswapDistributionClient::new(client.clone()),
-    ));
-    io.extend_with(RewardsAPI::to_delegate(RewardsClient::new(client.clone())));
-    io.extend_with(VestedRewardsApi::to_delegate(VestedRewardsClient::new(
-        client,
-    )));
-    io
+
+    io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+    io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+    io.merge(Mmr::new(client.clone()).into_rpc())?;
+
+    io.merge(
+        Beefy::<Block>::new(
+            beefy.beefy_commitment_stream,
+            beefy.beefy_best_block_stream,
+            beefy.subscription_executor,
+        )?
+        .into_rpc(),
+    )?;
+    io.merge(DEX::new(client.clone()).into_rpc())?;
+    io.merge(DEXManager::new(client.clone()).into_rpc())?;
+    io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
+    io.merge(AssetsClient::new(client.clone()).into_rpc())?;
+    io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
+    // io.merge(FarmingRpc::new(client.clone()).into_rpc())?;
+    io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;
+    io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
+    io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
+    io.merge(RewardsClient::new(client.clone()).into_rpc())?;
+    io.merge(VestedRewardsClient::new(client).into_rpc())?;
+    Ok(io)
 }
