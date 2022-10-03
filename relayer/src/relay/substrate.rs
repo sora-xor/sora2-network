@@ -196,7 +196,6 @@ impl Relay {
         let block_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(block_number.into()))
             .await?
@@ -204,7 +203,6 @@ impl Relay {
         let header = self
             .sub
             .api()
-            .client
             .rpc()
             .header(Some(block_hash))
             .await?
@@ -315,7 +313,6 @@ impl Relay {
         let latest_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(latest_block.into()))
             .await?
@@ -339,8 +336,10 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .bridge_outbound_channel()
-            .interval(false, None)
+            .fetch_or_default(
+                &runtime::storage().bridge_outbound_channel().interval(),
+                None,
+            )
             .await? as u64;
         let chain_mod = self.chain_id % channel_interval;
         while block_number > 0 {
@@ -359,7 +358,6 @@ impl Relay {
         let block_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(block_number.into()))
             .await?;
@@ -367,21 +365,28 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .bridge_outbound_channel()
-            .channel_nonces(false, &self.chain_id, block_hash)
+            .fetch_or_default(
+                &runtime::storage()
+                    .bridge_outbound_channel()
+                    .channel_nonces(&self.chain_id),
+                block_hash,
+            )
             .await?;
         Ok(channel_nonce < sub_channel_nonce)
     }
 
     pub async fn sync_historical_commitments(&self) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await? - 1;
-        let epoch_duration = self.sub.api().constants().babe().epoch_duration(false)?;
+        let epoch_duration = self
+            .sub
+            .api()
+            .constants()
+            .at(&runtime::constants().babe().epoch_duration())?;
         let sessions_per_era = self
             .sub
             .api()
             .constants()
-            .staking()
-            .sessions_per_era(false)?;
+            .at(&runtime::constants().staking().sessions_per_era())?;
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
@@ -390,11 +395,13 @@ impl Relay {
                 .sub
                 .api()
                 .storage()
-                .staking()
-                .active_era(false, Some(latest_beefy_block_hash))
+                .fetch(
+                    &runtime::storage().staking().active_era(),
+                    Some(latest_beefy_block_hash),
+                )
                 .await?
                 .expect("should exist");
-            let current_block_hash = self.sub.api().client.rpc().finalized_head().await?;
+            let current_block_hash = self.sub.api().rpc().finalized_head().await?;
             let current_block = self.sub.block_number(Some(current_block_hash)).await?;
             let next_block = latest_beefy_block + beefy_block_gap.min(era_duration + 1);
             if next_block > current_block as u64 {
@@ -405,8 +412,10 @@ impl Relay {
                 .sub
                 .api()
                 .storage()
-                .staking()
-                .bonded_eras(false, Some(next_block_hash))
+                .fetch_or_default(
+                    &runtime::storage().staking().bonded_eras(),
+                    Some(next_block_hash),
+                )
                 .await?;
             debug!("latest era: {latest_era:?}, next block: {next_block}, eras: {next_eras:?}");
             let next_block = if let Some((_, session)) = next_eras

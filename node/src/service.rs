@@ -32,7 +32,6 @@
 
 //! Service implementation. Specialized wrapper over substrate service.
 
-use beefy_gadget::notification::{BeefyBestBlockSender, BeefySignedCommitmentSender};
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
     self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
@@ -64,6 +63,8 @@ type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport =
     sc_finality_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient, FullSelectChain>;
+type FullBeefyBlockImport =
+    beefy_gadget::import::BeefyBlockImport<Block, FullBackend, FullClient, FullGrandpaBlockImport>;
 
 // If we're using prometheus, use a registry with a prefix of `polkadot`.
 fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceError> {
@@ -105,13 +106,10 @@ pub fn new_partial(
                 sc_rpc::SubscriptionTaskExecutor,
             ) -> Result<crate::rpc::RpcExtension, sc_service::Error>,
             (
-                sc_consensus_babe::BabeBlockImport<Block, FullClient, FullGrandpaBlockImport>,
+                sc_consensus_babe::BabeBlockImport<Block, FullClient, FullBeefyBlockImport>,
                 sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
                 sc_consensus_babe::BabeLink<Block>,
-                (
-                    BeefySignedCommitmentSender<Block>,
-                    BeefyBestBlockSender<Block>,
-                ),
+                beefy_gadget::BeefyVoterLinks<Block>,
             ),
             sc_finality_grandpa::SharedVoterState,
             SlotDuration, // slot-duration
@@ -258,11 +256,16 @@ pub fn new_partial(
             telemetry.as_ref().map(|x| x.handle()),
         )?;
 
-    let (babe_block_import, babe_link) = sc_consensus_babe::block_import(
-        sc_consensus_babe::Config::get(&*client)?,
-        grandpa_block_import.clone(),
-        client.clone(),
-    )?;
+    let (beefy_block_import, beefy_voter_links, beefy_rpc_links) =
+        beefy_gadget::beefy_block_import_and_links(
+            grandpa_block_import.clone(),
+            backend.clone(),
+            client.clone(),
+        );
+
+    let babe_config = sc_consensus_babe::Config::get(&*client)?;
+    let (babe_block_import, babe_link) =
+        sc_consensus_babe::block_import(babe_config.clone(), beefy_block_import, client.clone())?;
 
     let slot_duration = babe_link.config().slot_duration();
 
@@ -289,17 +292,11 @@ pub fn new_partial(
         telemetry.as_ref().map(|x| x.handle()),
     )?;
 
-    let (beefy_commitment_link, beefy_commitment_stream) =
-        beefy_gadget::notification::BeefySignedCommitmentStream::<Block>::channel();
-    let (beefy_best_block_link, beefy_best_block_stream) =
-        beefy_gadget::notification::BeefyBestBlockStream::<Block>::channel();
-    let beefy_links = (beefy_commitment_link, beefy_best_block_link);
-
     let import_setup = (
         babe_block_import.clone(),
         grandpa_link,
         babe_link.clone(),
-        beefy_links,
+        beefy_voter_links,
     );
     let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
     let rpc_setup = shared_voter_state.clone();
@@ -317,8 +314,8 @@ pub fn new_partial(
                 pool: pool.clone(),
                 deny_unsafe,
                 beefy: crate::rpc::BeefyDeps {
-                    beefy_commitment_stream: beefy_commitment_stream.clone(),
-                    beefy_best_block_stream: beefy_best_block_stream.clone(),
+                    beefy_finality_proof_stream: beefy_rpc_links.from_voter_justif_stream.clone(),
+                    beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),
                     subscription_executor,
                 },
             };
@@ -377,14 +374,14 @@ pub fn new_full(
         )));
     }
 
-    let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
-        &client
-            .block_hash(0)
-            .ok()
-            .flatten()
-            .expect("Genesis block exists; qed"),
-        &config.chain_spec,
-    );
+    let genesis_hash = client
+        .block_hash(0)
+        .ok()
+        .flatten()
+        .expect("Genesis block exists; qed");
+
+    let grandpa_protocol_name =
+        sc_finality_grandpa::protocol_standard_name(&genesis_hash, &config.chain_spec);
 
     config
         .network
@@ -393,14 +390,8 @@ pub fn new_full(
             grandpa_protocol_name.clone(),
         ));
 
-    let beefy_protocol_name = beefy_gadget::protocol_standard_name(
-        &client
-            .block_hash(0)
-            .ok()
-            .flatten()
-            .expect("Genesis block exists; qed"),
-        &config.chain_spec,
-    );
+    let beefy_protocol_name =
+        beefy_gadget::protocol_standard_name(&genesis_hash, &config.chain_spec);
 
     config
         .network
@@ -531,8 +522,7 @@ pub fn new_full(
             backend: backend.clone(),
             key_store: keystore.clone(),
             network: network.clone(),
-            signed_commitment_sender: beefy_links.0,
-            beefy_best_block_sender: beefy_links.1,
+            links: beefy_links,
             min_block_delta: 8,
             prometheus_registry: prometheus_registry.clone(),
         };

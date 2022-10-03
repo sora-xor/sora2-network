@@ -999,6 +999,8 @@ pub mod pallet {
         RequestAborted(H256),
         /// The request wasn't finalized nor cancelled. [Request Hash]
         CancellationFailed(H256),
+        /// The request registration has been failed. [Request Hash, Error]
+        RegisterRequestFailed(H256, DispatchError),
     }
 
     #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -1535,7 +1537,8 @@ impl<T: Config> Pallet<T> {
                 RequestStatus::Failed(e),
             );
             warn!("{:?}", e);
-            return Err(e.into());
+            Self::deposit_event(Event::RegisterRequestFailed(incoming_request_hash, e));
+            return Ok(incoming_request_hash);
         }
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
         RequestsQueue::<T>::mutate(network_id, |v| v.push(incoming_request_hash));
@@ -1565,8 +1568,6 @@ impl<T: Config> Pallet<T> {
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
             cancel!(request, hash, network_id, e);
-            Self::remove_request_from_queue(network_id, &hash);
-            return Err(e);
         } else {
             warn!("Incoming request finalized {:?}", hash);
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);

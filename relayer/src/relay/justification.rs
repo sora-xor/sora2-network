@@ -7,8 +7,8 @@ use codec::Encode;
 use ethereum_gen::{beefy_light_client, ValidatorProof};
 use ethers::prelude::*;
 use ethers::utils::keccak256;
-use subxt::sp_core::Hasher;
-use subxt::sp_runtime::traits::Convert;
+use sp_runtime::traits::Keccak256;
+use sp_runtime::traits::{Convert, Hash as HashTrait};
 
 use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
 
@@ -62,8 +62,7 @@ impl BeefyJustification {
         let validators: Vec<H160> = sub
             .api()
             .storage()
-            .beefy()
-            .authorities(false, Some(block_hash))
+            .fetch_or_default(&runtime::storage().beefy().authorities(), Some(block_hash))
             .await?
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
@@ -93,19 +92,22 @@ impl BeefyJustification {
         commitment: &BeefyCommitment,
         root: H256,
     ) -> AnyResult<(LeafProof, Proof<H256>)> {
-        for block_number in (commitment.block_number - 5..=commitment.block_number + 1).rev() {
+        for block_number in (commitment.block_number.saturating_sub(5)
+            ..=commitment.block_number.saturating_add(1))
+            .rev()
+        {
             let block_hash = sub.block_hash(Some(block_number)).await?;
             let leaf_count = sub
                 .api()
                 .storage()
-                .mmr()
-                .number_of_leaves(false, Some(block_hash))
+                .fetch_or_default(
+                    &runtime::storage().mmr().number_of_leaves(),
+                    Some(block_hash),
+                )
                 .await?;
-            let leaf_index = leaf_count - 1;
+            let leaf_index = leaf_count.saturating_sub(1);
             let leaf_proof = sub.mmr_generate_proof(leaf_index, Some(block_hash)).await?;
-            let hashed_leaf = leaf_proof
-                .leaf
-                .using_encoded(subxt::sp_runtime::traits::Keccak256::hash);
+            let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
             let proof = convert_to_simplified_mmr_proof(
                 leaf_proof.proof.leaf_index,
                 leaf_proof.proof.leaf_count,
@@ -114,7 +116,7 @@ impl BeefyJustification {
             let computed_root = proof.root(
                 |a, b| {
                     let res = [a.as_bytes(), b.as_bytes()].concat();
-                    subxt::sp_runtime::traits::Keccak256::hash(&res)
+                    Keccak256::hash(&res)
                 },
                 hashed_leaf,
             );

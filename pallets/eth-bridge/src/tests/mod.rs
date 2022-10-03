@@ -5,9 +5,9 @@ use crate::requests::{
 use crate::tests::mock::*;
 use crate::util::majority;
 use common::eth;
-use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::weights::Pays;
-use frame_support::{assert_err, assert_ok, ensure};
+use frame_support::weights::PostDispatchInfo;
+use frame_support::{assert_ok, ensure};
 
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};
@@ -25,6 +25,14 @@ pub(crate) type Error = crate::Error<Runtime>;
 pub(crate) type Assets = assets::Pallet<Runtime>;
 
 pub const ETH_NETWORK_ID: u32 = 0;
+
+pub(crate) fn assert_last_event<T: crate::Config>(generic_event: <T as crate::Config>::Event) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    // compare to the last event record
+    let frame_system::EventRecord { event, .. } = &events.last().expect("Event expected");
+    assert_eq!(event, &system_event);
+}
 
 fn get_signature_params(
     signature: &(secp256k1::Signature, secp256k1::RecoveryId),
@@ -234,15 +242,20 @@ pub fn assert_incoming_request_registration_failed(
             .0,
         incoming_request.hash().0
     );
-    assert_err!(
+    assert_ok!(
         EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
             incoming_request.clone(),
         ),
-        DispatchErrorWithPostInfo {
-            post_info: Pays::No.into(),
-            error: error.into()
+        PostDispatchInfo {
+            pays_fee: Pays::No.into(),
+            actual_weight: None
         }
+    );
+    let req_hash =
+        crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, incoming_request.hash());
+    assert_last_event::<Runtime>(
+        crate::Event::RegisterRequestFailed(req_hash, error.into()).into(),
     );
     Ok(())
 }

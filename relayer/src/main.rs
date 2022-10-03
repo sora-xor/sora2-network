@@ -42,5 +42,6 @@ pub mod prelude {
     pub use hex_literal::hex;
     pub use http::Uri;
     pub use serde::{Deserialize, Serialize};
+    pub use substrate_gen::runtime;
     pub use url::Url;
 }

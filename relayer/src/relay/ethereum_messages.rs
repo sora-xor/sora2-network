@@ -30,8 +30,12 @@ impl SubstrateMessagesRelay {
         let outbound_channel = sub
             .api()
             .storage()
-            .bridge_inbound_channel()
-            .channel_addresses(false, &network_id, None)
+            .fetch(
+                &runtime::storage()
+                    .bridge_inbound_channel()
+                    .channel_addresses(&network_id),
+                None,
+            )
             .await?
             .ok_or(anyhow::anyhow!("Channel is not registered"))?;
         Ok(Self {
@@ -50,8 +54,12 @@ impl SubstrateMessagesRelay {
             .sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .finalized_block(false, &self.network_id, None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .finalized_block(&self.network_id),
+                None,
+            )
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;
@@ -68,8 +76,12 @@ impl SubstrateMessagesRelay {
             .sub
             .api()
             .storage()
-            .bridge_inbound_channel()
-            .channel_nonces(false, &self.network_id, None)
+            .fetch_or_default(
+                &runtime::storage()
+                    .bridge_inbound_channel()
+                    .channel_nonces(&self.network_id),
+                None,
+            )
             .await?;
         debug!(
             "Channel: Found {} events from {} to {}",
@@ -102,9 +114,12 @@ impl SubstrateMessagesRelay {
                         .sub
                         .api()
                         .tx()
-                        .bridge_inbound_channel()
-                        .submit(false, self.network_id, message)?
-                        .sign_and_submit_then_watch_default(&self.sub)
+                        .sign_and_submit_then_watch_default(
+                            &runtime::tx()
+                                .bridge_inbound_channel()
+                                .submit(self.network_id, message),
+                            &self.sub,
+                        )
                         .await?
                         .wait_for_in_block()
                         .await?
@@ -146,8 +161,12 @@ impl SubstrateMessagesRelay {
             .sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .finalized_block(false, &self.network_id, None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .finalized_block(&self.network_id),
+                None,
+            )
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .number;

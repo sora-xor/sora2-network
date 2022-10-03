@@ -75,9 +75,7 @@ impl Command {
         sub.load_nonce().await?;
         sub.api()
             .tx()
-            .utility()
-            .batch(false, calls)?
-            .sign_and_submit_then_watch_default(&sub)
+            .sign_and_submit_then_watch_default(&runtime::tx().utility().batch(calls), &sub)
             .await?
             .wait_for_in_block()
             .await?

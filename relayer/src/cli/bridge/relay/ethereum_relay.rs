@@ -28,15 +28,23 @@ impl Command {
             let has_light_client = sub
                 .api()
                 .storage()
-                .ethereum_light_client()
-                .network_config(false, &chain_id, None)
+                .fetch(
+                    &runtime::storage()
+                        .ethereum_light_client()
+                        .network_config(&chain_id),
+                    None,
+                )
                 .await?
                 .is_some();
             let has_channel = sub
                 .api()
                 .storage()
-                .bridge_inbound_channel()
-                .channel_addresses(false, &chain_id, None)
+                .fetch(
+                    &runtime::storage()
+                        .bridge_inbound_channel()
+                        .channel_addresses(&chain_id),
+                    None,
+                )
                 .await?
                 .is_some();
             if has_channel && has_light_client {

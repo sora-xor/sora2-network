@@ -473,6 +473,8 @@ impl pallet_elections_phragmen::Config for Runtime {
     type DesiredMembers = ElectionsDesiredMembers;
     type DesiredRunnersUp = ElectionsDesiredRunnersUp;
     type TermDuration = ElectionsTermDuration;
+    type MaxVoters = ();
+    type MaxCandidates = ();
     type WeightInfo = ();
 }
 
@@ -1310,6 +1312,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type Event = Event;
     type OnChargeTransaction = XorFee;
     type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
@@ -1754,6 +1757,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
     type MaxAuthorities = MaxAuthorities;
+    type OnNewValidatorSet = ();
 }
 
 impl pallet_mmr::Config for Runtime {
@@ -1996,7 +2000,7 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
         Referrals: referrals::{Pallet, Call, Storage} = 7,
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
@@ -2084,7 +2088,7 @@ construct_runtime! {
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
         Referrals: referrals::{Pallet, Call, Storage} = 7,
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,

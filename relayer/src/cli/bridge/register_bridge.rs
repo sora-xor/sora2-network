@@ -39,18 +39,18 @@ impl Command {
         let result = sub
             .api()
             .tx()
+            .sign_and_submit_then_watch_default(
+                &runtime::tx()
             .sudo()
             .sudo(
-                false,
                 runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
                     runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
                         header,
                         network_config,
                         initial_difficulty: Default::default(),
                     },
-                ),
-            )?
-            .sign_and_submit_then_watch_default(&sub)
+                )),
+                &sub)
             .await?
             .wait_for_in_block()
             .await?
@@ -60,16 +60,17 @@ impl Command {
         let result = sub
             .api()
             .tx()
+            .sign_and_submit_then_watch_default(
+                &runtime::tx()
             .sudo()
-            .sudo(false,
+            .sudo(
                 runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
                     runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
                         network_id,
                         channel: self.outbound_channel
                     },
-                ),
-            )?
-            .sign_and_submit_then_watch_default(&sub)
+                )),
+                &sub)
             .await?
             .wait_for_in_block()
             .await?

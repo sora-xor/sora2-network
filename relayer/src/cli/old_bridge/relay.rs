@@ -32,16 +32,10 @@ impl Command {
             .await
             .context("Subscribe")?;
         while let Some(events) = events.next().await.transpose().context("Events next")? {
-            for event in events.iter() {
-                info!("Recieved event: {:?}", event);
-                use sub_runtime::runtime_types::eth_bridge;
+            for event in events.find::<runtime::eth_bridge::events::ApprovalsCollected>() {
                 if let Ok(event) = event {
-                    match event.event {
-                        sub_runtime::Event::EthBridge(
-                            eth_bridge::pallet::Event::ApprovalsCollected(hash),
-                        ) => self.relay_request(&eth, &sub, hash).await?,
-                        _ => {}
-                    }
+                    info!("Recieved event: {:?}", event);
+                    self.relay_request(&eth, &sub, event.0).await?;
                 }
             }
         }
@@ -58,23 +52,35 @@ impl Command {
         let contract_address = sub
             .api()
             .storage()
-            .eth_bridge()
-            .bridge_contract_address(false, &self.network, None)
+            .fetch_or_default(
+                &runtime::storage()
+                    .eth_bridge()
+                    .bridge_contract_address(&self.network),
+                None,
+            )
             .await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
         let request = sub
             .api()
             .storage()
-            .eth_bridge()
-            .requests(false, &self.network, &hash, None)
+            .fetch(
+                &runtime::storage()
+                    .eth_bridge()
+                    .requests(&self.network, &hash),
+                None,
+            )
             .await?
             .expect("Should exists");
         info!("Send request {}: {:?}", hash, request);
         let approvals = sub
             .api()
             .storage()
-            .eth_bridge()
-            .request_approvals(false, &self.network, &hash, None)
+            .fetch_or_default(
+                &runtime::storage()
+                    .eth_bridge()
+                    .request_approvals(&self.network, &hash),
+                None,
+            )
             .await?;
 
         let mut s_vec = vec![];
@@ -121,8 +127,10 @@ impl Command {
                         let (symbol, name, decimals, ..) = sub
                             .api()
                             .storage()
-                            .assets()
-                            .asset_infos(false, &request.asset_id, None)
+                            .fetch_or_default(
+                                &runtime::storage().assets().asset_infos(&request.asset_id),
+                                None,
+                            )
                             .await?;
                         let call = contract.add_new_sidechain_token(
                             String::from_utf8_lossy(&name.0).to_string(),
@@ -167,14 +175,14 @@ impl Command {
         if let (Some(kind), Some(tx)) = (kind, res) {
             sub.api()
                 .tx()
-                .eth_bridge()
-                .request_from_sidechain(
-                    false,
-                    tx.transaction_hash,
-                    sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
-                    self.network,
-                )?
-                .sign_and_submit_then_watch_default(sub)
+                .sign_and_submit_then_watch_default(
+                    &runtime::tx().eth_bridge().request_from_sidechain(
+                        tx.transaction_hash,
+                        sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
+                        self.network,
+                    ),
+                    sub,
+                )
                 .await?
                 .wait_for_in_block()
                 .await?

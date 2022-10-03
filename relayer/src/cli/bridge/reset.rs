@@ -35,8 +35,10 @@ impl Command {
             let autorities = sub
                 .api()
                 .storage()
-                .mmr_leaf()
-                .beefy_next_authorities(false, Some(block_hash))
+                .fetch_or_default(
+                    &runtime::storage().mmr_leaf().beefy_next_authorities(),
+                    Some(block_hash),
+                )
                 .await?;
             info!("Updating validator registry");
             let call: ContractCall<_, _> =
@@ -66,8 +68,10 @@ impl Command {
             let autorities = sub
                 .api()
                 .storage()
-                .mmr_leaf()
-                .beefy_next_authorities(false, Some(block_hash))
+                .fetch_or_default(
+                    &runtime::storage().mmr_leaf().beefy_next_authorities(),
+                    Some(block_hash),
+                )
                 .await?;
             info!("Reset beefy contract");
             let call: ContractCall<_, _> = beefy.reset(

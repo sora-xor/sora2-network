@@ -148,7 +148,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         ReferralSystem: referrals::{Pallet, Call, Config<T>, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -400,6 +400,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type Event = Event;
     type OnChargeTransaction = XorFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();

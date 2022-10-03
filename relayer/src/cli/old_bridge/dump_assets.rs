@@ -32,8 +32,11 @@ impl Command {
         let mut asset_iter = sub
             .api()
             .storage()
-            .eth_bridge()
-            .registered_asset_iter(false, None)
+            .iter(
+                runtime::storage().eth_bridge().registered_asset_root(),
+                32,
+                None,
+            )
             .await?;
         let mut assets = AssetsDump::default();
         while let Some((asset_id, asset_kind)) = asset_iter.next().await? {
@@ -41,8 +44,7 @@ impl Command {
             let (asset_symbol, asset_name, decimals, _, _, _) = sub
                 .api()
                 .storage()
-                .assets()
-                .asset_infos(false, &asset_id, None)
+                .fetch_or_default(&runtime::storage().assets().asset_infos(&asset_id), None)
                 .await?;
             let asset_info = AssetInfo {
                 asset_id,

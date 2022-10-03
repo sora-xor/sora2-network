@@ -15,7 +15,17 @@ use bridge_types::traits::MessageDispatch;
 use bridge_types::{EthNetworkId, H256};
 use codec::{Decode, Encode};
 
-#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Encode,
+    Decode,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 pub struct RawOrigin(pub EvmCallOriginOutput);
 
 impl From<EvmCallOriginOutput> for RawOrigin {

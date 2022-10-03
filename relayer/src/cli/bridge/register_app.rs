@@ -129,9 +129,7 @@ impl Command {
         let result = sub
             .api()
             .tx()
-            .sudo()
-            .sudo(false, call)?
-            .sign_and_submit_then_watch_default(&sub)
+            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
             .await?
             .wait_for_in_block()
             .await?

@@ -38,8 +38,6 @@ pub mod runtime {
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
-    #[subxt(substitute_type = "bridge_types::types::ChannelId")]
-    use ::bridge_types::types::ChannelId;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
     #[subxt(substitute_type = "bridge_types::header::Header")]
@@ -58,28 +56,30 @@ pub mod runtime {
     use ::common::PredefinedAssetId;
     #[subxt(substitute_type = "common::primitives::RewardReason")]
     use ::common::RewardReason;
+    #[subxt(substitute_type = "sp_core::ecdsa::Public")]
+    use ::sp_core::ecdsa::Public;
+    #[subxt(substitute_type = "primitive_types::H160")]
+    use ::sp_core::H160;
+    #[subxt(substitute_type = "primitive_types::H256")]
+    use ::sp_core::H256;
+    #[subxt(substitute_type = "primitive_types::H128")]
+    use ::sp_core::H512;
+    #[subxt(substitute_type = "primitive_types::U256")]
+    use ::sp_core::U256;
+    #[subxt(substitute_type = "sp_runtime::MultiSignature")]
+    use ::sp_runtime::MultiSignature;
+    #[subxt(substitute_type = "sp_runtime::MultiSigner")]
+    use ::sp_runtime::MultiSigner;
     #[subxt(substitute_type = "sp_runtime::bounded::bounded_vec::BoundedVec")]
     use ::std::vec::Vec;
-    #[subxt(substitute_type = "sp_core::ecdsa::Public")]
-    use ::subxt::sp_core::ecdsa::Public;
-    #[subxt(substitute_type = "primitive_types::H160")]
-    use ::subxt::sp_core::H160;
-    #[subxt(substitute_type = "primitive_types::H256")]
-    use ::subxt::sp_core::H256;
-    #[subxt(substitute_type = "primitive_types::H128")]
-    use ::subxt::sp_core::H512;
-    #[subxt(substitute_type = "primitive_types::U256")]
-    use ::subxt::sp_core::U256;
-    #[subxt(substitute_type = "sp_runtime::MultiSignature")]
-    use ::subxt::sp_runtime::MultiSignature;
-    #[subxt(substitute_type = "sp_runtime::MultiSigner")]
-    use ::subxt::sp_runtime::MultiSigner;
 }
 
-pub use config::DefaultConfig;
+pub use config::*;
 pub mod config {
     use std::fmt::Debug;
-    use subxt::*;
+    use subxt::{tx::PolkadotExtrinsicParams, Config};
+
+    pub type SoraExtrinsicParams = PolkadotExtrinsicParams<DefaultConfig>;
 
     #[derive(Clone, Debug, Default, Eq, PartialEq)]
     pub struct DefaultConfig;
@@ -94,5 +94,6 @@ pub mod config {
             sp_runtime::generic::Header<Self::BlockNumber, sp_runtime::traits::BlakeTwo256>;
         type Signature = sp_runtime::MultiSignature;
         type Extrinsic = sp_runtime::OpaqueExtrinsic;
+        type ExtrinsicParams = SoraExtrinsicParams;
     }
 }

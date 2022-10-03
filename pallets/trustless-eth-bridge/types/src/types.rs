@@ -180,7 +180,16 @@ pub struct BridgeAppInfo {
 }
 
 #[derive(
-    Clone, Copy, RuntimeDebug, Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo,
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    Default,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EvmCallOriginOutput {

@@ -1,3 +1,4 @@
+use super::assert_last_event;
 use super::mock::*;
 use super::Error;
 use crate::contract::{ContractEvent, DepositEvent};
@@ -16,6 +17,7 @@ use codec::Encode;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::weights::Pays;
+use frame_support::weights::PostDispatchInfo;
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
@@ -173,17 +175,18 @@ fn should_cancel_incoming_transfer() {
         Assets::unreserve(&XOR.into(), &bridge_acc_id, 100u32.into()).unwrap();
         Assets::transfer_from(&XOR.into(), &bridge_acc_id, &bob, 100u32.into()).unwrap();
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
-        assert_err!(
+        assert_ok!(
             EthBridge::finalize_incoming_request(
                 Origin::signed(bridge_acc_id.clone()),
                 req_hash,
                 net_id,
             ),
-            DispatchErrorWithPostInfo {
-                post_info: Pays::No.into(),
-                error: Error::FailedToUnreserve.into()
+            PostDispatchInfo {
+                pays_fee: Pays::No.into(),
+                actual_weight: None
             }
         );
+        assert_last_event::<Runtime>(crate::Event::CancellationFailed(req_hash).into());
         assert!(matches!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
             RequestStatus::Broken(_, _)
@@ -364,17 +367,24 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
             should_take_fee: false,
         });
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-        assert_err!(
+        assert_ok!(
             EthBridge::register_incoming_request(
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
-            DispatchErrorWithPostInfo {
-                post_info: Pays::No.into(),
-                error: tokens::Error::<Runtime>::BalanceTooLow.into()
+            PostDispatchInfo {
+                pays_fee: Pays::No.into(),
+                actual_weight: None
             }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
+        assert_last_event::<Runtime>(
+            crate::Event::RegisterRequestFailed(
+                req_hash,
+                tokens::Error::<Runtime>::BalanceTooLow.into(),
+            )
+            .into(),
+        );
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
         assert!(crate::Requests::<Runtime>::get(net_id, &req_hash).is_none());
