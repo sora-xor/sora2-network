@@ -8,9 +8,11 @@ String cargoAuditImage        = registry + '/build-tools/cargo_audit'
 String envImageName           = registry + '/sora2/env:sub4'
 String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
+String palletListFile         = 'pallet_list.txt'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
+int sudoCheckStatus           = 0
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
 
@@ -81,6 +83,7 @@ pipeline {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
+                                    sudoCheckStatus = 1
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
                                     featureList = 'private-net include-real-files'
@@ -90,17 +93,22 @@ pipeline {
                                 }
                                 else if (env.TAG_NAME) {
                                     featureList = 'include-real-files'
+                                    sudoCheckStatus = 1
                                 }
                                 sh """
                                     cargo test  --release --features runtime-benchmarks
+                                    rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
                                     mv ./target/release/relayer ./relayer.bin
+                                    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
+                                    subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
+                                    ${ sudoCheckStatus ? 'subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm' : '' }
                                 """
                                 archiveArtifacts artifacts:
-                                    "framenode_runtime.compact.wasm, ${wasmReportFile}"
+                                    "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
                             }
                         } else {
                             docker.image(envImageName).inside() {
