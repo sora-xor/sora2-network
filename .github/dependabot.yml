@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/ethereum-bridge-contracts"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "gradle"
+    directory: "/ethereum/smart-contracts-bootstrap"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "gradle"
+    directory: "/ethereum/java-wrapper"
+    target-branch: "master"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 0
