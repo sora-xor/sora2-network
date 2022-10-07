@@ -37,7 +37,7 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
-        Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
+        Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         Erc20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         MigrationApp: crate::{Pallet, Call, Config, Storage, Event<T>},
@@ -159,9 +159,12 @@ impl technical::Config for Test {
 }
 
 impl dispatch::Config for Test {
-    type Origin = Origin;
     type Event = Event;
-    type MessageId = u64;
+    type NetworkId = EthNetworkId;
+    type Source = H160;
+    type OriginOutput = bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>;
+    type Origin = Origin;
+    type MessageId = H256;
     type Hashing = Keccak256;
     type Call = Call;
     type CallFilter = Everything;
@@ -201,7 +204,11 @@ parameter_types! {
 impl eth_app::Config for Test {
     type Event = Event;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
-    type CallOrigin = dispatch::EnsureEthereumAccount;
+    type CallOrigin = dispatch::EnsureAccount<
+        EthNetworkId,
+        H160,
+        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+    >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = ();
     type WeightInfo = ();
@@ -228,7 +235,11 @@ impl bridge_types::traits::AppRegistry for AppRegistry {
 impl erc20_app::Config for Test {
     type Event = Event;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
-    type CallOrigin = dispatch::EnsureEthereumAccount;
+    type CallOrigin = dispatch::EnsureAccount<
+        EthNetworkId,
+        H160,
+        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+    >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type AppRegistry = AppRegistry;
     type MessageStatusNotifier = ();

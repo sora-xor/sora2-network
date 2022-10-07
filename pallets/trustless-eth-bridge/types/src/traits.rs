@@ -41,10 +41,10 @@ pub trait OutboundChannel<AccountId> {
 }
 
 /// Dispatch a message
-pub trait MessageDispatch<T: Config, MessageId> {
+pub trait MessageDispatch<T: Config, NetworkId, Source, MessageId> {
     fn dispatch(
-        network_id: EthNetworkId,
-        source: H160,
+        network_id: NetworkId,
+        source: Source,
         id: MessageId,
         timestamp: u64,
         payload: &[u8],
@@ -141,4 +141,10 @@ impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
         _amount: Balance,
     ) {
     }
+}
+
+/// Trait that every origin (like Ethereum origin or Parachain origin) should implement
+pub trait OriginOutput<NetworkId, Source> {
+    /// Construct new origin
+    fn new(network_id: NetworkId, source: Source, message_id: H256, timestamp: u64) -> Self;
 }

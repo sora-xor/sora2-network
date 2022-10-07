@@ -177,7 +177,7 @@ impl Verifier for MockVerifier {
 // Mock Dispatch
 pub struct MockMessageDispatch;
 
-impl MessageDispatch<Test, MessageId> for MockMessageDispatch {
+impl MessageDispatch<Test, EthNetworkId, H160, MessageId> for MockMessageDispatch {
     fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: u64, _: &[u8]) {}
 
     #[cfg(feature = "runtime-benchmarks")]

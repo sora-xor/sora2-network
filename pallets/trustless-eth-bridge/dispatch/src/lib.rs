@@ -1,18 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_types::types::EvmCallOriginOutput;
 use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
 use frame_support::weights::GetDispatchInfo;
 
 use sp_core::RuntimeDebug;
 
-use sp_core::H160;
 use sp_std::prelude::*;
 
-use bridge_types::traits::MessageDispatch;
+use bridge_types::traits;
 
-use bridge_types::{EthNetworkId, H256};
+use bridge_types::H256;
 use codec::{Decode, Encode};
 
 #[derive(
@@ -26,24 +24,39 @@ use codec::{Decode, Encode};
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-pub struct RawOrigin(pub EvmCallOriginOutput);
+pub struct RawOrigin<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>> {
+    pub origin: OriginOutput,
+    network_id: sp_std::marker::PhantomData<NetworkId>,
+    source: sp_std::marker::PhantomData<Source>,
+}
 
-impl From<EvmCallOriginOutput> for RawOrigin {
-    fn from(origin: EvmCallOriginOutput) -> RawOrigin {
-        RawOrigin(origin)
+impl<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>>
+    RawOrigin<NetworkId, Source, OriginOutput>
+{
+    pub fn new(origin: OriginOutput) -> Self {
+        Self {
+            origin,
+            network_id: Default::default(),
+            source: Default::default(),
+        }
     }
 }
 
-pub struct EnsureEthereumAccount;
+#[derive(Default)]
+pub struct EnsureAccount<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>>(
+    sp_std::marker::PhantomData<(NetworkId, Source, OriginOutput)>,
+);
 
-impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
+impl<NetworkId, Source, OuterOrigin, OriginOutput: traits::OriginOutput<NetworkId, Source>>
+    EnsureOrigin<OuterOrigin> for EnsureAccount<NetworkId, Source, OriginOutput>
 where
-    OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
+    OuterOrigin: Into<Result<RawOrigin<NetworkId, Source, OriginOutput>, OuterOrigin>>
+        + From<RawOrigin<NetworkId, Source, OriginOutput>>,
 {
-    type Success = EvmCallOriginOutput;
+    type Success = OriginOutput;
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-        o.into().and_then(|o| Ok(o.0))
+        o.into().and_then(|o| Ok(o.origin))
     }
 
     #[cfg(feature = "runtime-benchmarks")]
@@ -58,7 +71,6 @@ pub use pallet::*;
 pub mod pallet {
 
     use super::*;
-    use bridge_types::types::MessageId;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -71,15 +83,23 @@ pub mod pallet {
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
-    pub struct Pallet<T>(_);
+    pub struct Pallet<T, I = ()>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
+    pub trait Config<I: 'static = ()>: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+
+        /// The Id of the network (i.e. Ethereum network id).
+        type NetworkId;
+
+        /// The source of origin.
+        type Source;
+
+        type OriginOutput: traits::OriginOutput<Self::NetworkId, Self::Source>;
 
         /// The overarching origin type.
-        type Origin: From<RawOrigin>;
+        type Origin: From<RawOrigin<Self::NetworkId, Self::Source, Self::OriginOutput>>;
 
         /// Id of the message. Whenever message is passed to the dispatch module, it emits
         /// event with this id + dispatch result.
@@ -91,40 +111,45 @@ pub mod pallet {
         type Call: Parameter
             + GetDispatchInfo
             + Dispatchable<
-                Origin = <Self as Config>::Origin,
+                Origin = <Self as Config<I>>::Origin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
             >;
 
         /// The pallet will filter all incoming calls right before they're dispatched. If this filter
         /// rejects the call, special event (`Event::MessageRejected`) is emitted.
-        type CallFilter: Contains<<Self as Config>::Call>;
+        type CallFilter: Contains<<Self as Config<I>>::Call>;
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config<I>, I: 'static> Pallet<T, I> {}
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
+    pub enum Event<T: Config<I>, I: 'static = ()> {
         /// Message has been dispatched with given result.
-        MessageDispatched(MessageId, DispatchResult),
+        MessageDispatched(T::MessageId, DispatchResult),
         /// Message has been rejected
-        MessageRejected(MessageId),
+        MessageRejected(T::MessageId),
         /// We have failed to decode a Call from the message.
-        MessageDecodeFailed(MessageId),
+        MessageDecodeFailed(T::MessageId),
     }
 
     #[pallet::origin]
-    pub type Origin = RawOrigin;
+    #[allow(type_alias_bounds)]
+    pub type Origin<T: Config<I>, I: 'static = ()> = RawOrigin<
+        <T as Config<I>>::NetworkId,
+        <T as Config<I>>::Source,
+        <T as Config<I>>::OriginOutput,
+    >;
 
-    impl<T: Config> MessageDispatch<T, MessageId> for Pallet<T> {
+    impl<T: Config> traits::MessageDispatch<T, T::NetworkId, T::Source, T::MessageId> for Pallet<T> {
         fn dispatch(
-            network_id: EthNetworkId,
-            source: H160,
-            message_id: MessageId,
+            network_id: T::NetworkId,
+            source: T::Source,
+            message_id: T::MessageId,
             timestamp: u64,
             payload: &[u8],
         ) {
@@ -141,12 +166,12 @@ pub mod pallet {
                 return;
             }
 
-            let origin = RawOrigin(EvmCallOriginOutput {
+            let origin = RawOrigin::new(<T::OriginOutput as traits::OriginOutput<_, _>>::new(
                 network_id,
-                message_id: message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
-                contract: source,
+                source,
+                message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
                 timestamp,
-            })
+            ))
             .into();
             let result = call.dispatch(origin);
 
@@ -157,7 +182,9 @@ pub mod pallet {
         }
 
         #[cfg(feature = "runtime-benchmarks")]
-        fn successful_dispatch_event(id: MessageId) -> Option<<T as frame_system::Config>::Event> {
+        fn successful_dispatch_event(
+            id: T::MessageId,
+        ) -> Option<<T as frame_system::Config>::Event> {
             let event: <T as Config>::Event = Event::<T>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
@@ -167,7 +194,9 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bridge_types::types::MessageId;
+    use bridge_types::traits::MessageDispatch as _;
+    use bridge_types::types;
+    use bridge_types::{EthNetworkId, H160};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
@@ -188,7 +217,7 @@ mod tests {
             UncheckedExtrinsic = UncheckedExtrinsic,
         {
             System: frame_system::{Pallet, Call, Storage, Event<T>},
-            Dispatch: dispatch::{Pallet, Storage, Origin, Event<T>},
+            Dispatch: dispatch::{Pallet, Storage, Origin<T>, Event<T>},
         }
     );
 
@@ -236,9 +265,12 @@ mod tests {
     }
 
     impl dispatch::Config for Test {
-        type Origin = Origin;
         type Event = Event;
-        type MessageId = u64;
+        type NetworkId = EthNetworkId;
+        type Source = H160;
+        type OriginOutput = types::CallOriginOutput<EthNetworkId, H160, H256>;
+        type Origin = Origin;
+        type MessageId = types::MessageId;
         type Hashing = Keccak256;
         type Call = Call;
         type CallFilter = CallFilter;
@@ -254,7 +286,7 @@ mod tests {
     #[test]
     fn test_dispatch_bridge_message() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(37);
+            let id = types::MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message =
@@ -281,7 +313,7 @@ mod tests {
     #[test]
     fn test_message_decode_failed() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(37);
+            let id = types::MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message: Vec<u8> = vec![1, 2, 3];
@@ -303,7 +335,7 @@ mod tests {
     #[test]
     fn test_message_rejected() {
         new_test_ext().execute_with(|| {
-            let id = MessageId::inbound(37);
+            let id = types::MessageId::inbound(37);
             let source = H160::repeat_byte(7);
 
             let message =

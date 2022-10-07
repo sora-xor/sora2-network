@@ -1,10 +1,11 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
+use bridge_types::types::CallOriginOutput;
 use common::{AssetId32, PredefinedAssetId, DAI};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
-use sp_core::H160;
+use sp_core::{H160, H256};
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
@@ -12,7 +13,7 @@ pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 use crate::Pallet as MigrationApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
     register_network {
         let contract = H160::repeat_byte(6);
     }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, contract)

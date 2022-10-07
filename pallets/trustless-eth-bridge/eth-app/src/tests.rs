@@ -2,7 +2,7 @@ use crate::mock::{
     new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test, BASE_NETWORK_ID,
 };
 use crate::{Addresses, Error};
-use bridge_types::types::EvmCallOriginOutput;
+use bridge_types::types::CallOriginOutput;
 use common::{balance, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;
@@ -22,7 +22,7 @@ fn mints_after_handling_ethereum_event() {
         let amount = balance!(10);
         let old_balance = Assets::total_balance(&XOR, &recipient).unwrap();
         assert_ok!(EthApp::mint(
-            dispatch::RawOrigin(EvmCallOriginOutput {
+            dispatch::RawOrigin::new(CallOriginOutput {
                 network_id: BASE_NETWORK_ID,
                 contract: peer_contract,
                 ..Default::default()
@@ -58,7 +58,7 @@ fn mint_zero_amount_must_fail() {
         let amount = balance!(0);
         common::assert_noop_transactional!(
             EthApp::mint(
-                dispatch::RawOrigin(EvmCallOriginOutput {
+                dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
                     contract: peer_contract,
                     ..Default::default()

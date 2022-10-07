@@ -192,11 +192,24 @@ pub struct BridgeAppInfo {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct EvmCallOriginOutput {
-    pub network_id: EthNetworkId,
-    pub message_id: H256,
-    pub contract: H160,
+pub struct CallOriginOutput<NetworkId, Contract, MessageId> {
+    pub network_id: NetworkId,
+    pub message_id: MessageId,
+    pub contract: Contract,
     pub timestamp: u64,
+}
+
+impl<NetworkId, Source> crate::traits::OriginOutput<NetworkId, Source>
+    for CallOriginOutput<NetworkId, Source, H256>
+{
+    fn new(network_id: NetworkId, source: Source, message_id: H256, timestamp: u64) -> Self {
+        Self {
+            network_id,
+            message_id,
+            contract: source,
+            timestamp,
+        }
+    }
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

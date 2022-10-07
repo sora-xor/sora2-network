@@ -73,7 +73,7 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use bridge_types::traits::{EvmBridgeApp, MessageStatusNotifier};
-    use bridge_types::types::{AppKind, BridgeAppInfo, BridgeAssetInfo, EvmCallOriginOutput};
+    use bridge_types::types::{AppKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput};
     use bridge_types::H256;
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
@@ -93,7 +93,10 @@ pub mod pallet {
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = EvmCallOriginOutput>;
+        type CallOrigin: EnsureOrigin<
+            Self::Origin,
+            Success = CallOriginOutput<EthNetworkId, H160, H256>,
+        >;
 
         type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
@@ -169,7 +172,7 @@ pub mod pallet {
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: U256,
         ) -> DispatchResult {
-            let EvmCallOriginOutput {
+            let CallOriginOutput {
                 network_id,
                 message_id,
                 contract,

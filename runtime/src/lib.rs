@@ -54,7 +54,6 @@ use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, XOR};
 use constants::currency::deposit;
 use constants::time::*;
-use dispatch::EnsureEthereumAccount;
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
@@ -1354,7 +1353,7 @@ impl bridge_multisig::Config for Runtime {
 }
 
 parameter_types! {
-    pub const EthNetworkId: u32 = 0;
+    pub const GetEthNetworkId: u32 = 0;
 }
 
 pub struct RemoveTemporaryPeerAccountIds;
@@ -1456,7 +1455,7 @@ impl eth_bridge::Config for Runtime {
     type Call = Call;
     type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
-    type GetEthNetworkId = EthNetworkId;
+    type GetEthNetworkId = GetEthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
     type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
@@ -1876,8 +1875,11 @@ impl Contains<Call> for CallFilter {
 }
 
 impl dispatch::Config for Runtime {
-    type Origin = Origin;
     type Event = Event;
+    type NetworkId = EthNetworkId;
+    type Source = H160;
+    type OriginOutput = bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>;
+    type Origin = Origin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = Call;
@@ -1885,7 +1887,7 @@ impl dispatch::Config for Runtime {
 }
 
 use bridge_channel::{inbound as bridge_channel_inbound, outbound as bridge_channel_outbound};
-use bridge_types::CHANNEL_INDEXING_PREFIX;
+use bridge_types::{EthNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u64 = 256;
@@ -1955,7 +1957,11 @@ impl ethereum_light_client::Config for Runtime {
 impl eth_app::Config for Runtime {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = EnsureEthereumAccount;
+    type CallOrigin = dispatch::EnsureAccount<
+        EthNetworkId,
+        H160,
+        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+    >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
@@ -1964,7 +1970,11 @@ impl eth_app::Config for Runtime {
 impl erc20_app::Config for Runtime {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = EnsureEthereumAccount;
+    type CallOrigin = dispatch::EnsureAccount<
+        EthNetworkId,
+        H160,
+        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+    >;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -2064,7 +2074,7 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
         BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
+        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
@@ -2150,7 +2160,7 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
         BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
+        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,

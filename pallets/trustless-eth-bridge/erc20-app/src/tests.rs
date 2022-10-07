@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
-use bridge_types::types::{AssetKind, EvmCallOriginOutput};
+use bridge_types::types::{AssetKind, CallOriginOutput};
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_ok;
 use sp_core::H160;
@@ -33,7 +33,7 @@ fn mints_after_handling_ethereum_event() {
         ));
 
         assert_ok!(Erc20App::mint(
-            dispatch::RawOrigin(EvmCallOriginOutput {
+            dispatch::RawOrigin::new(CallOriginOutput {
                 network_id: BASE_NETWORK_ID,
                 contract: peer_contract,
                 ..Default::default()
@@ -74,7 +74,7 @@ fn mint_zero_amount_must_fail() {
 
         common::assert_noop_transactional!(
             Erc20App::mint(
-                dispatch::RawOrigin(EvmCallOriginOutput {
+                dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
                     contract: peer_contract,
                     ..Default::default()
@@ -193,7 +193,7 @@ fn test_register_asset_internal() {
     new_tester().execute_with(|| {
         let asset_id = ETH;
         let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(EvmCallOriginOutput {
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {
             network_id: BASE_NETWORK_ID,
             contract: who,
             ..Default::default()

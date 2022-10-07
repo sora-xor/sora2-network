@@ -2,7 +2,7 @@
 
 use crate::*;
 use bridge_types::types::AssetKind;
-use bridge_types::types::EvmCallOriginOutput;
+use bridge_types::types::CallOriginOutput;
 use bridge_types::EthNetworkId;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
@@ -11,7 +11,7 @@ use common::{
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
-use sp_core::H160;
+use sp_core::{H160, H256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
@@ -19,7 +19,7 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
     burn {
         let caller: T::AccountId = whitelisted_caller();
@@ -44,7 +44,7 @@ benchmarks! {
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
-        let origin = dispatch::RawOrigin::from(EvmCallOriginOutput {network_id: BASE_NETWORK_ID, contract: caller, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, contract: caller, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -98,7 +98,7 @@ benchmarks! {
     register_asset_internal {
         let asset_id: T::AssetId = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin(EvmCallOriginOutput {network_id: BASE_NETWORK_ID, contract: who, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, contract: who, ..Default::default()});
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
     }: _(origin, asset_id, address)

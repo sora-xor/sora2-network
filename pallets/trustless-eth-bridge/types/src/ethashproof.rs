@@ -363,7 +363,7 @@ mod tests {
         let mut prover = EthashProver::with_hashimoto_light(EPOCH_LENGTH, 1);
         let (mix_hash, _) =
             prover.hashimoto_light(header_partial_hash, header_nonce, header_number);
-        assert_eq!(mix_hash, header_mix_hash);
+        assert_eq!(header_mix_hash, H256::from(mix_hash.as_bytes()));
     }
 
     #[test]

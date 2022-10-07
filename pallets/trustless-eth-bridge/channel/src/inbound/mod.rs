@@ -50,7 +50,7 @@ pub mod pallet {
         type Verifier: Verifier<Result = (Log, u64)>;
 
         /// Verifier module for message verification.
-        type MessageDispatch: MessageDispatch<Self, MessageId>;
+        type MessageDispatch: MessageDispatch<Self, EthNetworkId, H160, MessageId>;
 
         type FeeConverter: Convert<U256, BalanceOf<Self>>;
 
