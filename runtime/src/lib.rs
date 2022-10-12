@@ -1756,7 +1756,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
     type MaxAuthorities = MaxAuthorities;
-    type OnNewValidatorSet = ();
+    type OnNewValidatorSet = MmrLeaf;
 }
 
 impl pallet_mmr::Config for Runtime {

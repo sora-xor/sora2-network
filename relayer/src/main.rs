@@ -34,6 +34,7 @@ pub mod prelude {
     };
     pub use crate::substrate::runtime::runtime_types as sub_types;
     pub use crate::substrate::{
+        event_to_string as sub_event_to_string, log_tx_events as sub_log_tx_events,
         runtime as sub_runtime, SignedClient as SubSignedClient,
         UnsignedClient as SubUnsignedClient,
     };

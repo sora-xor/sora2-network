@@ -321,12 +321,12 @@
       },
       {
         "internalType": "address[]",
-        "name": "defaultOperators",
+        "name": "defaultOperatorsSet",
         "type": "address[]"
       },
       {
         "internalType": "uint256",
-        "name": "initial_fee",
+        "name": "initialFee",
         "type": "uint256"
       }
     ],
@@ -339,12 +339,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_operator",
+        "name": "operator",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_origin",
+        "name": "origin",
         "type": "address"
       }
     ],
@@ -465,7 +465,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_amount",
+        "name": "amount",
         "type": "uint256"
       }
     ],

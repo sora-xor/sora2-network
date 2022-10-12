@@ -4,32 +4,20 @@ pragma solidity 0.8.15;
 import "../BeefyLightClient.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TestBeefyLightClient is BeefyLightClient, Ownable {
-    constructor(
-        address testValidatorRegistry,
-        address tetsMMRVerification,
-        uint64 startingBeefyBlock
-    )
-        BeefyLightClient(
-            testValidatorRegistry,
-            tetsMMRVerification,
-            startingBeefyBlock
-        )
+contract TestBeefyLightClient is BeefyLightClient {
+    constructor(address testMMRVerification)
+        BeefyLightClient(testMMRVerification)
     {}
 
     function reset(
         uint64 startingBeefyBlock,
-        bytes32 authoritySetRoot,
-        uint256 authoritySetLen,
-        uint64 authoritySetId
+        ValidatorSet calldata _currentValidatorSet,
+        ValidatorSet calldata _nextValidatorSet
     ) external onlyOwner {
+        currentValidatorSet = _currentValidatorSet;
+        nextValidatorSet = _nextValidatorSet;
         latestBeefyBlock = startingBeefyBlock;
         latestMMRRoots[0] = bytes32(0);
         latestMMRRootIndex = 0;
-        validatorRegistry.update(
-            authoritySetRoot,
-            authoritySetLen,
-            authoritySetId
-        );
     }
 }

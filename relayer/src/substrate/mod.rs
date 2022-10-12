@@ -12,11 +12,32 @@ use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafIndex, Proof};
 use sp_runtime::MultiSigner;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
+use subxt::events::EventDetails;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, RpcClientT};
-use subxt::tx::Signer;
+use subxt::tx::{Signer, TxEvents};
 use subxt::Config;
 pub use types::*;
+
+pub fn event_to_string(ev: EventDetails) -> String {
+    let input = &mut ev.bytes();
+    let phase = subxt::events::Phase::decode(input);
+    let event = sub_runtime::Event::decode(input);
+    format!("(Phase: {:?}, Event: {:?})", phase, event)
+}
+
+pub fn log_tx_events(events: TxEvents<DefaultConfig>) {
+    for ev in events.iter() {
+        match ev {
+            Ok(ev) => {
+                debug!("{}", event_to_string(ev));
+            }
+            Err(err) => {
+                warn!("Failed to decode event: {:?}", err);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ClonableClient(Arc<jsonrpsee::async_client::Client>);
@@ -151,7 +172,7 @@ impl UnsignedClient {
             .storage()
             .fetch_or_default(&runtime::storage().mmr().number_of_leaves(), None)
             .await?;
-        let beefy_start_block = latest_finalized_number as u64 - mmr_leaves;
+        let beefy_start_block = (latest_finalized_number as u64).saturating_sub(mmr_leaves);
         debug!("Beefy started at: {}", beefy_start_block);
         Ok(beefy_start_block)
     }

@@ -80,21 +80,19 @@ impl Command {
                 }
             }
         };
+        let call = runtime::runtime_types::framenode_runtime::Call::ERC20App(call);
+        info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()
             .tx()
-            .sign_and_submit_then_watch_default(
-                &runtime::tx().sudo().sudo(
-                    runtime::runtime_types::framenode_runtime::Call::ERC20App(call),
-                ),
-                &sub,
-            )
+            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
     }
 }

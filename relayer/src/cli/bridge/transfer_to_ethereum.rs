@@ -37,6 +37,10 @@ impl Command {
             .await?;
         info!("Current balance: {:?}", balance);
         let result = if self.asset_id == native_asset_id {
+            info!(
+                "Call eth_app.burn({}, {}, {})",
+                network_id, self.recipient, self.amount
+            );
             sub.api()
                 .tx()
                 .sign_and_submit_then_watch_default(
@@ -51,6 +55,10 @@ impl Command {
                 .wait_for_success()
                 .await?
         } else {
+            info!(
+                "Call erc20_app.burn({}, {}, {}, {})",
+                network_id, self.asset_id, self.recipient, self.amount
+            );
             sub.api()
                 .tx()
                 .sign_and_submit_then_watch_default(
@@ -68,7 +76,8 @@ impl Command {
                 .wait_for_success()
                 .await?
         };
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
     }
 }

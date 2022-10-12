@@ -36,47 +36,43 @@ impl Command {
         let number = eth.get_block_number().await? - self.descendants_until_final;
         let block = eth.get_block(number).await?.expect("block not found");
         let header = make_header(block);
+        let call = runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
+            runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
+                header,
+                network_config,
+                initial_difficulty: Default::default(),
+            },
+        );
+        info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()
             .tx()
-            .sign_and_submit_then_watch_default(
-                &runtime::tx()
-            .sudo()
-            .sudo(
-                runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
-                    runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
-                        header,
-                        network_config,
-                        initial_difficulty: Default::default(),
-                    },
-                )),
-                &sub)
+            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
+        let call = runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
+            runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
+                network_id,
+                channel: self.outbound_channel,
+            },
+        );
+        info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()
             .tx()
-            .sign_and_submit_then_watch_default(
-                &runtime::tx()
-            .sudo()
-            .sudo(
-                runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
-                    runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
-                        network_id,
-                        channel: self.outbound_channel
-                    },
-                )),
-                &sub)
+            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
     }
 }

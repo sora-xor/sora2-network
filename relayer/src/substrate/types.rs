@@ -23,7 +23,7 @@ pub type Block = sp_runtime::generic::Block<Header, Extrinsic>;
 pub type MmrHash = H256;
 pub type LeafExtra = LeafExtraData<H256, H256>;
 pub type BeefySignedCommitment =
-    beefy_primitives::SignedCommitment<BlockNumber, beefy_primitives::crypto::Signature>;
+    beefy_primitives::VersionedFinalityProof<BlockNumber, beefy_primitives::crypto::Signature>;
 pub type BeefyCommitment = beefy_primitives::Commitment<BlockNumber>;
 pub type MmrLeaf = beefy_primitives::mmr::MmrLeaf<BlockNumber, BlockHash, MmrHash, LeafExtra>;
 pub type AssetId = AssetId32<PredefinedAssetId>;

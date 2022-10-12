@@ -93,8 +93,15 @@ pub struct Relay {
 }
 
 impl Relay {
-    async fn create_random_bitfield(&self, initial_bitfield: Vec<U256>) -> AnyResult<Vec<U256>> {
-        let call = self.beefy.create_random_bitfield(initial_bitfield).legacy();
+    async fn create_random_bitfield(
+        &self,
+        initial_bitfield: Vec<U256>,
+        num_validators: U256,
+    ) -> AnyResult<Vec<U256>> {
+        let call = self
+            .beefy
+            .create_random_bitfield(initial_bitfield, num_validators)
+            .legacy();
         let random_bitfield = call.call().await?;
         debug!("Random bitfield: {:?}", random_bitfield);
         Ok(random_bitfield)
@@ -123,7 +130,7 @@ impl Relay {
         };
 
         let random_bitfield = self
-            .create_random_bitfield(initial_bitfield.clone())
+            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
             .await?;
         let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;
@@ -430,13 +437,16 @@ impl Relay {
                 "latest beefy block: {}, next block: {}",
                 latest_beefy_block, next_block
             );
+            let current_validator_set_id =
+                self.beefy.current_validator_set().call().await?.0 as u64;
+            let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             for next_block in ((latest_beefy_block + 1)..=next_block).rev() {
                 let block = self.sub.block(Some(next_block)).await?;
                 debug!("Check block {:?}", block.block.header.number);
                 if let Some(justifications) = block.justifications {
                     for (engine, justification) in justifications {
                         if &engine == b"BEEF" {
-                            let VersionedFinalityProof::V1(commitment) =
+                            let commitment =
                                 VersionedFinalityProof::decode(&mut justification.as_slice())?;
                             let justification = match BeefyJustification::create(
                                 self.sub.clone(),
@@ -451,6 +461,17 @@ impl Relay {
                                 }
                             };
                             debug!("Justification: {:?}", justification);
+                            if justification.commitment.validator_set_id != current_validator_set_id
+                                && justification.commitment.validator_set_id
+                                    != next_validator_set_id
+                            {
+                                warn!(
+                                    "validator set id mismatch: {} + 1 != {}",
+                                    justification.commitment.validator_set_id,
+                                    current_validator_set_id
+                                );
+                                continue;
+                            }
 
                             let _ =
                                 self.clone()
@@ -485,7 +506,6 @@ impl Relay {
         self.sync_historical_commitments()
             .await
             .context("sync historical commitments")?;
-        let mut validator_set_id = 0;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification =
@@ -498,20 +518,25 @@ impl Relay {
                         continue;
                     }
                 };
+
             let latest_block = self.beefy.latest_beefy_block().call().await?;
+
             let has_messages = self
                 .check_new_messages((justification.commitment.block_number - 1) as u64)
                 .await?;
+
+            let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             let is_mandatory =
-                validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
+                next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
+
             let should_send = !ignore_unneeded_commitments
                 || has_messages
                 || is_mandatory
                 || (justification.commitment.block_number as u64
                     > latest_block + beefy_block_gap - 20);
+
             if should_send {
                 // TODO: Better async message handler
-                validator_set_id = justification.leaf_proof.leaf.beefy_next_authority_set.id;
                 let _ = self
                     .clone()
                     .send_commitment(justification)

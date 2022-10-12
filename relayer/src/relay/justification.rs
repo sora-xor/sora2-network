@@ -46,10 +46,10 @@ impl BeefyJustification {
         sub: SubUnsignedClient,
         commitment: BeefySignedCommitment,
     ) -> AnyResult<Self> {
-        let SignedCommitment {
+        let BeefySignedCommitment::V1(SignedCommitment {
             commitment,
             signatures,
-        } = commitment;
+        }) = commitment;
         let commitment_hash = keccak256(&Encode::encode(&commitment)).into();
         let num_validators = U256::from(signatures.len());
         let mut signed_validators = vec![];

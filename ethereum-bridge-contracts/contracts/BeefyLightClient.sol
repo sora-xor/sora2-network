@@ -2,17 +2,18 @@
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./libraries/Bits.sol";
 import "./libraries/Bitfield.sol";
 import "./libraries/ScaleCodec.sol";
 import "./interfaces/ISimplifiedMMRProof.sol";
-import "./interfaces/IValidatorRegistry.sol";
 import "./interfaces/ISimplifiedMMRVerification.sol";
+import "./libraries/MerkleProof.sol";
 
 /**
  * @title A entry contract for the Ethereum light client
  */
-contract BeefyLightClient is ISimplifiedMMRProof {
+contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
     using Bits for uint256;
     using Bitfield for uint256[];
     using ScaleCodec for uint256;
@@ -91,8 +92,19 @@ contract BeefyLightClient is ISimplifiedMMRProof {
         bytes32 digestHash;
     }
 
+    /**
+     * @dev The ValidatorSet describes a BEEFY validator set
+     * @param id identifier for the set
+     * @param root Merkle root of BEEFY validator addresses
+     * @param length number of validators in the set
+     */
+    struct ValidatorSet {
+        uint128 id;
+        uint128 length;
+        bytes32 root;
+    }
+
     /* State */
-    IValidatorRegistry public validatorRegistry;
     ISimplifiedMMRVerification public mmrVerification;
 
     // Ring buffer of latest MMR Roots
@@ -102,6 +114,9 @@ contract BeefyLightClient is ISimplifiedMMRProof {
 
     uint64 public latestBeefyBlock;
     bytes32 public latestRandomSeed;
+
+    ValidatorSet public currentValidatorSet;
+    ValidatorSet public nextValidatorSet;
 
     /* Constants */
 
@@ -121,21 +136,24 @@ contract BeefyLightClient is ISimplifiedMMRProof {
 
     /**
      * @notice Deploys the BeefyLightClient contract
-     * @param _validatorRegistry The contract to be used as the validator registry
      * @param _mmrVerification The contract to be used for MMR verification
      */
-    constructor(
-        address _validatorRegistry,
-        address _mmrVerification,
-        uint64 _startingBeefyBlock
-    ) {
-        validatorRegistry = IValidatorRegistry(_validatorRegistry);
+    constructor(address _mmrVerification) {
         mmrVerification = ISimplifiedMMRVerification(_mmrVerification);
         latestRandomSeed = bytes32(uint256(42));
-        latestBeefyBlock = _startingBeefyBlock;
     }
 
     /* Public Functions */
+    function initialize(
+        uint64 startingBeefyBlock,
+        ValidatorSet calldata _currentValidatorSet,
+        ValidatorSet calldata _nextValidatorSet
+    ) external onlyOwner {
+        currentValidatorSet = _currentValidatorSet;
+        nextValidatorSet = _nextValidatorSet;
+        latestBeefyBlock = startingBeefyBlock;
+        renounceOwnership();
+    }
 
     /**
      * @notice Adds MMR root to the known last roots history.
@@ -192,13 +210,10 @@ contract BeefyLightClient is ISimplifiedMMRProof {
         return isKnownRoot(proofRoot);
     }
 
-    function createRandomBitfield(uint256[] memory validatorClaimsBitfield)
-        external
-        view
-        returns (uint256[] memory)
-    {
-        uint256 numberOfValidators = validatorRegistry.numOfValidators();
-
+    function createRandomBitfield(
+        uint256[] memory validatorClaimsBitfield,
+        uint256 numberOfValidators
+    ) external view returns (uint256[] memory) {
         return
             Bitfield.randomNBitsWithPriorCheck(
                 getSeed(),
@@ -229,8 +244,15 @@ contract BeefyLightClient is ISimplifiedMMRProof {
         BeefyMMRLeaf calldata latestMMRLeaf,
         SimplifiedMMRProof calldata proof
     ) external {
-        require(commitment.validatorSetId == validatorRegistry.id(), "Invalid validator set id");
-        verifyCommitment(commitment, validatorProof);
+        ValidatorSet memory vset;
+        if (commitment.validatorSetId == currentValidatorSet.id) {
+            vset = currentValidatorSet;
+        } else if (commitment.validatorSetId == nextValidatorSet.id) {
+            vset = nextValidatorSet;
+        } else {
+            revert("Invalid validator set id");
+        }
+        verifyCommitment(vset, commitment, validatorProof);
         verifyNewestMMRLeaf(latestMMRLeaf, commitment.payload, proof);
 
         processPayload(commitment.payload, commitment.blockNumber);
@@ -305,25 +327,26 @@ contract BeefyLightClient is ISimplifiedMMRProof {
      * @param nextAuthoritySetRoot The merkle root of the merkle tree of the next validators
      */
     function applyValidatorSetChanges(
-        uint64 nextAuthoritySetId,
-        uint32 nextAuthoritySetLen,
+        uint128 nextAuthoritySetId,
+        uint128 nextAuthoritySetLen,
         bytes32 nextAuthoritySetRoot
     ) internal {
-        if (nextAuthoritySetId != validatorRegistry.id()) {
+        if (nextAuthoritySetId != nextValidatorSet.id) {
             require(
-                nextAuthoritySetId > validatorRegistry.id(),
+                nextAuthoritySetId > nextValidatorSet.id,
                 "Error: Cannot switch to old validator set"
             );
-            validatorRegistry.update(
-                nextAuthoritySetRoot,
-                nextAuthoritySetLen,
-                nextAuthoritySetId
-            );
+            currentValidatorSet = nextValidatorSet;
+            nextValidatorSet = ValidatorSet({
+                id: nextAuthoritySetId,
+                length: nextAuthoritySetLen,
+                root: nextAuthoritySetRoot
+            });
         }
     }
 
     function requiredNumberOfSignatures() external view returns (uint256) {
-        return requiredNumberOfSignatures(validatorRegistry.numOfValidators());
+        return requiredNumberOfSignatures(currentValidatorSet.length);
     }
 
     function requiredNumberOfSignatures(uint256 numValidators)
@@ -351,10 +374,11 @@ contract BeefyLightClient is ISimplifiedMMRProof {
     }
 
     function verifyCommitment(
+        ValidatorSet memory vset,
         Commitment calldata commitment,
         ValidatorProof calldata proof
     ) internal view {
-        uint256 numberOfValidators = validatorRegistry.numOfValidators();
+        uint256 numberOfValidators = vset.length;
         uint256 requiredNumOfSignatures = requiredNumberOfSignatures(
             numberOfValidators
         );
@@ -456,11 +480,7 @@ contract BeefyLightClient is ISimplifiedMMRProof {
          * @dev Check if merkle proof is valid
          */
         require(
-            validatorRegistry.checkValidatorInSet(
-                publicKey,
-                position,
-                publicKeyMerkleProof
-            ),
+            checkValidatorInSet(publicKey, position, publicKeyMerkleProof),
             "Error: Validator must be in validator set at correct position"
         );
 
@@ -513,5 +533,29 @@ contract BeefyLightClient is ISimplifiedMMRProof {
 
     function hashMMRLeaf(bytes memory leaf) public pure returns (bytes32) {
         return keccak256(leaf);
+    }
+
+    /**
+     * @notice Checks if a validators address is a member of the merkle tree
+     * @param addr The address of the validator to check
+     * @param pos The position of the validator to check, index starting at 0
+     * @param proof Merkle proof required for validation of the address
+     * @return Returns true if the validator is in the set
+     */
+    function checkValidatorInSet(
+        address addr,
+        uint256 pos,
+        bytes32[] memory proof
+    ) public view returns (bool) {
+        bytes32 hashedLeaf = keccak256(abi.encodePacked(addr));
+        ValidatorSet memory vset = currentValidatorSet;
+        return
+            MerkleProof.verifyMerkleLeafAtPosition(
+                vset.root,
+                hashedLeaf,
+                pos,
+                vset.length,
+                proof
+            );
     }
 }

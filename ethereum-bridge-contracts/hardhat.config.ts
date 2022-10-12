@@ -31,6 +31,10 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       throwOnTransactionFailures: true,
+      mining: {
+        auto: true,
+        interval: 1000,
+      }
     },
     ganache: {
       url: "http://127.0.0.1:8545",

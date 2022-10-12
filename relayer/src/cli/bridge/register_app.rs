@@ -126,6 +126,7 @@ impl Command {
             )
             }
         };
+        info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()
             .tx()
@@ -135,7 +136,8 @@ impl Command {
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
     }
 }

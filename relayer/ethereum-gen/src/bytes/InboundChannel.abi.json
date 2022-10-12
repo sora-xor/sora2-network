@@ -240,7 +240,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_rewardSource",
+        "name": "initialRewardSource",
         "type": "address"
       }
     ],
@@ -390,7 +390,7 @@
           }
         ],
         "internalType": "struct InboundChannel.LeafBytes",
-        "name": "_leafBytes",
+        "name": "leafBytes",
         "type": "tuple"
       },
       {
