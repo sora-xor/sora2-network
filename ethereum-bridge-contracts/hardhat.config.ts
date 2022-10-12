@@ -11,6 +11,7 @@ import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
+import "hardhat-deploy-ethers";
 import '@typechain/hardhat';
 import { HardhatUserConfig, task } from "hardhat/config";
 
@@ -34,6 +35,17 @@ const config: HardhatUserConfig = {
       mining: {
         auto: true,
         interval: 1000,
+      }
+    },
+    docker: {
+      url: "http://bridge-geth:8545",
+      chainId: 4224,
+      accounts: ["21754896455c7e745e7f14d4f7782bbdf7769a0539b2fe8682fa0a2e13f37075"],
+      verify: {
+        etherscan: {
+          apiUrl: "http://bridge-blockscout:4000",
+          apiKey: "a"
+        }
       }
     },
     ganache: {
@@ -68,7 +80,7 @@ const config: HardhatUserConfig = {
     timeout: 60000
   },
   etherscan: {
-    apiKey: etherscanKey
+    apiKey: {"mainnet": etherscanKey},
   },
   typechain: {
     outDir: './typechain',

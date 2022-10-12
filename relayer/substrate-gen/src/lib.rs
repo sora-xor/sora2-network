@@ -38,6 +38,8 @@ pub mod runtime {
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::types::AssetKind")]
+    use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
     #[subxt(substitute_type = "bridge_types::header::Header")]

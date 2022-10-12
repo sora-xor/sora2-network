@@ -1,5 +1,5 @@
 use crate::cli::prelude::*;
-use bridge_types::H160;
+use bridge_types::{H160, U256};
 use common::{AssetId32, AssetName, AssetSymbol, PredefinedAssetId};
 use std::str::FromStr;
 use substrate_gen::runtime;
@@ -53,6 +53,9 @@ impl Command {
         let eth = self.eth.get_unsigned_ethereum().await?;
         let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
+        if self.check_if_registered(&sub, network_id).await? {
+            return Ok(());
+        }
         let call = match &self.asset_kind {
             AssetKind::ExistingERC20 { asset_id, address } => {
                 runtime::runtime_types::erc20_app::pallet::Call::register_existing_erc20_asset {
@@ -94,5 +97,46 @@ impl Command {
         info!("Extrinsic successful");
         sub_log_tx_events(result);
         Ok(())
+    }
+
+    pub async fn check_if_registered(
+        &self,
+        sub: &SubSignedClient,
+        network_id: U256,
+    ) -> AnyResult<bool> {
+        let is_registered = match &self.asset_kind {
+            AssetKind::ExistingERC20 { asset_id, .. } | AssetKind::Native { asset_id } => {
+                let is_registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage()
+                            .erc20_app()
+                            .asset_kinds(&network_id, asset_id),
+                        None,
+                    )
+                    .await?
+                    .is_some();
+                is_registered
+            }
+            AssetKind::ERC20 { address, .. } => {
+                let is_registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage()
+                            .erc20_app()
+                            .assets_by_addresses(&network_id, address),
+                        None,
+                    )
+                    .await?
+                    .is_some();
+                is_registered
+            }
+        };
+        if is_registered {
+            info!("Asset is already registered");
+        }
+        Ok(is_registered)
     }
 }

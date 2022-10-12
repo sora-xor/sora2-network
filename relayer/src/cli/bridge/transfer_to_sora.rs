@@ -1,6 +1,6 @@
 use crate::cli::prelude::*;
 use crate::substrate::{AccountId, AssetId};
-use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
+use bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {

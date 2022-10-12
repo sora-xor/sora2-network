@@ -1,7 +1,7 @@
 use crate::cli::prelude::*;
 use crate::substrate::AssetId;
+use bridge_types::types::AssetKind;
 use std::collections::HashMap;
-use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
