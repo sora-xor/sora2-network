@@ -22,6 +22,7 @@ pub type Migrations = (
     SchedulerV3Migration,
     ElectionsPhragmenV5Migration,
     StakingV9Migration,
+    vested_rewards::migrations::ResetClaimingForCrowdloadErrors<Runtime>,
 );
 
 impl_opaque_keys! {
