@@ -317,6 +317,7 @@ impl<T: Config> Pallet<T> {
                     );
                     T::VestedRewardsPallet::update_market_maker_records(
                         &sender,
+                        &dex_info.base_asset_id,
                         xor_volume,
                         1,
                         &from_asset_id,
@@ -359,6 +360,7 @@ impl<T: Config> Pallet<T> {
                         );
                         T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
+                            &dex_info.base_asset_id,
                             first_swap.amount,
                             2,
                             &from_asset_id,
@@ -422,6 +424,7 @@ impl<T: Config> Pallet<T> {
                         )?;
                         T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
+                            &dex_info.base_asset_id,
                             first_swap.amount,
                             2,
                             &from_asset_id,

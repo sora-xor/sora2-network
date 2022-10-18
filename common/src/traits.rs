@@ -512,7 +512,8 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
     /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
     fn update_market_maker_records(
         account_id: &AccountId,
-        xor_volume: Balance,
+        base_asset: &AssetId,
+        base_asset_volume: Balance,
         count: u32,
         from_asset_id: &AssetId,
         to_asset_id: &AssetId,
