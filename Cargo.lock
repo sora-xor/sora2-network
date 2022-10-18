@@ -590,6 +590,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "beefy-light-client"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#e20f8264280a7292a4040f2aad4036a2713640f3"
+dependencies = [
+ "bridge-common",
+ "ethabi 13.0.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "getrandom 0.2.7",
+ "libsecp256k1",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+]
+
+[[package]]
 name = "beefy-merkle-tree"
 version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.28-updated#53fca26faed7ac8525e564129544605fe4e0fb32"
@@ -866,6 +884,20 @@ dependencies = [
  "sp-rpc",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "bridge-common"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#e20f8264280a7292a4040f2aad4036a2713640f3"
+dependencies = [
+ "ethabi 13.0.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
 ]
 
 [[package]]
@@ -3834,6 +3866,7 @@ version = "1.4.4"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "beefy-light-client",
  "beefy-primitives",
  "bridge-channel",
  "bridge-types",
@@ -12124,7 +12157,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.8.0",
  "regex",
  "serde",
  "serde_json",
@@ -12314,9 +12347,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.5",
- "rand 0.8.5",
+ "rand 0.4.6",
  "static_assertions",
 ]
 

@@ -1994,6 +1994,11 @@ impl evm_bridge_proxy::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl beefy_light_client::Config for Runtime {
+    type Event = Event;
+    type Randomness = BeefyLightClient;
+}
+
 #[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
@@ -2080,6 +2085,8 @@ construct_runtime! {
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+
+        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
     }
 }
 
@@ -2166,6 +2173,8 @@ construct_runtime! {
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+
+        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
     }
 }
 
