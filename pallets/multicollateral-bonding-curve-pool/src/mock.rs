@@ -200,6 +200,7 @@ pub struct MockVestedRewards;
 impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
     fn update_market_maker_records(
         _: &AccountId,
+        _: &AssetId,
         _: Balance,
         _: u32,
         _: &AssetId,

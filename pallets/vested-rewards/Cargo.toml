@@ -38,6 +38,7 @@ serde_bytes = { version = "0.11", default-features = false, features = [
 serde_json = { version = "1.0", default-features = false }
 technical = { path = "../technical", optional = true, default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
