@@ -98,9 +98,9 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// [network_id, asset_id, sender, recepient, amount]
+        /// [network_id, asset_id, sender, recipient, amount]
         Burned(EthNetworkId, AssetIdOf<T>, T::AccountId, H160, BalanceOf<T>),
-        /// [network_id, asset_id, sender, recepient, amount]
+        /// [network_id, asset_id, sender, recipient, amount]
         Minted(EthNetworkId, AssetIdOf<T>, H160, T::AccountId, BalanceOf<T>),
     }
 

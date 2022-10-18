@@ -11,6 +11,7 @@ ETH_APP=$(jq '.contracts.ETHApp.address' $DEPLOYMENTS | tr -d '"')
 SIDECHAIN_APP=$(jq '.contracts.SidechainApp.address' $DEPLOYMENTS | tr -d '"')
 MIGRATION_APP=$(jq '.contracts.MigrationApp.address' $DEPLOYMENTS | tr -d '"')
 ERC20_APP=$(jq '.contracts.ERC20App.address' $DEPLOYMENTS | tr -d '"')
+INBOUND=$(jq '.contracts.InboundChannel.address' $DEPLOYMENTS | tr -d '"')
 OUTBOUND=$(jq '.contracts.OutboundChannel.address' $DEPLOYMENTS | tr -d '"')
 USDT=$(jq '.contracts.USDT.address' $DEPLOYMENTS | tr -d '"')
 DAI=$(jq '.contracts.DAI.address' $DEPLOYMENTS | tr -d '"')
@@ -32,6 +33,7 @@ relayer \
 	--substrate-url ws://bridge-sora-alice:9944 \
 	--substrate-key //Alice \
 	bridge register-bridge \
+	--inbound-channel $INBOUND \
 	--outbound-channel $OUTBOUND \
 	-d 10 \
 	$REGISTER_ADDITIONAL_ARGS

@@ -265,9 +265,9 @@ impl technical::Config for Test {
     type SwapAction = ();
 }
 
-pub fn new_tester(source_channel: H160) -> sp_io::TestExternalities {
+pub fn new_tester(inbound_channel: H160, outbound_channel: H160) -> sp_io::TestExternalities {
     new_tester_with_config(bridge_inbound_channel::GenesisConfig {
-        networks: vec![(BASE_NETWORK_ID, source_channel)],
+        networks: vec![(BASE_NETWORK_ID, inbound_channel, outbound_channel)],
         reward_fraction: Perbill::from_percent(80),
     })
 }
@@ -356,9 +356,32 @@ const MESSAGE_DATA_1: [u8; 317] = hex!(
 "
 );
 
+// The originating InboundChannel address for the messages below
+const INBOUND_CHANNEL_ADDR: [u8; 20] = hex!["2b6eb68c260ff0784a3c17ae61e31a77836eeb20"];
+
+// MessageDispatched with nonce = 1
+const MESSAGE_DISPATCHED_DATA_0: [u8; 123] = hex!(
+    "
+	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
+	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
+	0000000000000000000000000000000000000000000000000000010000000000
+	000000000000000000000000000000000000000000000000000001
+"
+);
+
+// MessageDispatched with nonce = 2
+const MESSAGE_DISPATCHED_DATA_1: [u8; 123] = hex!(
+    "
+	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
+	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
+	0000000000000000000000000000000000000000000000000000020000000000
+	000000000000000000000000000000000000000000000000000001
+"
+);
+
 #[test]
 fn test_submit_with_invalid_source_channel() {
-    new_tester(H160::zero()).execute_with(|| {
+    new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = Origin::signed(relayer);
 
@@ -380,7 +403,7 @@ fn test_submit_with_invalid_source_channel() {
 
 #[test]
 fn test_submit() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = Origin::signed(relayer);
 
@@ -422,7 +445,7 @@ fn test_submit() {
 
 #[test]
 fn test_submit_with_invalid_nonce() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = Origin::signed(relayer);
 
@@ -452,9 +475,135 @@ fn test_submit_with_invalid_nonce() {
 }
 
 #[test]
+fn test_message_dispatched_wrong_event() {
+    new_tester(H160::zero(), H160::zero()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        let message = Message {
+            // expected message_dispatched
+            data: MESSAGE_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        common::assert_noop_transactional!(
+            BridgeInboundChannel::message_dispatched(
+                origin.clone(),
+                BASE_NETWORK_ID,
+                message.clone()
+            ),
+            Error::<Test>::InvalidMessageDispatchedEvent
+        );
+    });
+}
+
+#[test]
+fn test_message_dispatched_with_invalid_source_channel() {
+    new_tester(H160::zero(), H160::zero()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        let message = Message {
+            data: MESSAGE_DISPATCHED_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        common::assert_noop_transactional!(
+            BridgeInboundChannel::message_dispatched(
+                origin.clone(),
+                BASE_NETWORK_ID,
+                message.clone()
+            ),
+            Error::<Test>::InvalidSourceChannel
+        );
+    });
+}
+
+#[test]
+fn test_message_dispatched_with_invalid_nonce() {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        let message = Message {
+            data: MESSAGE_DISPATCHED_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_ok!(BridgeInboundChannel::message_dispatched(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message.clone()
+        ));
+        let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
+        assert_eq!(nonce, 1);
+
+        // Submit the same again
+        common::assert_noop_transactional!(
+            BridgeInboundChannel::message_dispatched(
+                origin.clone(),
+                BASE_NETWORK_ID,
+                message.clone()
+            ),
+            Error::<Test>::InvalidNonce
+        );
+    });
+}
+
+#[test]
+fn test_message_dispatched() {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        let message_1 = Message {
+            data: MESSAGE_DISPATCHED_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_ok!(BridgeInboundChannel::message_dispatched(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message_1
+        ));
+        let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
+        assert_eq!(nonce, 1);
+
+        // Submit message 2
+        let message_2 = Message {
+            data: MESSAGE_DISPATCHED_DATA_1.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_ok!(BridgeInboundChannel::message_dispatched(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message_2
+        ));
+        let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
+        assert_eq!(nonce, 2);
+    });
+}
+
+#[test]
 #[ignore] // TODO: fix test_handle_fee test
 fn test_handle_fee() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let fee_asset_id = <Test as Config>::FeeAssetId::get();
         let treasury_acc = <Test as Config>::TreasuryTechAccountId::get();
@@ -478,7 +627,7 @@ fn test_handle_fee() {
 
 #[test]
 fn test_set_reward_fraction_not_authorized() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
         common::assert_noop_transactional!(
             BridgeInboundChannel::set_reward_fraction(
@@ -492,7 +641,7 @@ fn test_set_reward_fraction_not_authorized() {
 
 #[test]
 fn test_submit_with_invalid_network_id() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = Origin::signed(relayer);
 
@@ -514,13 +663,18 @@ fn test_submit_with_invalid_network_id() {
 
 #[test]
 fn test_register_channel() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_ok!(BridgeInboundChannel::register_channel(
             Origin::root(),
             BASE_NETWORK_ID + 1,
+            H160::from(INBOUND_CHANNEL_ADDR),
             H160::from(SOURCE_CHANNEL_ADDR),
         ));
 
+        assert_eq!(
+            InboundChannelAddresses::<Test>::get(BASE_NETWORK_ID + 1),
+            Some(H160::from(INBOUND_CHANNEL_ADDR)),
+        );
         assert_eq!(
             ChannelAddresses::<Test>::get(BASE_NETWORK_ID + 1),
             Some(H160::from(SOURCE_CHANNEL_ADDR)),
@@ -530,11 +684,12 @@ fn test_register_channel() {
 
 #[test]
 fn test_register_existing_channel() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         common::assert_noop_transactional!(
             BridgeInboundChannel::register_channel(
                 Origin::root(),
                 BASE_NETWORK_ID,
+                H160::from(INBOUND_CHANNEL_ADDR),
                 H160::from(SOURCE_CHANNEL_ADDR),
             ),
             Error::<Test>::ContractExists
@@ -544,7 +699,7 @@ fn test_register_existing_channel() {
 
 #[test]
 fn test_register_app() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_ok!(BridgeInboundChannel::register_app(
             BASE_NETWORK_ID,
             H160::repeat_byte(7)
@@ -554,7 +709,7 @@ fn test_register_app() {
 
 #[test]
 fn test_register_app_invalid_network() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_err!(
             BridgeInboundChannel::register_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
             Error::<Test>::InvalidNetwork
@@ -564,7 +719,7 @@ fn test_register_app_invalid_network() {
 
 #[test]
 fn test_deregister_app() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_ok!(BridgeInboundChannel::deregister_app(
             BASE_NETWORK_ID,
             H160::repeat_byte(7)
@@ -574,7 +729,7 @@ fn test_deregister_app() {
 
 #[test]
 fn test_deregister_app_invalid_network() {
-    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_err!(
             BridgeInboundChannel::deregister_app(BASE_NETWORK_ID + 1, H160::repeat_byte(7)),
             Error::<Test>::InvalidNetwork

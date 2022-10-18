@@ -39,7 +39,7 @@ benchmarks! {
     submit {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = dot_unlock_data();
-        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
@@ -78,7 +78,7 @@ benchmarks! {
     submit_eth_mint {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = eth_mint_data();
-        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
@@ -105,7 +105,7 @@ benchmarks! {
     submit_erc20_mint {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = erc20_mint_data();
-        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
@@ -130,9 +130,10 @@ benchmarks! {
 
     register_channel {
 
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, H160::repeat_byte(123))
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, H160::repeat_byte(123), H160::repeat_byte(234))
     verify {
-        assert_eq!(ChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(123)));
+        assert_eq!(InboundChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(123)));
+        assert_eq!(ChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(234)));
     }
 }
 
@@ -252,6 +253,6 @@ fn dot_unlock_data() -> (Header, Message) {
 
 impl_benchmark_test_suite!(
     BridgeInboundChannel,
-    crate::inbound::test::new_tester(Default::default()),
+    crate::inbound::test::new_tester(Default::default(), Default::default()),
     crate::inbound::test::Test,
 );

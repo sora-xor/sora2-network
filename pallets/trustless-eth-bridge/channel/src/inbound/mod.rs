@@ -9,7 +9,7 @@ use frame_system::ensure_signed;
 use sp_core::{H160, U256};
 use sp_std::convert::TryFrom;
 
-use envelope::Envelope;
+use events::Envelope;
 
 use sp_runtime::traits::{Convert, Zero};
 use sp_runtime::Perbill;
@@ -23,7 +23,7 @@ pub use weights::WeightInfo;
 #[cfg(test)]
 mod test;
 
-mod envelope;
+mod events;
 
 type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
@@ -34,6 +34,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::inbound::events::MessageDispatched;
     use bridge_types::traits::{AppRegistry, OutboundChannel};
     use bridge_types::Log;
     use frame_support::log::{debug, warn};
@@ -67,7 +68,17 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    /// Source channel on the ethereum side
+    /// InboundChannel contract address on the ethereum side
+    #[pallet::storage]
+    #[pallet::getter(fn inbound_channel)]
+    pub type InboundChannelAddresses<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
+
+    #[pallet::storage]
+    pub type InboundChannelNonces<T: Config> =
+        StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
+
+    /// Source channel (OutboundChannel contract) on the ethereum side
     #[pallet::storage]
     #[pallet::getter(fn source_channel)]
     pub type ChannelAddresses<T: Config> = StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
@@ -110,6 +121,8 @@ pub mod pallet {
         InvalidSourceChannel,
         /// Message has an invalid envelope.
         InvalidEnvelope,
+        /// Malformed MessageDispatched event
+        InvalidMessageDispatchedEvent,
         /// Message has an unexpected nonce.
         InvalidNonce,
         /// Incorrect reward fraction
@@ -167,14 +180,52 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
+        pub fn message_dispatched(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            message: Message,
+        ) -> DispatchResultWithPostInfo {
+            let relayer = ensure_signed(origin)?;
+            debug!(
+                "message_dispatched: Received MessageDispatched from {:?}",
+                relayer
+            );
+            // submit message to verifier for verification
+            let (log, _timestamp) = T::Verifier::verify(network_id, &message)?;
+            let message_dispatched_event: MessageDispatched = MessageDispatched::try_from(log)
+                .map_err(|_| Error::<T>::InvalidMessageDispatchedEvent)?;
+
+            ensure!(
+                <InboundChannelAddresses<T>>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?
+                    == message_dispatched_event.channel,
+                Error::<T>::InvalidSourceChannel
+            );
+
+            // Verify message nonce
+            <InboundChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if message_dispatched_event.nonce != *nonce + 1 {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce += 1;
+                    Ok(())
+                }
+            })?;
+
+            // TODO(a.chernyshov): store result
+
+            Ok(().into())
+        }
+
         #[pallet::weight(<T as Config>::WeightInfo::register_channel())]
         pub fn register_channel(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
-            channel: H160,
+            inbound_channel: H160,
+            outbound_channel: H160,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            Self::register_channel_inner(network_id, channel)?;
+            Self::register_channel_inner(network_id, inbound_channel, outbound_channel)?;
             Ok(().into())
         }
 
@@ -230,12 +281,22 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn register_channel_inner(network_id: EthNetworkId, channel: H160) -> DispatchResult {
+        pub fn register_channel_inner(
+            network_id: EthNetworkId,
+            inbound_channel: H160,
+            outbound_channel: H160,
+        ) -> DispatchResult {
+            ensure!(
+                <InboundChannelAddresses<T>>::contains_key(network_id) == false,
+                Error::<T>::ContractExists
+            );
+            <InboundChannelAddresses<T>>::insert(network_id, inbound_channel);
+
             ensure!(
                 <ChannelAddresses<T>>::contains_key(network_id) == false,
                 Error::<T>::ContractExists
             );
-            <ChannelAddresses<T>>::insert(network_id, channel);
+            <ChannelAddresses<T>>::insert(network_id, outbound_channel);
             Ok(())
         }
 
@@ -281,7 +342,8 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub networks: Vec<(EthNetworkId, H160)>,
+        // Ethereum network id, inbound channel address, outbound channel address
+        pub networks: Vec<(EthNetworkId, H160, H160)>,
         pub reward_fraction: Perbill,
     }
 
@@ -298,8 +360,13 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            for (network_id, channel) in &self.networks {
-                Pallet::<T>::register_channel_inner(*network_id, *channel).unwrap();
+            for (network_id, inbound_channel, outbound_channel) in &self.networks {
+                Pallet::<T>::register_channel_inner(
+                    *network_id,
+                    *inbound_channel,
+                    *outbound_channel,
+                )
+                .unwrap();
             }
             RewardFraction::<T>::set(self.reward_fraction);
         }

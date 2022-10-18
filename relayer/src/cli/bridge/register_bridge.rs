@@ -12,6 +12,9 @@ pub(crate) struct Command {
     /// Confirmations until block is considered finalized
     #[clap(long, short)]
     descendants_until_final: u64,
+    /// InboundChannel contract address
+    #[clap(long)]
+    inbound_channel: H160,
     /// OutboundChannel contract address
     #[clap(long)]
     outbound_channel: H160,
@@ -87,7 +90,8 @@ impl Command {
             let call = runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
                 runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
                     network_id,
-                    channel: self.outbound_channel,
+                    inbound_channel: self.inbound_channel,
+                    outbound_channel: self.outbound_channel,
                 },
             );
             info!("Sudo call extrinsic: {:?}", call);
