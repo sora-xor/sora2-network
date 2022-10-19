@@ -921,7 +921,8 @@ fn testnet_genesis(
         },
         account_id: Some(iroha_migration_account_id.clone()),
     };
-    let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
+    let initial_collateral_assets =
+        vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         system: SystemConfig {

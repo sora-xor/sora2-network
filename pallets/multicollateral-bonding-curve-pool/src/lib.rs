@@ -69,6 +69,8 @@ use {
     serde::{Deserialize, Serialize},
 };
 
+pub mod migrations;
+
 pub trait WeightInfo {
     fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
@@ -598,7 +600,6 @@ pub mod pallet {
 /// This function always distributes a portion of input tokens (see `AlwaysDistributeCoefficient`), these are
 /// referred as free reserves. After collateral input portion is exchanged to XOR, it's sent out to accounts
 /// specified in `DistributionAccounts` struct and buy-back and burn some amount of VAL asset.
-///
 struct BuyMainAsset<T: Config> {
     collateral_asset_id: T::AssetId,
     main_asset_id: T::AssetId,
