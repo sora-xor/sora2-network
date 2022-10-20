@@ -350,6 +350,18 @@ pub mod pallet {
         StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
 }
 
+pub mod rpc {
+    use super::{Config, Pallet};
+    use frame_support::traits::Get as _;
+    use sp_std::prelude::*;
+
+    impl<T: Config> Pallet<T> {
+        pub fn reward_doubling_assets() -> Vec<T::AssetId> {
+            T::RewardDoublingAssets::get()
+        }
+    }
+}
+
 #[derive(Debug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(test, derive(PartialEq))]
 #[scale_info(skip_type_params(T))]

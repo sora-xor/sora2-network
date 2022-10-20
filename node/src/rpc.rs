@@ -138,6 +138,7 @@ where
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
+    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
     B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
@@ -147,6 +148,7 @@ where
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
+    use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pallet_mmr_rpc::{Mmr, MmrApiServer};
@@ -182,11 +184,11 @@ where
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
-    // io.merge(FarmingRpc::new(client.clone()).into_rpc())?;
     io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;
     io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
-    io.merge(VestedRewardsClient::new(client).into_rpc())?;
+    io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
+    io.merge(FarmingClient::new(client).into_rpc())?;
     Ok(io)
 }
