@@ -81,6 +81,8 @@ sp-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", r
 sp-trie = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
 sp-version = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
 substrate-frame-rpc-system =  { git = "https://github.com/KalitaAlexey/substrate.git", rev = "56bcdca" }
+# See https://github.com/bytecodealliance/wasmtime/pull/2588
+wasmtime =  { git = "https://github.com/bytecodealliance/wasmtime.git", rev = "13003a3" }
 
 [workspace]
 members = [

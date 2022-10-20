@@ -17,7 +17,7 @@ substrate-wasm-builder = "3.0.0"
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "chain-error"] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
-serde = { features = ['derive'], optional = true, version = '1.0.101' }
+serde = { version = "1.0.101", features = ["derive"], optional = true, default-features = false }
 
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig", default-features = false }
 

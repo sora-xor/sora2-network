@@ -69,6 +69,8 @@ use {
     serde::{Deserialize, Serialize},
 };
 
+pub mod migrations;
+
 pub trait WeightInfo {
     fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
@@ -226,6 +228,10 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            migrations::migrate::<T>()
+        }
+
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
                 let elems = Module::<T>::free_reserves_distribution_routine();
@@ -590,7 +596,6 @@ pub mod pallet {
 /// This function always distributes a portion of input tokens (see `AlwaysDistributeCoefficient`), these are
 /// referred as free reserves. After collateral input portion is exchanged to XOR, it's sent out to accounts
 /// specified in `DistributionAccounts` struct and buy-back and burn some amount of VAL asset.
-///
 struct BuyMainAsset<T: Config> {
     collateral_asset_id: T::AssetId,
     main_asset_id: T::AssetId,

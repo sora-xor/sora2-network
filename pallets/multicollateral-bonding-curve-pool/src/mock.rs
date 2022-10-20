@@ -36,7 +36,7 @@ use common::prelude::{
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
     Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XSTUSD,
+    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -773,6 +773,18 @@ impl ExtBuilder {
                 .into_iter()
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![(
+                DEX_A_ID,
+                trading_pair::TradingPair::<Runtime> {
+                    base_asset_id: XOR,
+                    target_asset_id: XST,
+                },
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
