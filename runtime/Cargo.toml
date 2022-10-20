@@ -38,7 +38,8 @@ dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default
 dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-farming = { path = "../pallets/farming", default-features = false}
+farming = { path = "../pallets/farming", default-features = false }
+farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
@@ -142,7 +143,8 @@ std = [
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
     "farming/std",
-    "faucet?/std",
+    "farming-runtime-api/std",
+    "faucet/std",
     "frame-executive/std",
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",

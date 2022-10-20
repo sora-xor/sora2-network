@@ -118,6 +118,7 @@ where
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
+    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
@@ -125,7 +126,7 @@ where
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
     use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
-    // use farming_rpc::*;
+    use farming_rpc::{FarmingApi, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
@@ -158,7 +159,6 @@ where
     io.extend_with(LiquidityProxyAPI::to_delegate(LiquidityProxyClient::new(
         client.clone(),
     )));
-    // io.extend_with(FarmingApi::to_delegate(FarmingRpc::new(client.clone())));
     io.extend_with(EthBridgeApi::to_delegate(EthBridgeRpc::new(client.clone())));
     io.extend_with(IrohaMigrationAPI::to_delegate(IrohaMigrationClient::new(
         client.clone(),
@@ -168,7 +168,8 @@ where
     ));
     io.extend_with(RewardsAPI::to_delegate(RewardsClient::new(client.clone())));
     io.extend_with(VestedRewardsApi::to_delegate(VestedRewardsClient::new(
-        client,
+        client.clone(),
     )));
+    io.extend_with(FarmingApi::to_delegate(FarmingClient::new(client)));
     io
 }
