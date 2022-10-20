@@ -3212,6 +3212,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "farming-rpc"
+version = "0.1.0"
+dependencies = [
+ "farming-runtime-api",
+ "jsonrpsee",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "farming-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3630,6 +3651,7 @@ dependencies = [
  "dex-manager-rpc",
  "eth-bridge-rpc",
  "exit-future",
+ "farming-rpc",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "framenode-chain-spec",
@@ -3750,6 +3772,7 @@ dependencies = [
  "eth-bridge",
  "eth-bridge-runtime-api",
  "farming",
+ "farming-runtime-api",
  "faucet",
  "frame-benchmarking",
  "frame-election-provider-support",
