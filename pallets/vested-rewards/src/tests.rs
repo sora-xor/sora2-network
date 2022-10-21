@@ -40,10 +40,12 @@ use common::{
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{OnInitialize, PalletVersion};
 use sp_std::collections::btree_map::BTreeMap;
 use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
+
+type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 fn deposit_rewards_to_reserves(amount: Balance) {
     Currencies::deposit(PSWAP, &GetBondingCurveRewardsAccountId::get(), amount).unwrap();
@@ -599,7 +601,7 @@ fn can_claim_crowdloan_reward() {
             Origin::root(),
             tech_account,
             PSWAP.into(),
-            balance!(1000) as <Runtime as tokens::Config>::Amount,
+            balance!(1000000) as <Runtime as tokens::Config>::Amount,
         )
         .unwrap();
 
@@ -609,7 +611,7 @@ fn can_claim_crowdloan_reward() {
         ][..];
         let account =
             <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-        let pswap_reward = Fixed::try_from(100).unwrap();
+        let pswap_reward = Fixed::try_from(60000).unwrap();
 
         CrowdloanRewards::<Runtime>::insert(
             &account,
@@ -630,17 +632,17 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
+
+        // second claim for the same period doesn't change the balance
 
         crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
             .unwrap();
 
-        // second claim for the same period doesn't change the balance
-
         assert_eq!(
-            6289308176100628930,
+            3773584905660377358480,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
 
@@ -655,7 +657,7 @@ fn can_claim_crowdloan_reward() {
             .unwrap();
 
         assert_eq!(
-            99999999999999999999,
+            59999999999999999999832,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
     });
@@ -704,7 +706,7 @@ fn crowdloan_reward_period_is_whole_days() {
             .unwrap();
 
         assert_eq!(
-            943396226415094339,
+            943396226415094338,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
 
@@ -714,11 +716,54 @@ fn crowdloan_reward_period_is_whole_days() {
             .unwrap();
 
         assert_eq!(
-            1257861635220125785,
+            1257861635220125784,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
         );
     });
 }
+
+#[test]
+fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        migration::add_funds_to_crowdloan_rewards_account::<Runtime>();
+        migration::add_crowdloan_rewards::<Runtime>();
+
+        // this account is known as having issue with getting PSWAP reward
+        let mut raw_address = &[
+            244, 140, 36, 125, 28, 44, 188, 122, 200, 181, 210, 183, 7, 41, 241, 37, 50, 63, 215,
+            126, 240, 94, 36, 196, 65, 157, 70, 8, 127, 46, 122, 14,
+        ][..];
+
+        let account =
+            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
+
+        let current_block_number = (crate::BLOCKS_PER_DAY * 2 + crate::LEASE_START_BLOCK) as u64;
+
+        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
+
+        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
+            .unwrap();
+
+        assert!(crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP) > 0);
+
+        // the claim history is reset after the migration
+        PalletVersion {
+            major: 1,
+            minor: 2,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, crate::Pallet<Runtime>>();
+
+        migration::migrate::<Runtime>();
+
+        assert_eq!(
+            0,
+            crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP)
+        );
+    });
+}
+
 #[test]
 fn storage_has_allowed_market_maker_pools() {
     let mut ext = ExtBuilder::default().build();

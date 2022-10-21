@@ -5,14 +5,16 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 name = 'vested-rewards'
-version = '1.2.0'
+version = '1.2.1'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 assets = { path = "../assets", default-features = false }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+] }
 common = { path = "../../common", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
@@ -23,19 +25,21 @@ hex = { version = "0.4", default-features = false, features = ["serde"] }
 hex-literal = "0.3"
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 serde = { version = "1.0", features = ["derive"], default-features = false }
-serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+serde_bytes = { version = "0.11", default-features = false, features = [
+    "alloc",
+] }
 serde_json = { version = "1.0", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
-technical = { path = "../technical", optional =  true, default-features = false }
+technical = { path = "../technical", optional = true, default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 pallet-timestamp = { version = "3", default-features = false }
 
 [dev-dependencies]
-pallet-balances = { version = "3"}
+pallet-balances = { version = "3" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
