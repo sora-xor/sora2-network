@@ -9807,6 +9807,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
