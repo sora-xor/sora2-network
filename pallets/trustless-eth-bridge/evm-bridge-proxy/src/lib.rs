@@ -78,13 +78,12 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn transactions)]
-    pub(super) type Transactions<T: Config> = StorageNMap<
+    pub(super) type Transactions<T: Config> = StorageDoubleMap<
         _,
-        (
-            NMapKey<Twox64Concat, EthNetworkId>,
-            NMapKey<Blake2_128Concat, AccountIdOf<T>>,
-            NMapKey<Blake2_128Concat, H256>,
-        ),
+        Blake2_128Concat,
+        AccountIdOf<T>,
+        Blake2_128Concat,
+        (EthNetworkId, H256),
         BridgeRequest<T>,
         OptionQuery,
     >;
@@ -111,7 +110,11 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            Transactions::kill_prefix();
+        }
+    }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -170,7 +173,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
             Some(sender) => sender,
             None => return,
         };
-        Transactions::<T>::mutate((network_id, sender, id), |req| {
+        Transactions::<T>::mutate(sender, (network_id, id), |req| {
             if let Some(req) = req {
                 Self::deposit_event(Event::RequestStatusUpdate(id, new_status));
                 match req {
@@ -202,7 +205,8 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
         Senders::<T>::insert(&network_id, &message_id, &dest);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &dest, &message_id),
+            &dest,
+            (&network_id, &message_id),
             BridgeRequest::IncomingTransfer {
                 source,
                 dest: dest.clone(),
@@ -230,7 +234,8 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
         Senders::<T>::insert(&network_id, &message_id, &source);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &source, &message_id),
+            &source,
+            (&network_id, &message_id),
             BridgeRequest::OutgoingTransfer {
                 source: source.clone(),
                 dest,

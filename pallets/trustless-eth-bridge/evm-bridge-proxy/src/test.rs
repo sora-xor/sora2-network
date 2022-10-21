@@ -72,7 +72,7 @@ fn burn_successfull() {
         .unwrap();
         let message_id = BridgeOutboundChannel::make_message_id(1);
         assert_eq!(
-            Transactions::<Test>::get((BASE_NETWORK_ID, &caller, message_id)),
+            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
                 dest: H160::default(),
@@ -89,7 +89,7 @@ fn burn_successfull() {
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
         assert_eq!(
-            Transactions::<Test>::get((BASE_NETWORK_ID, &caller, message_id)),
+            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
                 dest: H160::default(),
@@ -144,7 +144,7 @@ fn mint_successfull() {
         let message_id =
             MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
-            Transactions::<Test>::get((BASE_NETWORK_ID, &recipient, message_id)),
+            Transactions::<Test>::get(&recipient, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::IncomingTransfer {
                 source: H160::default(),
                 dest: recipient.clone(),
