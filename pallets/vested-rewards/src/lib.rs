@@ -35,7 +35,8 @@
 extern crate alloc;
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance, FixedWrapper};
+use common::fixed_wrapper;
+use common::prelude::{Balance, FixedWrapper, QuoteAmount};
 use common::{
     balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
     XSTUSD,
@@ -45,6 +46,7 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
+use liquidity_proxy::LiquidityProxyTrait;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -352,7 +354,8 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
     /// transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
-        xor_volume: Balance,
+        base_asset: &T::AssetId,
+        base_asset_volume: Balance,
         count: u32,
         from_asset_id: &T::AssetId,
         to_asset_id: &T::AssetId,
@@ -364,6 +367,27 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
         } else {
             MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
         };
+
+        let xor_price = if base_asset == &common::XOR.into() {
+            fixed_wrapper!(1)
+        } else {
+            let price = T::LiquidityProxy::quote(
+                common::DEXId::Polkaswap.into(),
+                base_asset,
+                &common::XOR.into(),
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(1),
+                },
+                common::LiquiditySourceFilter::empty(common::DEXId::Polkaswap.into()),
+                false,
+            )
+            .map_err(|_| Error::<T>::UnableToGetBaseAssetPrice)?
+            .amount;
+            FixedWrapper::from(price)
+        };
+        let xor_volume = (xor_price * base_asset_volume)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::ArithmeticError)?;
 
         if allowed && xor_volume >= balance!(1) {
             MarketMakersRegistry::<T>::mutate(account_id, |info| {
@@ -540,6 +564,8 @@ pub mod pallet {
         ArithmeticError,
         /// This error appears on wrong conversion of a number into another type.
         NumberConversionError,
+        /// Unable to get base asset price in XOR. XOR-base asset pair should exist on Polkaswap DEX.
+        UnableToGetBaseAssetPrice,
     }
 
     #[pallet::event]

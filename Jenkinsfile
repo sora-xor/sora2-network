@@ -105,14 +105,6 @@ pipeline {
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                     subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
-                                    sudo_check = 'subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
-                                    if [ \$sudo_check -eq ${sudoCheckStatus} ];
-                                    then
-                                        echo "sudo check is successful!"
-                                    else
-                                        echo "sudo check is failed!"
-                                        exit 1
-                                    fi
                                 """
                                 archiveArtifacts artifacts:
                                     "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
