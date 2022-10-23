@@ -33,7 +33,7 @@ use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
-use common::prelude::{Balance, FixedWrapper};
+use common::prelude::FixedWrapper;
 
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
@@ -148,12 +148,19 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         );
 
         ensure!(self.pool_tokens > 0, Error::<T>::ZeroValueInAmountParameter);
-        let fxw_source_k = FixedWrapper::from(self.pool_tokens);
-        let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
-        let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
-        let recom_x: Balance = to_balance!(fxw_recom_x);
-        let recom_y = to_balance!(fxw_recom_y);
 
+        if balance_ks < self.pool_tokens {
+            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
+        }
+
+        let (recom_x, recom_y) = if self.pool_tokens != total_iss {
+            let fxw_source_k = FixedWrapper::from(self.pool_tokens);
+            let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
+            let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
+            (to_balance!(fxw_recom_x), to_balance!(fxw_recom_y))
+        } else {
+            (balance_bp, balance_tp)
+        };
         match self.destination.0.amount {
             Bounds::Desired(x) => {
                 if x != recom_x {
@@ -189,10 +196,6 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         // Get required values, now it is always Some, it is safe to unwrap().
         let _base_amount = self.destination.1.amount.unwrap();
         let _target_amount = self.destination.0.amount.unwrap();
-
-        if balance_ks < self.pool_tokens {
-            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
-        }
 
         //TODO: Debug why in this place checking is failed, but in transfer checks is success.
         /*
