@@ -1996,7 +1996,7 @@ impl evm_bridge_proxy::Config for Runtime {
 
 impl beefy_light_client::Config for Runtime {
     type Event = Event;
-    type Randomness = BeefyLightClient;
+    type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
 #[cfg(feature = "private-net")]
