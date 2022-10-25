@@ -252,6 +252,7 @@ members = [
     "relayer",
     "relayer/substrate-gen",
     "relayer/ethereum-gen",
+    "relayer/parachain-gen",
     "node/",
     "utils/parse",
     "utils/wasm-builder",
