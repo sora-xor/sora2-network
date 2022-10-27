@@ -33,14 +33,14 @@ use crate::offchain::SignedTransactionData;
 use crate::requests::{
     IncomingMarkAsDoneRequest, IncomingMetaRequestKind, IncomingRequest,
     IncomingTransactionRequestKind, LoadIncomingMetaRequest, LoadIncomingRequest,
-    LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
+    LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest, RemoveNetworkDataRequest,
 };
 use crate::types::SubstrateBlockLimited;
 use crate::{
     Call, Config, Error, Pallet, RequestStatuses, Requests, RequestsQueue, CONFIRMATION_INTERVAL,
     MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS, MAX_PENDING_TX_BLOCKS_PERIOD,
     MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE, RE_HANDLE_TXS_PERIOD,
-    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
     STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
     SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
@@ -57,6 +57,7 @@ use frame_support::{ensure, fail, log};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
 
 impl<T: Config> Pallet<T> {
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -106,6 +107,34 @@ impl<T: Config> Pallet<T> {
                 return Err(<Error<T>>::NoLocalAccountForSigning);
             }
         };
+        Ok(())
+    }
+
+    fn handle_remove_network_data_request(
+        request: RemoveNetworkDataRequest<T>,
+        hash: H256,
+    ) -> Result<(), Error<T>> {
+        let timepoint = request.timepoint;
+        let network_id = request.network_id;
+        let call = Call::remove_network_data_request_handler { request, hash };
+
+        let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
+        let mut s_eth_height = StorageValueRef::persistent(string.as_bytes());
+        s_eth_height.clear();
+        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
+        let mut s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
+        s_eth_to_handle_from_height.clear();
+        let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
+        let mut network_ids = s_networks_ids
+            .get::<BTreeSet<T::NetworkId>>()
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        network_ids.remove(&network_id);
+        s_networks_ids.set(&network_ids);
+
+        Self::send_multisig_transaction(call, timepoint, network_id)?;
+
         Ok(())
     }
 
@@ -303,6 +332,9 @@ impl<T: Config> Pallet<T> {
             }
             OffchainRequest::Incoming(request, hash) => {
                 Self::handle_pending_incoming_requests(request, hash)
+            }
+            OffchainRequest::RemoveNetworkData(request, hash) => {
+                Self::handle_remove_network_data_request(request, hash)
             }
         }
     }

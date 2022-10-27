@@ -52,6 +52,7 @@ use sp_core::offchain::OffchainStorage;
 use sp_core::{ByteArray, Pair};
 use sp_keystore::SyncCryptoStore;
 use sp_runtime::offchain::STORAGE_PREFIX;
+use sp_runtime::traits::IdentifyAccount;
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::sync::Arc;
@@ -168,6 +169,17 @@ pub fn new_partial(
     {
         let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
             .expect("should have correct size");
+        let sub_public = sp_core::ecdsa::Public::from(pk.clone());
+        let public = secp256k1::PublicKey::parse_compressed(&sub_public.0).unwrap();
+        let address = common::eth::public_key_to_eth_address(&public);
+        let account = sp_runtime::MultiSigner::Ecdsa(sub_public.clone()).into_account();
+        log::info!(
+            "Peer info: address: {:?}, account: {:?}, {}, public: {:?}",
+            address,
+            account,
+            account,
+            sub_public
+        );
         if let Some(keystore) = keystore_container.local_keystore() {
             if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
                 let seed = kep.to_raw_vec();

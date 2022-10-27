@@ -41,6 +41,7 @@ use ethabi::Token;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::warn;
 use frame_support::sp_runtime::app_crypto::sp_core;
+use frame_support::traits::Get;
 use frame_support::{ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
 pub use outgoing::*;
@@ -54,6 +55,15 @@ mod incoming;
 mod outgoing;
 
 type Assets<T> = assets::Pallet<T>;
+
+macro_rules! clear_prefix {
+    ($storage:ty, $key:expr) => {{
+        let mut res = <$storage>::clear_prefix($key, 1024, None);
+        while let Some(cursor) = res.maybe_cursor {
+            res = <$storage>::clear_prefix($key, 1024, Some(&cursor));
+        }
+    }};
+}
 
 /// Outgoing (Thischain->Sidechain) request.
 ///
@@ -610,6 +620,57 @@ impl<T: Config> LoadIncomingRequest<T> {
         Ok(())
     }
 }
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct RemoveNetworkDataRequest<T: Config> {
+    pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
+    pub author: T::AccountId,
+    pub clear_tx_history: bool,
+}
+
+impl<T: Config> RemoveNetworkDataRequest<T> {
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> DispatchResult {
+        if self.network_id == T::GetEthNetworkId::get() {
+            crate::XorMasterContractAddress::<T>::kill();
+            crate::ValMasterContractAddress::<T>::kill();
+        }
+        crate::RequestsQueue::<T>::remove(self.network_id);
+        crate::BridgeAccount::<T>::remove(self.network_id);
+        crate::BridgeStatuses::<T>::remove(self.network_id);
+        crate::BridgeContractAddress::<T>::remove(self.network_id);
+        crate::BridgeSignatureVersions::<T>::remove(self.network_id);
+        crate::PendingBridgeSignatureVersions::<T>::remove(self.network_id);
+        crate::Peers::<T>::remove(self.network_id);
+        clear_prefix!(crate::RegisteredAsset::<T>, self.network_id);
+        clear_prefix!(crate::SidechainAssetPrecision::<T>, self.network_id);
+        clear_prefix!(crate::RegisteredSidechainAsset::<T>, self.network_id);
+        clear_prefix!(crate::RegisteredSidechainToken::<T>, self.network_id);
+        clear_prefix!(crate::PeerAccountId::<T>, self.network_id);
+        clear_prefix!(crate::PeerAddress::<T>, self.network_id);
+        if self.clear_tx_history {
+            clear_prefix!(crate::LoadToIncomingRequestHash::<T>, self.network_id);
+            clear_prefix!(crate::Requests::<T>, self.network_id);
+            clear_prefix!(crate::RequestStatuses::<T>, self.network_id);
+            clear_prefix!(crate::RequestSubmissionHeight::<T>, self.network_id);
+            clear_prefix!(crate::RequestApprovals::<T>, self.network_id);
+        }
+        Ok(())
+    }
+}
 
 /// Information needed for a request to be loaded from sidechain. Basically it's
 /// a hash of the transaction and the type of the request.
@@ -684,6 +745,8 @@ pub enum OffchainRequest<T: Config> {
     LoadIncoming(LoadIncomingRequest<T>),
     /// Sidechain->Thischain request with its hash.
     Incoming(IncomingRequest<T>, H256),
+    /// Request to remove offchain network data
+    RemoveNetworkData(RemoveNetworkDataRequest<T>, H256),
 }
 
 impl<T: Config> OffchainRequest<T> {
@@ -708,12 +771,20 @@ impl<T: Config> OffchainRequest<T> {
         request
     }
 
+    pub fn remove_network_data(request: RemoveNetworkDataRequest<T>) -> Self {
+        let mut request = Self::RemoveNetworkData(request, H256::zero());
+        let hash = request.using_encoded(blake2_256);
+        request.set_hash(H256(hash));
+        request
+    }
+
     /// Calculates or returns an already calculated request hash.
     pub(crate) fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
             OffchainRequest::LoadIncoming(request) => request.hash(),
             OffchainRequest::Incoming(_request, hash) => *hash,
+            OffchainRequest::RemoveNetworkData(_request, hash) => *hash,
         }
     }
 
@@ -723,6 +794,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(_request, hash) => *hash = new_hash,
             OffchainRequest::LoadIncoming(request) => request.set_hash(new_hash),
             OffchainRequest::Incoming(_request, hash) => *hash = new_hash,
+            OffchainRequest::RemoveNetworkData(_request, hash) => *hash = new_hash,
         }
     }
 
@@ -732,6 +804,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.network_id(),
             OffchainRequest::LoadIncoming(request) => request.network_id(),
             OffchainRequest::Incoming(request, _) => request.network_id(),
+            OffchainRequest::RemoveNetworkData(request, _) => request.network_id,
         }
     }
 
@@ -741,6 +814,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.timepoint(),
             OffchainRequest::LoadIncoming(request) => request.timepoint(),
             OffchainRequest::Incoming(request, _) => request.timepoint(),
+            OffchainRequest::RemoveNetworkData(request, _) => request.timepoint,
         }
     }
 
@@ -750,6 +824,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.author(),
             OffchainRequest::LoadIncoming(request) => request.author(),
             OffchainRequest::Incoming(request, _) => request.author(),
+            OffchainRequest::RemoveNetworkData(request, _) => &request.author,
         }
     }
 
@@ -760,6 +835,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.validate(),
             OffchainRequest::LoadIncoming(request) => request.validate(),
             OffchainRequest::Incoming(request, _) => request.validate(),
+            OffchainRequest::RemoveNetworkData(request, _) => request.validate(),
         }
     }
 
@@ -769,6 +845,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.prepare(),
             OffchainRequest::LoadIncoming(request) => request.prepare(),
             OffchainRequest::Incoming(request, _) => request.prepare(),
+            OffchainRequest::RemoveNetworkData(request, _) => request.prepare(),
         }
     }
 
@@ -778,6 +855,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(request, _) => request.cancel(),
             OffchainRequest::LoadIncoming(request) => request.cancel(),
             OffchainRequest::Incoming(request, _) => request.cancel(),
+            OffchainRequest::RemoveNetworkData(request, _) => request.cancel(),
         }
     }
 
@@ -786,6 +864,7 @@ impl<T: Config> OffchainRequest<T> {
             OffchainRequest::Outgoing(r, _) => r.finalize(),
             OffchainRequest::Incoming(r, _) => r.finalize().map(|_| ()),
             OffchainRequest::LoadIncoming(r) => r.finalize(),
+            OffchainRequest::RemoveNetworkData(r, _) => r.finalize(),
         }
     }
 

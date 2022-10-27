@@ -101,6 +101,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register_existing_sidechain_asset() -> Weight {
         Default::default()
     }
+    fn remove_network_data() -> Weight {
+        Default::default()
+    }
+    fn remove_network_data_request_handler() -> Weight {
+        Default::default()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -153,6 +159,12 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn register_existing_sidechain_asset() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn remove_network_data() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn remove_network_data_request_handler() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

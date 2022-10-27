@@ -134,6 +134,8 @@ pub trait WeightInfo {
     }
     fn remove_sidechain_asset() -> Weight;
     fn register_existing_sidechain_asset() -> Weight;
+    fn remove_network_data() -> Weight;
+    fn remove_network_data_request_handler() -> Weight;
 }
 
 type EthAddress = H160;
@@ -453,23 +455,55 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
+            network_id: Option<BridgeNetworkId<T>>,
             bridge_contract_address: EthAddress,
-            initial_peers: Vec<T::AccountId>,
+            initial_peers: Vec<(T::AccountId, EthAddress)>,
             signature_version: BridgeSignatureVersion,
+            xor_master_address: Option<EthAddress>,
+            val_master_address: Option<EthAddress>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let net_id = NextNetworkId::<T>::get();
+            let net_id = network_id.unwrap_or(NextNetworkId::<T>::get());
+            ensure!(
+                !<BridgeContractAddress<T>>::contains_key(net_id),
+                Error::<T>::NetworkAlreadyExists
+            );
+
+            if xor_master_address.is_some()
+                && val_master_address.is_some()
+                && net_id == T::GetEthNetworkId::get()
+            {
+                XorMasterContractAddress::<T>::put(
+                    xor_master_address.expect("xor_master_address is not None"),
+                );
+                ValMasterContractAddress::<T>::put(
+                    val_master_address.expect("val_master_address is not None"),
+                );
+            } else {
+                return Err(Error::<T>::Other.into());
+            }
+
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
+            let mut peer_set = BTreeSet::new();
+            for peer in initial_peers {
+                PeerAddress::<T>::insert(&net_id, &peer.0, &peer.1);
+                PeerAccountId::<T>::insert(&net_id, &peer.1, &peer.0);
+                peer_set.insert(peer.0);
+            }
+            Peers::<T>::insert(net_id, &peer_set);
+            let peer_vec = peer_set.into_iter().collect::<Vec<_>>();
             let peers_account_id = bridge_multisig::Pallet::<T>::register_multisig_inner(
-                initial_peers[0].clone(),
-                initial_peers.clone(),
+                peer_vec[0].clone(),
+                peer_vec,
             )?;
+
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
             BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
             BridgeSignatureVersions::<T>::insert(net_id, signature_version);
-            Peers::<T>::insert(net_id, initial_peers.into_iter().collect::<BTreeSet<_>>());
-            NextNetworkId::<T>::set(net_id + T::NetworkId::one());
+            if network_id.is_none() {
+                NextNetworkId::<T>::set(net_id + T::NetworkId::one());
+            }
             Ok(().into())
         }
 
@@ -1010,6 +1044,42 @@ pub mod pallet {
             SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
             Ok(().into())
         }
+
+        #[pallet::weight(<T as Config>::WeightInfo::remove_network_data())]
+        pub fn remove_network_data(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            clear_tx_history: bool,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let author = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
+            log::debug!("called remove_network_data. network_id: {:?}", network_id);
+            Self::add_request(&OffchainRequest::remove_network_data(
+                RemoveNetworkDataRequest {
+                    network_id,
+                    clear_tx_history,
+                    author: author.clone(),
+                    timepoint,
+                },
+            ))?;
+            frame_system::Pallet::<T>::inc_account_nonce(&author);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::remove_network_data_request_handler())]
+        pub fn remove_network_data_request_handler(
+            origin: OriginFor<T>,
+            request: RemoveNetworkDataRequest<T>,
+            hash: H256,
+        ) -> DispatchResultWithPostInfo {
+            log::debug!("called remove_network_data_request_handler");
+            let net_id = request.network_id;
+            let _ = Self::ensure_bridge_account(origin, net_id)?;
+            request.finalize()?;
+            Self::remove_request_from_queue(net_id, &hash);
+            pays_no(DispatchResult::Ok(()))
+        }
     }
 
     #[pallet::event]
@@ -1206,6 +1276,8 @@ pub mod pallet {
         ReadStorageError,
         /// Bridge needs to have at least 3 peers for migration. Add new peer
         UnsafeMigration,
+        /// Network already exists.
+        NetworkAlreadyExists,
     }
 
     impl<T: Config> Error<T> {
