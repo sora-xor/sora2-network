@@ -138,6 +138,7 @@ where
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,
+    C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
 
@@ -154,6 +155,7 @@ where
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     // use farming_rpc::*;
+    use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
     use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
@@ -199,6 +201,7 @@ where
     if let Some(storage) = backend.offchain_storage() {
         io.merge(BridgeChannelClient::new(storage).into_rpc())?;
     }
-    io.merge(VestedRewardsClient::new(client).into_rpc())?;
+    io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
+    io.merge(BeefyLightClientClient::new(client).into_rpc())?;
     Ok(io)
 }

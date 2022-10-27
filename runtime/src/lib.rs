@@ -2557,6 +2557,13 @@ impl_runtime_apis! {
         }
     }
 
+    impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
+        fn get_random_bitfield(prior: beefy_light_client::BitField, num_of_validators: u128) -> beefy_light_client::BitField {
+            let len = prior.len() as usize;
+            BeefyLightClient::create_random_bit_field(prior, num_of_validators).unwrap_or(beefy_light_client::BitField::with_capacity(len))
+        }
+    }
+
     impl liquidity_proxy_runtime_api::LiquidityProxyAPI<
         Block,
         DEXId,

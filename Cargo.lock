@@ -592,7 +592,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#e20f8264280a7292a4040f2aad4036a2713640f3"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
 dependencies = [
  "bridge-common",
  "ethabi 13.0.0",
@@ -603,8 +603,39 @@ dependencies = [
  "libsecp256k1",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-core",
  "sp-io",
+]
+
+[[package]]
+name = "beefy-light-client-rpc"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
+dependencies = [
+ "beefy-light-client-runtime-api",
+ "jsonrpsee 0.15.1",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "beefy-light-client-runtime-api"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -706,6 +737,7 @@ checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
 dependencies = [
  "funty",
  "radium 0.7.0",
+ "serde",
  "tap",
  "wyz",
 ]
@@ -889,14 +921,17 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#e20f8264280a7292a4040f2aad4036a2713640f3"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
 dependencies = [
+ "bitvec 1.0.1",
  "ethabi 13.0.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
  "scale-info",
+ "serde",
+ "sp-core",
  "sp-io",
 ]
 
@@ -3768,6 +3803,8 @@ dependencies = [
  "assets-rpc",
  "beefy-gadget",
  "beefy-gadget-rpc",
+ "beefy-light-client",
+ "beefy-light-client-rpc",
  "beefy-primitives",
  "bridge-channel-rpc",
  "clap 3.2.22",
@@ -3882,6 +3919,7 @@ dependencies = [
  "assets",
  "assets-runtime-api",
  "beefy-light-client",
+ "beefy-light-client-runtime-api",
  "beefy-primitives",
  "bridge-channel",
  "bridge-types",

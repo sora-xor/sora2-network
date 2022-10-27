@@ -30,6 +30,7 @@ beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch
 sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 beefy-light-client = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
 
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
 bridge-channel = { path = "../pallets/trustless-eth-bridge/channel", default-features = false }
@@ -163,7 +164,7 @@ std = [
     "sp-mmr-primitives/std",
     "beefy-primitives/std",
     "beefy-light-client/std",
-
+    "beefy-light-client-runtime-api/std",
     "codec/std",
     "scale-info/std",
     "common/std",
