@@ -153,9 +153,10 @@ impl<T: Config> Pallet<T> {
     /// - `dex_id`: Id of DEX to which given account belongs.
     fn exchange_fees_to_incentive(
         fees_account_id: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: T::DEXId,
     ) -> DispatchResult {
-        let base_total = Assets::<T>::free_balance(&T::GetBaseAssetId::get(), &fees_account_id)?;
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
         if base_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
@@ -164,9 +165,10 @@ impl<T: Config> Pallet<T> {
             return Ok(());
         }
         let outcome = T::LiquidityProxy::exchange(
+            dex_id,
             fees_account_id,
             fees_account_id,
-            &T::GetBaseAssetId::get(),
+            &dex_info.base_asset_id,
             &T::GetIncentiveAssetId::get(),
             SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
             LiquiditySourceFilter::with_allowed(
@@ -178,7 +180,7 @@ impl<T: Config> Pallet<T> {
             Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
                 dex_id.clone(),
                 fees_account_id.clone(),
-                T::GetBaseAssetId::get(),
+                dex_info.base_asset_id,
                 base_total,
                 T::GetIncentiveAssetId::get(),
                 swap_outcome.amount,
@@ -187,7 +189,7 @@ impl<T: Config> Pallet<T> {
             Err(_error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
                 dex_id.clone(),
                 fees_account_id.clone(),
-                T::GetBaseAssetId::get(),
+                dex_info.base_asset_id,
                 base_total,
                 T::GetIncentiveAssetId::get(),
             )),
@@ -335,7 +337,7 @@ impl<T: Config> Pallet<T> {
             SubscribedAccounts::<T>::iter()
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
-                let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, &dex_id);
+                let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, dex_id);
                 let distribute_result = Self::distribute_incentive(
                     &fees_account,
                     &dex_id,
@@ -398,7 +400,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + technical::Config
+        + dex_manager::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;

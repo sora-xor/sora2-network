@@ -1,6 +1,6 @@
 @Library('jenkins-library')
 
-String agentLabel             = 'docker-build-agent-docker-20'
+String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
@@ -8,11 +8,23 @@ String cargoAuditImage        = registry + '/build-tools/cargo_audit'
 String envImageName           = registry + '/sora2/env:sub4'
 String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
+String palletListFile         = 'pallet_list.txt'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
+int sudoCheckStatus           = 101
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
+
+String contractsPath          = 'ethereum-bridge-contracts'
+String contractsEnvFile       = 'env.template'
+String solcVersion            = '0.8.14'
+String nodeVersion            = '14.16.1'
+String gitHubUser             = 'sorabot'
+String gitHubRepo             = 'github.com/soramitsu/sora2-substrate.git'
+String gitHubBranch           = 'doc'
+String gitHubEmail            = 'admin@soramitsu.co.jp'
+String cargoDocImage          = 'rust:1.62.0-slim-bullseye'
 
 pipeline {
     options {
@@ -40,6 +52,7 @@ pipeline {
                     docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
+                                rm -rf ~/.cargo/.package-cache
                                 cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -62,6 +75,15 @@ pipeline {
                 }
             }
         }
+        stage('Solidity Static Scanner') {
+            steps {
+                script {
+                    docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
+                        slither(contractsPath, contractsEnvFile, solcVersion, nodeVersion)
+                    }
+                }
+            }
+        }
         stage('Build & Tests') {
             environment {
                 PACKAGE = 'framenode-runtime'
@@ -79,23 +101,31 @@ pipeline {
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
                                     featureList = 'private-net include-real-files'
+                                    sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME =~ 'test.*') {
                                     featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+                                    sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME) {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
                                     cargo test  --release --features runtime-benchmarks
+                                    rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
                                     mv ./target/release/relayer ./relayer.bin
+                                    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
+                                    subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
+                                    set +e
+                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi
                                 """
                                 archiveArtifacts artifacts:
-                                    "framenode_runtime.compact.wasm, ${wasmReportFile}"
+                                    "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
                             }
                         } else {
                             docker.image(envImageName).inside() {
@@ -145,6 +175,25 @@ pipeline {
                             docker tag ${appImageName} sora2/substrate:${baseImageTag}
                             docker push sora2/substrate:${baseImageTag}
                         """
+                    }
+                }
+            }
+        }
+        stage('Build docs & publish') {
+            when {
+                expression { return (env.GIT_BRANCH == "master" || env.TAG_NAME) }
+            }
+            environment {
+                GH_USER = "${gitHubUser}"
+                GH_TOKEN = credentials('sorabot-github-token')
+                GH_REPOSITORY = "${gitHubRepo}"
+                GH_BRANCH = "${gitHubBranch}"
+                GH_EMAIL  = "${gitHubEmail}"
+            }
+            steps {
+                script {
+                    docker.image("${cargoDocImage}").inside() {
+                             sh './housekeeping/docs.sh'
                     }
                 }
             }

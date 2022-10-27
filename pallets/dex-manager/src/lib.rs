@@ -105,7 +105,6 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
-    use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {}
@@ -118,9 +117,6 @@ pub mod pallet {
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}

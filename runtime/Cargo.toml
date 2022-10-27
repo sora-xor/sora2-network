@@ -11,7 +11,7 @@ version = "1.4.4"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = "4.0"
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
@@ -29,8 +29,9 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
-beefy-light-client = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
 
+bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
 bridge-channel = { path = "../pallets/trustless-eth-bridge/channel", default-features = false }
 dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
@@ -60,6 +61,7 @@ dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = 
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 farming = { path = "../pallets/farming", default-features = false }
+farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
@@ -144,7 +146,6 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
@@ -158,8 +159,6 @@ std = [
     "assets/std",
     "bridge-multisig/std",
     "pallet-beefy/std",
-    "pallet-beefy-mmr/std",
-    "pallet-mmr/std",
     "sp-mmr-primitives/std",
     "beefy-primitives/std",
     "beefy-light-client/std",
@@ -191,6 +190,7 @@ std = [
     "evm-bridge-proxy-runtime-api/std",
     "bridge-types/std",
     "farming/std",
+    "farming-runtime-api/std",
     "faucet/std",
     "frame-executive/std",
     "frame-support/std",

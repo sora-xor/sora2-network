@@ -141,7 +141,7 @@ fn should_not_burn_on_commitment_failure() {
             .unwrap();
         }
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             Erc20App::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
@@ -159,7 +159,7 @@ fn should_not_burn_on_commitment_failure() {
         //     amount,
         // });
 
-        // common::assert_noop_transactional!(
+        // assert_noop!(
         //     call.dispatch(Origin::signed(sender.clone())),
         //     bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         // );

@@ -51,7 +51,7 @@ pub mod tests;
 use bridge_types::types::LeafExtraData;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, XOR};
+use common::Description;
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -79,14 +79,14 @@ use pallet_staking::sora::ValBurnedNotifier;
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
-use sp_core::{Encode, OpaqueMetadata, H160, U256};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
-    TransactionLongevity, TransactionPriority, TransactionSource, TransactionValidity,
+    TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
@@ -112,7 +112,6 @@ pub use common::{
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
-pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -137,10 +136,7 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
-use frame_support::traits::{
-    Contains, Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons,
-};
-use sp_runtime::traits::Keccak256;
+use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -229,10 +225,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 37,
+    spec_version: 41,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 37,
+    transaction_version: 41,
     state_version: 0,
 };
 
@@ -322,7 +318,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -816,6 +812,7 @@ parameter_types! {
     pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
     pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
     pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
+    pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
@@ -1512,48 +1509,6 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeFeesAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTreasuryTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTreasuryAccountId: AccountId = {
-        let tech_account_id = GetTreasuryTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -2073,7 +2028,6 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
 
         // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
@@ -2161,7 +2115,6 @@ construct_runtime! {
 
 
         // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
@@ -2226,8 +2179,6 @@ pub type Executive = frame_executive::Executive<
     AllPalletsWithSystem,
     migrations::Migrations,
 >;
-
-pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -2580,13 +2531,14 @@ impl_runtime_apis! {
             }
 
             LiquidityProxy::inner_quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, amount_without_impact, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -2594,9 +2546,8 @@ impl_runtime_apis! {
                                     amount,
                                     currency,
                                     reason
-                                })
-                                .collect(),
-                amount_without_impact: amount_without_impact.unwrap_or(0)})
+                                }).collect()
+                })
         }
 
         fn is_path_available(
@@ -2700,70 +2651,53 @@ impl_runtime_apis! {
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
-                Beefy::validator_set()
+            Beefy::validator_set()
         }
     }
 
     impl mmr::MmrApi<Block, Hash> for Runtime {
-        fn generate_proof(leaf_index: u64)
+        fn generate_proof(_leaf_index: u64)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(vec![leaf_index])
-                .and_then(|(leaves, proof)| Ok((
-                    mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
-                    mmr::BatchProof::into_single_leaf_proof(proof)?
-                )))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
+        fn verify_proof(_leaf: mmr::EncodableOpaqueLeaf, _proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-            let leaf: MmrLeaf = leaf
-                .into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)?;
-            Mmr::verify_leaves(vec![leaf], mmr::Proof::into_batch_proof(proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn verify_proof_stateless(
-            root: Hash,
-            leaf: mmr::EncodableOpaqueLeaf,
-            proof: mmr::Proof<Hash>
+            _root: Hash,
+            _leaf: mmr::EncodableOpaqueLeaf,
+            _proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
-            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, vec![node], mmr::Proof::into_batch_proof(proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn mmr_root() -> Result<Hash, mmr::Error> {
-            Ok(Mmr::mmr_root())
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn generate_batch_proof(leaf_indices: Vec<mmr::LeafIndex>)
+        fn generate_batch_proof(_leaf_indices: Vec<u64>)
             -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(leaf_indices)
-                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+            Err(mmr::Error::PalletNotIncluded)
         }
 
-        fn verify_batch_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::BatchProof<Hash>)
+        fn verify_batch_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::BatchProof<Hash>)
             -> Result<(), mmr::Error>
         {
-            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-            let leaves = leaves.into_iter().map(|leaf|
-                leaf.into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)).collect::<Result<Vec<MmrLeaf>, mmr::Error>>()?;
-            Mmr::verify_leaves(leaves, proof)
+            Err(mmr::Error::PalletNotIncluded)
         }
 
         fn verify_batch_proof_stateless(
-            root: Hash,
-            leaves: Vec<mmr::EncodableOpaqueLeaf>,
-            proof: mmr::BatchProof<Hash>
+            _root: Hash,
+            _leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            _proof: mmr::BatchProof<Hash>
         ) -> Result<(), mmr::Error> {
-            let nodes = leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
-            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, nodes, proof)
+            Err(mmr::Error::PalletNotIncluded)
         }
     }
 
@@ -2849,7 +2783,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
             list_benchmark!(list, extra, xor_fee, XorFee);
-            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
@@ -2908,7 +2841,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            // add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
@@ -2944,6 +2877,12 @@ impl_runtime_apis! {
                 total_days: LEASE_TOTAL_DAYS,
                 blocks_per_day: BLOCKS_PER_DAY,
             }
+        }
+    }
+
+    impl farming_runtime_api::FarmingApi<Block, AssetId> for Runtime {
+        fn reward_doubling_assets() -> Vec<AssetId> {
+            Farming::reward_doubling_assets()
         }
     }
 }

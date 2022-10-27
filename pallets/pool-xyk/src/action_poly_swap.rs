@@ -39,15 +39,15 @@ use crate::Config;
 
 use crate::operations::*;
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
     PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
 {
     fn is_abstract_checking(&self) -> bool {
         match self {
@@ -56,11 +56,15 @@ where
             PolySwapAction::WithdrawLiquidity(a) => a.is_abstract_checking(),
         }
     }
-    fn prepare_and_validate(&mut self, source: Option<&AccountIdOf<T>>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source: Option<&AccountIdOf<T>>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
         match self {
-            PolySwapAction::PairSwap(a) => a.prepare_and_validate(source),
-            PolySwapAction::DepositLiquidity(a) => a.prepare_and_validate(source),
-            PolySwapAction::WithdrawLiquidity(a) => a.prepare_and_validate(source),
+            PolySwapAction::PairSwap(a) => a.prepare_and_validate(source, base_asset_id),
+            PolySwapAction::DepositLiquidity(a) => a.prepare_and_validate(source, base_asset_id),
+            PolySwapAction::WithdrawLiquidity(a) => a.prepare_and_validate(source, base_asset_id),
         }
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -74,21 +78,25 @@ where
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
     PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
     WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>:
-        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>,
+        common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>,
 {
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+    fn reserve(
+        &self,
+        source: &AccountIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> dispatch::DispatchResult {
         match self {
-            PolySwapAction::PairSwap(a) => a.reserve(source),
-            PolySwapAction::DepositLiquidity(a) => a.reserve(source),
-            PolySwapAction::WithdrawLiquidity(a) => a.reserve(source),
+            PolySwapAction::PairSwap(a) => a.reserve(source, base_asset_id),
+            PolySwapAction::DepositLiquidity(a) => a.reserve(source, base_asset_id),
+            PolySwapAction::WithdrawLiquidity(a) => a.reserve(source, base_asset_id),
         }
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {

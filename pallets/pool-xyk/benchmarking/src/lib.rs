@@ -128,8 +128,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DOT.into(),
         balance!(2000),
         balance!(3000),
-        balance!(0),
-        balance!(0),
+        balance!(2000),
+        balance!(3000),
     )?;
 
     Ok(())
@@ -208,8 +208,8 @@ benchmarks! {
         DOT.into(),
         balance!(2000),
         balance!(3000),
-        balance!(0),
-        balance!(0)
+        balance!(2000),
+        balance!(3000)
     )
     verify {
         // adding in proportions same as existing, thus call withdraws full deposit
@@ -234,8 +234,8 @@ benchmarks! {
         XOR.into(),
         DOT.into(),
         balance!(1000),
-        balance!(0),
-        balance!(0)
+        balance!(1),
+        balance!(1)
     )
     verify {
         assert_eq!(
