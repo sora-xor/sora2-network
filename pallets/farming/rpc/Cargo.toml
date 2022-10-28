@@ -17,8 +17,4 @@ farming-runtime-api = { path = "../runtime-api" }
 
 [features]
 default = ["std"]
-std = [
-  "sp-api/std",
-  "sp-runtime/std",
-  "farming-runtime-api/std"
-]
+std = ["sp-api/std", "sp-runtime/std", "farming-runtime-api/std"]
