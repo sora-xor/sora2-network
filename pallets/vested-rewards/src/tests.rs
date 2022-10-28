@@ -44,8 +44,6 @@ use frame_support::traits::{GetStorageVersion, OnInitialize, OnRuntimeUpgrade, S
 use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
 
-type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
-
 fn deposit_rewards_to_reserves(amount: Balance) {
     Currencies::deposit(PSWAP, &GetBondingCurveRewardsAccountId::get(), amount).unwrap();
     Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), amount).unwrap();

@@ -234,10 +234,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migrations::migrate::<T>()
-        }
-
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
                 let elems = Pallet::<T>::free_reserves_distribution_routine().unwrap_or_default();
