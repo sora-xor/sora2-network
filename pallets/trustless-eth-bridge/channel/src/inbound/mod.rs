@@ -6,7 +6,8 @@ use bridge_types::EthNetworkId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use sp_core::{H160, U256};
+use sp_core::{H160, H256, U256};
+use sp_runtime::traits::Hash;
 use sp_std::convert::TryFrom;
 
 use events::Envelope;
@@ -35,7 +36,8 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use crate::inbound::events::MessageDispatched;
-    use bridge_types::traits::{AppRegistry, OutboundChannel};
+    use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::types::MessageStatus;
     use bridge_types::Log;
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
@@ -52,6 +54,10 @@ pub mod pallet {
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, EthNetworkId, H160, MessageId>;
+
+        type Hashing: Hash<Output = H256>;
+
+        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
         type FeeConverter: Convert<U256, BalanceOf<Self>>;
 
@@ -212,7 +218,17 @@ pub mod pallet {
                 }
             })?;
 
-            // TODO(a.chernyshov): store result
+            T::MessageStatusNotifier::update_status(
+                network_id,
+                MessageId::outbound(message_dispatched_event.nonce)
+                    .using_encoded(|v| <T as Config>::Hashing::hash(v)),
+                if message_dispatched_event.result {
+                    MessageStatus::Done
+                } else {
+                    MessageStatus::Failed
+                },
+                None,
+            );
 
             Ok(().into())
         }

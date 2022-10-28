@@ -1912,6 +1912,8 @@ impl bridge_channel_inbound::Config for Runtime {
     type Event = Event;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = dispatch::Pallet<Runtime>;
+    type Hashing = Keccak256;
+    type MessageStatusNotifier = EvmBridgeProxy;
     type FeeConverter = FeeConverter;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;

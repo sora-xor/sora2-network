@@ -8,7 +8,9 @@ use frame_system::RawOrigin;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::traits::{
+    BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
+};
 use sp_runtime::{AccountId32, MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
@@ -231,6 +233,8 @@ impl bridge_inbound_channel::Config for Test {
     type Event = Event;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
+    type Hashing = Keccak256;
+    type MessageStatusNotifier = ();
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
@@ -359,7 +363,11 @@ const MESSAGE_DATA_1: [u8; 317] = hex!(
 // The originating InboundChannel address for the messages below
 const INBOUND_CHANNEL_ADDR: [u8; 20] = hex!["2b6eb68c260ff0784a3c17ae61e31a77836eeb20"];
 
-// MessageDispatched with nonce = 1
+// MessageDispatched {
+//   .channel = "2b6eb68c260ff0784a3c17ae61e31a77836eeb20",
+//   .nonce = 1,
+//   .result = True,
+// }
 const MESSAGE_DISPATCHED_DATA_0: [u8; 123] = hex!(
     "
 	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
@@ -369,7 +377,11 @@ const MESSAGE_DISPATCHED_DATA_0: [u8; 123] = hex!(
 "
 );
 
-// MessageDispatched with nonce = 2
+// MessageDispatched {
+//   .channel = "2b6eb68c260ff0784a3c17ae61e31a77836eeb20",
+//   .nonce = 2,
+//   .result = True,
+// }
 const MESSAGE_DISPATCHED_DATA_1: [u8; 123] = hex!(
     "
 	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
