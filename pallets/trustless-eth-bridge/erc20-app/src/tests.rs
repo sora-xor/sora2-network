@@ -3,6 +3,7 @@ use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::{AssetKind, CallOriginOutput};
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
@@ -72,7 +73,7 @@ fn mint_zero_amount_must_fail() {
         let recipient: AccountId = Keyring::Charlie.into();
         let amount = balance!(0);
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             Erc20App::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
@@ -175,7 +176,7 @@ fn burn_zero_amount_must_fail() {
         let amount = balance!(0);
         <Test as assets::Config>::Currency::deposit(asset_id, &bob, balance!(500)).unwrap();
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             Erc20App::burn(
                 Origin::signed(bob.clone()),
                 BASE_NETWORK_ID,

@@ -490,7 +490,7 @@ fn test_message_dispatched_wrong_event() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
@@ -515,7 +515,7 @@ fn test_message_dispatched_with_invalid_source_channel() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
@@ -549,7 +549,7 @@ fn test_message_dispatched_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,

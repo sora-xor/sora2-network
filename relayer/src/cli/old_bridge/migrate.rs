@@ -2,6 +2,7 @@ use super::AssetInfo;
 use crate::cli::prelude::*;
 use bridge_types::H160;
 use std::path::PathBuf;
+use substrate_gen::BridgeSignatureVersion;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
@@ -45,6 +46,7 @@ impl Command {
                             new_contract_address: self.contract,
                             erc20_native_tokens: addresses,
                             network_id: self.network,
+                            new_signature_version: BridgeSignatureVersion::V2,
                         },
                     )),
                 &sub,

@@ -726,6 +726,7 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
+    use framenode_runtime::EthAppConfig;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -766,6 +767,18 @@ fn testnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
+
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
+
+    let treasury_tech_account_id = framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let treasury_account_id = framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -834,6 +847,18 @@ fn testnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
+        ),
+        (
+            treasury_account_id.clone(),
+            treasury_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -1605,6 +1630,15 @@ fn mainnet_genesis(
         )
         .unwrap();
 
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
+
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
@@ -1670,6 +1704,14 @@ fn mainnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -1850,6 +1892,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        migration_app: Default::default(),
         vested_rewards: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
@@ -1989,6 +2032,8 @@ fn mainnet_genesis(
         balances: BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_fees_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),

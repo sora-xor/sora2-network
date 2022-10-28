@@ -1,6 +1,7 @@
 use crate::cli::prelude::*;
 use crate::substrate::AccountId;
 use bridge_types::H160;
+use substrate_gen::BridgeSignatureVersion;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
@@ -24,9 +25,11 @@ impl Command {
         sub.api()
             .tx()
             .sign_and_submit_then_watch_default(
-                &runtime::tx()
-                    .eth_bridge()
-                    .register_bridge(self.contract, self.peers.clone()),
+                &runtime::tx().eth_bridge().register_bridge(
+                    self.contract,
+                    self.peers.clone(),
+                    BridgeSignatureVersion::V2,
+                ),
                 &sub,
             )
             .await?

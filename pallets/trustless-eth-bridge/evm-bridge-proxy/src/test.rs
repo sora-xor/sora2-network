@@ -35,7 +35,8 @@ use crate::mock::{
 use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
 use codec::Encode;
-use common::{assert_noop_transactional, balance, DAI, XOR};
+use common::{balance, DAI, XOR};
+use frame_support::assert_noop;
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
 use sp_core::H160;
@@ -107,7 +108,7 @@ fn burn_successfull() {
 fn burn_failed() {
     new_tester().execute_with(|| {
         let caller: AccountId = Keyring::Alice.into();
-        assert_noop_transactional!(
+        assert_noop!(
             EvmBridgeProxy::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 BASE_NETWORK_ID,

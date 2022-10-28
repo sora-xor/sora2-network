@@ -51,7 +51,7 @@ pub mod tests;
 use bridge_types::types::LeafExtraData;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::Description;
+use common::{AssetId32, Description, PredefinedAssetId, XOR};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::weights::ConstantMultiplier;
@@ -79,14 +79,14 @@ use pallet_staking::sora::ValBurnedNotifier;
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
-use sp_core::{Encode, OpaqueMetadata, H160};
+use sp_core::{Encode, OpaqueMetadata, H160, U256};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
-    TransactionPriority, TransactionSource, TransactionValidity,
+    TransactionLongevity, TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
@@ -112,6 +112,7 @@ pub use common::{
     LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
+pub use ethereum_light_client::EthereumHeader;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -136,7 +137,10 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
-use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
+use frame_support::traits::{
+    Contains, Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons,
+};
+use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -1509,6 +1513,48 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTrustlessBridgeFeesAccountId: AccountId = {
+        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetTreasuryTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
+            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetTreasuryAccountId: AccountId = {
+        let tech_account_id = GetTreasuryTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -2028,6 +2074,7 @@ construct_runtime! {
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
 
         // Trustless ethereum bridge
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
@@ -2115,6 +2162,7 @@ construct_runtime! {
 
 
         // Trustless ethereum bridge
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
@@ -2179,6 +2227,8 @@ pub type Executive = frame_executive::Executive<
     AllPalletsWithSystem,
     migrations::Migrations,
 >;
+
+pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -2651,53 +2701,70 @@ impl_runtime_apis! {
 
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
-            Beefy::validator_set()
+                Beefy::validator_set()
         }
     }
 
     impl mmr::MmrApi<Block, Hash> for Runtime {
-        fn generate_proof(_leaf_index: u64)
+        fn generate_proof(leaf_index: u64)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Err(mmr::Error::PalletNotIncluded)
+            Mmr::generate_batch_proof(vec![leaf_index])
+                .and_then(|(leaves, proof)| Ok((
+                    mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
+                    mmr::BatchProof::into_single_leaf_proof(proof)?
+                )))
         }
 
-        fn verify_proof(_leaf: mmr::EncodableOpaqueLeaf, _proof: mmr::Proof<Hash>)
+        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
-            Err(mmr::Error::PalletNotIncluded)
+            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
+            let leaf: MmrLeaf = leaf
+                .into_opaque_leaf()
+                .try_decode()
+                .ok_or(mmr::Error::Verify)?;
+            Mmr::verify_leaves(vec![leaf], mmr::Proof::into_batch_proof(proof))
         }
 
         fn verify_proof_stateless(
-            _root: Hash,
-            _leaf: mmr::EncodableOpaqueLeaf,
-            _proof: mmr::Proof<Hash>
+            root: Hash,
+            leaf: mmr::EncodableOpaqueLeaf,
+            proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
-            Err(mmr::Error::PalletNotIncluded)
+            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
+            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, vec![node], mmr::Proof::into_batch_proof(proof))
         }
 
         fn mmr_root() -> Result<Hash, mmr::Error> {
-            Err(mmr::Error::PalletNotIncluded)
+            Ok(Mmr::mmr_root())
         }
 
-        fn generate_batch_proof(_leaf_indices: Vec<u64>)
+        fn generate_batch_proof(leaf_indices: Vec<mmr::LeafIndex>)
             -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
         {
-            Err(mmr::Error::PalletNotIncluded)
+            Mmr::generate_batch_proof(leaf_indices)
+                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
         }
 
-        fn verify_batch_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::BatchProof<Hash>)
+        fn verify_batch_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::BatchProof<Hash>)
             -> Result<(), mmr::Error>
         {
-            Err(mmr::Error::PalletNotIncluded)
+            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
+            let leaves = leaves.into_iter().map(|leaf|
+                leaf.into_opaque_leaf()
+                .try_decode()
+                .ok_or(mmr::Error::Verify)).collect::<Result<Vec<MmrLeaf>, mmr::Error>>()?;
+            Mmr::verify_leaves(leaves, proof)
         }
 
         fn verify_batch_proof_stateless(
-            _root: Hash,
-            _leaves: Vec<mmr::EncodableOpaqueLeaf>,
-            _proof: mmr::BatchProof<Hash>
+            root: Hash,
+            leaves: Vec<mmr::EncodableOpaqueLeaf>,
+            proof: mmr::BatchProof<Hash>
         ) -> Result<(), mmr::Error> {
-            Err(mmr::Error::PalletNotIncluded)
+            let nodes = leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
+            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, nodes, proof)
         }
     }
 
@@ -2783,6 +2850,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
             list_benchmark!(list, extra, xor_fee, XorFee);
+            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
@@ -2841,7 +2909,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            // add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);

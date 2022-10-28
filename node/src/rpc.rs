@@ -73,7 +73,7 @@ pub struct FullDeps<C, P> {
 /// Instantiate full RPC extensions.
 pub fn create_full<C, P, B>(
     deps: FullDeps<C, P>,
-    _backend: Arc<B>,
+    backend: Arc<B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -159,12 +159,9 @@ where
     // use farming_rpc::*;
     use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
-    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
-    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
-    use substrate_frame_rpc_system::{System, SystemApiServer};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
 
@@ -203,6 +200,6 @@ where
         io.merge(BridgeChannelClient::new(storage).into_rpc())?;
     }
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
-    io.merge(FarmingClient::new(client).into_rpc())?;
+    io.merge(FarmingClient::new(client.clone()).into_rpc())?;
     Ok(io)
 }
