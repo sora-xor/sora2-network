@@ -35,8 +35,8 @@ liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 referrals = { path = "../referrals", default-features = false }
 
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.25", default-features=false, optional=true }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, optional=true }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.25", default-features = false, optional = true }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, optional = true }
 permissions = { path = "../permissions", default-features = false, optional = true }
 pool-xyk = { path = "../pool-xyk", default-features = false, optional = true }
 
