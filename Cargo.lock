@@ -610,6 +610,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "beefy-light-client-rpc"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
+dependencies = [
+ "beefy-light-client-runtime-api",
+ "jsonrpsee 0.15.1",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "beefy-light-client-runtime-api"
+version = "0.1.0"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#0821678c134fa37abce782b9acc7f0636f0e4d3b"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "beefy-merkle-tree"
 version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.28-updated#53fca26faed7ac8525e564129544605fe4e0fb32"
@@ -3819,6 +3849,8 @@ dependencies = [
  "assets-rpc",
  "beefy-gadget",
  "beefy-gadget-rpc",
+ "beefy-light-client",
+ "beefy-light-client-rpc",
  "beefy-primitives",
  "bridge-channel-rpc",
  "clap 3.2.23",
@@ -3934,6 +3966,7 @@ dependencies = [
  "assets",
  "assets-runtime-api",
  "beefy-light-client",
+ "beefy-light-client-runtime-api",
  "beefy-primitives",
  "bridge-channel",
  "bridge-types",
