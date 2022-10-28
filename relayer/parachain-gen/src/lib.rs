@@ -32,7 +32,15 @@
     runtime_metadata_path = "src/bytes/parachain_metadata.scale",
     derive_for_all_types = "Clone"
 )]
-pub mod runtime {
+pub mod parachain_runtime {
+    #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
+    use ::bridge_common::beefy_types::BeefyMMRLeaf;
+    #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
+    use ::bridge_common::beefy_types::Commitment;
+    #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorProof")]
+    use ::bridge_common::beefy_types::ValidatorProof;
+    #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
+    use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
     #[subxt(substitute_type = "primitive_types::H160")]

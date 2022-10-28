@@ -42,6 +42,7 @@ pub mod prelude {
     pub use codec::{Decode, Encode};
     pub use hex_literal::hex;
     pub use http::Uri;
+    pub use parachain_gen::parachain_runtime;
     pub use serde::{Deserialize, Serialize};
     pub use substrate_gen::runtime;
     pub use url::Url;

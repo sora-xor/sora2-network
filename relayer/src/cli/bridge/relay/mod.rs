@@ -1,4 +1,5 @@
 mod ethereum_relay;
+mod parachain_relay;
 mod substrate_relay;
 
 use crate::cli::prelude::*;
@@ -10,6 +11,8 @@ pub(crate) enum Commands {
     Ethereum(ethereum_relay::Command),
     /// Relay Beefy commitments and bridge messages to Ethereum
     Substrate(substrate_relay::Command),
+    /// Relay Beefy commitments and bridge messages to Parachain
+    Parachain(parachain_relay::Command),
 }
 
 impl Commands {
@@ -17,6 +20,7 @@ impl Commands {
         match self {
             Commands::Ethereum(cmd) => cmd.run().await,
             Commands::Substrate(cmd) => cmd.run().await,
+            Commands::Parachain(cmd) => cmd.run().await,
         }
     }
 }

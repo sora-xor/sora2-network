@@ -3,8 +3,8 @@ use crate::substrate::{BeefyCommitment, BeefySignedCommitment, LeafProof};
 use beefy_merkle_tree::Hash;
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
+use bridge_common::bitfield::BitField;
 use codec::Encode;
-use ethereum_gen::{beefy_light_client, ValidatorProof};
 use ethers::prelude::*;
 use ethers::utils::keccak256;
 use sp_runtime::traits::Keccak256;
@@ -181,7 +181,7 @@ impl BeefyJustification {
         &self,
         initial_bitfield: Vec<U256>,
         random_bitfield: Vec<U256>,
-    ) -> ValidatorProof {
+    ) -> ethereum_gen::ValidatorProof {
         let mut positions = vec![];
         let mut signatures = vec![];
         let mut public_keys = vec![];
@@ -195,7 +195,35 @@ impl BeefyJustification {
                 public_key_merkle_proofs.push(self.validator_pubkey_proof(i));
             }
         }
-        let validator_proof = ValidatorProof {
+        let validator_proof = ethereum_gen::ValidatorProof {
+            signatures,
+            positions,
+            public_keys,
+            public_key_merkle_proofs,
+            validator_claims_bitfield: initial_bitfield,
+        };
+        validator_proof
+    }
+
+    pub fn validators_proof_sub(
+        &self,
+        initial_bitfield: BitField,
+        random_bitfield: BitField,
+    ) -> bridge_common::beefy_types::ValidatorProof {
+        let mut positions = vec![];
+        let mut signatures = vec![];
+        let mut public_keys = vec![];
+        let mut public_key_merkle_proofs = vec![];
+        for i in 0..random_bitfield.len() {
+            let bit = random_bitfield.is_set(i);
+            if bit {
+                positions.push(i as u128);
+                signatures.push(self.validator_eth_signature(i).to_vec());
+                public_keys.push(self.validator_pubkey(i));
+                public_key_merkle_proofs.push(self.validator_pubkey_proof(i));
+            }
+        }
+        let validator_proof = bridge_common::beefy_types::ValidatorProof {
             signatures,
             positions,
             public_keys,
@@ -208,13 +236,13 @@ impl BeefyJustification {
     pub fn simplified_mmr_proof(
         &self,
     ) -> AnyResult<(
-        beefy_light_client::BeefyMMRLeaf,
-        beefy_light_client::SimplifiedMMRProof,
+        ethereum_gen::beefy_light_client::BeefyMMRLeaf,
+        ethereum_gen::beefy_light_client::SimplifiedMMRProof,
     )> {
         let LeafProof { leaf, .. } = self.leaf_proof.clone();
         let (major, minor) = leaf.version.split();
         let leaf_version = (major << 5) + minor;
-        let mmr_leaf = beefy_light_client::BeefyMMRLeaf {
+        let mmr_leaf = ethereum_gen::beefy_light_client::BeefyMMRLeaf {
             version: leaf_version,
             parent_number: leaf.parent_number_and_hash.0,
             parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
@@ -225,7 +253,34 @@ impl BeefyJustification {
             random_seed: leaf.leaf_extra.random_seed.0,
         };
 
-        let proof = beefy_light_client::SimplifiedMMRProof {
+        let proof = ethereum_gen::beefy_light_client::SimplifiedMMRProof {
+            merkle_proof_items: self.simplified_proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_order_bit_field: self.simplified_proof.order,
+        };
+        Ok((mmr_leaf, proof))
+    }
+
+    pub fn simplified_mmr_proof_sub(
+        &self,
+    ) -> AnyResult<(
+        bridge_common::beefy_types::BeefyMMRLeaf,
+        bridge_common::simplified_mmr_proof::SimplifiedMMRProof,
+    )> {
+        let LeafProof { leaf, .. } = self.leaf_proof.clone();
+        let (major, minor) = leaf.version.split();
+        let leaf_version = (major << 5) + minor;
+        let mmr_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
+            version: leaf_version,
+            parent_number: leaf.parent_number_and_hash.0,
+            parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
+            next_authority_set_id: leaf.beefy_next_authority_set.id,
+            next_authority_set_len: leaf.beefy_next_authority_set.len,
+            next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
+            digest_hash: leaf.leaf_extra.digest_hash.0,
+            random_seed: leaf.leaf_extra.random_seed.0,
+        };
+
+        let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
             merkle_proof_items: self.simplified_proof.items.iter().map(|x| x.0).collect(),
             merkle_proof_order_bit_field: self.simplified_proof.order,
         };
