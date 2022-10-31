@@ -58,7 +58,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), H160::default(), 1000)
     verify {
         let (message_id, _) = Senders::<T>::iter_prefix(BASE_NETWORK_ID).next().unwrap();
-        let req = Transactions::<T>::get((BASE_NETWORK_ID, &caller, message_id)).unwrap();
+        let req = Transactions::<T>::get(&caller, (BASE_NETWORK_ID, message_id)).unwrap();
         assert!(
             req == BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
