@@ -255,7 +255,6 @@ members = [
     "relayer/ethereum-gen",
     "node/",
     "utils/parse",
-    "utils/wasm-builder",
     "utils/generate-bags",
 ]
 

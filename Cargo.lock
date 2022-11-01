@@ -12723,13 +12723,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-builder"
-version = "0.1.0"
-dependencies = [
- "substrate-wasm-builder",
-]
-
-[[package]]
 name = "wasm-gc-api"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
