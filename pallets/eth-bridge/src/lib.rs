@@ -143,6 +143,7 @@ pub mod weights;
 mod benchmarking;
 mod contract;
 mod macros;
+pub mod migration;
 pub mod offchain;
 pub mod requests;
 mod rpc;
