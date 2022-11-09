@@ -9,7 +9,7 @@ use sp_core::U256;
 const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
-use crate::outbound::Pallet as BridgeOutboundChannel;
+use crate::Pallet as BridgeOutboundChannel;
 
 benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
@@ -82,6 +82,6 @@ benchmarks! {
 
 impl_benchmark_test_suite!(
     BridgeOutboundChannel,
-    crate::outbound::test::new_tester(),
-    crate::outbound::test::Test,
+    crate::test::new_tester(),
+    crate::test::Test,
 );

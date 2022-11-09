@@ -1,5 +1,7 @@
 //! Channel for passing messages from substrate to ethereum.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
 use frame_support::ensure;

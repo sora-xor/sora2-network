@@ -1,5 +1,7 @@
 //! Channel for passing messages from ethereum to substrate.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::{Message, MessageId};
 use bridge_types::EthNetworkId;
@@ -35,7 +37,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::inbound::events::MessageDispatched;
+    use crate::events::MessageDispatched;
     use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
     use bridge_types::Log;
