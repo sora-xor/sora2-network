@@ -59,7 +59,8 @@ fn bob<T: Config>() -> T::AccountId {
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
             owner_origin.clone(),
@@ -76,9 +77,9 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     Ok(())
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
