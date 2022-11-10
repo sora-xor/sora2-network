@@ -7,10 +7,10 @@ use crate::{
     EthNetworkId,
 };
 use common::Balance;
-use ethereum_types::H256;
+use ethereum_types::{H160, H256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::{Config, RawOrigin};
-use sp_core::{H160, U256};
+use sp_core::U256;
 use sp_std::prelude::*;
 
 use crate::types::Message;
@@ -50,7 +50,7 @@ pub trait MessageDispatch<T: Config, NetworkId, Source, MessageId> {
         payload: &[u8],
     );
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::Event>;
+    fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;
 }
 
 pub trait AppRegistry {
