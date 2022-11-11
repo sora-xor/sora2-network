@@ -13,7 +13,7 @@ use sp_std::prelude::*;
 use bridge_types::types::{Message, MessageId, Proof};
 use bridge_types::{Header, Log};
 
-const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as BridgeInboundChannel;
@@ -44,14 +44,6 @@ benchmarks! {
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
@@ -83,14 +75,6 @@ benchmarks! {
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
@@ -110,14 +94,6 @@ benchmarks! {
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));

@@ -10,7 +10,7 @@ use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
-use bridge_types::EthNetworkId;
+use bridge_types::{EVMChainId, GenericNetworkId};
 use ethereum_gen::{beefy_light_client, inbound_channel, BeefyLightClient, InboundChannel};
 use ethers::abi::RawLog;
 use ethers::prelude::builders::ContractCall;
@@ -86,7 +86,7 @@ pub struct Relay {
     beefy: BeefyLightClient<SignedClientInner>,
     inbound_channel: InboundChannel<SignedClientInner>,
     beefy_start_block: u64,
-    chain_id: EthNetworkId,
+    chain_id: EVMChainId,
     lost_gas: Arc<AtomicU64>,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
@@ -242,7 +242,7 @@ impl Relay {
 
         for log in digest.logs {
             let AuxiliaryDigestItem::Commitment(chain_id, commitment_hash) = log;
-            if chain_id != self.chain_id {
+            if chain_id != GenericNetworkId::EVM(self.chain_id) {
                 continue;
             }
             let delimiter = (chain_id, commitment_hash).encode();

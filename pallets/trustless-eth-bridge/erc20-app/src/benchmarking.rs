@@ -1,9 +1,10 @@
 //! ERC20App pallet benchmarking
 
 use crate::*;
+use bridge_types::types::AdditionalEVMInboundData;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
-use bridge_types::EthNetworkId;
+use bridge_types::EVMChainId;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
     ETH, XOR,
@@ -16,10 +17,10 @@ use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
     burn {
         let caller: T::AccountId = whitelisted_caller();
@@ -44,7 +45,7 @@ benchmarks! {
         let token = TokenAddresses::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
-        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, contract: caller, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: caller}, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
@@ -98,7 +99,7 @@ benchmarks! {
     register_asset_internal {
         let asset_id: T::AssetId = ETH.into();
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, contract: who, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: who}, ..Default::default()});
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, asset_id));
     }: _(origin, asset_id, address)

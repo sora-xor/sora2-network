@@ -51,7 +51,7 @@ where
     BlockHash: Codec,
 {
     #[method(name = "leafProvider_latestDigest")]
-    fn latest_digest(&self, at: Option<BlockHash>) -> Result<AuxiliaryDigest>;
+    fn latest_digest(&self, at: Option<BlockHash>) -> Result<Option<AuxiliaryDigest>>;
 }
 
 pub struct LeafProviderClient<C, B> {
@@ -76,7 +76,10 @@ where
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: LeafProviderRuntimeAPI<Block>,
 {
-    fn latest_digest(&self, at: Option<<Block as BlockT>::Hash>) -> Result<AuxiliaryDigest> {
+    fn latest_digest(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Option<AuxiliaryDigest>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

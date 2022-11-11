@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::ethereum::make_header;
 use crate::ethereum::proof_loader::ProofLoader;
 use crate::prelude::*;
-use bridge_types::{network_config::Consensus, EthNetworkId};
+use bridge_types::{network_config::Consensus, EVMChainId};
 use ethers::prelude::*;
 use substrate_gen::runtime;
 use subxt::tx::Signer;
@@ -15,7 +15,7 @@ pub struct Relay {
     sub: SubSignedClient,
     eth: EthUnsignedClient,
     proof_loader: ProofLoader,
-    chain_id: EthNetworkId,
+    chain_id: EVMChainId,
     consensus: Consensus,
 }
 

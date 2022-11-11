@@ -1,10 +1,10 @@
-use bridge_types::types::CallOriginOutput;
+use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, CallOriginOutput};
 use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundChannel;
-use bridge_types::EthNetworkId;
+use bridge_types::EVMChainId;
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
@@ -13,7 +13,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{H160, H256, U256};
+use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
@@ -48,7 +48,7 @@ pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -160,9 +160,9 @@ impl technical::Config for Test {
 
 impl dispatch::Config for Test {
     type Event = Event;
-    type NetworkId = EthNetworkId;
-    type Source = H160;
-    type OriginOutput = CallOriginOutput<EthNetworkId, H160, H256>;
+    type NetworkId = EVMChainId;
+    type Additional = AdditionalEVMInboundData;
+    type OriginOutput = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = Origin;
     type MessageId = u64;
     type Hashing = Keccak256;
@@ -172,13 +172,14 @@ impl dispatch::Config for Test {
 
 pub struct MockOutboundChannel<AccountId>(PhantomData<AccountId>);
 
-impl OutboundChannel<AccountId> for MockOutboundChannel<AccountId> {
+impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>
+    for MockOutboundChannel<AccountId>
+{
     fn submit(
-        _: EthNetworkId,
+        _: EVMChainId,
         who: &RawOrigin<AccountId>,
-        _: H160,
-        _: U256,
         _: &[u8],
+        _: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
         if let RawOrigin::Signed(who) = who {
             if *who == Keyring::Eve.to_account_id() {
@@ -211,9 +212,9 @@ impl eth_app::Config for Test {
     type Event = Event;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureAccount<
-        EthNetworkId,
-        H160,
-        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+        EVMChainId,
+        AdditionalEVMInboundData,
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = ();

@@ -34,7 +34,7 @@ beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-comm
 
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
 bridge-channel = { path = "../pallets/trustless-eth-bridge/channel", default-features = false }
-dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
+dispatch = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
 erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
@@ -42,6 +42,8 @@ leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", defaul
 leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
 evm-bridge-proxy = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy", default-features = false }
 evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -145,7 +147,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
@@ -190,6 +192,8 @@ std = [
     "leaf-provider-runtime-api/std",
     "evm-bridge-proxy/std",
     "evm-bridge-proxy-runtime-api/std",
+    "substrate-bridge-app/std",
+    "substrate-bridge-channel/std",
     "bridge-types/std",
     "farming/std",
     "faucet/std",
@@ -281,6 +285,8 @@ runtime-benchmarks = [
     "erc20-app/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "evm-bridge-proxy/runtime-benchmarks",
+    "substrate-bridge-app/runtime-benchmarks",
+    "substrate-bridge-channel/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",

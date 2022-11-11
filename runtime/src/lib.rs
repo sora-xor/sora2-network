@@ -48,12 +48,14 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::types::LeafExtraData;
+use bridge_types::traits::{BridgeAssetRegistry, Verifier};
+use bridge_types::types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, XOR};
 use constants::currency::deposit;
 use constants::time::*;
+use frame_support::instances::{Instance1, Instance2};
 use frame_support::weights::ConstantMultiplier;
 
 // Make the WASM binary available.
@@ -1874,11 +1876,12 @@ impl Contains<Call> for CallFilter {
     }
 }
 
-impl dispatch::Config for Runtime {
+impl dispatch::Config<Instance1> for Runtime {
     type Event = Event;
-    type NetworkId = EthNetworkId;
-    type Source = H160;
-    type OriginOutput = bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>;
+    type NetworkId = EVMChainId;
+    type Additional = AdditionalEVMInboundData;
+    type OriginOutput =
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = Origin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
@@ -1887,7 +1890,7 @@ impl dispatch::Config for Runtime {
 }
 
 use bridge_channel::{inbound as bridge_channel_inbound, outbound as bridge_channel_outbound};
-use bridge_types::{EthNetworkId, CHANNEL_INDEXING_PREFIX, H256};
+use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u64 = 256;
@@ -1911,7 +1914,7 @@ parameter_types! {
 impl bridge_channel_inbound::Config for Runtime {
     type Event = Event;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
-    type MessageDispatch = dispatch::Pallet<Runtime>;
+    type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
     type MessageStatusNotifier = EvmBridgeProxy;
     type FeeConverter = FeeConverter;
@@ -1960,9 +1963,9 @@ impl eth_app::Config for Runtime {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EthNetworkId,
-        H160,
-        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+        EVMChainId,
+        AdditionalEVMInboundData,
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
@@ -1973,9 +1976,9 @@ impl erc20_app::Config for Runtime {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EthNetworkId,
-        H160,
-        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+        EVMChainId,
+        AdditionalEVMInboundData,
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type AppRegistry = BridgeInboundChannel;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
@@ -1999,6 +2002,89 @@ impl evm_bridge_proxy::Config for Runtime {
 impl beefy_light_client::Config for Runtime {
     type Event = Event;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
+}
+
+impl dispatch::Config<Instance2> for Runtime {
+    type Event = Event;
+    type NetworkId = SubNetworkId;
+    type Additional = ();
+    type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
+    type Origin = Origin;
+    type MessageId = bridge_types::types::MessageId;
+    type Hashing = Keccak256;
+    type Call = Call;
+    type CallFilter = CallFilter;
+}
+
+pub struct MockVerifier;
+
+impl Verifier<SubNetworkId, ParachainMessage<Balance>> for MockVerifier {
+    type Result = Vec<ParachainMessage<Balance>>;
+
+    fn verify(
+        _network_id: SubNetworkId,
+        message: &ParachainMessage<Balance>,
+    ) -> Result<Self::Result, DispatchError> {
+        Ok(vec![message.clone()])
+    }
+}
+
+impl substrate_bridge_channel::inbound::Config for Runtime {
+    type Event = Event;
+    type Verifier = MockVerifier;
+    type MessageDispatch = SubstrateDispatch;
+    type WeightInfo = ();
+    type FeeAssetId = FeeCurrency;
+    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
+    type TreasuryAccountId = GetTreasuryAccountId;
+    type FeeConverter = FeeConverter;
+    type Currency = Currencies;
+}
+
+impl substrate_bridge_channel::outbound::Config for Runtime {
+    const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
+    type Event = Event;
+    type Hashing = Keccak256;
+    type FeeCurrency = FeeCurrency;
+    type FeeAccountId = GetTrustlessBridgeFeesAccountId;
+    type MessageStatusNotifier = EvmBridgeProxy;
+    type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
+    type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type Currency = Currencies;
+    type WeightInfo = ();
+}
+
+pub struct BridgeAssetRegistryImpl;
+
+impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = AssetName;
+    type AssetSymbol = AssetSymbol;
+    type Decimals = u8;
+
+    fn register_asset(
+        owner: AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+        decimals: Self::Decimals,
+    ) -> Result<AssetId, DispatchError> {
+        let asset_id = Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+}
+
+impl substrate_bridge_app::Config for Runtime {
+    type Event = Event;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+    type MessageStatusNotifier = EvmBridgeProxy;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
+    type Currency = Currencies;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type WeightInfo = ();
 }
 
 #[cfg(feature = "private-net")]
@@ -2081,7 +2167,7 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
         BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
+        Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
@@ -2089,6 +2175,10 @@ construct_runtime! {
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 105,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 106,
+        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 107,
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 108,
     }
 }
 
@@ -2169,7 +2259,7 @@ construct_runtime! {
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
         BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
         BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
+        Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
         ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
@@ -2177,6 +2267,10 @@ construct_runtime! {
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 105,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 106,
+        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 107,
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 108,
     }
 }
 
@@ -2811,18 +2905,18 @@ impl_runtime_apis! {
     }
 
     impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
-        fn latest_digest() -> bridge_types::types::AuxiliaryDigest {
+        fn latest_digest() -> Option<bridge_types::types::AuxiliaryDigest> {
             LeafProvider::latest_digest()
         }
 
     }
 
     impl evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI<Block, AssetId> for Runtime {
-        fn list_apps(network_id: bridge_types::EthNetworkId) -> Vec<bridge_types::types::BridgeAppInfo> {
+        fn list_apps(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAppInfo> {
             EvmBridgeProxy::list_apps(network_id)
         }
 
-        fn list_supported_assets(network_id: bridge_types::EthNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
+        fn list_supported_assets(network_id: bridge_types::EVMChainId) -> Vec<bridge_types::types::BridgeAssetInfo<AssetId>> {
             EvmBridgeProxy::list_supported_assets(network_id)
         }
     }

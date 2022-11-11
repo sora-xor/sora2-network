@@ -22,5 +22,5 @@ sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "p
 anyhow = "1.0"
 
 bridge-channel = { path = "../" }
-bridge-types = { path = "../../types" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets" }
 common = { path = "../../../../common" }

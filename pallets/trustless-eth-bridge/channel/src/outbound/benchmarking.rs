@@ -6,7 +6,7 @@ use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use sp_core::U256;
 
-const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;

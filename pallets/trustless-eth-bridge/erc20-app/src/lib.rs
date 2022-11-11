@@ -51,11 +51,12 @@ pub mod pallet {
     use super::*;
 
     use assets::AssetIdOf;
-    use bridge_types::traits::{AppRegistry, EvmBridgeApp, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{AppRegistry, BridgeApp, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::{
-        AppKind, AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput,
+        AdditionalEVMInboundData, AdditionalEVMOutboundData, AppKind, AssetKind, BridgeAppInfo,
+        BridgeAssetInfo, CallOriginOutput,
     };
-    use bridge_types::{EthNetworkId, H256};
+    use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
@@ -76,18 +77,26 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundChannel: OutboundChannel<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<
+            EVMChainId,
+            Self::AccountId,
+            AdditionalEVMOutboundData,
+        >;
 
         type CallOrigin: EnsureOrigin<
             Self::Origin,
-            Success = CallOriginOutput<EthNetworkId, H160, H256>,
+            Success = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
         >;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            Self::AccountId,
+            BalanceOf<Self>,
+        >;
 
         type BridgeTechAccountId: Get<Self::TechAccountId>;
 
-        type AppRegistry: AppRegistry;
+        type AppRegistry: AppRegistry<EVMChainId, H160>;
 
         type WeightInfo: WeightInfo;
     }
@@ -98,31 +107,31 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// [network_id, asset_id, sender, recipient, amount]
-        Burned(EthNetworkId, AssetIdOf<T>, T::AccountId, H160, BalanceOf<T>),
-        /// [network_id, asset_id, sender, recipient, amount]
-        Minted(EthNetworkId, AssetIdOf<T>, H160, T::AccountId, BalanceOf<T>),
+        /// [network_id, asset_id, sender, recepient, amount]
+        Burned(EVMChainId, AssetIdOf<T>, T::AccountId, H160, BalanceOf<T>),
+        /// [network_id, asset_id, sender, recepient, amount]
+        Minted(EVMChainId, AssetIdOf<T>, H160, T::AccountId, BalanceOf<T>),
     }
 
     #[pallet::storage]
     #[pallet::getter(fn app_address)]
     pub(super) type AppAddresses<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, AssetKind, H160, OptionQuery>;
+        StorageDoubleMap<_, Identity, EVMChainId, Identity, AssetKind, H160, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_kind)]
     pub(super) type AssetKinds<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
+        StorageDoubleMap<_, Identity, EVMChainId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn token_address)]
     pub(super) type TokenAddresses<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, AssetIdOf<T>, H160, OptionQuery>;
+        StorageDoubleMap<_, Identity, EVMChainId, Identity, AssetIdOf<T>, H160, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_by_address)]
     pub(super) type AssetsByAddresses<T: Config> =
-        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, AssetIdOf<T>, OptionQuery>;
+        StorageDoubleMap<_, Identity, EVMChainId, Identity, H160, AssetIdOf<T>, OptionQuery>;
 
     #[pallet::error]
     pub enum Error<T> {
@@ -141,9 +150,9 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// [network_id, contract, asset_kind]
-        pub apps: Vec<(EthNetworkId, H160, AssetKind)>,
+        pub apps: Vec<(EVMChainId, H160, AssetKind)>,
         /// [network_id, asset_id, asset_contract, asset_kind]
-        pub assets: Vec<(EthNetworkId, AssetIdOf<T>, H160, AssetKind)>,
+        pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind)>,
     }
 
     #[cfg(feature = "std")]
@@ -188,8 +197,8 @@ pub mod pallet {
             let CallOriginOutput {
                 network_id,
                 message_id,
-                contract,
                 timestamp,
+                additional,
             } = T::CallOrigin::ensure_origin(origin.clone())?;
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
                 // should never return this error, because called from Ethereum
@@ -199,7 +208,7 @@ pub mod pallet {
             let app_address = AppAddresses::<T>::get(network_id, asset_kind)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
 
-            if contract != app_address {
+            if additional.source != app_address {
                 return Err(DispatchError::BadOrigin.into());
             }
 
@@ -222,10 +231,10 @@ pub mod pallet {
                 }
             }
             T::MessageStatusNotifier::inbound_request(
-                network_id,
+                GenericNetworkId::EVM(network_id),
                 message_id,
-                sender,
-                recipient.clone(),
+                GenericAccount::EVM(sender),
+                GenericAccount::Sora(recipient.clone()),
                 asset_id,
                 amount,
                 timestamp,
@@ -245,11 +254,11 @@ pub mod pallet {
         ) -> DispatchResult {
             let CallOriginOutput {
                 network_id,
-                contract: app_contract,
+                additional,
                 ..
             } = T::CallOrigin::ensure_origin(origin)?;
             let asset_kind = AppAddresses::<T>::iter_prefix(network_id)
-                .find(|(_, address)| *address == app_contract)
+                .find(|(_, address)| *address == additional.source)
                 .ok_or(Error::<T>::AppIsNotRegistered)?
                 .0;
             Self::register_asset_inner(network_id, asset_id, contract, asset_kind)?;
@@ -263,7 +272,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
             recipient: H160,
             amount: BalanceOf<T>,
@@ -279,7 +288,7 @@ pub mod pallet {
 
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             address: H160,
             symbol: AssetSymbol,
             name: AssetName,
@@ -312,9 +321,11 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 100000u64.into(),
+                },
             )?;
             Ok(())
         }
@@ -323,7 +334,7 @@ pub mod pallet {
 
         pub fn register_existing_erc20_asset(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             address: H160,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
@@ -342,9 +353,11 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 100000u64.into(),
+                },
             )?;
             Ok(())
         }
@@ -353,7 +366,7 @@ pub mod pallet {
 
         pub fn register_native_asset(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -374,9 +387,11 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 2000000u64.into(),
+                },
             )?;
             Ok(())
         }
@@ -385,7 +400,7 @@ pub mod pallet {
 
         pub fn register_native_app(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -402,7 +417,7 @@ pub mod pallet {
 
         pub fn register_erc20_app(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -418,7 +433,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn register_asset_inner(
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
             contract: H160,
             asset_kind: AssetKind,
@@ -456,7 +471,7 @@ pub mod pallet {
 
         pub fn burn_inner(
             who: T::AccountId,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
             recipient: H160,
             amount: BalanceOf<T>,
@@ -490,15 +505,17 @@ pub mod pallet {
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                target,
-                TRANSFER_MAX_GAS.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: TRANSFER_MAX_GAS.into(),
+                },
             )?;
             T::MessageStatusNotifier::outbound_request(
-                network_id,
+                GenericNetworkId::EVM(network_id),
                 message_id,
-                who.clone(),
-                recipient,
+                GenericAccount::Sora(who.clone()),
+                GenericAccount::EVM(recipient),
                 asset_id,
                 amount,
             );
@@ -508,13 +525,13 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> EvmBridgeApp<T::AccountId, T::AssetId, Balance> for Pallet<T> {
-        fn is_asset_supported(network_id: EthNetworkId, asset_id: T::AssetId) -> bool {
+    impl<T: Config> BridgeApp<EVMChainId, T::AccountId, H160, T::AssetId, Balance> for Pallet<T> {
+        fn is_asset_supported(network_id: EVMChainId, asset_id: T::AssetId) -> bool {
             TokenAddresses::<T>::get(network_id, asset_id).is_some()
         }
 
         fn transfer(
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             asset_id: T::AssetId,
             sender: T::AccountId,
             recipient: H160,
@@ -523,7 +540,7 @@ pub mod pallet {
             Pallet::<T>::burn_inner(sender, network_id, asset_id, recipient, amount)
         }
 
-        fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<T::AssetId>> {
+        fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<T::AssetId>> {
             AssetKinds::<T>::iter_prefix(network_id)
                 .map(|(asset_id, asset_kind)| {
                     let app_kind = match asset_kind {
@@ -544,7 +561,7 @@ pub mod pallet {
                 .collect()
         }
 
-        fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo> {
+        fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo> {
             AppAddresses::<T>::iter_prefix(network_id)
                 .map(|(asset_kind, evm_address)| {
                     let app_kind = match asset_kind {

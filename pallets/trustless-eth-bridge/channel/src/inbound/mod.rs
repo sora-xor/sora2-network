@@ -1,13 +1,14 @@
 //! Channel for passing messages from ethereum to substrate.
 
 use bridge_types::traits::{MessageDispatch, Verifier};
-use bridge_types::types::{Message, MessageId};
-use bridge_types::EthNetworkId;
+use bridge_types::types::{
+    AdditionalEVMInboundData, AdditionalEVMOutboundData, Message, MessageId,
+};
+use bridge_types::EVMChainId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use sp_core::{H160, H256, U256};
-use sp_runtime::traits::Hash;
+use sp_core::{H160, U256};
 use sp_std::convert::TryFrom;
 
 use events::Envelope;
@@ -38,26 +39,31 @@ pub mod pallet {
     use crate::inbound::events::MessageDispatched;
     use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
-    use bridge_types::Log;
+    use bridge_types::{GenericNetworkId, Log, H256};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use sp_runtime::traits::Hash;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Verifier module for message verification.
-        type Verifier: Verifier<Result = (Log, u64)>;
+        type Verifier: Verifier<EVMChainId, Message, Result = (Log, u64)>;
 
         /// Verifier module for message verification.
-        type MessageDispatch: MessageDispatch<Self, EthNetworkId, H160, MessageId>;
+        type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
 
         type Hashing: Hash<Output = H256>;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            Self::AccountId,
+            BalanceOf<Self>,
+        >;
 
         type FeeConverter: Convert<U256, BalanceOf<Self>>;
 
@@ -68,7 +74,11 @@ pub mod pallet {
 
         type TreasuryTechAccountId: Get<Self::TechAccountId>;
 
-        type OutboundChannel: OutboundChannel<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<
+            EVMChainId,
+            Self::AccountId,
+            AdditionalEVMOutboundData,
+        >;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -78,19 +88,18 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn inbound_channel)]
     pub type InboundChannelAddresses<T: Config> =
-        StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
+        StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
     #[pallet::storage]
-    pub type InboundChannelNonces<T: Config> =
-        StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
+    pub type InboundChannelNonces<T: Config> = StorageMap<_, Identity, EVMChainId, u64, ValueQuery>;
 
     /// Source channel (OutboundChannel contract) on the ethereum side
     #[pallet::storage]
     #[pallet::getter(fn source_channel)]
-    pub type ChannelAddresses<T: Config> = StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
+    pub type ChannelAddresses<T: Config> = StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
     #[pallet::storage]
-    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EVMChainId, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn reward_fraction)]
@@ -144,7 +153,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::submit())]
         pub fn submit(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             message: Message,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
@@ -177,10 +186,12 @@ pub mod pallet {
             let message_id = MessageId::inbound(envelope.nonce);
             T::MessageDispatch::dispatch(
                 network_id,
-                envelope.source,
                 message_id.into(),
                 timestamp,
                 &envelope.payload,
+                AdditionalEVMInboundData {
+                    source: envelope.source,
+                },
             );
 
             Ok(().into())
@@ -189,7 +200,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
         pub fn message_dispatched(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             message: Message,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
@@ -219,7 +230,7 @@ pub mod pallet {
             })?;
 
             T::MessageStatusNotifier::update_status(
-                network_id,
+                GenericNetworkId::EVM(network_id),
                 MessageId::outbound(message_dispatched_event.nonce)
                     .using_encoded(|v| <T as Config>::Hashing::hash(v)),
                 if message_dispatched_event.result {
@@ -236,7 +247,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_channel())]
         pub fn register_channel(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             inbound_channel: H160,
             outbound_channel: H160,
         ) -> DispatchResultWithPostInfo {
@@ -256,8 +267,8 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> AppRegistry for Pallet<T> {
-        fn register_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+    impl<T: Config> AppRegistry<EVMChainId, H160> for Pallet<T> {
+        fn register_app(network_id: EVMChainId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
 
@@ -266,17 +277,19 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 message
                     .encode()
                     .map_err(|_| Error::<T>::CallEncodeFailed)?
                     .as_ref(),
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 100000u64.into(),
+                },
             )?;
             Ok(())
         }
 
-        fn deregister_app(network_id: EthNetworkId, app: H160) -> DispatchResult {
+        fn deregister_app(network_id: EVMChainId, app: H160) -> DispatchResult {
             let target =
                 ChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
 
@@ -285,12 +298,14 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 message
                     .encode()
                     .map_err(|_| Error::<T>::CallEncodeFailed)?
                     .as_ref(),
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 100000u64.into(),
+                },
             )?;
             Ok(())
         }
@@ -298,7 +313,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn register_channel_inner(
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             inbound_channel: H160,
             outbound_channel: H160,
         ) -> DispatchResult {
@@ -359,7 +374,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig {
         // Ethereum network id, inbound channel address, outbound channel address
-        pub networks: Vec<(EthNetworkId, H160, H160)>,
+        pub networks: Vec<(EVMChainId, H160, H160)>,
         pub reward_fraction: Perbill,
     }
 

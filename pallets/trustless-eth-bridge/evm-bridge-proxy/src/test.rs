@@ -30,10 +30,11 @@
 
 use crate::mock::{
     new_tester, AccountId, BridgeOutboundChannel, Call, Currencies, Dispatch, ERC20App, Event,
-    EvmBridgeProxy, System, Test, BASE_NETWORK_ID,
+    EvmBridgeProxy, System, Test, BASE_EVM_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
+use bridge_types::{GenericAccount, GenericNetworkId};
 use codec::Encode;
 use common::{assert_noop_transactional, balance, DAI, XOR};
 use frame_support::traits::Hooks;
@@ -42,7 +43,9 @@ use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::Hash;
 
-use bridge_types::types::{AssetKind, MessageId, MessageStatus};
+use bridge_types::types::{
+    AdditionalEVMInboundData, AssetKind, MessageDirection, MessageId, MessageStatus,
+};
 
 fn assert_event(event: Event) {
     System::events()
@@ -64,23 +67,28 @@ fn burn_successfull() {
         .unwrap();
         EvmBridgeProxy::burn(
             RawOrigin::Signed(caller.clone()).into(),
-            BASE_NETWORK_ID,
+            BASE_EVM_NETWORK_ID.into(),
             XOR,
-            H160::default(),
+            GenericAccount::EVM(H160::default()),
             1000,
         )
         .unwrap();
         let message_id = BridgeOutboundChannel::make_message_id(1);
         assert_eq!(
-            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
-            Some(BridgeRequest::OutgoingTransfer {
-                source: caller.clone(),
-                dest: H160::default(),
+            Transactions::<Test>::get((
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                &GenericAccount::Sora(caller.clone()),
+                message_id
+            )),
+            Some(BridgeRequest {
+                source: GenericAccount::Sora(caller.clone()),
+                dest: GenericAccount::EVM(H160::default()),
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::InQueue,
                 start_timestamp: 0,
                 end_timestamp: None,
+                direction: MessageDirection::Outbound,
             })
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::InQueue).into());
@@ -89,15 +97,20 @@ fn burn_successfull() {
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
         assert_eq!(
-            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
-            Some(BridgeRequest::OutgoingTransfer {
-                source: caller.clone(),
-                dest: H160::default(),
+            Transactions::<Test>::get((
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                &GenericAccount::Sora(caller.clone()),
+                message_id
+            )),
+            Some(BridgeRequest {
+                source: GenericAccount::Sora(caller.clone()),
+                dest: GenericAccount::EVM(H160::default()),
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::Committed,
                 start_timestamp: 0,
                 end_timestamp: None,
+                direction: MessageDirection::Outbound,
             })
         );
     })
@@ -110,9 +123,9 @@ fn burn_failed() {
         assert_noop_transactional!(
             EvmBridgeProxy::burn(
                 RawOrigin::Signed(caller.clone()).into(),
-                BASE_NETWORK_ID,
+                BASE_EVM_NETWORK_ID.into(),
                 XOR,
-                H160::default(),
+                GenericAccount::EVM(H160::default()),
                 1000,
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
@@ -126,11 +139,10 @@ fn burn_failed() {
 fn mint_successfull() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = ERC20App::app_address(BASE_NETWORK_ID, AssetKind::Sidechain).unwrap();
-        let token = ERC20App::token_address(BASE_NETWORK_ID, DAI).unwrap();
+        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Sidechain).unwrap();
+        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
-            BASE_NETWORK_ID,
-            source,
+            BASE_EVM_NETWORK_ID,
             MessageId::inbound(0),
             0,
             &Call::ERC20App(erc20_app::Call::mint {
@@ -140,19 +152,25 @@ fn mint_successfull() {
                 amount: 1000u64.into(),
             })
             .encode(),
+            AdditionalEVMInboundData { source },
         );
         let message_id =
             MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
-            Transactions::<Test>::get(&recipient, (BASE_NETWORK_ID, message_id)),
-            Some(BridgeRequest::IncomingTransfer {
-                source: H160::default(),
-                dest: recipient.clone(),
+            Transactions::<Test>::get((
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                &GenericAccount::Sora(recipient.clone()),
+                message_id
+            )),
+            Some(BridgeRequest {
+                source: GenericAccount::EVM(H160::default()),
+                dest: GenericAccount::Sora(recipient.clone()),
                 asset_id: DAI,
                 amount: 1000,
                 status: MessageStatus::Done,
                 start_timestamp: 0,
-                end_timestamp: 0,
+                end_timestamp: Some(0),
+                direction: MessageDirection::Inbound,
             })
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::Done).into());
@@ -163,11 +181,10 @@ fn mint_successfull() {
 fn mint_failed() {
     new_tester().execute_with(|| {
         let recipient: AccountId = Keyring::Alice.into();
-        let source = ERC20App::app_address(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
-        let token = ERC20App::token_address(BASE_NETWORK_ID, DAI).unwrap();
+        let source = ERC20App::app_address(BASE_EVM_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let token = ERC20App::token_address(BASE_EVM_NETWORK_ID, DAI).unwrap();
         Dispatch::dispatch(
-            BASE_NETWORK_ID,
-            source,
+            BASE_EVM_NETWORK_ID,
             MessageId::inbound(0),
             0,
             &Call::ERC20App(erc20_app::Call::mint {
@@ -177,6 +194,7 @@ fn mint_failed() {
                 amount: 1000u64.into(),
             })
             .encode(),
+            AdditionalEVMInboundData { source },
         );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 1);

@@ -1860,6 +1860,9 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        substrate_bridge_app: Default::default(),
+        substrate_bridge_inbound_channel: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
         migration_app: Default::default(),
         vested_rewards: Default::default(),
         erc20_app: Default::default(),

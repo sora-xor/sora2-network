@@ -22,7 +22,7 @@ use sp_core::H160;
 use sp_std::prelude::*;
 
 use bridge_types::traits::OutboundChannel;
-use bridge_types::EthNetworkId;
+use bridge_types::EVMChainId;
 
 mod payload;
 use payload::MigrateErc20Payload;
@@ -61,7 +61,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
-    use bridge_types::types::AssetKind;
+    use bridge_types::types::{AdditionalEVMOutboundData, AssetKind};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
@@ -78,14 +78,18 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        type OutboundChannel: OutboundChannel<Self::AccountId>;
+        type OutboundChannel: OutboundChannel<
+            EVMChainId,
+            Self::AccountId,
+            AdditionalEVMOutboundData,
+        >;
 
         type WeightInfo: WeightInfo;
     }
 
     #[pallet::storage]
     #[pallet::getter(fn address_and_asset)]
-    pub(super) type Addresses<T: Config> = StorageMap<_, Identity, EthNetworkId, H160, OptionQuery>;
+    pub(super) type Addresses<T: Config> = StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -103,9 +107,9 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     /// Events for the ETH module.
     pub enum Event<T: Config> {
-        Erc20Migrated(EthNetworkId, H160),
-        SidechainMigrated(EthNetworkId, H160),
-        EthMigrated(EthNetworkId, H160),
+        Erc20Migrated(EVMChainId, H160),
+        SidechainMigrated(EVMChainId, H160),
+        EthMigrated(EVMChainId, H160),
     }
 
     #[pallet::error]
@@ -131,7 +135,7 @@ pub mod pallet {
 
         pub fn migrate_erc20(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             erc20_assets: Vec<(AssetIdOf<T>, H160)>,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -167,9 +171,11 @@ pub mod pallet {
             <T as Config>::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 2000000u64.into(),
+                },
             )?;
             Self::deposit_event(Event::Erc20Migrated(network_id, contract_address));
 
@@ -181,7 +187,7 @@ pub mod pallet {
 
         pub fn migrate_sidechain(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             sidechain_assets: Vec<(AssetIdOf<T>, H160)>,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -213,9 +219,11 @@ pub mod pallet {
             <T as Config>::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 2000000u64.into(),
+                },
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));
 
@@ -225,7 +233,7 @@ pub mod pallet {
         // Transfer Eth tokens to Eth App contract
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
 
-        pub fn migrate_eth(origin: OriginFor<T>, network_id: EthNetworkId) -> DispatchResult {
+        pub fn migrate_eth(origin: OriginFor<T>, network_id: EVMChainId) -> DispatchResult {
             ensure_root(origin)?;
             let target = Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             let (contract_address, _) = eth_app::Pallet::<T>::address_and_asset(network_id)
@@ -236,9 +244,11 @@ pub mod pallet {
             <T as Config>::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                target,
-                2000000u64.into(),
                 &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                AdditionalEVMOutboundData {
+                    target,
+                    max_gas: 2000000u64.into(),
+                },
             )?;
             Self::deposit_event(Event::SidechainMigrated(network_id, contract_address));
 
@@ -249,7 +259,7 @@ pub mod pallet {
 
         pub fn register_network(
             origin: OriginFor<T>,
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             contract: H160,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -263,7 +273,7 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        fn register_network_inner(network_id: EthNetworkId, contract: H160) -> DispatchResult {
+        fn register_network_inner(network_id: EVMChainId, contract: H160) -> DispatchResult {
             Addresses::<T>::insert(network_id, contract);
             Ok(())
         }
@@ -271,7 +281,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
-        pub networks: Vec<(EthNetworkId, H160)>,
+        pub networks: Vec<(EVMChainId, H160)>,
     }
 
     #[cfg(feature = "std")]

@@ -30,7 +30,7 @@
 
 use bridge_types::{
     types::{BridgeAppInfo, BridgeAssetInfo},
-    EthNetworkId, U256,
+    EVMChainId, U256,
 };
 use codec::{Codec, Decode, Encode};
 
@@ -57,7 +57,7 @@ pub struct AppsWithSupportedAssets<AssetId> {
 }
 
 #[derive(Eq, PartialEq, Encode, Decode, Debug)]
-pub struct NetworkIdWrapper(pub EthNetworkId);
+pub struct NetworkIdWrapper(pub EVMChainId);
 
 impl<'de> Deserialize<'de> for NetworkIdWrapper {
     fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>

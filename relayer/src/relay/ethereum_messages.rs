@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bridge_types::types::{Message, Proof};
-use bridge_types::EthNetworkId;
+use bridge_types::EVMChainId;
 use ethers::abi::RawLog;
 
 use crate::ethereum::proof_loader::ProofLoader;
@@ -14,7 +14,7 @@ const BLOCKS_TO_INITIAL_SEARCH: u64 = 49000; // Ethereum light client keep 50000
 pub struct SubstrateMessagesRelay {
     sub: SubSignedClient,
     eth: EthUnsignedClient,
-    network_id: EthNetworkId,
+    network_id: EVMChainId,
     inbound_channel: Address,
     outbound_channel: Address,
     latest_channel_block: u64,
@@ -27,7 +27,7 @@ impl SubstrateMessagesRelay {
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {
-        let network_id = eth.inner().get_chainid().await? as EthNetworkId;
+        let network_id = eth.inner().get_chainid().await? as EVMChainId;
         let inbound_channel = sub
             .api()
             .storage()

@@ -31,10 +31,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use bridge_types::types::AuxiliaryDigest;
+pub use bridge_types::GenericNetworkId;
 
 sp_api::decl_runtime_apis! {
     pub trait LeafProviderAPI
     {
-        fn latest_digest() -> AuxiliaryDigest;
+        fn latest_digest() -> Option<AuxiliaryDigest>;
     }
 }

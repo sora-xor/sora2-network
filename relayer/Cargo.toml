@@ -11,7 +11,7 @@ substrate-gen = { path = "./substrate-gen" }
 parachain-gen = { path = "./parachain-gen" }
 beefy-light-client = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
 bridge-common = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
-bridge-types = { path = "../pallets/trustless-eth-bridge/types" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets" }
 ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "polkadot-v0.9.28", features = [
   "ws",
   "rustls",

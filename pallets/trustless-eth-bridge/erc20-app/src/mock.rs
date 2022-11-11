@@ -2,8 +2,8 @@ use bridge_types::traits::AppRegistry;
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::types::AssetKind;
-use bridge_types::{EthNetworkId, U256};
+use bridge_types::types::{AdditionalEVMInboundData, AssetKind};
+use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
@@ -81,7 +81,7 @@ pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -181,9 +181,10 @@ impl assets::Config for Test {
 
 impl dispatch::Config for Test {
     type Event = Event;
-    type NetworkId = EthNetworkId;
-    type Source = H160;
-    type OriginOutput = bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>;
+    type NetworkId = EVMChainId;
+    type Additional = AdditionalEVMInboundData;
+    type OriginOutput =
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
     type Origin = Origin;
     type MessageId = u64;
     type Hashing = Keccak256;
@@ -239,12 +240,12 @@ impl technical::Config for Test {
 
 pub struct AppRegistryImpl;
 
-impl AppRegistry for AppRegistryImpl {
-    fn register_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
+impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
+    fn register_app(_network_id: EVMChainId, _app: H160) -> DispatchResult {
         Ok(())
     }
 
-    fn deregister_app(_network_id: EthNetworkId, _app: H160) -> DispatchResult {
+    fn deregister_app(_network_id: EVMChainId, _app: H160) -> DispatchResult {
         Ok(())
     }
 }
@@ -253,9 +254,9 @@ impl erc20_app::Config for Test {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
-        EthNetworkId,
-        H160,
-        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+        EVMChainId,
+        AdditionalEVMInboundData,
+        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();

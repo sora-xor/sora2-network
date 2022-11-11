@@ -48,7 +48,7 @@ fn assert_header_pruned<T: Config>(hash: H256, number: u64) {
 
 fn digest_signature<T: crate::Config>(
     signer: &Public,
-    network_id: &EthNetworkId,
+    network_id: &EVMChainId,
     header: &EthereumHeader,
 ) -> Signature {
     sp_io::crypto::sr25519_sign(123.into(), signer, &import_digest(network_id, header)[..]).unwrap()
