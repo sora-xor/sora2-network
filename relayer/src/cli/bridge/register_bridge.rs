@@ -88,7 +88,7 @@ impl Command {
             .is_some();
         if !is_channel_registered {
             let call = runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
-                runtime::runtime_types::bridge_channel::inbound::pallet::Call::register_channel {
+                runtime::runtime_types::bridge_inbound_channel::pallet::Call::register_channel {
                     network_id,
                     inbound_channel: self.inbound_channel,
                     outbound_channel: self.outbound_channel,

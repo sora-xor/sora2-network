@@ -1889,7 +1889,6 @@ impl dispatch::Config<Instance1> for Runtime {
     type CallFilter = CallFilter;
 }
 
-use bridge_channel::{inbound as bridge_channel_inbound, outbound as bridge_channel_outbound};
 use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 
 parameter_types! {
@@ -1911,7 +1910,7 @@ parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
-impl bridge_channel_inbound::Config for Runtime {
+impl bridge_inbound_channel::Config for Runtime {
     type Event = Event;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
@@ -1925,7 +1924,7 @@ impl bridge_channel_inbound::Config for Runtime {
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
 
-impl bridge_channel_outbound::Config for Runtime {
+impl bridge_outbound_channel::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;

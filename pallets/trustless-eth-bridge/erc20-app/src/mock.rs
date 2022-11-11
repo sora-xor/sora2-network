@@ -72,7 +72,7 @@ frame_support::construct_runtime!(
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
         Erc20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
@@ -213,7 +213,7 @@ parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
-impl bridge_channel::outbound::Config for Test {
+impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
@@ -332,7 +332,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &bridge_channel::outbound::GenesisConfig {
+        &bridge_outbound_channel::GenesisConfig {
             fee: 10000,
             interval: 10,
         },

@@ -22,9 +22,7 @@ use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, XOR};
 use hex_literal::hex;
 
-use crate::inbound::Error;
-
-use crate::inbound as bridge_inbound_channel;
+use crate as bridge_inbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -376,6 +374,20 @@ const MESSAGE_DISPATCHED_DATA_1: [u8; 123] = hex!(
 "
 );
 
+// MessageDispatched {
+//   .channel = "2b6eb68c260ff0784a3c17ae61e31a77836eeb20",
+//   .nonce = 1,
+//   .result = False,
+// }
+const MESSAGE_DISPATCHED_FAILED_DATA_0: [u8; 123] = hex!(
+    "
+	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
+	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
+	0000000000000000000000000000000000000000000000000000010000000000
+	000000000000000000000000000000000000000000000000000000
+"
+);
+
 #[test]
 fn test_submit_with_invalid_source_channel() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
@@ -594,6 +606,30 @@ fn test_message_dispatched() {
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
+    });
+}
+
+#[test]
+fn test_message_dispatched_refund() {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        let message = Message {
+            data: MESSAGE_DISPATCHED_FAILED_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_ok!(BridgeInboundChannel::message_dispatched(
+            origin,
+            BASE_NETWORK_ID,
+            message
+        ));
+        let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
+        assert_eq!(nonce, 1);
     });
 }
 

@@ -756,9 +756,9 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9cf849ee05b2ee5fba5e36f97ff8ec2533916700fc0758d40d92136a42f3388"
+checksum = "b12e5fd123190ce1c2e559308a94c9bacad77907d4c6005d9e58fe1a0689e55e"
 dependencies = [
  "digest 0.10.5",
 ]
@@ -869,41 +869,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-channel"
-version = "0.1.1"
-dependencies = [
- "assets",
- "bridge-types",
- "common",
- "ethabi 17.2.0",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "once_cell",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions",
- "rlp 0.5.2",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
- "technical",
-]
-
-[[package]]
 name = "bridge-channel-rpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "jsonrpsee 0.15.1",
@@ -937,9 +907,72 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-inbound-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-outbound-channel",
+ "bridge-types",
+ "common",
+ "dispatch",
+ "erc20-app",
+ "eth-app",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "once_cell",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.2",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
+name = "bridge-outbound-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-types",
+ "common",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.2",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#172893940c795dce137d4639100c3b68500cf6c1"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
 dependencies = [
  "beefy-primitives",
  "enum-iterator",
@@ -2425,7 +2458,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#172893940c795dce137d4639100c3b68500cf6c1"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -2684,7 +2717,7 @@ name = "erc20-app"
 version = "0.1.1"
 dependencies = [
  "assets",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -3279,7 +3312,7 @@ name = "evm-bridge-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -3940,7 +3973,8 @@ dependencies = [
  "beefy-light-client",
  "beefy-light-client-runtime-api",
  "beefy-primitives",
- "bridge-channel",
+ "bridge-inbound-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "ceres-governance-platform",
  "ceres-launchpad",
@@ -10865,7 +10899,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "774d05a3edae07ce6d68ea6984f3c05e9bba8927e3dd591e3b479e5b03213d0d"
 dependencies = [
  "aes-gcm",
- "blake2 0.10.4",
+ "blake2 0.10.5",
  "chacha20poly1305",
  "curve25519-dalek 4.0.0-pre.1",
  "rand_core 0.6.4",
@@ -10936,7 +10970,7 @@ name = "sp-api-proc-macro"
 version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.28-updated#53fca26faed7ac8525e564129544605fe4e0fb32"
 dependencies = [
- "blake2 0.10.4",
+ "blake2 0.10.5",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -11151,7 +11185,7 @@ name = "sp-core-hashing"
 version = "4.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.28-updated#53fca26faed7ac8525e564129544605fe4e0fb32"
 dependencies = [
- "blake2 0.10.4",
+ "blake2 0.10.5",
  "byteorder",
  "digest 0.10.5",
  "sha2 0.10.6",
@@ -11722,7 +11756,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#172893940c795dce137d4639100c3b68500cf6c1"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -11745,7 +11779,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#172893940c795dce137d4639100c3b68500cf6c1"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",

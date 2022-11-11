@@ -16,7 +16,7 @@ use bridge_types::{
 };
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
-use frame_support::{dispatch::Weight, RuntimeDebug};
+use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
 use scale_info::TypeInfo;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
@@ -31,8 +31,6 @@ impl WeightInfo for () {
     }
 }
 
-pub use pallet::*;
-
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BridgeRequest<T: frame_system::Config + assets::Config + pallet_timestamp::Config> {
@@ -45,6 +43,8 @@ pub struct BridgeRequest<T: frame_system::Config + assets::Config + pallet_times
     end_timestamp: Option<u64>,
     direction: MessageDirection,
 }
+
+pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -113,6 +113,7 @@ pub mod pallet {
     /// Events for the ETH module.
     pub enum Event {
         RequestStatusUpdate(H256, MessageStatus),
+        RefundFailed(H256),
     }
 
     #[pallet::error]
@@ -148,6 +149,7 @@ pub mod pallet {
             Ok(())
         }
     }
+
     impl<T: Config> Pallet<T> {
         pub fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo> {
             let mut res = vec![];
@@ -162,6 +164,25 @@ pub mod pallet {
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res
         }
+
+        pub fn refund(
+            network_id: GenericNetworkId,
+            message_id: H256,
+            beneficiary: GenericAccount<T::AccountId>,
+            asset_id: T::AssetId,
+            amount: Balance,
+        ) -> DispatchResult {
+            match network_id {
+                GenericNetworkId::EVM(chain_id) => {
+                    if T::EthApp::is_asset_supported(network_id, asset_id) {
+                        T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)
+                    } else {
+                        T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)
+                    }
+                }
+                GenericNetworkId::Sub(_) => todo!(),
+            }
+        }
     }
 }
 
@@ -172,17 +193,38 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         new_status: MessageStatus,
         new_end_timestamp: Option<u64>,
     ) {
-        let sender = match Senders::<T>::get(network_id, id) {
+        let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
             None => return,
         };
-        Transactions::<T>::mutate((network_id, sender, id), |req| {
+        Transactions::<T>::mutate(sender, (network_id, message_id), |req| {
             if let Some(req) = req {
-                Self::deposit_event(Event::RequestStatusUpdate(id, new_status));
-                req.status = new_status;
-                req.end_timestamp = new_end_timestamp;
+                if new_status == MessageStatus::Failed
+                    && req.direction == MessageDirection::Outbound
+                {
+                    match Pallet::<T>::refund(
+                        network_id,
+                        req.message_id,
+                        (*source).clone(),
+                        *asset_id,
+                        *amount,
+                    ) {
+                        Ok(_) => {
+                            new_status = MessageStatus::Refunded;
+                            Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
+                        }
+                        Err(_) => {
+                            Self::deposit_event(Event::RefundFailed(message_id));
+                        }
+                    }
+                }
+                *status = new_status;
+
+                if let Some(timestamp) = new_end_timestamp {
+                    *end_timestamp = Some(timestamp);
+                }
             }
-        });
+        })
     }
 
     fn inbound_request(

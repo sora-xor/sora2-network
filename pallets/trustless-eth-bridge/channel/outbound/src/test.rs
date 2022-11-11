@@ -16,7 +16,7 @@ use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256
 use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 
-use crate::outbound as bridge_outbound_channel;
+use crate as bridge_outbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;

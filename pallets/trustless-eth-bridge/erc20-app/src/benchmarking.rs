@@ -20,7 +20,7 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_channel::outbound::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
     burn {
         let caller: T::AccountId = whitelisted_caller();
@@ -28,10 +28,10 @@ benchmarks! {
         let recipient = H160::repeat_byte(2);
         let amount = balance!(500);
 
-        let fee_asset = <T as bridge_channel::outbound::Config>::FeeCurrency::get();
+        let fee_asset = <T as bridge_outbound_channel::Config>::FeeCurrency::get();
 
         // deposit enough money to cover fees
-        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_channel::outbound::Fee::<T>::get())?;
+        <T as assets::Config>::Currency::deposit(fee_asset.clone(), &caller, bridge_outbound_channel::Fee::<T>::get())?;
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
     }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount)
     verify {
