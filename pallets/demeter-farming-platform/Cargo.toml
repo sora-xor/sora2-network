@@ -58,12 +58,16 @@ default = ["std"]
 
 std = [
     "codec/std",
+    "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
-    'serde/std',
+    "multicollateral-bonding-curve-pool/std",
+    "permissions/std",
+    "serde/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "technical/std",
 ]
 
 runtime-benchmarks = [

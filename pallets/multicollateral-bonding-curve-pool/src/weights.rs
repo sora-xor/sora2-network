@@ -38,36 +38,22 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn initialize_pool() -> Weight {
-        (56_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(7 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn set_reference_asset() -> Weight {
-        (26_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn set_optional_reward_multiplier() -> Weight {
-        (35_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(5 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn on_initialize(n: u32) -> Weight {
-        (26_492_000 as Weight)
-            // Standard Error: 269_000
-            .saturating_add((33_780_000 as Weight).saturating_mul(n as Weight))
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn set_price_change_config() -> Weight {
-        (27_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+        Weight::zero()
     }
     fn set_price_bias() -> Weight {
-        (26_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
 }
 

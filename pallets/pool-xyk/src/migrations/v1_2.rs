@@ -61,14 +61,14 @@ mod tests {
                 )
                 .unwrap();
                 trading_pair::Pallet::<Runtime>::register(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),
                     target_asset.clone(),
                 )
                 .unwrap();
                 crate::Pallet::<Runtime>::initialize_pool(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),
                     target_asset.clone(),

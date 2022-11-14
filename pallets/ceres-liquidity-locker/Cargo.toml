@@ -56,9 +56,10 @@ default = ['std']
 
 std = [
     "codec/std",
+    "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
-    'serde',
+    "serde",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",

@@ -55,12 +55,13 @@ trading-pair = { path = "../trading-pair" }
 [features]
 default = ['std']
 std = [
-    'codec/std',
+    "common/std",
+    "codec/std",
     "scale-info/std",
-    'serde/std',
-    'frame-support/std',
-    'frame-system/std',
-    'currencies/std',
-    'tokens/std',
-    'traits/std',
+    "serde/std",
+    "frame-support/std",
+    "frame-system/std",
+    "currencies/std",
+    "tokens/std",
+    "traits/std",
 ]

@@ -41,13 +41,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         // Todo: Use all 6 weight formulas defined in benchmarks
         match variant {
             // swap_exact_input_multiple
-            SwapVariant::WithDesiredInput => (773_992_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
+            SwapVariant::WithDesiredInput => Weight::zero(),
             //swap_exact_output_multiple
-            SwapVariant::WithDesiredOutput => (914_277_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
+            SwapVariant::WithDesiredOutput => Weight::zero(),
         }
     }
 }

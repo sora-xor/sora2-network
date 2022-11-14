@@ -84,7 +84,7 @@ pub mod pallet {
         frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Demeter asset id
         type DemeterAssetId: Get<Self::AssetId>;
@@ -889,7 +889,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            let mut counter: u64 = 0;
+            let mut counter = Weight::zero();
 
             if (now % T::BLOCKS_PER_HOUR_AND_A_HALF).is_zero() {
                 counter = Self::distribute_rewards_to_users();

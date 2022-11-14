@@ -36,17 +36,13 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim_incentive() -> Weight {
-        (953_870_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+        Weight::zero()
     }
     fn on_initialize(is_distributing: bool) -> Weight {
         if is_distributing {
-            (216_886_398_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(10052 as Weight))
-                .saturating_add(T::DbWeight::get().writes(1023 as Weight))
+            Weight::zero()
         } else {
-            (201_666_000 as Weight).saturating_add(T::DbWeight::get().reads(10 as Weight))
+            Weight::zero()
         }
     }
 }

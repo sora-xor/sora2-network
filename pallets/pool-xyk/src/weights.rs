@@ -36,30 +36,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap_pair() -> Weight {
-        (282_039_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+        Weight::zero()
     }
     fn can_exchange() -> Weight {
-        (10_516_000 as Weight).saturating_add(T::DbWeight::get().reads(1 as Weight))
+        Weight::zero()
     }
     fn quote() -> Weight {
-        (42_736_000 as Weight).saturating_add(T::DbWeight::get().reads(5 as Weight))
+        Weight::zero()
     }
     fn deposit_liquidity() -> Weight {
-        (240_855_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        Weight::zero()
     }
     fn withdraw_liquidity() -> Weight {
-        (224_123_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        Weight::zero()
     }
     fn initialize_pool() -> Weight {
-        (141_722_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(7 as Weight))
-            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+        Weight::zero()
     }
 }
 
@@ -71,7 +63,7 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn withdraw_liquidity() -> Weight {
-        10 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(10)
     }
     fn initialize_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
