@@ -21,6 +21,8 @@ pub struct Cli {
     #[clap(flatten)]
     sub: SubstrateClient,
     #[clap(flatten)]
+    para: ParachainClient,
+    #[clap(flatten)]
     eth: EthereumClient,
     /// Substrate account derive URI
     #[clap(long, global = true)]
@@ -31,6 +33,15 @@ pub struct Cli {
     /// Substrate node endpoint
     #[clap(long, global = true)]
     substrate_url: Option<String>,
+    /// Parachain account derive URI
+    #[clap(long, from_global)]
+    parachain_key: Option<String>,
+    /// File with Parachain account derive URI
+    #[clap(long, from_global)]
+    parachain_key_file: Option<String>,
+    /// Parachain node endpoint
+    #[clap(long, from_global)]
+    parachain_url: Option<String>,
     /// Ethereum private key
     #[clap(long, global = true)]
     ethereum_key: Option<String>,
