@@ -49,10 +49,12 @@ runtime-benchmarks = [
 
 std = [
     "codec/std",
+    "assets/std",
     "scale-info/std",
     "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
+    "pallet-balances/std",
     "serde",
     "sp-std/std",
 ]

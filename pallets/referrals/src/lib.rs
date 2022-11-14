@@ -51,15 +51,15 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn reserve() -> Weight {
-        0
+        Weight::zero()
     }
 
     fn unreserve() -> Weight {
-        0
+        Weight::zero()
     }
 
     fn set_referrer() -> Weight {
-        0
+        Weight::zero()
     }
 }
 
