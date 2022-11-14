@@ -77,7 +77,7 @@ pub fn account_id() -> AccountId {
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
@@ -113,7 +113,7 @@ impl Config for Runtime {
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 100;
     const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
 }
 
@@ -121,8 +121,8 @@ impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -130,7 +130,7 @@ impl frame_system::Config for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = DbWeight;
     type Version = ();
@@ -145,7 +145,7 @@ impl frame_system::Config for Runtime {
 }
 
 impl technical::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -154,7 +154,7 @@ impl technical::Config for Runtime {
 }
 
 impl assets::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -173,7 +173,7 @@ impl common::Config for Runtime {
 
 // Required by assets::Config
 impl permissions::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 // Required by assets::Config
@@ -187,7 +187,7 @@ impl currencies::Config for Runtime {
 // Required by currencies::Config
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -198,13 +198,16 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl tokens::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();

@@ -52,8 +52,8 @@ fn account() -> AccountId {
     hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43").into()
 }
 
-fn origin() -> Origin {
-    Origin::signed(account())
+fn origin() -> RuntimeOrigin {
+    RuntimeOrigin::signed(account())
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn claim_succeeds_zero_v() {
         hex!("7c0f877cd5720eee40d1183556f1fbd34931a6ee08c5299b4de2b2b43176831a").into();
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature = hex!("22bea4c62999dc1be10cb603956b5731dfd296c9e0b0040e5fe8056db1e8df5648c519b704acdcdcf0d04ab01f81f2ed899edef437a4be8f36980d7f1119d7ce00").into();
-        assert_ok!(Pallet::claim(Origin::signed(account_id.clone()), signature));
+        assert_ok!(Pallet::claim(RuntimeOrigin::signed(account_id.clone()), signature));
         assert_eq!(
             Assets::free_balance(&PSWAP, &account_id).unwrap(),
             balance!(100)
@@ -133,7 +133,7 @@ fn can_add_umi_nft_receiver() {
         assert!(UmiNftReceivers::get(addresses[0]).is_empty());
 
         assert_ok!(Pallet::add_umi_nft_receivers(
-            Origin::root(),
+            RuntimeOrigin::root(),
             addresses.clone()
         ));
 
@@ -146,7 +146,7 @@ fn can_claim_umi_nft_rewards() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let address = EthAddress::from(hex!("3c52e573fd320153013f40b817dda4f9d648613c"));
 
-        assert_ok!(Pallet::add_umi_nft_receivers(Origin::root(), vec![address]));
+        assert_ok!(Pallet::add_umi_nft_receivers(RuntimeOrigin::root(), vec![address]));
 
         let signature = hex!("5615253e3998c99cd9008baf9c471d7a8f5690bb35a40f872b7cbbf19bad616d4490fc78a84d4568673cf397243ac79eb1684a7e54440f862aecebb54c10474f1c");
 
@@ -198,7 +198,7 @@ fn val_strategic_bonus_vesting_works() {
 
         // Claiming some rewards
         assert_ok!(Pallet::claim(
-            Origin::signed(account_1.clone()),
+            RuntimeOrigin::signed(account_1.clone()),
             hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into()
         ));
         assert_eq!(
@@ -206,7 +206,7 @@ fn val_strategic_bonus_vesting_works() {
             balance!(111.965376355350688000)
         );
         assert_ok!(Pallet::claim(
-            Origin::signed(account_2.clone()),
+            RuntimeOrigin::signed(account_2.clone()),
             hex!("22bea4c62999dc1be10cb603956b5731dfd296c9e0b0040e5fe8056db1e8df5648c519b704acdcdcf0d04ab01f81f2ed899edef437a4be8f36980d7f1119d7ce00").into()));
         assert_eq!(
             Assets::free_balance(&VAL, &account_2).unwrap(),
