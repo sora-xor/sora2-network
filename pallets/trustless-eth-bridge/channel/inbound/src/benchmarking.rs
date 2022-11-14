@@ -16,7 +16,7 @@ use bridge_types::{Header, Log};
 const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 #[allow(unused_imports)]
-use crate::inbound::Pallet as BridgeInboundChannel;
+use crate::Pallet as BridgeInboundChannel;
 
 fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::Event) {
     let events = frame_system::Pallet::<T>::events();
@@ -253,6 +253,6 @@ fn dot_unlock_data() -> (Header, Message) {
 
 impl_benchmark_test_suite!(
     BridgeInboundChannel,
-    crate::inbound::test::new_tester(Default::default(), Default::default()),
-    crate::inbound::test::Test,
+    crate::test::new_tester(Default::default(), Default::default()),
+    crate::test::Test,
 );

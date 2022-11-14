@@ -873,41 +873,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-channel"
-version = "0.1.1"
-dependencies = [
- "assets",
- "bridge-types",
- "common",
- "ethabi 17.2.0",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "once_cell",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions",
- "rlp 0.5.2",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-runtime",
- "sp-std",
- "technical",
-]
-
-[[package]]
 name = "bridge-channel-rpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "jsonrpsee 0.15.1",
@@ -938,6 +908,69 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+]
+
+[[package]]
+name = "bridge-inbound-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-outbound-channel",
+ "bridge-types",
+ "common",
+ "dispatch",
+ "erc20-app",
+ "eth-app",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "once_cell",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.2",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
+name = "bridge-outbound-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "bridge-types",
+ "common",
+ "ethabi 17.2.0",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.2",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -2744,7 +2777,7 @@ name = "erc20-app"
 version = "0.1.1"
 dependencies = [
  "assets",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -3339,7 +3372,7 @@ name = "evm-bridge-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
- "bridge-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "common",
  "dispatch",
@@ -4032,7 +4065,8 @@ dependencies = [
  "beefy-light-client",
  "beefy-light-client-runtime-api",
  "beefy-primitives",
- "bridge-channel",
+ "bridge-inbound-channel",
+ "bridge-outbound-channel",
  "bridge-types",
  "ceres-governance-platform",
  "ceres-launchpad",

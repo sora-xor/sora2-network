@@ -1886,7 +1886,6 @@ impl dispatch::Config for Runtime {
     type CallFilter = CallFilter;
 }
 
-use bridge_channel::{inbound as bridge_channel_inbound, outbound as bridge_channel_outbound};
 use bridge_types::{EthNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 
 parameter_types! {
@@ -1908,7 +1907,7 @@ parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
-impl bridge_channel_inbound::Config for Runtime {
+impl bridge_inbound_channel::Config for Runtime {
     type Event = Event;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = dispatch::Pallet<Runtime>;
@@ -1922,7 +1921,7 @@ impl bridge_channel_inbound::Config for Runtime {
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
 }
 
-impl bridge_channel_outbound::Config for Runtime {
+impl bridge_outbound_channel::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
@@ -2079,8 +2078,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
-        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
@@ -2167,8 +2166,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,

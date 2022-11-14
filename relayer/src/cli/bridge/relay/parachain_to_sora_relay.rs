@@ -28,43 +28,34 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::CHANNEL_INDEXING_PREFIX;
-use codec::{Decode, Encode};
+use crate::cli::prelude::*;
+use crate::relay::client::*;
+use crate::relay::parachain::RelayBuilder;
 
-use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
-use sp_api::offchain::OffchainStorage;
-
-pub use bridge_outbound_channel::Commitment;
-use sp_core::H256;
-
-#[rpc(server, client)]
-pub trait BridgeChannelAPI {
-    #[method(name = "intentivizedChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
+#[derive(Args, Clone, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    para: ParachainClient,
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    /// Send all Beefy commitments
+    #[clap(short, long)]
+    send_unneeded_commitments: bool,
 }
 
-pub struct BridgeChannelClient<S> {
-    storage: S,
-}
-
-impl<S> BridgeChannelClient<S> {
-    /// Construct default `Template`.
-    pub fn new(storage: S) -> Self {
-        Self { storage }
-    }
-}
-
-impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
-where
-    S: OffchainStorage + 'static,
-{
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
-        let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
-        Ok(self
-            .storage
-            .get(sp_offchain::STORAGE_PREFIX, &key)
-            .map(|value| Decode::decode(&mut &*value))
-            .transpose()
-            .map_err(|err| anyhow::Error::from(err))?)
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sender = ParachainRuntimeClient::new(self.para.get_signed_substrate().await?);
+        let receiver = SubstrateRuntimeClient::new(self.sub.get_signed_substrate().await?);
+        RelayBuilder::new()
+            .with_sender_client(sender)
+            .with_receiver_client(receiver)
+            .build()
+            .await
+            .context("build parachain to sora relay")?
+            .run(!self.send_unneeded_commitments)
+            .await
+            .context("run parachain to sora relay")?;
+        Ok(())
     }
 }

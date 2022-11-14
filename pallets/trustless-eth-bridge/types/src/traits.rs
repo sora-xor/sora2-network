@@ -71,6 +71,7 @@ impl AppRegistry for () {
 pub trait EvmBridgeApp<AccountId, AssetId, Balance> {
     fn is_asset_supported(network_id: EthNetworkId, asset_id: AssetId) -> bool;
 
+    // Initiates transfer to Ethereum by burning the asset on substrate side
     fn transfer(
         network_id: EthNetworkId,
         asset_id: AssetId,
@@ -78,6 +79,14 @@ pub trait EvmBridgeApp<AccountId, AssetId, Balance> {
         recipient: H160,
         amount: Balance,
     ) -> Result<H256, DispatchError>;
+
+    fn refund(
+        network_id: EthNetworkId,
+        message_id: H256,
+        recipient: AccountId,
+        asset_id: AssetId,
+        amount: Balance,
+    ) -> DispatchResult;
 
     fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<AssetId>>;
 
@@ -87,7 +96,7 @@ pub trait EvmBridgeApp<AccountId, AssetId, Balance> {
 pub trait MessageStatusNotifier<AssetId, AccountId> {
     fn update_status(
         network_id: EthNetworkId,
-        id: H256,
+        message_id: H256,
         status: MessageStatus,
         end_timestamp: Option<u64>,
     );
@@ -115,7 +124,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId> {
 impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
     fn update_status(
         _network_id: EthNetworkId,
-        _id: H256,
+        _message_id: H256,
         _status: MessageStatus,
         _end_timestamp: Option<u64>,
     ) {

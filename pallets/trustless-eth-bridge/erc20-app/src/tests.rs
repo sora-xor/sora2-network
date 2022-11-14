@@ -149,7 +149,7 @@ fn should_not_burn_on_commitment_failure() {
                 recipient.clone(),
                 amount,
             ),
-            bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
+            bridge_outbound_channel::Error::<Test>::QueueSizeLimitReached
         );
         // let call = crate::mock::Call::Erc20App(crate::Call::<Test>::burn {
         //     network_id: BASE_NETWORK_ID,
