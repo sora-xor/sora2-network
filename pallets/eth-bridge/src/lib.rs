@@ -189,7 +189,8 @@ pub const STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY: &[u8] =
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
-pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
+pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: Weight =
+    Weight::from_ref_time(10_000_000_000_000_000u64);
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
 
@@ -350,14 +351,14 @@ pub mod pallet {
         + CreateSignedTransaction<Call<Self>>
         + CreateSignedTransaction<bridge_multisig::Call<Self>>
         + assets::Config
-        + bridge_multisig::Config<Call = <Self as Config>::Call>
+        + bridge_multisig::Config<RuntimeCall = <Self as Config>::RuntimeCall>
         + fmt::Debug
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// The identifier type for an offchain worker.
         type PeerId: AppCrypto<Self::Public, Self::Signature>;
         /// The overarching dispatch call type.
-        type Call: From<Call<Self>>
+        type RuntimeCall: From<Call<Self>>
             + From<bridge_multisig::Call<Self>>
             + Codec
             + Clone
@@ -387,7 +388,11 @@ pub mod pallet {
         type RemovePeerAccountIds: Get<Vec<(Self::AccountId, H160)>>;
 
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
-        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
+        type Scheduler: Anon<
+            Self::BlockNumber,
+            <Self as Config>::RuntimeCall,
+            Self::SchedulerOriginCaller,
+        >;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
     }
@@ -404,7 +409,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         /// Main off-chain worker procedure.
         ///

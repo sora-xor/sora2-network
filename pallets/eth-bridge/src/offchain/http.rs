@@ -280,7 +280,7 @@ impl<T: Config> Pallet<T> {
     /// `chain_getHeader` RPC calls.
     pub fn load_substrate_finalized_header() -> Result<SubstrateHeaderLimited, Error<T>>
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         let hash =
             Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?;
@@ -295,7 +295,7 @@ impl<T: Config> Pallet<T> {
     /// `chain_getBlock` RPC calls.
     pub fn load_substrate_block(number: T::BlockNumber) -> Result<SubstrateBlockLimited, Error<T>>
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         let int: u32 = number
             .try_into()

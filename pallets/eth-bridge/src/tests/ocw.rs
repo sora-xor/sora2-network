@@ -25,7 +25,7 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
@@ -48,7 +48,7 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
@@ -89,7 +89,7 @@ fn ocw_should_remove_pending_transaction_on_max_retries() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
@@ -135,7 +135,7 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
@@ -198,7 +198,7 @@ fn ocw_should_abort_missing_transaction() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::request_from_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             tx_hash,
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
@@ -226,7 +226,7 @@ fn should_reapprove_on_long_pending() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             10,

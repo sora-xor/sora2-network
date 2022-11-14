@@ -40,7 +40,7 @@ fn should_cancel_ready_outgoing_request() {
             100u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -100,7 +100,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             100u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -170,7 +170,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
             100u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),

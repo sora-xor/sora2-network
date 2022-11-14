@@ -37,39 +37,25 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn transfer_to_sidechain() -> Weight {
-        (1_244_777_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(14 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        Weight::zero()
     }
     fn request_from_sidechain() -> Weight {
-        (310_784_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+        Weight::zero()
     }
     fn register_incoming_request() -> Weight {
-        (720_660_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        Weight::zero()
     }
     fn finalize_incoming_request() -> Weight {
-        (1_187_607_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn approve_request() -> Weight {
-        (19_640_054_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(8 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn approve_request_finalize() -> Weight {
-        (20_243_062_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(13 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn abort_request() -> Weight {
-        (776_940_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(8 as Weight))
-            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+        Weight::zero()
     }
     fn register_bridge() -> Weight {
         Default::default()
@@ -114,7 +100,7 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn transfer_to_sidechain() -> Weight {
-        10 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(10)
     }
     fn request_from_sidechain() -> Weight {
         EXTRINSIC_FIXED_WEIGHT

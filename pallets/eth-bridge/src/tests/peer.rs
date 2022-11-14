@@ -36,7 +36,7 @@ fn should_add_peer_in_eth_network() {
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -152,7 +152,7 @@ fn should_add_peer_in_simple_networks() {
         let new_peer_address = eth::public_key_to_eth_address(&public);
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -217,7 +217,7 @@ fn should_remove_peer_in_simple_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -281,7 +281,7 @@ fn should_remove_peer_in_eth_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -387,12 +387,17 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
         assert_err!(
-            EthBridge::remove_peer(Origin::signed(bob.clone()), peer_id.clone(), None, net_id),
+            EthBridge::remove_peer(
+                RuntimeOrigin::signed(bob.clone()),
+                peer_id.clone(),
+                None,
+                net_id
+            ),
             Error::Forbidden
         );
         assert_err!(
             EthBridge::add_peer(
-                Origin::signed(bob.clone()),
+                RuntimeOrigin::signed(bob.clone()),
                 peer_id.clone(),
                 EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
@@ -414,7 +419,7 @@ fn should_not_allow_changing_peers_simultaneously() {
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&seed[..]).unwrap());
         let address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -423,7 +428,7 @@ fn should_not_allow_changing_peers_simultaneously() {
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_err!(
             EthBridge::remove_peer(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 peer_id.clone(),
                 Some(H160::repeat_byte(12)),
                 net_id
@@ -431,7 +436,7 @@ fn should_not_allow_changing_peers_simultaneously() {
             Error::UnknownPeerId
         );
         assert_err!(
-            EthBridge::add_peer(Origin::root(), peer_id.clone(), address, net_id,),
+            EthBridge::add_peer(RuntimeOrigin::root(), peer_id.clone(), address, net_id,),
             Error::TooManyPendingPeers
         );
     });
@@ -451,7 +456,7 @@ fn should_parse_add_peer_on_old_contract() {
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -507,9 +512,9 @@ fn should_parse_remove_peer_on_old_contract() {
         let new_peer_address = eth::public_key_to_eth_address(&public);
         let tx_hash = H256([1; 32]);
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
-        assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
+        assert_ok!(EthBridge::force_add_peer(RuntimeOrigin::root(), new_peer_id.clone(), new_peer_address, net_id));
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             None,
             net_id,
