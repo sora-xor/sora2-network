@@ -24,6 +24,7 @@ pub type Migrations = (
     ElectionsPhragmenV5Migration,
     StakingV9Migration,
     // vested_rewards::migrations::ResetClaimingForCrowdloadErrors<Runtime>,
+    EthBridgeMigration,
 );
 
 impl_opaque_keys! {
@@ -58,6 +59,16 @@ impl OnRuntimeUpgrade for SessionKeysMigration {
             beefy: dummy_beefy_id_from_account_id(id),
         });
         BlockWeights::get().max_block
+    }
+}
+
+pub struct EthBridgeMigration;
+
+impl OnRuntimeUpgrade for EthBridgeMigration {
+    fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration EthBridgeMigration");
+        eth_bridge::migration::migrate::<Runtime>();
+        <Runtime as frame_system::Config>::BlockWeights::get().max_block
     }
 }
 
