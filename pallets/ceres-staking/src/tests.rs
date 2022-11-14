@@ -11,7 +11,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresStaking::deposit(Origin::signed(ALICE), balance!(7201)),
+                CeresStaking::deposit(RuntimeOrigin::signed(ALICE), balance!(7201)),
                 Error::<Runtime>::StakingPoolIsFull
             );
         });
@@ -22,7 +22,10 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 500 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(ALICE),
+                balance!(500)
+            ));
 
             // Get staking pool account id
             let staking_pool = PalletId(*b"cerstake").into_account_truncating();
@@ -46,7 +49,10 @@ mod tests {
             assert_eq!(staking_info.deposited, balance!(500));
 
             // Deposit 250 more from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(250)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(ALICE),
+                balance!(250)
+            ));
             // Check Alice's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &ALICE)
@@ -66,7 +72,10 @@ mod tests {
             assert_eq!(staking_info.deposited, balance!(750));
 
             // Deposit 50 from BOB's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(BOB),
+                balance!(50)
+            ));
             // Check Bob's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &BOB).expect("Failed to query free balance."),
@@ -94,9 +103,15 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 1200 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(1200)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(ALICE),
+                balance!(1200)
+            ));
             // Deposit 50 from Bob's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(BOB),
+                balance!(50)
+            ));
 
             // Add rewards to Alice
             let mut staking_info = pallet::Stakers::<Runtime>::get(&ALICE);
@@ -104,7 +119,7 @@ mod tests {
             pallet::Stakers::<Runtime>::insert(&ALICE, staking_info);
 
             // Withdraw Alice's stake
-            assert_ok!(CeresStaking::withdraw(Origin::signed(ALICE)));
+            assert_ok!(CeresStaking::withdraw(RuntimeOrigin::signed(ALICE)));
             // Check Alice's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &ALICE)
@@ -132,8 +147,14 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 500 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
-            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(ALICE),
+                balance!(500)
+            ));
+            assert_ok!(CeresStaking::deposit(
+                RuntimeOrigin::signed(BOB),
+                balance!(50)
+            ));
             run_to_block(14_440);
             let diff = FixedWrapper::from(0.0001);
             // Check remaining rewards
@@ -157,7 +178,7 @@ mod tests {
                 true
             );
             // Withdraw Alice's stake
-            assert_ok!(CeresStaking::withdraw(Origin::signed(ALICE)));
+            assert_ok!(CeresStaking::withdraw(RuntimeOrigin::signed(ALICE)));
             // Check Alice's balance after withdrawal
             let alice_balance = Assets::free_balance(&CERES_ASSET_ID, &ALICE)
                 .expect("Failed to query free balance.");
@@ -173,7 +194,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresStaking::change_rewards_remaining(Origin::signed(ALICE), balance!(100)),
+                CeresStaking::change_rewards_remaining(RuntimeOrigin::signed(ALICE), balance!(100)),
                 Error::<Runtime>::Unauthorized
             );
         });
@@ -184,7 +205,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(CeresStaking::change_rewards_remaining(
-                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                 balance!(100)
             ));
 
