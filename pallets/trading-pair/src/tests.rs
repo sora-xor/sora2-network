@@ -40,7 +40,7 @@ fn should_register_trading_pair() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_ok!(TradingPairPallet::register(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             DEX_ID,
             XOR,
             DOT
@@ -53,13 +53,13 @@ fn should_not_register_duplicate_trading_pair() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_ok!(TradingPairPallet::register(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             DEX_ID,
             XOR,
             DOT
         ));
         common::assert_noop_transactional!(
-            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT),
             Error::<Runtime>::TradingPairExists
         );
     });
@@ -70,7 +70,7 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         common::assert_noop_transactional!(
-            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, DOT, XOR),
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, DOT, XOR),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
     });
@@ -81,7 +81,7 @@ fn should_not_register_trading_pair_with_same_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         common::assert_noop_transactional!(
-            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, XOR),
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, XOR),
             Error::<Runtime>::IdenticalAssetIds
         );
     });
@@ -112,7 +112,7 @@ fn should_list_registered_pairs() {
             Error::<Runtime>::TradingPairDoesntExist
         );
 
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
         assert_eq!(
             TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
@@ -137,7 +137,7 @@ fn should_list_registered_pairs() {
             Error::<Runtime>::TradingPairDoesntExist
         );
 
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, KSM)
             .expect("Failed to register pair.");
         assert_eq!(
             TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
@@ -173,9 +173,9 @@ fn should_list_registered_pairs() {
 fn should_enable_sources_for_pair_correctly() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, KSM)
             .expect("Failed to register pair.");
         // check initial states after trading pair registration
         assert_eq!(
@@ -284,7 +284,7 @@ fn should_enable_sources_for_pair_correctly() {
 fn duplicate_enabled_source_should_not_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
         assert_ok!(TradingPairPallet::enable_source_for_trading_pair(
             &DEX_ID,
@@ -305,7 +305,7 @@ fn duplicate_enabled_source_should_not_fail() {
 fn should_not_enable_source_for_unregistered_pair() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
         common::assert_noop_transactional!(
             TradingPairPallet::enable_source_for_trading_pair(
@@ -324,7 +324,7 @@ fn should_fail_with_nonexistent_dex() {
     let mut ext = ExtBuilder::without_initialized_dex().build();
     ext.execute_with(|| {
         common::assert_noop_transactional!(
-            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
+            TradingPairPallet::register(RuntimeOrigin::signed(ALICE), DEX_ID, XOR, DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         common::assert_noop_transactional!(
