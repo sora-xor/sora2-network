@@ -34,7 +34,8 @@ beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-comm
 
 bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
-bridge-channel = { path = "../pallets/trustless-eth-bridge/channel", default-features = false }
+bridge-inbound-channel = { path = "../pallets/trustless-eth-bridge/channel/inbound", default-features = false }
+bridge-outbound-channel = { path = "../pallets/trustless-eth-bridge/channel/outbound", default-features = false }
 dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
@@ -180,7 +181,8 @@ std = [
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
     "ethereum-light-client/std",
-    "bridge-channel/std",
+    "bridge-inbound-channel/std",
+    "bridge-outbound-channel/std",
     "dispatch/std",
     "eth-app/std",
     "migration-app/std",
@@ -274,7 +276,8 @@ runtime-benchmarks = [
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "ethereum-light-client/runtime-benchmarks",
-    "bridge-channel/runtime-benchmarks",
+    "bridge-inbound-channel/runtime-benchmarks",
+    "bridge-outbound-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
     "eth-app/runtime-benchmarks",
     "migration-app/runtime-benchmarks",

@@ -9,6 +9,8 @@ pub(crate) struct Command {
     #[clap(flatten)]
     sub: SubstrateClient,
     #[clap(flatten)]
+    para: ParachainClient,
+    #[clap(flatten)]
     eth: EthereumClient,
     #[clap(subcommand)]
     asset_kind: AssetKind,

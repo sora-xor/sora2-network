@@ -30,10 +30,10 @@ erc20-app = { path = "../erc20-app", default-features = false }
 common = { path = "../../../common", features = ["test"] }
 technical = { path = "../../technical" }
 
-bridge-channel = { path = "../channel" }
 dispatch = { path = "../dispatch" }
 eth-app = { path = "../eth-app" }
 erc20-app = { path = "../erc20-app" }
+bridge-outbound-channel = { path = "../channel/outbound", default-features = false }
 
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }

@@ -12,4 +12,8 @@ pub enum CliError {
     SubstrateEndpoint,
     #[error("Provide substrate key via --substrate-key or --substrate-key-file")]
     SubstrateKey,
+    #[error("Provide parachain endpoint via --parachain-url")]
+    ParachainEndpoint,
+    #[error("Provide parachain key via --parachain-key or --parachain-key-file")]
+    ParachainKey,
 }

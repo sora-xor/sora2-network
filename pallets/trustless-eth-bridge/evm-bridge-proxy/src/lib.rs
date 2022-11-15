@@ -12,7 +12,7 @@ mod benchmarking;
 use bridge_types::{traits::MessageStatusNotifier, types::MessageStatus, EthNetworkId, H160, H256};
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
-use frame_support::{dispatch::Weight, RuntimeDebug};
+use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
 use scale_info::TypeInfo;
 use sp_std::prelude::*;
 
@@ -25,8 +25,6 @@ impl WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
-
-pub use pallet::*;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -50,6 +48,8 @@ pub enum BridgeRequest<T: frame_system::Config + assets::Config + pallet_timesta
         end_timestamp: Option<u64>,
     },
 }
+
+pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -78,13 +78,12 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn transactions)]
-    pub(super) type Transactions<T: Config> = StorageNMap<
+    pub(super) type Transactions<T: Config> = StorageDoubleMap<
         _,
-        (
-            NMapKey<Twox64Concat, EthNetworkId>,
-            NMapKey<Blake2_128Concat, AccountIdOf<T>>,
-            NMapKey<Blake2_128Concat, H256>,
-        ),
+        Blake2_128Concat,
+        AccountIdOf<T>,
+        Blake2_128Concat,
+        (EthNetworkId, H256),
         BridgeRequest<T>,
         OptionQuery,
     >;
@@ -118,6 +117,7 @@ pub mod pallet {
     /// Events for the ETH module.
     pub enum Event {
         RequestStatusUpdate(H256, MessageStatus),
+        RefundFailed(H256),
     }
 
     #[pallet::error]
@@ -142,6 +142,7 @@ pub mod pallet {
             Ok(())
         }
     }
+
     impl<T: Config> Pallet<T> {
         pub fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo> {
             let mut res = vec![];
@@ -156,37 +157,76 @@ pub mod pallet {
             res.extend(T::ERC20App::list_supported_assets(network_id));
             res
         }
+
+        pub fn refund(
+            network_id: EthNetworkId,
+            message_id: H256,
+            beneficiary: T::AccountId,
+            asset_id: T::AssetId,
+            amount: Balance,
+        ) -> DispatchResult {
+            if T::EthApp::is_asset_supported(network_id, asset_id) {
+                T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)
+            } else {
+                T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)
+            }
+        }
     }
 }
 
 impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
     fn update_status(
         network_id: EthNetworkId,
-        id: H256,
-        new_status: MessageStatus,
+        message_id: H256,
+        mut new_status: MessageStatus,
         new_end_timestamp: Option<u64>,
     ) {
-        let sender = match Senders::<T>::get(network_id, id) {
+        let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
             None => return,
         };
-        Transactions::<T>::mutate((network_id, sender, id), |req| {
+        Transactions::<T>::mutate(sender, (network_id, message_id), |req| {
             if let Some(req) = req {
-                Self::deposit_event(Event::RequestStatusUpdate(id, new_status));
+                Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
                 match req {
-                    BridgeRequest::IncomingTransfer { status, .. }
-                    | BridgeRequest::OutgoingTransfer { status, .. } => *status = new_status,
-                }
-                match req {
-                    BridgeRequest::OutgoingTransfer { end_timestamp, .. } => {
+                    BridgeRequest::IncomingTransfer { status, .. } => *status = new_status,
+                    BridgeRequest::OutgoingTransfer {
+                        source,
+                        asset_id,
+                        amount,
+                        status,
+                        end_timestamp,
+                        ..
+                    } => {
+                        if new_status == MessageStatus::Failed {
+                            match Pallet::<T>::refund(
+                                network_id,
+                                message_id,
+                                (*source).clone(),
+                                *asset_id,
+                                *amount,
+                            ) {
+                                Ok(_) => {
+                                    new_status = MessageStatus::Refunded;
+                                    Self::deposit_event(Event::RequestStatusUpdate(
+                                        message_id, new_status,
+                                    ));
+                                }
+                                Err(_) => {
+                                    Self::deposit_event(Event::RefundFailed(message_id));
+                                }
+                            }
+                        }
+
+                        *status = new_status;
+
                         if let Some(timestamp) = new_end_timestamp {
                             *end_timestamp = Some(timestamp);
                         }
                     }
-                    _ => {}
                 }
             }
-        });
+        })
     }
 
     fn inbound_request(
@@ -202,7 +242,8 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
         Senders::<T>::insert(&network_id, &message_id, &dest);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &dest, &message_id),
+            &dest,
+            (&network_id, &message_id),
             BridgeRequest::IncomingTransfer {
                 source,
                 dest: dest.clone(),
@@ -230,7 +271,8 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId> for Pallet<T> {
         Senders::<T>::insert(&network_id, &message_id, &source);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &source, &message_id),
+            &source,
+            (&network_id, &message_id),
             BridgeRequest::OutgoingTransfer {
                 source: source.clone(),
                 dest,

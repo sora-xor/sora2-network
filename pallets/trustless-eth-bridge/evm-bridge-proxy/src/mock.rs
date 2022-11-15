@@ -71,7 +71,7 @@ frame_support::construct_runtime!(
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
         EthApp: eth_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         ERC20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         EvmBridgeProxy: proxy::{Pallet, Call, Storage, Event},
@@ -223,7 +223,7 @@ parameter_types! {
     pub const MaxTotalGasLimit: u64 = 5_000_000;
 }
 
-impl bridge_channel::outbound::Config for Test {
+impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
