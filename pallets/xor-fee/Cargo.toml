@@ -19,7 +19,9 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, features = [
+    "historical",
+] }
 pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
@@ -82,6 +84,7 @@ std = [
     "assets/std",
     "common/std",
     "liquidity-proxy/std",
+    "pswap-distribution/std",
 
     "eth-bridge/std",
     "referrals/std",
