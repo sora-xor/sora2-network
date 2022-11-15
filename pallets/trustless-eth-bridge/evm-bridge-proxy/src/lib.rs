@@ -17,6 +17,7 @@ use bridge_types::{
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
+use frame_support::log;
 use scale_info::TypeInfo;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
@@ -33,10 +34,10 @@ impl WeightInfo for () {
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct BridgeRequest<T: frame_system::Config + assets::Config + pallet_timestamp::Config> {
-    source: GenericAccount<T::AccountId>,
-    dest: GenericAccount<T::AccountId>,
-    asset_id: T::AssetId,
+pub struct BridgeRequest<AccountId, AssetId> {
+    source: GenericAccount<AccountId>,
+    dest: GenericAccount<AccountId>,
+    asset_id: AssetId,
     amount: Balance,
     status: MessageStatus,
     start_timestamp: u64,
@@ -73,14 +74,13 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn transactions)]
-    pub(super) type Transactions<T: Config> = StorageNMap<
+    pub(super) type Transactions<T: Config> = StorageDoubleMap<
         _,
-        (
-            NMapKey<Twox64Concat, GenericNetworkId>,
-            NMapKey<Blake2_128Concat, GenericAccount<T::AccountId>>,
-            NMapKey<Blake2_128Concat, H256>,
-        ),
-        BridgeRequest<T>,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        (GenericNetworkId, H256),
+        BridgeRequest<T::AccountId, T::AssetId>,
         OptionQuery,
     >;
 
@@ -92,7 +92,7 @@ pub mod pallet {
         GenericNetworkId,
         Blake2_128Concat,
         H256,
-        GenericAccount<T::AccountId>,
+        T::AccountId,
         OptionQuery,
     >;
 
@@ -119,6 +119,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         PathIsNotAvailable,
+        WrongAccountKind,
     }
 
     #[pallet::call]
@@ -136,7 +137,7 @@ pub mod pallet {
                 GenericNetworkId::EVM(network_id) => {
                     let recipient = match recipient {
                         GenericAccount::EVM(address) => address,
-                        _ => return Err(Error::<T>::PathIsNotAvailable.into()),
+                        _ => return Err(Error::<T>::WrongAccountKind.into()),
                     };
                     if T::EthApp::is_asset_supported(network_id, asset_id) {
                         T::EthApp::transfer(network_id, asset_id, sender, recipient, amount)?;
@@ -172,12 +173,16 @@ pub mod pallet {
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResult {
+            let beneficiary = match beneficiary {
+                GenericAccount::Sora(account) => account,
+                _ => return Err(Error::<T>::WrongAccountKind.into()),
+            };
             match network_id {
                 GenericNetworkId::EVM(chain_id) => {
-                    if T::EthApp::is_asset_supported(network_id, asset_id) {
-                        T::EthApp::refund(network_id, message_id, beneficiary, asset_id, amount)
+                    if T::EthApp::is_asset_supported(chain_id, asset_id) {
+                        T::EthApp::refund(chain_id, message_id, beneficiary, asset_id, amount)
                     } else {
-                        T::ERC20App::refund(network_id, message_id, beneficiary, asset_id, amount)
+                        T::ERC20App::refund(chain_id, message_id, beneficiary, asset_id, amount)
                     }
                 }
                 GenericNetworkId::Sub(_) => todo!(),
@@ -189,13 +194,20 @@ pub mod pallet {
 impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pallet<T> {
     fn update_status(
         network_id: GenericNetworkId,
-        id: H256,
-        new_status: MessageStatus,
+        message_id: H256,
+        mut new_status: MessageStatus,
         new_end_timestamp: Option<u64>,
     ) {
         let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
-            None => return,
+            None => {
+                log::warn!(
+                    "Message status update called for unknown message: {:?} {:?}",
+                    network_id,
+                    message_id
+                );
+                return;
+            }
         };
         Transactions::<T>::mutate(sender, (network_id, message_id), |req| {
             if let Some(req) = req {
@@ -204,25 +216,26 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
                 {
                     match Pallet::<T>::refund(
                         network_id,
-                        req.message_id,
-                        (*source).clone(),
-                        *asset_id,
-                        *amount,
+                        message_id,
+                        req.source.clone(),
+                        req.asset_id,
+                        req.amount,
                     ) {
                         Ok(_) => {
                             new_status = MessageStatus::Refunded;
-                            Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
                         }
                         Err(_) => {
                             Self::deposit_event(Event::RefundFailed(message_id));
                         }
                     }
                 }
-                *status = new_status;
+                req.status = new_status;
 
                 if let Some(timestamp) = new_end_timestamp {
-                    *end_timestamp = Some(timestamp);
+                    req.end_timestamp = Some(timestamp);
                 }
+
+                Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
             }
         })
     }
@@ -231,7 +244,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         network_id: GenericNetworkId,
         message_id: H256,
         source: GenericAccount<T::AccountId>,
-        dest: GenericAccount<T::AccountId>,
+        dest: T::AccountId,
         asset_id: T::AssetId,
         amount: Balance,
         start_timestamp: u64,
@@ -240,10 +253,11 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         Senders::<T>::insert(&network_id, &message_id, &dest);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &dest, &message_id),
+            &dest,
+            (&network_id, &message_id),
             BridgeRequest {
                 source,
-                dest: dest.clone(),
+                dest: GenericAccount::Sora(dest.clone()),
                 asset_id,
                 amount,
                 status: MessageStatus::Done,
@@ -257,7 +271,7 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
     fn outbound_request(
         network_id: GenericNetworkId,
         message_id: H256,
-        source: GenericAccount<T::AccountId>,
+        source: T::AccountId,
         dest: GenericAccount<T::AccountId>,
         asset_id: T::AssetId,
         amount: Balance,
@@ -269,9 +283,10 @@ impl<T: Config> MessageStatusNotifier<T::AssetId, T::AccountId, Balance> for Pal
         Senders::<T>::insert(&network_id, &message_id, &source);
         let timestamp = pallet_timestamp::Pallet::<T>::now();
         Transactions::<T>::insert(
-            (&network_id, &source, &message_id),
+            &source,
+            (&network_id, &message_id),
             BridgeRequest {
-                source: source.clone(),
+                source: GenericAccount::Sora(source.clone()),
                 dest,
                 asset_id,
                 amount,

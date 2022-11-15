@@ -30,11 +30,17 @@
 
 use core::marker::PhantomData;
 
-use frame_support::traits::{Currency, OnUnbalanced};
+use bridge_types::traits::BridgeAssetRegistry;
+use codec::{Decode, Encode};
+use frame_support::dispatch::Dispatchable;
+use frame_support::traits::{Contains, Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
-use frame_support::weights::{DispatchClass, Weight};
+use frame_support::weights::{DispatchClass, DispatchInfo, PostDispatchInfo, Weight};
+use frame_support::RuntimeDebug;
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
+use scale_info::TypeInfo;
+use sp_runtime::DispatchError;
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
@@ -203,6 +209,64 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
     /// This implementation allows us to handle the funds that were burned in democracy pallet.
     /// Democracy pallet already did `slash_reserved` for them.
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct DispatchableSubstrateBridgeCall(
+    bridge_types::substrate::SubstrateBridgeMessage<
+        crate::AccountId,
+        crate::AssetId,
+        crate::Balance,
+    >,
+);
+
+impl Dispatchable for DispatchableSubstrateBridgeCall {
+    type Origin = crate::Origin;
+    type Config = crate::Runtime;
+    type Info = DispatchInfo;
+    type PostInfo = PostDispatchInfo;
+
+    fn dispatch(self, origin: Self::Origin) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+        match self.0 {
+            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
+                let call: crate::Call = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {
+                unimplemented!()
+            }
+        }
+    }
+}
+
+pub struct BridgeAssetRegistryImpl;
+
+impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = crate::AssetName;
+    type AssetSymbol = crate::AssetSymbol;
+    type Decimals = u8;
+
+    fn register_asset(
+        owner: crate::AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+        decimals: Self::Decimals,
+    ) -> Result<crate::AssetId, DispatchError> {
+        let asset_id =
+            crate::Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+}
+
+pub struct SubstrateBridgeCallFilter;
+impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
+    fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
+        match &call.0 {
+            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(_) => true,
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => false,
+        }
+    }
 }
 
 #[cfg(test)]

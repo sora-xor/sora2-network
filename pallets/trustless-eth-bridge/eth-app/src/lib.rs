@@ -75,7 +75,7 @@ pub mod pallet {
     use bridge_types::traits::{BridgeApp, MessageStatusNotifier};
     use bridge_types::types::{
         AdditionalEVMInboundData, AdditionalEVMOutboundData, AppKind, BridgeAppInfo,
-        BridgeAssetInfo, CallOriginOutput, MessageStatus,
+        BridgeAssetInfo, CallOriginOutput,
     };
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use common::{AssetName, AssetSymbol, Balance};
@@ -207,7 +207,7 @@ pub mod pallet {
                 GenericNetworkId::EVM(network_id),
                 message_id,
                 GenericAccount::EVM(sender),
-                GenericAccount::Sora(recipient.clone()),
+                recipient.clone(),
                 asset_id,
                 amount,
                 timestamp,
@@ -328,7 +328,7 @@ pub mod pallet {
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::EVM(network_id),
                 message_id,
-                GenericAccount::Sora(who.clone()),
+                who.clone(),
                 GenericAccount::EVM(recipient),
                 asset_id,
                 amount,
@@ -340,7 +340,6 @@ pub mod pallet {
 
         pub fn refund_inner(
             network_id: EVMChainId,
-            message_id: H256,
             recipient: T::AccountId,
             asset_id: T::AssetId,
             amount: BalanceOf<T>,
@@ -353,12 +352,6 @@ pub mod pallet {
 
             T::Currency::deposit(asset_id, &recipient, amount)?;
 
-            T::MessageStatusNotifier::update_status(
-                GenericNetworkId::EVM(network_id),
-                message_id,
-                MessageStatus::Refunded,
-                None,
-            );
             Self::deposit_event(Event::Refunded(network_id, recipient, amount));
 
             Ok(())
@@ -411,12 +404,12 @@ pub mod pallet {
 
         fn refund(
             network_id: EVMChainId,
-            message_id: H256,
+            _message_id: H256,
             recipient: T::AccountId,
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
-            Pallet::<T>::refund_inner(network_id, message_id, recipient, asset_id, amount)
+            Pallet::<T>::refund_inner(network_id, recipient, asset_id, amount)
         }
 
         fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<T::AssetId>> {

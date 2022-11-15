@@ -75,11 +75,10 @@ fn burn_successfull() {
         .unwrap();
         let message_id = BridgeOutboundChannel::make_message_id(1);
         assert_eq!(
-            Transactions::<Test>::get((
-                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
-                &GenericAccount::Sora(caller.clone()),
-                message_id
-            )),
+            Transactions::<Test>::get(
+                &caller,
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+            ),
             Some(BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
                 dest: GenericAccount::EVM(H160::default()),
@@ -97,11 +96,10 @@ fn burn_successfull() {
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
         assert_eq!(
-            Transactions::<Test>::get((
-                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
-                &GenericAccount::Sora(caller.clone()),
-                message_id
-            )),
+            Transactions::<Test>::get(
+                &caller,
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+            ),
             Some(BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
                 dest: GenericAccount::EVM(H160::default()),
@@ -157,11 +155,10 @@ fn mint_successfull() {
         let message_id =
             MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
-            Transactions::<Test>::get((
-                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
-                &GenericAccount::Sora(recipient.clone()),
-                message_id
-            )),
+            Transactions::<Test>::get(
+                &recipient,
+                (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), message_id)
+            ),
             Some(BridgeRequest {
                 source: GenericAccount::EVM(H160::default()),
                 dest: GenericAccount::Sora(recipient.clone()),

@@ -48,7 +48,8 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use bridge_types::traits::{BridgeAssetRegistry, Verifier};
+use crate::impls::{BridgeAssetRegistryImpl, SubstrateBridgeCallFilter};
+use bridge_types::traits::Verifier;
 use bridge_types::types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
@@ -136,7 +137,8 @@ pub use vested_rewards::CrowdloanReward;
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{
-    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+    CollectiveWeightInfo, DemocracyWeightInfo, DispatchableSubstrateBridgeCall,
+    NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
 use frame_support::traits::{
@@ -2011,8 +2013,8 @@ impl dispatch::Config<Instance2> for Runtime {
     type Origin = Origin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
-    type Call = Call;
-    type CallFilter = CallFilter;
+    type Call = DispatchableSubstrateBridgeCall;
+    type CallFilter = SubstrateBridgeCallFilter;
 }
 
 pub struct MockVerifier;
@@ -2051,24 +2053,6 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type Currency = Currencies;
     type WeightInfo = ();
-}
-
-pub struct BridgeAssetRegistryImpl;
-
-impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
-    type AssetName = AssetName;
-    type AssetSymbol = AssetSymbol;
-    type Decimals = u8;
-
-    fn register_asset(
-        owner: AccountId,
-        name: Self::AssetName,
-        symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
-    ) -> Result<AssetId, DispatchError> {
-        let asset_id = Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
-        Ok(asset_id)
-    }
 }
 
 impl substrate_bridge_app::Config for Runtime {
@@ -2164,8 +2148,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config, ValidateUnsigned} = 93,
-        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
@@ -2256,8 +2240,8 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BridgeInboundChannel: bridge_channel_inbound::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,

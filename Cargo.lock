@@ -593,7 +593,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#77a725a95013044e56ba41c78dc0a89deb9ba66e"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#8877f1d680bd38d001ac8ea8c26b0a650fe1ea7d"
 dependencies = [
  "bridge-common",
  "ethabi 13.0.0",
@@ -612,7 +612,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#77a725a95013044e56ba41c78dc0a89deb9ba66e"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#8877f1d680bd38d001ac8ea8c26b0a650fe1ea7d"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -629,7 +629,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#77a725a95013044e56ba41c78dc0a89deb9ba66e"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#8877f1d680bd38d001ac8ea8c26b0a650fe1ea7d"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -892,7 +892,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#77a725a95013044e56ba41c78dc0a89deb9ba66e"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#8877f1d680bd38d001ac8ea8c26b0a650fe1ea7d"
 dependencies = [
  "bitvec 1.0.1",
  "ethabi 13.0.0",
@@ -972,7 +972,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#5a4675143af15348589d7e0e70284007baf1db31"
 dependencies = [
  "beefy-primitives",
  "enum-iterator",
@@ -1377,9 +1377,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.22"
+version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd4d1b31faaa3a89d7934dbded3111da0d2ef28e3ebccdb4f0179f5929d1ef1"
+checksum = "16b0a3d9ed01224b22057780a37bb8c5dbfe1be8ba48678e7bf57ec4b385411f"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -2458,7 +2458,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#5a4675143af15348589d7e0e70284007baf1db31"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -4911,14 +4911,14 @@ checksum = "aa2f047c0a98b2f299aa5d6d7088443570faae494e9ae1305e48be000c9e0eb1"
 
 [[package]]
 name = "ipconfig"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "723519edce41262b05d4143ceb95050e4c614f483e78e9fd9e39a8275a84ad98"
+checksum = "bd302af1b90f2463a98fa5ad469fc212c8e3175a41c3068601bfa2727591c5be"
 dependencies = [
  "socket2",
  "widestring",
  "winapi",
- "winreg 0.7.0",
+ "winreg",
 ]
 
 [[package]]
@@ -5319,9 +5319,12 @@ dependencies = [
 
 [[package]]
 name = "keccak"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9b7d56ba4a8344d6be9729995e6b06f928af29998cdf79fe390cbf6b1fee838"
+checksum = "3afef3b6eff9ce9d8ff9b3601125eec7f0c8cbac7abd14f355d053fa56c98768"
+dependencies = [
+ "cpufeatures",
+]
 
 [[package]]
 name = "keccak-hash"
@@ -8230,9 +8233,9 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "predicates"
-version = "2.1.2"
+version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab68289ded120dcbf9d571afcf70163233229052aec9b08ab09532f698d0e1e6"
+checksum = "ed6bd09a7f7e68f3f0bf710fb7ab9c4615a488b58b5f653382a687701e458c92"
 dependencies = [
  "difflib",
  "itertools",
@@ -8241,15 +8244,15 @@ dependencies = [
 
 [[package]]
 name = "predicates-core"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6e7125585d872860e9955ca571650b27a4979c5823084168c5ed5bbfb016b56"
+checksum = "72f883590242d3c6fc5bf50299011695fa6590c2c70eac95ee1bdb9a733ad1a2"
 
 [[package]]
 name = "predicates-tree"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad3f7fa8d61e139cbc7c3edfebf3b6678883a53f5ffac65d1259329a93ee43a5"
+checksum = "54ff541861505aabf6ea722d2131ee980b8276e10a1297b94e896dd8b621850d"
 dependencies = [
  "predicates-core",
  "termtree",
@@ -9095,7 +9098,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "webpki-roots",
- "winreg 0.10.1",
+ "winreg",
 ]
 
 [[package]]
@@ -11756,7 +11759,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#5a4675143af15348589d7e0e70284007baf1db31"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -11779,7 +11782,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#89aa4a290b8c8f1fd6e19ea82072e749594c231c"
+source = "git+https://github.com/sora-xor/sora2-common?branch=generalize-pallets#5a4675143af15348589d7e0e70284007baf1db31"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -13458,15 +13461,6 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
-
-[[package]]
-name = "winreg"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0120db82e8a1e0b9fb3345a539c478767c0048d842860994d96113d5b667bd69"
-dependencies = [
- "winapi",
-]
 
 [[package]]
 name = "winreg"
