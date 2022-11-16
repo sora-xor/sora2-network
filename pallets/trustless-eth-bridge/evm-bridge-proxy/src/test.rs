@@ -29,22 +29,22 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::{
-    new_tester, AccountId, BridgeOutboundChannel, Call, Currencies, Dispatch, ERC20App, Event,
-    EvmBridgeProxy, System, Test, BASE_NETWORK_ID,
+    new_tester, AccountId, BridgeOutboundChannel, Currencies, Dispatch, ERC20App, EvmBridgeProxy,
+    RuntimeCall, RuntimeEvent, System, Test, BASE_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
+use bridge_types::H160;
 use codec::Encode;
 use common::{assert_noop_transactional, balance, DAI, XOR};
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
-use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::Hash;
 
 use bridge_types::types::{AssetKind, MessageId, MessageStatus};
 
-fn assert_event(event: Event) {
+fn assert_event(event: RuntimeEvent) {
     System::events()
         .iter()
         .find(|e| e.event == event)
@@ -133,7 +133,7 @@ fn mint_successfull() {
             source,
             MessageId::inbound(0),
             0,
-            &Call::ERC20App(erc20_app::Call::mint {
+            &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
                 recipient: recipient.clone(),
@@ -170,7 +170,7 @@ fn mint_failed() {
             source,
             MessageId::inbound(0),
             0,
-            &Call::ERC20App(erc20_app::Call::mint {
+            &RuntimeCall::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
                 recipient: recipient.clone(),

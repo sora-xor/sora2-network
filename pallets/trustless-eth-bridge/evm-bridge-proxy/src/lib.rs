@@ -9,11 +9,12 @@ mod test;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use bridge_types::{traits::MessageStatusNotifier, types::MessageStatus, EthNetworkId, H160, H256};
+use bridge_types::{traits::MessageStatusNotifier, types::MessageStatus, EthNetworkId, H160};
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
 use scale_info::TypeInfo;
+use sp_core::H256;
 use sp_std::prelude::*;
 
 pub trait WeightInfo {
@@ -67,7 +68,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
-        type Event: From<Event> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type EthApp: EvmBridgeApp<Self::AccountId, Self::AssetId, Balance>;
 
