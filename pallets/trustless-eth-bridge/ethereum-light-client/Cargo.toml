@@ -17,7 +17,7 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
 hex-literal = { version = "0.3.1", optional = true }
-rlp = { version = "0.5", default-features = false }
+rlp = { version = "0.5.2", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
@@ -29,7 +29,7 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 
 bridge-types = { path = "../types", default-features = false }
 
-ethash = { git = "https://github.com/sora-xor/ethash", branch = "sora-v1.6.0", default-features = false }
+ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
 
 common = { path = "../../../common", default-features = false }
 

@@ -11,21 +11,21 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn import_header() -> Weight {
-        0
+        Weight::zero()
     }
     fn import_header_not_new_finalized_with_max_prune() -> Weight {
-        0
+        Weight::zero()
     }
     fn import_header_new_finalized_with_single_prune() -> Weight {
-        0
+        Weight::zero()
     }
     fn import_header_not_new_finalized_with_single_prune() -> Weight {
-        0
+        Weight::zero()
     }
     fn register_network() -> Weight {
-        0
+        Weight::zero()
     }
     fn update_difficulty_config() -> Weight {
-        0
+        Weight::zero()
     }
 }

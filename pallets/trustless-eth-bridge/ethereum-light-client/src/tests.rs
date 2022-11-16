@@ -15,7 +15,7 @@ use sp_core::Pair;
 
 use crate::mock::{mock_verifier, mock_verifier_with_pow};
 
-use crate::mock::mock_verifier::{Origin, Test, Verifier};
+use crate::mock::mock_verifier::{RuntimeOrigin, Test, Verifier};
 
 use crate::{
     BestBlock, Call, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers,
@@ -46,7 +46,7 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
 
         let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             child1.clone(),
             Default::default(),
@@ -55,7 +55,7 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             child2.clone(),
             Default::default(),
@@ -84,7 +84,7 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
 
         let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             child1.clone(),
             Default::default(),
@@ -93,7 +93,7 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             child2.clone(),
             Default::default(),
@@ -139,7 +139,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         let ferdie = Keyring::Ferdie;
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 header.clone(),
                 Default::default(),
@@ -184,7 +184,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         //       B3
         assert_err!(
             Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 block5.clone(),
                 Default::default(),
@@ -196,7 +196,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
         );
         assert_err!(
             Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 block6.clone(),
                 Default::default(),
@@ -234,7 +234,7 @@ fn it_prunes_ethereum_headers_correctly() {
         let ferdie = Keyring::Ferdie;
         for header in vec![block1, block4, block2, block3].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 header.clone(),
                 Default::default(),
@@ -331,7 +331,7 @@ fn it_imports_ethereum_header_only_once() {
 
         let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             child.clone(),
             Default::default(),
@@ -341,7 +341,7 @@ fn it_imports_ethereum_header_only_once() {
         ));
         assert_err!(
             Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 child_for_reimport.clone(),
                 Default::default(),
@@ -402,7 +402,7 @@ fn it_rejects_ethereum_header_before_parent() {
         let ferdie = Keyring::Ferdie;
         assert_err!(
             Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 child_of_child.clone(),
                 Default::default(),
@@ -440,7 +440,7 @@ fn it_validates_proof_of_work() {
         // Incorrect nonce
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::none(),
+                mock_verifier_with_pow::RuntimeOrigin::none(),
                 network_id,
                 header1.clone(),
                 header1_proof.clone(),
@@ -458,7 +458,7 @@ fn it_validates_proof_of_work() {
         // Incorrect proof
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::none(),
+                mock_verifier_with_pow::RuntimeOrigin::none(),
                 network_id,
                 header1.clone(),
                 Default::default(),
@@ -474,7 +474,7 @@ fn it_validates_proof_of_work() {
         );
 
         assert_ok!(mock_verifier_with_pow::Verifier::import_header(
-            mock_verifier_with_pow::Origin::none(),
+            mock_verifier_with_pow::RuntimeOrigin::none(),
             network_id,
             header1.clone(),
             header1_proof,
@@ -486,7 +486,7 @@ fn it_validates_proof_of_work() {
         // Both proof & nonce are incorrect
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::none(),
+                mock_verifier_with_pow::RuntimeOrigin::none(),
                 network_id,
                 header2.clone(),
                 Default::default(),
@@ -521,7 +521,7 @@ fn it_rejects_ethereum_header_with_low_difficulty() {
         let ferdie = Keyring::Ferdie;
         assert_err!(
             mock_verifier_with_pow::Verifier::import_header(
-                mock_verifier_with_pow::Origin::none(),
+                mock_verifier_with_pow::RuntimeOrigin::none(),
                 network_id,
                 header.clone(),
                 header_proof,
@@ -657,7 +657,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
 
         let ferdie = Keyring::Ferdie;
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             block1.clone(),
             Default::default(),
@@ -685,7 +685,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         //           B3_ALT
         for header in vec![block1_alt, block2_alt, block3_alt].into_iter() {
             assert_ok!(Verifier::import_header(
-                Origin::none(),
+                RuntimeOrigin::none(),
                 network_id,
                 header.clone(),
                 Default::default(),
@@ -711,7 +711,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
         );
 
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             network_id,
             block4_alt.clone(),
             Default::default(),
@@ -740,7 +740,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
 fn test_register_network() {
     new_tester::<Test>().execute_with(|| {
         assert_ok!(Verifier::register_network(
-            Origin::root(),
+            RuntimeOrigin::root(),
             EthNetworkConfig::Sepolia,
             genesis_ethereum_header(),
             U256::zero(),
@@ -749,7 +749,7 @@ fn test_register_network() {
         let caller = Keyring::Ferdie;
         let header = child_of_genesis_ethereum_header();
         assert_ok!(Verifier::import_header(
-            Origin::none(),
+            RuntimeOrigin::none(),
             EthNetworkConfig::Sepolia.chain_id(),
             header.clone(),
             Default::default(),
@@ -769,7 +769,7 @@ fn test_register_network_exists() {
     new_tester::<Test>().execute_with(|| {
         common::assert_noop_transactional!(
             Verifier::register_network(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 EthNetworkConfig::Ropsten,
                 genesis_ethereum_header(),
                 U256::zero(),
