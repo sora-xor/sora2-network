@@ -31,11 +31,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use bridge_types::{H160, U256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
-use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -55,11 +55,12 @@ pub mod pallet {
     use bridge_types::types::{
         AppKind, AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
     };
-    use bridge_types::{EthNetworkId, H256};
+    use bridge_types::EthNetworkId;
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
+    use sp_core::H256;
     use traits::currency::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -74,12 +75,12 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + permissions::Config + technical::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<
-            Self::Origin,
+            Self::RuntimeOrigin,
             Success = CallOriginOutput<EthNetworkId, H160, H256>,
         >;
 
