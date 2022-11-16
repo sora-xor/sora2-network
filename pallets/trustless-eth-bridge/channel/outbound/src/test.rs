@@ -2,14 +2,13 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::OutboundChannel;
-use bridge_types::H160;
+use bridge_types::{H160, H256};
 use common::mock::ExistentialDeposits;
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};

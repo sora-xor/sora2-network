@@ -3,7 +3,7 @@
 use crate::*;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H160, H256};
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
     ETH, XOR,
@@ -11,7 +11,6 @@ use common::{
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use traits::MultiCurrency;

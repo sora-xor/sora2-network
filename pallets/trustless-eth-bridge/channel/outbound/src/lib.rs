@@ -2,13 +2,13 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_types::{H160, U256};
+use bridge_types::{H160, H256, U256};
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use sp_core::{RuntimeDebug, H256};
+use sp_core::RuntimeDebug;
 use sp_io::offchain_index;
 use sp_runtime::traits::Hash;
 use sp_std::prelude::*;

@@ -28,14 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::CHANNEL_INDEXING_PREFIX;
+use bridge_types::{CHANNEL_INDEXING_PREFIX, H256};
 use codec::{Decode, Encode};
 
 use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
 use sp_api::offchain::OffchainStorage;
 
 pub use bridge_outbound_channel::Commitment;
-use sp_core::H256;
 
 #[rpc(server, client)]
 pub trait BridgeChannelAPI {

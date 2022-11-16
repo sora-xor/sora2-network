@@ -2,12 +2,12 @@
 use super::*;
 
 use bridge_types::types::CallOriginOutput;
+use bridge_types::{H160, H256};
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use traits::MultiCurrency;
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();

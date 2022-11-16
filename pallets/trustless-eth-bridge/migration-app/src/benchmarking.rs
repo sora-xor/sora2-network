@@ -2,10 +2,10 @@
 use super::*;
 
 use bridge_types::types::CallOriginOutput;
+use bridge_types::{H160, H256};
 use common::{AssetId32, PredefinedAssetId, DAI};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 

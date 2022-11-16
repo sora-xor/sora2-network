@@ -8,9 +8,9 @@ use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 
 use bridge_types::traits;
+use bridge_types::H256;
 
 use codec::{Decode, Encode};
-use sp_core::H256;
 
 #[derive(
     Copy,
@@ -197,12 +197,11 @@ mod tests {
     use super::*;
     use bridge_types::traits::MessageDispatch as _;
     use bridge_types::types;
-    use bridge_types::{EthNetworkId, H160};
+    use bridge_types::{EthNetworkId, H160, H256};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
     use frame_system::{EventRecord, Phase};
-    use sp_core::H256;
     use sp_runtime::testing::Header;
     use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Keccak256};
 

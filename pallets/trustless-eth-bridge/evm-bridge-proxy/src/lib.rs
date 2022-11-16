@@ -9,12 +9,11 @@ mod test;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use bridge_types::{traits::MessageStatusNotifier, types::MessageStatus, EthNetworkId, H160};
+use bridge_types::{traits::MessageStatusNotifier, types::MessageStatus, EthNetworkId, H160, H256};
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
 use scale_info::TypeInfo;
-use sp_core::H256;
 use sp_std::prelude::*;
 
 pub trait WeightInfo {

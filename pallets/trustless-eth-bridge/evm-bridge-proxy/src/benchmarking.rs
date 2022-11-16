@@ -30,10 +30,10 @@
 
 use super::*;
 
+use bridge_types::H160;
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
-use sp_core::H160;
 use traits::MultiCurrency;
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();

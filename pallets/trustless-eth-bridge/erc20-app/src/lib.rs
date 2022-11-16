@@ -55,12 +55,11 @@ pub mod pallet {
     use bridge_types::types::{
         AppKind, AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
     };
-    use bridge_types::EthNetworkId;
+    use bridge_types::{EthNetworkId, H256};
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use sp_core::H256;
     use traits::currency::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

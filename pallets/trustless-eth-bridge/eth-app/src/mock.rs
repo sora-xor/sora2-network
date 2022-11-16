@@ -4,7 +4,7 @@ use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundChannel;
-use bridge_types::{EthNetworkId, H160, U256};
+use bridge_types::{EthNetworkId, H160, H256, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
@@ -13,7 +13,6 @@ use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};

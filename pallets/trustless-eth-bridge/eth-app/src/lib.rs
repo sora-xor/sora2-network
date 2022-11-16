@@ -76,12 +76,12 @@ pub mod pallet {
     use bridge_types::types::{
         AppKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
     };
+    use bridge_types::H256;
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::{OriginFor, *};
     use frame_system::RawOrigin;
-    use sp_core::H256;
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

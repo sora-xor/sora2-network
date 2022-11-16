@@ -4,11 +4,11 @@
 use alloc::string::{String, ToString};
 
 use codec::Encode;
-use sp_core::{RuntimeDebug, H256};
+use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 use sp_std::vec;
 
-use bridge_types::{H160, U256};
+use bridge_types::{H160, H256, U256};
 use ethabi::{self, Function, Param, ParamType, StateMutability, Token};
 
 fn unlock_function() -> Function {
