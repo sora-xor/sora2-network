@@ -4,7 +4,7 @@ use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundChannel;
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H160, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
@@ -13,7 +13,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{H160, H256, U256};
+use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
@@ -58,8 +58,8 @@ impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -67,7 +67,7 @@ impl system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -87,7 +87,7 @@ impl common::Config for Test {
 }
 
 impl permissions::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -96,7 +96,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -107,13 +107,16 @@ impl pallet_balances::Config for Test {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Test as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -134,7 +137,7 @@ parameter_types! {
 }
 
 impl assets::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -150,7 +153,7 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl technical::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -159,14 +162,14 @@ impl technical::Config for Test {
 }
 
 impl dispatch::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = EthNetworkId;
     type Source = H160;
     type OriginOutput = CallOriginOutput<EthNetworkId, H160, H256>;
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type CallFilter = Everything;
 }
 
@@ -208,7 +211,7 @@ parameter_types! {
 }
 
 impl eth_app::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type CallOrigin = dispatch::EnsureAccount<
         EthNetworkId,
