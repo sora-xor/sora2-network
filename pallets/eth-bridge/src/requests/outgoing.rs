@@ -108,7 +108,7 @@ impl<T: Config> OutgoingTransfer<T> {
         let is_old_contract = self.network_id == T::GetEthNetworkId::get()
             && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
         let raw = if is_old_contract {
-            ethabi::encode_packed(&[
+            ethabi::encode(&[
                 currency_id.to_token(),
                 Token::Uint(types::U256(amount.0)),
                 Token::Address(types::H160(to.0)),
@@ -116,7 +116,7 @@ impl<T: Config> OutgoingTransfer<T> {
                 Token::Address(types::H160(from.0)),
             ])
         } else {
-            ethabi::encode_packed(&[
+            ethabi::encode(&[
                 currency_id.to_token(),
                 Token::Uint(types::U256(amount.0)),
                 Token::Address(types::H160(to.0)),
@@ -266,10 +266,10 @@ impl<T: Config> OutgoingAddAsset<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::String(name.clone()),
             Token::String(symbol.clone()),
-            Token::UintSized(precision.into(), 8),
+            Token::Uint(precision.into()), // todo vladimir
             Token::FixedBytes(sidechain_asset_id.clone()),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -415,7 +415,7 @@ impl<T: Config> OutgoingAddToken<T> {
             Token::Address(types::H160(token_address.0)),
             Token::String(symbol.clone()),
             Token::String(name.clone()),
-            Token::UintSized(decimals.into(), 8),
+            Token::Uint(decimals.into()), // todo vladimir
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
         ]);
@@ -676,7 +676,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::H160(peer_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -774,7 +774,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::H160(peer_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
@@ -892,7 +892,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
         )
         .to_big_endian(&mut network_id.0);
         let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::EthAddress::from(contract_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -972,7 +972,7 @@ impl<T: Config> OutgoingMigrate<T> {
         )
         .to_big_endian(&mut network_id.0);
         let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::EthAddress::from(contract_address.0)),
             Token::Address(types::EthAddress::from(self.new_contract_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
