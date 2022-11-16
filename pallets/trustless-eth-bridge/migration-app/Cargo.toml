@@ -17,13 +17,13 @@ hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
 rlp = { version = "0.5", default-features = false }
 hex-literal = { version = "0.3.1", default-features = false }
 
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 
 ethabi = { version = "17.0.0", default-features = false }
 
@@ -41,8 +41,8 @@ erc20-app = { path = "../erc20-app", default-features = false }
 
 [dev-dependencies]
 dispatch = { path = "../dispatch" }
-sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.19" }
+sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits" }
 common = { path = "../../../common", features = ["test"] }
