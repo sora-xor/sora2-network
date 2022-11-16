@@ -1,15 +1,15 @@
-use crate::mock::{new_tester, MigrationApp, Origin, Test, BASE_NETWORK_ID};
+use crate::mock::{new_tester, MigrationApp, RuntimeOrigin, Test, BASE_NETWORK_ID};
 use crate::{Addresses, Error};
+use bridge_types::H160;
 use common::DAI;
 use frame_support::assert_ok;
-use sp_core::H160;
 
 #[test]
 fn test_register_network() {
     new_tester().execute_with(|| {
         assert!(!Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
         assert_ok!(MigrationApp::register_network(
-            Origin::root(),
+            RuntimeOrigin::root(),
             BASE_NETWORK_ID + 1,
             H160::repeat_byte(12)
         ));
@@ -22,7 +22,11 @@ fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
         common::assert_noop_transactional!(
-            MigrationApp::register_network(Origin::root(), BASE_NETWORK_ID, H160::repeat_byte(12)),
+            MigrationApp::register_network(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                H160::repeat_byte(12)
+            ),
             Error::<Test>::AppAlreadyExists
         );
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
@@ -32,7 +36,10 @@ fn test_existing_register_network() {
 #[test]
 fn test_migrate_eth() {
     new_tester().execute_with(|| {
-        assert_ok!(MigrationApp::migrate_eth(Origin::root(), BASE_NETWORK_ID),);
+        assert_ok!(MigrationApp::migrate_eth(
+            RuntimeOrigin::root(),
+            BASE_NETWORK_ID
+        ),);
     });
 }
 
@@ -40,7 +47,7 @@ fn test_migrate_eth() {
 fn test_migrate_eth_not_exists() {
     new_tester().execute_with(|| {
         common::assert_noop_transactional!(
-            MigrationApp::migrate_eth(Origin::root(), BASE_NETWORK_ID + 1),
+            MigrationApp::migrate_eth(RuntimeOrigin::root(), BASE_NETWORK_ID + 1),
             Error::<Test>::AppIsNotRegistered
         );
     });
@@ -50,7 +57,7 @@ fn test_migrate_eth_not_exists() {
 fn test_migrate_erc20() {
     new_tester().execute_with(|| {
         assert_ok!(MigrationApp::migrate_erc20(
-            Origin::root(),
+            RuntimeOrigin::root(),
             BASE_NETWORK_ID,
             vec![(DAI, H160::repeat_byte(12))]
         ),);
@@ -62,7 +69,7 @@ fn test_migrate_erc20_not_exists() {
     new_tester().execute_with(|| {
         common::assert_noop_transactional!(
             MigrationApp::migrate_erc20(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,
                 vec![(DAI, H160::repeat_byte(12))]
             ),
@@ -75,7 +82,7 @@ fn test_migrate_erc20_not_exists() {
 fn test_migrate_sidechain() {
     new_tester().execute_with(|| {
         assert_ok!(MigrationApp::migrate_sidechain(
-            Origin::root(),
+            RuntimeOrigin::root(),
             BASE_NETWORK_ID,
             vec![(DAI, H160::repeat_byte(12))]
         ),);
@@ -87,7 +94,7 @@ fn test_migrate_sidechain_not_exists() {
     new_tester().execute_with(|| {
         common::assert_noop_transactional!(
             MigrationApp::migrate_sidechain(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,
                 vec![(DAI, H160::repeat_byte(12))]
             ),

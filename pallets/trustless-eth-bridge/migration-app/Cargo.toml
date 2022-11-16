@@ -51,6 +51,8 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 [features]
 default = ["std"]
 std = [
+  "eth-app/std",
+  "erc20-app/std",
   "serde",
   "hex/std",
   "codec/std",
