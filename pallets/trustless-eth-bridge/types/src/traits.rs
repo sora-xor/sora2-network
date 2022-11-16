@@ -7,10 +7,10 @@ use crate::{
     EthNetworkId,
 };
 use common::Balance;
-use ethereum_types::H160;
+use ethereum_types::{H160, U256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::{Config, RawOrigin};
-use sp_core::{H256, U256};
+use sp_core::H256;
 use sp_std::prelude::*;
 
 use crate::types::Message;
