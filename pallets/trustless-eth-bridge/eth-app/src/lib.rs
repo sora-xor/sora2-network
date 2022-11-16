@@ -26,6 +26,7 @@ use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 use bridge_types::traits::OutboundChannel;
 use bridge_types::{EthNetworkId, H160, U256};

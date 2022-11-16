@@ -12,6 +12,7 @@ use sp_core::{RuntimeDebug, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::Hash;
 use sp_std::prelude::*;
+use sp_std::vec;
 use traits::MultiCurrency;
 
 use bridge_types::types::MessageNonce;

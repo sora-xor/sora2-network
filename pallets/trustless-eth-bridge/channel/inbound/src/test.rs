@@ -5,7 +5,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_err, assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
+use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{
@@ -17,7 +17,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
 use bridge_types::types::{Message, Proof};
-use bridge_types::{Log, U256};
+use bridge_types::{Log, H160, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, XOR};
@@ -59,8 +59,8 @@ impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -68,7 +68,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -90,7 +90,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     /// The ubiquitous event type.
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type MaxLocks = MaxLocks;
     /// The type for recording an account's balance.
     type Balance = Balance;
@@ -108,17 +108,20 @@ impl common::Config for Test {
 }
 
 impl permissions::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Test as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -141,7 +144,7 @@ parameter_types! {
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 impl assets::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -181,7 +184,9 @@ impl MessageDispatch<Test, EthNetworkId, H160, MessageId> for MockMessageDispatc
     fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: u64, _: &[u8]) {}
 
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_dispatch_event(_: MessageId) -> Option<<Test as frame_system::Config>::Event> {
+    fn successful_dispatch_event(
+        _: MessageId,
+    ) -> Option<<Test as frame_system::Config>::RuntimeEvent> {
         None
     }
 }
@@ -228,7 +233,7 @@ impl<T: Config> Convert<U256, BalanceOf<T>> for FeeConverter<T> {
 }
 
 impl bridge_inbound_channel::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type Hashing = Keccak256;
@@ -259,7 +264,7 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl technical::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -407,7 +412,7 @@ const MESSAGE_DISPATCHED_FAILED_DATA_0: [u8; 123] = hex!(
 fn test_submit_with_invalid_source_channel() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
         let message = Message {
@@ -429,7 +434,7 @@ fn test_submit_with_invalid_source_channel() {
 fn test_submit() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message 1
         let message_1 = Message {
@@ -471,7 +476,7 @@ fn test_submit() {
 fn test_submit_with_invalid_nonce() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
         let message = Message {
@@ -502,7 +507,7 @@ fn test_submit_with_invalid_nonce() {
 fn test_message_dispatched_wrong_event() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         let message = Message {
             // expected message_dispatched
@@ -528,7 +533,7 @@ fn test_message_dispatched_wrong_event() {
 fn test_message_dispatched_with_invalid_source_channel() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         let message = Message {
             data: MESSAGE_DISPATCHED_DATA_0.into(),
@@ -553,7 +558,7 @@ fn test_message_dispatched_with_invalid_source_channel() {
 fn test_message_dispatched_with_invalid_nonce() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         let message = Message {
             data: MESSAGE_DISPATCHED_DATA_0.into(),
@@ -587,7 +592,7 @@ fn test_message_dispatched_with_invalid_nonce() {
 fn test_message_dispatched() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         let message_1 = Message {
             data: MESSAGE_DISPATCHED_DATA_0.into(),
@@ -628,7 +633,7 @@ fn test_message_dispatched() {
 fn test_message_dispatched_refund() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         let message = Message {
             data: MESSAGE_DISPATCHED_FAILED_DATA_0.into(),
@@ -679,7 +684,7 @@ fn test_set_reward_fraction_not_authorized() {
         let bob: AccountId = Keyring::Bob.into();
         common::assert_noop_transactional!(
             BridgeInboundChannel::set_reward_fraction(
-                Origin::signed(bob),
+                RuntimeOrigin::signed(bob),
                 Perbill::from_percent(60)
             ),
             DispatchError::BadOrigin
@@ -691,7 +696,7 @@ fn test_set_reward_fraction_not_authorized() {
 fn test_submit_with_invalid_network_id() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
         let message = Message {
@@ -713,7 +718,7 @@ fn test_submit_with_invalid_network_id() {
 fn test_register_channel() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         assert_ok!(BridgeInboundChannel::register_channel(
-            Origin::root(),
+            RuntimeOrigin::root(),
             BASE_NETWORK_ID + 1,
             H160::from(INBOUND_CHANNEL_ADDR),
             H160::from(SOURCE_CHANNEL_ADDR),
@@ -735,7 +740,7 @@ fn test_register_existing_channel() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         common::assert_noop_transactional!(
             BridgeInboundChannel::register_channel(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 BASE_NETWORK_ID,
                 H160::from(INBOUND_CHANNEL_ADDR),
                 H160::from(SOURCE_CHANNEL_ADDR),
