@@ -30,7 +30,6 @@
 
 use alloc::boxed::Box;
 use ethabi::Function;
-use ethabi_contract::use_contract;
 use frame_support::sp_io::hashing::keccak_256;
 #[cfg(feature = "std")]
 use frame_support::RuntimeDebug;
@@ -38,7 +37,15 @@ use once_cell::race::OnceBox;
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
 
-use_contract!(eth_bridge_contract, "src/res/contract.abi");
+#[allow(dead_code)]
+pub mod eth_bridge_contract {
+    use alloc::string::String;
+    use sp_std::prelude::*;
+
+    #[derive(ethabi_derive::EthabiContract)]
+    #[ethabi_contract_options(path = "src/res/contract.abi")]
+    struct Contract;
+}
 
 pub const METHOD_ID_SIZE: usize = 4;
 pub type MethodId = [u8; METHOD_ID_SIZE];

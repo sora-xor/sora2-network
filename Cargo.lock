@@ -2865,7 +2865,6 @@ dependencies = [
  "common",
  "env_logger 0.8.4",
  "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
- "ethabi-contract",
  "ethabi-derive",
  "ethereum-types 0.14.0",
  "frame-benchmarking",
@@ -2985,7 +2984,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "17.2.0"
-source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#81cc0b627b76710e36375fb65b90303c29608152"
+source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#d4e99f047dfd525afa1a64992644727c89bdc368"
 dependencies = [
  "ethereum-types 0.14.0",
  "hex",
@@ -2999,14 +2998,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethabi-contract"
-version = "17.2.0"
-source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#81cc0b627b76710e36375fb65b90303c29608152"
-
-[[package]]
 name = "ethabi-derive"
 version = "17.2.0"
-source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#81cc0b627b76710e36375fb65b90303c29608152"
+source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#d4e99f047dfd525afa1a64992644727c89bdc368"
 dependencies = [
  "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
  "heck 0.4.0",
