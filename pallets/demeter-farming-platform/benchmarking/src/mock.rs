@@ -6,6 +6,7 @@ pub use common::mock::*;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use common::XST;
 use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -283,7 +284,8 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
-                    base_asset_id: XOR.into(),
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
                     is_public: true,
                 },
             )],

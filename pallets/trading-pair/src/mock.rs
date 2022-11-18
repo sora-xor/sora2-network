@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR, XSTUSD,
+    DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -306,6 +306,7 @@ impl Default for ExtBuilder {
                     DEX_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
@@ -313,6 +314,7 @@ impl Default for ExtBuilder {
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),

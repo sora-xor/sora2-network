@@ -517,7 +517,7 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
         count: u32,
         from_asset_id: &AssetId,
         to_asset_id: &AssetId,
-        intermediate_asset_id: Option<&AssetId>,
+        intermediate_asset_ids: &[AssetId],
     ) -> DispatchResult;
 
     /// Report that account has received pswap reward for buying from tbc.

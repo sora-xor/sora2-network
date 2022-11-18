@@ -35,7 +35,7 @@ use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL,
-    XOR,
+    XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
@@ -1590,6 +1590,37 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
 }
 
 #[test]
+fn test_quote_should_work_for_synthetics() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let pairs = [
+            (XOR, XST),
+            (VAL, XST),
+            (XST, XSTUSD),
+            (XOR, XSTUSD),
+            (VAL, XSTUSD),
+        ];
+
+        for (from, to) in pairs
+            .into_iter()
+            .flat_map(|(from, to)| [(from, to), (to, from)].into_iter())
+        {
+            let amount: Balance = balance!(1);
+            LiquidityProxy::inner_quote(
+                0,
+                &from,
+                &to,
+                QuoteAmount::with_desired_input(amount),
+                mcbc_excluding_filter(0),
+                false,
+                true,
+            )
+            .expect(&format!("Failed to get a quote for {}-{} pair", from, to));
+        }
+    });
+}
+
+#[test]
 #[rustfmt::skip]
 fn test_list_enabled_sources_for_path_query_should_pass_1() {
     let mut ext = ExtBuilder::default().build();
@@ -1766,6 +1797,58 @@ fn test_is_path_available_should_pass_4() {
         assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
         assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
         assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), true);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_is_path_available_should_pass_5() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        assets::Pallet::<Runtime>::register_asset_id(
+                alice(),
+                XST.into(),
+                AssetSymbol(b"XST".to_vec()),
+                AssetName(b"SORA Synthetics".to_vec()),
+                0,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+        ).expect("failed to register XST asset");
+        assets::Pallet::<Runtime>::register_asset_id(
+                alice(),
+                XSTUSD.into(),
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                0,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+        ).expect("failed to register XSTUSD asset");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, XST).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XST, XSTUSD).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &XST, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XST, &XSTUSD, XSTPool).expect("failed to enable source");
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XST).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XSTUSD).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, XST).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, XSTUSD).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XST, XSTUSD).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XST, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XST, VAL).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, XST).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XSTUSD, VAL).unwrap(), true);
     });
 }
 

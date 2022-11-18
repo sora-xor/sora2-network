@@ -28,33 +28,39 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::{
-    pallet::{Config, Pallet},
-    WeightInfo as _,
-};
-use common::XST;
-use frame_support::{
-    log::{error, info},
-    pallet_prelude::StorageVersion,
-    traits::GetStorageVersion as _,
-    weights::Weight,
-};
+use super::pallet::{Config, Pallet};
+use codec::Decode;
+use common::{DEXInfo, XST};
+use frame_support::pallet_prelude::{Get, StorageVersion};
+use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
-/// Migration which adds `XST` pool
+use crate::DEXInfos;
+
+#[derive(Decode)]
+struct DEXInfoV0<T: Config> {
+    base_asset_id: T::AssetId,
+    is_public: bool,
+}
+
+/// Migration which adds `XST` as a *synthetic base asset*
 pub fn migrate<T: Config>() -> Weight {
-    if Pallet::<T>::on_chain_storage_version() >= 1 {
-        info!("Migration to version 1 has already been applied");
+    if Pallet::<T>::on_chain_storage_version() >= 2 {
+        info!("Migration to version 2 has already been applied");
         return 0;
     }
 
-    match Pallet::<T>::initialize_pool_unchecked(XST.into(), false) {
-        Ok(()) => StorageVersion::new(1).put::<Pallet<T>>(),
-        Err(err) => error!(
-            "An error occurred during XST pool initialization: {:?}",
-            err
-        ),
-    }
-    <T as Config>::WeightInfo::on_initialize(0)
+    let mut weight = 0;
+    DEXInfos::<T>::translate::<DEXInfoV0<T>, _>(|_, dex_info| {
+        weight += 1;
+        Some(DEXInfo {
+            base_asset_id: dex_info.base_asset_id,
+            synthetic_base_asset_id: XST.into(),
+            is_public: dex_info.is_public,
+        })
+    });
+
+    StorageVersion::new(2).put::<Pallet<T>>();
+    T::DbWeight::get().reads_writes(weight, weight)
 }
 
 #[cfg(test)]

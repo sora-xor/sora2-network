@@ -31,8 +31,8 @@
 use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::DEXInfo;
 use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
+use common::{DEXInfo, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -229,6 +229,7 @@ impl ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
@@ -236,6 +237,7 @@ impl ExtBuilder {
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),

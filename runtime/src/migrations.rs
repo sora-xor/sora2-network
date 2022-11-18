@@ -6,7 +6,6 @@ use sp_core::ecdsa;
 
 pub type Migrations = (
     SessionKeysMigration,
-    MulticollateralBondingCurvePoolMigration,
     ElectionsPhragmenPrefixMigration,
     BabeConfigMigration,
     StakingV6Migration,
@@ -23,6 +22,8 @@ pub type Migrations = (
     SchedulerV3Migration,
     ElectionsPhragmenV5Migration,
     StakingV9Migration,
+    MulticollateralBondingCurvePoolMigration,
+    DexManagerMigration,
 );
 
 impl_opaque_keys! {
@@ -66,6 +67,15 @@ impl OnRuntimeUpgrade for MulticollateralBondingCurvePoolMigration {
     fn on_runtime_upgrade() -> Weight {
         frame_support::log::warn!("Run migration MulticollateralBondingCurvePoolMigration");
         multicollateral_bonding_curve_pool::migrations::migrate::<Runtime>()
+    }
+}
+
+pub struct DexManagerMigration;
+
+impl OnRuntimeUpgrade for DexManagerMigration {
+    fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration DexManagerMigration");
+        dex_manager::migrations::migrate::<Runtime>()
     }
 }
 

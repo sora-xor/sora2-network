@@ -29,6 +29,8 @@ assets = { path = "../assets", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+itertools = { version = "0.10.5", default-features = false }
+fallible-iterator = { version = "0.2.0", default-features = false }
 
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
@@ -63,4 +65,7 @@ std = [
     'tokens/std',
     'traits/std',
     'trading-pair/std',
+    'itertools/use_std',
+    'itertools/use_alloc',
+    'fallible-iterator/std'
 ]

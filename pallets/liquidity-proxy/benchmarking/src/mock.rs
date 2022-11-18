@@ -36,7 +36,7 @@ use common::prelude::{Balance, QuoteAmount};
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, ContentSource,
     DEXInfo, Description, Fixed, FromGenericPair, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION,
+    PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION, XST,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -86,6 +86,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
@@ -529,6 +530,7 @@ impl Default for ExtBuilder {
                 0_u32,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

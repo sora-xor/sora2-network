@@ -32,7 +32,7 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::{fixed, hash, Amount, DEXInfo, Fixed};
+use common::{fixed, hash, Amount, DEXInfo, Fixed, XST};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{Everything, GenesisBuild};
@@ -66,6 +66,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
@@ -285,6 +286,7 @@ impl Default for ExtBuilder {
                 0_u32,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

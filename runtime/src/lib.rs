@@ -811,6 +811,7 @@ parameter_types! {
     pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
+    pub const GetSyntheticBaseAssetId: AssetId = GetXstAssetId::get();
     pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
 }
 
@@ -1652,8 +1653,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
+}
+
 impl xst::Config for Runtime {
     type Event = Event;
+    type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;

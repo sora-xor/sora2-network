@@ -125,16 +125,10 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + technical::Config
-        + trading_pair::Config
-        + pool_xyk::Config
-        + dex_api::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + dex_api::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// AssetId which is convertible to/from XSTUSD
+        type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
@@ -326,12 +320,12 @@ impl<T: Config> Pallet<T> {
             );
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
-                &T::GetBaseAssetId::get(),
+                &T::GetSyntheticBaseAssetId::get(),
                 &synthetic_asset_id,
             )?;
             trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
-                &T::GetBaseAssetId::get(),
+                &T::GetSyntheticBaseAssetId::get(),
                 &synthetic_asset_id,
                 LiquiditySourceType::XSTPool,
             )?;
@@ -350,7 +344,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Buys the main asset (e.g., XOR).
+    /// Buys the main asset (e.g., XST).
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -361,7 +355,7 @@ impl<T: Config> Pallet<T> {
             Self::reference_price(main_asset_id)?.into();
 
         match quantity {
-            // Input target amount of XST(USD) to get some XOR
+            // Input target amount of XST(USD) to get some XST
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: synthetic_quantity,
             } => {
@@ -372,7 +366,7 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
                     .map(|value| value.max(Fixed::ZERO))
             }
-            // Input some XST(USD) to get a target amount of XOR
+            // Input some XST(USD) to get a target amount of XST
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: main_quantity,
             } => {
@@ -407,7 +401,7 @@ impl<T: Config> Pallet<T> {
             Self::reference_price(main_asset_id)?.into();
 
         match quantity {
-            // Sell desired amount of XOR for some XST(USD)
+            // Sell desired amount of XST for some XST(USD)
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
@@ -417,7 +411,7 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 Ok(output_synthetic_unwrapped)
             }
-            // Sell some amount of XOR for desired amount of XST(USD)
+            // Sell some amount of XST for desired amount of XST(USD)
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
@@ -562,22 +556,23 @@ impl<T: Config> Pallet<T> {
             let permissioned_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
-            let base_asset_id = &T::GetBaseAssetId::get();
-            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?
-            } else {
-                Self::decide_buy_amounts(
-                    &output_asset_id,
-                    &input_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?
-            };
+            let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+            let (input_amount, output_amount, fee_amount) =
+                if input_asset_id == synthetic_base_asset_id {
+                    Self::decide_sell_amounts(
+                        &input_asset_id,
+                        &output_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                } else {
+                    Self::decide_buy_amounts(
+                        &output_asset_id,
+                        &input_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                };
 
             let result = match swap_amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -671,9 +666,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if *dex_id != DEXId::Polkaswap.into() {
             return false;
         }
-        if input_asset_id == &T::GetBaseAssetId::get() {
+        if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&output_asset_id)
-        } else if output_asset_id == &T::GetBaseAssetId::get() {
+        } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&input_asset_id)
         } else {
             false
@@ -690,8 +685,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+        let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
+        {
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
@@ -750,10 +746,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
 impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     fn buy_price(
-        base_asset: &T::AssetId,
+        synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper = Self::reference_price(synthetic_base_asset)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
             Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
@@ -763,10 +759,10 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     }
 
     fn sell_price(
-        base_asset: &T::AssetId,
+        synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper = Self::reference_price(synthetic_base_asset)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
             Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)

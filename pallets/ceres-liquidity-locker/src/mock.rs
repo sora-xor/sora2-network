@@ -1,7 +1,7 @@
 use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo, XOR};
+use common::{balance, fixed, hash, DEXInfo, XOR, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -272,6 +272,7 @@ impl Default for ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: XOR.into(),
+                    synthetic_base_asset_id: XST.into(),
                     is_public: true,
                 },
             )],

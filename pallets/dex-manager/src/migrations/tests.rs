@@ -28,34 +28,20 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::{
-    pallet::{Config, Pallet},
-    WeightInfo as _,
-};
-use common::XST;
-use frame_support::{
-    log::{error, info},
-    pallet_prelude::StorageVersion,
-    traits::GetStorageVersion as _,
-    weights::Weight,
-};
+use super::XST;
+use crate::{mock::*, pallet::Pallet, DEXInfos};
+use frame_support::traits::{GetStorageVersion as _, StorageVersion};
 
-/// Migration which adds `XST` pool
-pub fn migrate<T: Config>() -> Weight {
-    if Pallet::<T>::on_chain_storage_version() >= 1 {
-        info!("Migration to version 1 has already been applied");
-        return 0;
-    }
+#[test]
+fn test() {
+    ExtBuilder::default().build().execute_with(|| {
+        StorageVersion::new(1).put::<Pallet<Runtime>>();
 
-    match Pallet::<T>::initialize_pool_unchecked(XST.into(), false) {
-        Ok(()) => StorageVersion::new(1).put::<Pallet<T>>(),
-        Err(err) => error!(
-            "An error occurred during XST pool initialization: {:?}",
-            err
-        ),
-    }
-    <T as Config>::WeightInfo::on_initialize(0)
+        super::migrate::<Runtime>();
+
+        for dex_info in DEXInfos::<Runtime>::iter_values() {
+            assert_eq!(dex_info.synthetic_base_asset_id, XST.into());
+        }
+        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
+    });
 }
-
-#[cfg(test)]
-mod tests;
