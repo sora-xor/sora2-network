@@ -31,6 +31,7 @@
 use crate::mock::*;
 use crate::Error;
 use common::{assert_approx_eq, balance, fixed};
+use frame_support::assert_noop;
 use traits::MultiCurrency;
 
 type PswapDistrPallet = Pallet;
@@ -58,7 +59,7 @@ fn subscribe_with_default_frequency_should_pass() {
 fn subscribe_with_zero_frequency_should_fail() {
     let mut ext = ExtBuilder::uninitialized().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), Some(0)),
             Error::<Runtime>::InvalidFrequency
         );
@@ -69,7 +70,7 @@ fn subscribe_with_zero_frequency_should_fail() {
 fn subscribe_with_existing_account_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None),
             Error::<Runtime>::SubscriptionActive
         );
@@ -81,7 +82,7 @@ fn unsubscribe_with_inexistent_account_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let result = PswapDistrPallet::unsubscribe(alice());
-        common::assert_noop_transactional!(result, Error::<Runtime>::UnknownSubscription);
+        assert_noop!(result, Error::<Runtime>::UnknownSubscription);
     });
 }
 
@@ -139,15 +140,15 @@ fn distribute_with_zero_balance_should_pass() {
         )
         .expect("Error is not expected during distribution");
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
@@ -300,7 +301,7 @@ fn claim_until_zero_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
@@ -351,15 +352,15 @@ fn claim_until_zero_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
@@ -522,15 +523,15 @@ fn jump_start_with_unowned_incentive_should_pass() {
         .expect("Minting tokens is not expected to fail.");
 
         // no one can claim it as shares are not calculated for this transfer
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );

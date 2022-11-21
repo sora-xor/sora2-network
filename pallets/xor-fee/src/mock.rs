@@ -713,6 +713,7 @@ impl mock_liquidity_proxy::Config for Runtime {
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
+        _dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
@@ -731,6 +732,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     }
 
     fn quote(
+        _dex_id: DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,

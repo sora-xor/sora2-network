@@ -69,10 +69,12 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
 
     fn on_pool_created(
         _fee_account: Self::AccountId,
-        _dex_id: Self::DEXId,
+        dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
+        if dex_id == common::DEXId::Polkaswap.into() {
+            Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
+        }
         Ok(())
     }
 }
@@ -138,10 +140,13 @@ impl<T: Config> Pallet<T> {
                 return 0;
             };
 
-        let xor =
-            pool_xyk::Pallet::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
-                .unwrap_or(0);
-        if xor < balance!(1) {
+        let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part_from_pool_account(
+            pool,
+            &trading_pair,
+            pool_tokens,
+        )
+        .unwrap_or(0);
+        if base_asset_amt < balance!(1) {
             return 0;
         }
 
@@ -150,9 +155,9 @@ impl<T: Config> Pallet<T> {
             .any(|asset_id| trading_pair.consists_of(asset_id));
 
         if pool_doubles_reward {
-            xor * 2
+            base_asset_amt * 2
         } else {
-            xor
+            base_asset_amt
         }
     }
 
@@ -343,6 +348,18 @@ pub mod pallet {
     #[pallet::storage]
     pub type PoolFarmers<T: Config> =
         StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
+}
+
+pub mod rpc {
+    use super::{Config, Pallet};
+    use frame_support::traits::Get as _;
+    use sp_std::prelude::*;
+
+    impl<T: Config> Pallet<T> {
+        pub fn reward_doubling_assets() -> Vec<T::AssetId> {
+            T::RewardDoublingAssets::get()
+        }
+    }
 }
 
 #[derive(Debug, Encode, Decode, scale_info::TypeInfo)]

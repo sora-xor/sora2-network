@@ -5,8 +5,17 @@
 
 version: 2
 updates:
-  - package-ecosystem: "cargo" # See documentation for possible values
+  - package-ecosystem: "cargo"
     directory: "/" # Location of package manifests
+    target-branch: "develop"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/ethereum-bridge-contracts"
+    target-branch: "develop"
     schedule:
       interval: "daily"
       time: "06:00"

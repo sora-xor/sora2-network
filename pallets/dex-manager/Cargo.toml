@@ -1,6 +1,6 @@
 [package]
 description = 'Pallet for creation of DEXes, managing their specific parameters and ownership.'
-version = '0.1.0'
+version = '0.2.0'
 name = 'dex-manager'
 edition = '2021'
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']

@@ -414,9 +414,9 @@ pub mod pallet {
         InvalidAssetOwner,
         /// Increment account reference error.
         IncRefError,
-        /// Content source is not valid. It must be ascii only.
+        /// Content source is not valid. It must be ascii only and `common::ASSET_CONTENT_SOURCE_MAX_LENGTH` characters long at max.
         InvalidContentSource,
-        /// Description is not valid. It must be 200 characters long at max.
+        /// Description is not valid. It must be `common::ASSET_DESCRIPTION_MAX_LENGTH` characters long at max.
         InvalidDescription,
         /// The asset is not mintable and its initial balance is 0.
         DeadAsset,

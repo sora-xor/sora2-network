@@ -33,7 +33,7 @@ use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
-use common::prelude::{Balance, FixedWrapper};
+use common::prelude::FixedWrapper;
 
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
@@ -43,14 +43,18 @@ use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 use crate::bounds::*;
 use crate::operations::*;
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.destination.0.amount == Bounds::Dummy || self.destination.1.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        _base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
         //TODO: replace unwrap.
         let source = source_opt.unwrap();
         // Check that client account is same as source, because signature is checked for source.
@@ -144,12 +148,19 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         );
 
         ensure!(self.pool_tokens > 0, Error::<T>::ZeroValueInAmountParameter);
-        let fxw_source_k = FixedWrapper::from(self.pool_tokens);
-        let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
-        let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
-        let recom_x: Balance = to_balance!(fxw_recom_x);
-        let recom_y = to_balance!(fxw_recom_y);
 
+        if balance_ks < self.pool_tokens {
+            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
+        }
+
+        let (recom_x, recom_y) = if self.pool_tokens != total_iss {
+            let fxw_source_k = FixedWrapper::from(self.pool_tokens);
+            let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
+            let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
+            (to_balance!(fxw_recom_x), to_balance!(fxw_recom_y))
+        } else {
+            (balance_bp, balance_tp)
+        };
         match self.destination.0.amount {
             Bounds::Desired(x) => {
                 if x != recom_x {
@@ -186,10 +197,6 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let _base_amount = self.destination.1.amount.unwrap();
         let _target_amount = self.destination.0.amount.unwrap();
 
-        if balance_ks < self.pool_tokens {
-            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
-        }
-
         //TODO: Debug why in this place checking is failed, but in transfer checks is success.
         /*
         // Checking that balances if correct and large enough for amounts.
@@ -213,10 +220,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
-    fn reserve(&self, source: &AccountIdOf<T>) -> DispatchResult {
+    fn reserve(&self, source: &AccountIdOf<T>, base_asset_id: &AssetIdOf<T>) -> DispatchResult {
         ensure!(
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
@@ -243,16 +250,20 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             && !self.pool_tokens.is_zero()
         {
             let pair = Pallet::<T>::strict_sort_pair(
+                base_asset_id,
                 &self.destination.0.asset,
                 &self.destination.1.asset,
             )?;
-            AccountPools::<T>::mutate(source, |set| set.remove(&pair.target_asset_id));
+            AccountPools::<T>::mutate(source, &pair.base_asset_id, |set| {
+                set.remove(&pair.target_asset_id)
+            });
         }
         let balance_a =
             <assets::Pallet<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
         let balance_b =
             <assets::Pallet<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
         Pallet::<T>::update_reserves(
+            base_asset_id,
             &self.destination.0.asset,
             &self.destination.1.asset,
             (&balance_a, &balance_b),

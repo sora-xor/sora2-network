@@ -1,6 +1,7 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
+use frame_support::assert_noop;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_err, assert_ok, parameter_types};
@@ -418,7 +419,7 @@ fn test_submit_with_invalid_source_channel() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidSourceChannel
         );
@@ -491,7 +492,7 @@ fn test_submit_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
         );
@@ -513,7 +514,7 @@ fn test_message_dispatched_wrong_event() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
@@ -538,7 +539,7 @@ fn test_message_dispatched_with_invalid_source_channel() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
@@ -572,7 +573,7 @@ fn test_message_dispatched_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
@@ -677,7 +678,7 @@ fn test_handle_fee() {
 fn test_set_reward_fraction_not_authorized() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::set_reward_fraction(
                 Origin::signed(bob),
                 Perbill::from_percent(60)
@@ -702,7 +703,7 @@ fn test_submit_with_invalid_network_id() {
                 data: Default::default(),
             },
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID + 1, message.clone()),
             Error::<Test>::InvalidNetwork
         );
@@ -733,7 +734,7 @@ fn test_register_channel() {
 #[test]
 fn test_register_existing_channel() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::register_channel(
                 Origin::root(),
                 BASE_NETWORK_ID,

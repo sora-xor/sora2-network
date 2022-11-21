@@ -44,17 +44,22 @@ use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::operations::*;
 use crate::{Config, Error, Pallet};
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
         let abstract_checking_from_method = common::SwapRulesValidation::<
             AccountIdOf<T>,
             TechAccountIdOf<T>,
+            AssetIdOf<T>,
             T,
         >::is_abstract_checking(self);
         let abstract_checking = source_opt.is_none() || abstract_checking_from_method;
@@ -121,6 +126,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         match self.get_fee_from_destination {
             None => {
                 let is_fee_from_d = Pallet::<T>::decide_is_fee_from_destination(
+                    base_asset_id,
                     &self.source.asset,
                     &self.destination.asset,
                 )?;
@@ -321,12 +327,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+    fn reserve(
+        &self,
+        source: &AccountIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> dispatch::DispatchResult {
         common::with_transaction(|| {
             if Some(source) != self.client_account.as_ref() {
                 let e = Error::<T>::SourceAndClientAccountDoNotMatchAsEqual.into();
@@ -387,6 +397,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             let balance_b =
                 <assets::Pallet<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
             Pallet::<T>::update_reserves(
+                base_asset_id,
                 &self.source.asset,
                 &self.destination.asset,
                 (&balance_a, &balance_b),

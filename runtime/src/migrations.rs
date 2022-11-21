@@ -6,6 +6,7 @@ use sp_core::ecdsa;
 
 pub type Migrations = (
     SessionKeysMigration,
+    MulticollateralBondingCurvePoolMigration,
     ElectionsPhragmenPrefixMigration,
     BabeConfigMigration,
     StakingV6Migration,
@@ -22,7 +23,6 @@ pub type Migrations = (
     SchedulerV3Migration,
     ElectionsPhragmenV5Migration,
     StakingV9Migration,
-    AddTrustlessBridgeTechnical,
 );
 
 impl_opaque_keys! {
@@ -57,6 +57,15 @@ impl OnRuntimeUpgrade for SessionKeysMigration {
             beefy: dummy_beefy_id_from_account_id(id),
         });
         BlockWeights::get().max_block
+    }
+}
+
+pub struct MulticollateralBondingCurvePoolMigration;
+
+impl OnRuntimeUpgrade for MulticollateralBondingCurvePoolMigration {
+    fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Run migration MulticollateralBondingCurvePoolMigration");
+        multicollateral_bonding_curve_pool::migrations::migrate::<Runtime>()
     }
 }
 
@@ -256,21 +265,5 @@ impl OnRuntimeUpgrade for StakingV9Migration {
         frame_support::log::warn!("Run migration StakingV9Migration");
         pallet_staking::migrations::v9::InjectValidatorsIntoVoterList::<Runtime>::on_runtime_upgrade(
         )
-    }
-}
-
-pub struct AddTrustlessBridgeTechnical;
-
-impl OnRuntimeUpgrade for AddTrustlessBridgeTechnical {
-    fn on_runtime_upgrade() -> frame_support::weights::Weight {
-        frame_support::log::warn!("Run migration AddTrustlessBridgeTechnical");
-        let _ = Technical::register_tech_account_id_if_not_exist(
-            &GetTrustlessBridgeTechAccountId::get(),
-        );
-        let _ = Technical::register_tech_account_id_if_not_exist(
-            &GetTrustlessBridgeFeesTechAccountId::get(),
-        );
-        let _ = Technical::register_tech_account_id_if_not_exist(&GetTreasuryTechAccountId::get());
-        RocksDbWeight::get().reads_writes(6, 6)
     }
 }
