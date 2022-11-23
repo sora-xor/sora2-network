@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -643,8 +643,10 @@ impl<T: Config> Pallet<T> {
                 &reference_asset_id,
             )
             .map(|avg| {
-                // We don't let the price of XOR w.r.t. DAI go under $3, to prevent manipulation attacks
-                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
+                // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
+                if asset_id == &T::GetSyntheticBaseAssetId::get()
+                    && &reference_asset_id == &DAI.into()
+                {
                     avg.max(balance!(3))
                 } else {
                     avg
