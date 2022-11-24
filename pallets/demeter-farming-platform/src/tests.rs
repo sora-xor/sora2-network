@@ -4,7 +4,7 @@ mod tests {
     use common::{
         balance, AssetId32, AssetName, AssetSymbol, Balance, LiquiditySourceType, PoolXykPallet,
         PredefinedAssetId, ToFeeAccount, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION,
-        DEMETER_ASSET_ID, XOR,
+        DEMETER_ASSET_ID, XOR, XSTUSD,
     };
     use demeter_farming_platform::{PoolData, TokenInfo, UserInfo};
     use frame_support::{assert_err, assert_ok, PalletId};
@@ -17,8 +17,10 @@ mod tests {
     {
         let mut ext = ExtBuilder::default().build();
         let dex_id = DEX_A_ID;
+        let dex_id_xst = DEX_B_ID;
         let xor: AssetId = XOR.into();
         let ceres: AssetId = CERES_ASSET_ID.into();
+        let xstusd: AssetId = XSTUSD.into();
         let util: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
             "007348eb8f0f3cec730fbf5eec1b6a842c54d1df8bed75a9df084d5ee013e814"
         ));
@@ -42,6 +44,18 @@ mod tests {
                 CERES_ASSET_ID.into(),
                 AssetSymbol(b"CERES".to_vec()),
                 AssetName(b"Ceres".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE,
+                XSTUSD.into(),
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
@@ -76,6 +90,8 @@ mod tests {
                 None,
             ));
 
+
+            /************ XOR DEX ************/
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
                 Origin::signed(BOB),
                 dex_id.clone(),
@@ -119,8 +135,63 @@ mod tests {
                 Some((repr.clone(), fee_repr.clone()))
             );
 
+
+            /********* XSTUSD DEX ********/
+            assert_ok!(trading_pair::Pallet::<Runtime>::register(
+                Origin::signed(BOB),
+                dex_id_xst.clone(),
+                XSTUSD.into(),
+                CERES_ASSET_ID.into()
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
+                Origin::signed(BOB),
+                dex_id_xst.clone(),
+                XSTUSD.into(),
+                CERES_ASSET_ID.into(),
+            ));
+
+            assert!(
+                trading_pair::Pallet::<Runtime>::is_source_enabled_for_trading_pair(
+                    &dex_id_xst,
+                    &XSTUSD.into(),
+                    &CERES_ASSET_ID.into(),
+                    LiquiditySourceType::XYKPool,
+                )
+                    .expect("Failed to query trading pair status.")
+            );
+
+            let (_tpair_xst, tech_acc_id_xst) =
+                pool_xyk::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
+                    dex_id_xst.clone(),
+                    XSTUSD.into(),
+                    CERES_ASSET_ID.into(),
+                )
+                    .unwrap();
+
+            let fee_acc_xst = tech_acc_id_xst.clone().to_fee_account().unwrap();
+            let repr_xst: AccountId =
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id_xst)
+                    .unwrap();
+            let fee_repr_xst: AccountId =
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc_xst).unwrap();
+
+            assert_eq!(
+                pool_xyk::Pallet::<Runtime>::properties(xstusd, ceres),
+                Some((repr_xst.clone(), fee_repr_xst.clone()))
+            );
+
+
+            /********** MINTS ***********/
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
+                &ALICE,
+                &ALICE,
+                balance!(2000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &xstusd,
                 &ALICE,
                 &ALICE,
                 balance!(2000)
@@ -135,6 +206,13 @@ mod tests {
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
+                &ALICE,
+                &BOB,
+                balance!(2000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &xstusd,
                 &ALICE,
                 &BOB,
                 balance!(2000)
@@ -156,6 +234,13 @@ mod tests {
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
                 &xor,
+                &ALICE,
+                &pallet_account,
+                balance!(1000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &xstusd,
                 &ALICE,
                 &pallet_account,
                 balance!(1000)
@@ -170,6 +255,10 @@ mod tests {
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
+                balance!(2000)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&xstusd, &ALICE).unwrap(),
                 balance!(2000)
             );
             assert_eq!(

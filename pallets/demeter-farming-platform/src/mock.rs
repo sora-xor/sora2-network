@@ -3,7 +3,9 @@ pub use common::mock::*;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, XOR};
+use common::{
+    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, XOR, XSTUSD,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -54,6 +56,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -278,23 +281,34 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: XOR.into(),
-                    is_public: true,
-                },
-            )],
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID.into(), balance!(1000)),
                 (BOB, CERES_ASSET_ID.into(), balance!(500)),
             ],
-            initial_permission_owners: vec![(
-                MANAGE_DEX,
-                Scope::Limited(hash(&DEX_A_ID)),
-                vec![BOB],
-            )],
-            initial_permissions: vec![(ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_permission_owners: vec![
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![BOB]),
+            ],
+            initial_permissions: vec![
+                (ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
+                (ALICE, Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
+            ],
         }
     }
 }
