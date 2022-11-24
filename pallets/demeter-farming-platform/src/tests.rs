@@ -90,7 +90,6 @@ mod tests {
                 None,
             ));
 
-
             /************ XOR DEX ************/
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
                 Origin::signed(BOB),
@@ -135,7 +134,6 @@ mod tests {
                 Some((repr.clone(), fee_repr.clone()))
             );
 
-
             /********* XSTUSD DEX ********/
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
                 Origin::signed(BOB),
@@ -158,7 +156,7 @@ mod tests {
                     &CERES_ASSET_ID.into(),
                     LiquiditySourceType::XYKPool,
                 )
-                    .expect("Failed to query trading pair status.")
+                .expect("Failed to query trading pair status.")
             );
 
             let (_tpair_xst, tech_acc_id_xst) =
@@ -167,7 +165,7 @@ mod tests {
                     XSTUSD.into(),
                     CERES_ASSET_ID.into(),
                 )
-                    .unwrap();
+                .unwrap();
 
             let fee_acc_xst = tech_acc_id_xst.clone().to_fee_account().unwrap();
             let repr_xst: AccountId =
@@ -180,7 +178,6 @@ mod tests {
                 pool_xyk::Pallet::<Runtime>::properties(xstusd, ceres),
                 Some((repr_xst.clone(), fee_repr_xst.clone()))
             );
-
 
             /********** MINTS ***********/
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
