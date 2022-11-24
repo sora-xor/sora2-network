@@ -120,7 +120,7 @@ benchmarks! {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::TokenRegistered(authority, reward_asset.into()).into());
     }
 
-    add_pool {
+    /*add_pool {
         let authority = AuthorityAccount::<T>::get();
         let team_account = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&authority);
@@ -513,7 +513,7 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
-    }
+    }*/
 
     impl_benchmark_test_suite!(
         Pallet,
