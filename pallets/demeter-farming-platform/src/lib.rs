@@ -37,6 +37,7 @@ pub struct PoolData {
     pub rewards: Balance,
     pub rewards_to_be_distributed: Balance,
     pub is_removed: bool,
+    pub is_xstusd: bool,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -59,6 +60,7 @@ pub struct UserInfo<AssetId> {
     pub is_farm: bool,
     pub pooled_tokens: Balance,
     pub rewards: Balance,
+    pub is_xstusd: bool,
 }
 
 use frame_support::dispatch::DispatchError;
@@ -68,7 +70,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{PoolData, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, PoolXykPallet, XOR};
+    use common::{balance, PoolXykPallet, XSTUSD, XOR};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -156,26 +158,26 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Token registered [who, what]
         TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
-        /// Pool added [who, pool_asset, reward_asset, is_farm]
-        PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Reward Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
-        RewardWithdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
-        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Pool removed [who, pool_asset, reward_asset, is_farm]
-        PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Deposited [who, pool_asset, reward_asset, is_farm, amount]
-        Deposited(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
-        /// Multiplier Changed [who, pool_asset, reward_asset, is_farm, amount]
-        MultiplierChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, u32),
-        /// DepositFeeChanged [who, pool_asset, reward_asset, is_farm, amount]
-        DepositFeeChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Pool added [who, pool_asset, reward_asset, is_farm, is_xstusd]
+        PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, bool),
+        /// Reward Withdrawn [who, amount, pool_asset, reward_asset, is_farm, is_xstusd]
+        RewardWithdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool, bool),
+        /// Withdrawn [who, amount, pool_asset, reward_asset, is_farm, is_xstusd]
+        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool, bool),
+        /// Pool removed [who, pool_asset, reward_asset, is_farm, is_xstusd]
+        PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, bool),
+        /// Deposited [who, pool_asset, reward_asset, is_farm, amount, is_xstusd]
+        Deposited(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance, bool),
+        /// Multiplier Changed [who, pool_asset, reward_asset, is_farm, amount, is_xstusd]
+        MultiplierChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, u32, bool),
+        /// DepositFeeChanged [who, pool_asset, reward_asset, is_farm, amount, is_xstusd]
+        DepositFeeChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance, bool),
         /// Token info changed [who, what]
         TokenInfoChanged(AccountIdOf<T>, AssetIdOf<T>),
-        /// Total tokens changed [who, pool_asset, reward_asset, is_farm, amount]
-        TotalTokensChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
-        /// Info changed [who, pool_asset, reward_asset, is_farm, amount]
-        InfoChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Total tokens changed [who, pool_asset, reward_asset, is_farm, amount, is_xstusd]
+        TotalTokensChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance, bool),
+        /// Info changed [who, pool_asset, reward_asset, is_farm, amount, is_xstusd]
+        InfoChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance, bool),
     }
 
     #[pallet::error]
@@ -271,6 +273,7 @@ pub mod pallet {
             multiplier: u32,
             deposit_fee: Balance,
             is_core: bool,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -291,7 +294,10 @@ pub mod pallet {
             // Check if pool already exists
             let pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos {
-                if !pool_info.is_removed && pool_info.is_farm == is_farm {
+                if !pool_info.is_removed
+                    && pool_info.is_farm == is_farm
+                    && pool_info.is_xstusd == is_xstusd
+                {
                     return Err(Error::<T>::PoolAlreadyExists.into());
                 }
             }
@@ -305,6 +311,7 @@ pub mod pallet {
                 rewards: 0,
                 rewards_to_be_distributed: 0,
                 is_removed: false,
+                is_xstusd,
             };
 
             if is_farm {
@@ -317,7 +324,13 @@ pub mod pallet {
             <Pools<T>>::append(&pool_asset, &reward_asset, pool_info);
 
             // Emit an event
-            Self::deposit_event(Event::PoolAdded(user, pool_asset, reward_asset, is_farm));
+            Self::deposit_event(Event::PoolAdded(
+                user,
+                pool_asset,
+                reward_asset,
+                is_farm,
+                is_xstusd,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -332,6 +345,7 @@ pub mod pallet {
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
+            is_xstusd: bool,
             mut pooled_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -341,7 +355,8 @@ pub mod pallet {
             let mut exist = false;
             let mut pool_info = &mut Default::default();
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
                     exist = true;
                     pool_info = p_info;
                 }
@@ -355,6 +370,7 @@ pub mod pallet {
                 is_farm,
                 pooled_tokens: 0,
                 rewards: 0,
+                is_xstusd,
             };
             exist = false;
             let mut user_infos = <UserInfos<T>>::get(&user);
@@ -362,6 +378,7 @@ pub mod pallet {
                 if u_info.pool_asset == pool_asset
                     && u_info.reward_asset == reward_asset
                     && u_info.is_farm == is_farm
+                    && u_info.is_xstusd == is_xstusd
                 {
                     user_info.pooled_tokens = u_info.pooled_tokens;
                     user_info.rewards = u_info.rewards;
@@ -387,59 +404,133 @@ pub mod pallet {
                 }
                 Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
             } else {
-                let pool_account = T::XYKPool::properties_of_pool(XOR.into(), pool_asset.clone())
-                    .ok_or(Error::<T>::PoolDoesNotExist)?
-                    .0;
-                let mut lp_tokens =
-                    T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
-                        .unwrap_or(0);
-                if lp_tokens < user_info.pooled_tokens {
-                    lp_tokens = user_info.pooled_tokens;
-                }
-                ensure!(
-                    pooled_tokens <= lp_tokens - user_info.pooled_tokens,
-                    Error::<T>::InsufficientLPTokens
-                );
+                if is_xstusd == true {
+                    let base_asset = XSTUSD.into();
+                    let pool_account =
+                        T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
+                            .ok_or(Error::<T>::PoolDoesNotExist)?
+                            .0;
 
-                if pool_info.deposit_fee != balance!(0) {
-                    let fee = (FixedWrapper::from(pooled_tokens)
-                        * FixedWrapper::from(pool_info.deposit_fee))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    pooled_tokens -= fee;
-
-                    T::XYKPool::transfer_lp_tokens(
-                        pool_account.clone(),
-                        XOR.into(),
-                        pool_asset,
-                        user.clone(),
-                        FeeAccount::<T>::get(),
-                        fee,
-                    )?;
-
-                    lp_tokens =
+                    let mut lp_tokens =
                         T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                             .unwrap_or(0);
-                }
+                    if lp_tokens < user_info.pooled_tokens {
+                        lp_tokens = user_info.pooled_tokens;
 
-                // Handle total LP changed in other XOR/pool_asset farming pools
-                for u_info in user_infos.iter_mut() {
-                    if u_info.pool_asset == pool_asset
-                        && u_info.reward_asset != reward_asset
-                        && u_info.is_farm
-                    {
-                        if u_info.pooled_tokens > lp_tokens {
-                            let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
-                            u_info.pooled_tokens = lp_tokens;
-                            let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
-                            for p_info in pool_data.iter_mut() {
-                                if !p_info.is_removed && p_info.is_farm == is_farm {
-                                    p_info.total_tokens_in_pool -= pool_tokens_diff;
+                        ensure!(
+                            pooled_tokens <= lp_tokens - user_info.pooled_tokens,
+                            Error::<T>::InsufficientLPTokens
+                        );
+                    }
+                    if pool_info.deposit_fee != balance!(0) {
+                        let fee = (FixedWrapper::from(pooled_tokens)
+                            * FixedWrapper::from(pool_info.deposit_fee))
+                            .try_into_balance()
+                            .unwrap_or(0);
+                        pooled_tokens -= fee;
+
+                        T::XYKPool::transfer_lp_tokens(
+                            pool_account.clone(),
+                            base_asset,
+                            pool_asset,
+                            user.clone(),
+                            FeeAccount::<T>::get(),
+                            fee,
+                        )?;
+
+                        lp_tokens = T::XYKPool::balance_of_pool_provider(
+                            pool_account.clone(),
+                            user.clone(),
+                        )
+                            .unwrap_or(0);
+                    }
+
+                    // Handle total LP changed in other XSTUSD/pool_asset farming pools
+                    for u_info in user_infos.iter_mut() {
+                        if u_info.pool_asset == pool_asset
+                            && u_info.reward_asset != reward_asset
+                            && u_info.is_farm
+                            && u_info.is_xstusd
+                        {
+                            if u_info.pooled_tokens > lp_tokens {
+                                let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
+                                u_info.pooled_tokens = lp_tokens;
+                                let mut pool_data =
+                                    <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
+                                for p_info in pool_data.iter_mut() {
+                                    if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
+                                        p_info.total_tokens_in_pool -= pool_tokens_diff;
+                                    }
                                 }
+                                <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
                             }
-                            <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
                         }
                     }
+
+                }
+                if is_xstusd == false {
+                    let base_asset = XOR.into();
+                    let pool_account =
+                        T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
+                            .ok_or(Error::<T>::PoolDoesNotExist)?
+                            .0;
+
+                    let mut lp_tokens =
+                        T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                            .unwrap_or(0);
+                    if lp_tokens < user_info.pooled_tokens {
+                        lp_tokens = user_info.pooled_tokens;
+
+                        ensure!(
+                            pooled_tokens <= lp_tokens - user_info.pooled_tokens,
+                            Error::<T>::InsufficientLPTokens
+                        );
+                    }
+                    if pool_info.deposit_fee != balance!(0) {
+                        let fee = (FixedWrapper::from(pooled_tokens)
+                            * FixedWrapper::from(pool_info.deposit_fee))
+                            .try_into_balance()
+                            .unwrap_or(0);
+                        pooled_tokens -= fee;
+
+                        T::XYKPool::transfer_lp_tokens(
+                            pool_account.clone(),
+                            base_asset,
+                            pool_asset,
+                            user.clone(),
+                            FeeAccount::<T>::get(),
+                            fee,
+                        )?;
+
+                        lp_tokens = T::XYKPool::balance_of_pool_provider(
+                            pool_account.clone(),
+                            user.clone(),
+                        )
+                            .unwrap_or(0);
+                    }
+
+                    // Handle total LP changed in other XOR or XSTUSD/pool_asset farming pools
+                    for u_info in user_infos.iter_mut() {
+                        if u_info.pool_asset == pool_asset
+                            && u_info.reward_asset != reward_asset
+                            && u_info.is_farm
+                            && u_info.is_xstusd
+                        {
+                            if u_info.pooled_tokens > lp_tokens {
+                                let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
+                                u_info.pooled_tokens = lp_tokens;
+                                let mut pool_data =
+                                    <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
+                                for p_info in pool_data.iter_mut() {
+                                    if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
+                                        p_info.total_tokens_in_pool -= pool_tokens_diff;
+                                    }
+                                }
+                                <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
+                            }
+                        }
+                    }
+
                 }
             }
 
@@ -449,6 +540,7 @@ pub mod pallet {
                     if u_info.pool_asset == pool_asset
                         && u_info.reward_asset == reward_asset
                         && u_info.is_farm == is_farm
+                        && u_info.is_xstusd == is_xstusd
                     {
                         u_info.pooled_tokens += pooled_tokens;
                     }
@@ -461,7 +553,8 @@ pub mod pallet {
 
             // Update pool info
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
                     p_info.total_tokens_in_pool += pooled_tokens;
                 }
             }
@@ -475,6 +568,7 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 pooled_tokens,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -490,6 +584,7 @@ pub mod pallet {
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -499,7 +594,7 @@ pub mod pallet {
             let mut pool_info_rewards = balance!(0);
 
             for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm {
+                if p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
                     exist = true;
                     pool_info_rewards = p_info.rewards;
                 }
@@ -515,6 +610,7 @@ pub mod pallet {
                 if user_info.pool_asset == pool_asset
                     && user_info.reward_asset == reward_asset
                     && user_info.is_farm == is_farm
+                    && user_info.is_xstusd == is_xstusd
                 {
                     ensure!(user_info.rewards != 0, Error::<T>::ZeroRewards);
                     ensure!(
@@ -536,7 +632,7 @@ pub mod pallet {
             }
 
             for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm {
+                if p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
                     p_info.rewards = pool_info_rewards;
                 }
             }
@@ -552,6 +648,7 @@ pub mod pallet {
                 pool_asset,
                 reward_asset,
                 is_farm,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -568,6 +665,7 @@ pub mod pallet {
             reward_asset: AssetIdOf<T>,
             pooled_tokens: Balance,
             is_farm: bool,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -578,6 +676,7 @@ pub mod pallet {
                 if user_info.pool_asset == pool_asset
                     && user_info.reward_asset == reward_asset
                     && user_info.is_farm == is_farm
+                    && user_info.is_xstusd == is_xstusd
                 {
                     ensure!(
                         pooled_tokens <= user_info.pooled_tokens,
@@ -599,7 +698,7 @@ pub mod pallet {
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm {
+                if pool_info.is_farm == is_farm && pool_info.is_xstusd == is_xstusd {
                     pool_info.total_tokens_in_pool -= pooled_tokens;
                 }
             }
@@ -615,6 +714,7 @@ pub mod pallet {
                 pool_asset,
                 reward_asset,
                 is_farm,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -628,6 +728,7 @@ pub mod pallet {
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -638,7 +739,7 @@ pub mod pallet {
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm {
+                if pool_info.is_farm == is_farm && pool_info.is_xstusd == is_xstusd {
                     pool_info.is_removed = true;
                 }
             }
@@ -651,6 +752,7 @@ pub mod pallet {
                 pool_asset,
                 reward_asset,
                 is_farm,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -665,6 +767,7 @@ pub mod pallet {
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
             new_multiplier: u32,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -681,7 +784,8 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
                     exist = true;
                     old_multiplier = p_info.multiplier;
                     p_info.multiplier = new_multiplier;
@@ -710,6 +814,7 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 new_multiplier,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -724,6 +829,7 @@ pub mod pallet {
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
             total_tokens: Balance,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -736,7 +842,8 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
                     exist = true;
                     p_info.total_tokens_in_pool = total_tokens;
                 }
@@ -752,6 +859,7 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 total_tokens,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -767,6 +875,7 @@ pub mod pallet {
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
             pool_tokens: Balance,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -780,6 +889,7 @@ pub mod pallet {
                 if u_info.pool_asset == pool_asset
                     && u_info.reward_asset == reward_asset
                     && u_info.is_farm == is_farm
+                    && u_info.is_xstusd == is_xstusd
                 {
                     u_info.pooled_tokens = pool_tokens;
                 }
@@ -794,6 +904,7 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 pool_tokens,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
@@ -808,6 +919,7 @@ pub mod pallet {
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
             deposit_fee: Balance,
+            is_xstusd: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -822,7 +934,8 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
                     exist = true;
                     p_info.deposit_fee = deposit_fee;
                 }
@@ -838,6 +951,7 @@ pub mod pallet {
                 reward_asset,
                 is_farm,
                 deposit_fee,
+                is_xstusd,
             ));
 
             // Return a successful DispatchResult
