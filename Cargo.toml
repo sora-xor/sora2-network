@@ -250,6 +250,7 @@ members = [
     "pallets/trustless-eth-bridge/leaf-provider/runtime-api",
     "pallets/trustless-eth-bridge/leaf-provider/rpc",
     "pallets/trustless-eth-bridge/types",
+    "pallets/band",
     "relayer",
     "relayer/substrate-gen",
     "relayer/ethereum-gen",

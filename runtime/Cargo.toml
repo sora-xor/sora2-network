@@ -31,6 +31,7 @@ sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branc
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
+band = { path = "../pallets/band", default-features = false }
 common = { path = "../common", default-features = false }
 ceres-governance-platform = { path = "../pallets/ceres-governance-platform", default-features = false }
 ceres-launchpad = { path = "../pallets/ceres-launchpad", default-features = false }
@@ -142,6 +143,7 @@ default = ["std", "build-wasm-binary"]
 std = [
     "assets-runtime-api/std",
     "assets/std",
+    "band/std",
     "bridge-multisig/std",
     "pallet-beefy/std",
     "sp-mmr-primitives/std",
@@ -238,6 +240,7 @@ private-net = [
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "band/runtime-benchmarks",
     "ceres-governance-platform/runtime-benchmarks",
     "ceres-launchpad/runtime-benchmarks",
     "ceres-liquidity-locker-benchmarking",
