@@ -399,8 +399,8 @@ mod tests {
                 BOB
             ));
 
-            let token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset)
-                .unwrap_or_default();
+            let token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
 
             assert_eq!(token_info.token_per_block, token_per_block);
             assert_eq!(token_info.farms_allocation, farms_allocation);
@@ -618,8 +618,8 @@ mod tests {
                 is_xstusd
             ));
 
-            let token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset)
-                .unwrap_or_default();
+            let token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
             assert_eq!(token_info.farms_total_multiplier, multiplier);
 
             let pool_infos =
@@ -1627,8 +1627,8 @@ mod tests {
                 )
             );
 
-            token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset)
-                .unwrap_or_default();
+            token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
             let mut pool_infos =
                 demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
@@ -1694,8 +1694,8 @@ mod tests {
                 )
             );
 
-            token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset)
-                .unwrap_or_default();
+            token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
             let mut pool_infos =
                 demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
@@ -2305,8 +2305,7 @@ mod tests {
                     assert_eq!(pool_info.rewards, balance!(648));
                 }
             }
-            let token_info =
-                demeter_farming_platform::TokenInfos::<Runtime>::get(&deo).unwrap_or_default();
+            let token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&deo).unwrap();
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&deo, &token_info.team_account).unwrap(),
                 balance!(576)
@@ -2350,8 +2349,7 @@ mod tests {
                     assert_eq!(pool_info.rewards, balance!(7.2));
                 }
             }
-            let token_info =
-                demeter_farming_platform::TokenInfos::<Runtime>::get(&util).unwrap_or_default();
+            let token_info = demeter_farming_platform::TokenInfos::<Runtime>::get(&util).unwrap();
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&util, &token_info.team_account).unwrap(),
                 balance!(14.4)
