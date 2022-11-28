@@ -638,6 +638,62 @@ mod tests {
     }
 
     #[test]
+    fn add_pool_xstusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.4);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+            let is_xstusd = true;
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                pool_asset,
+                reward_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            let token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
+            assert_eq!(token_info.farms_total_multiplier, multiplier);
+
+            let pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos {
+                if !pool_info.is_removed
+                    && pool_info.is_farm == is_farm
+                    && pool_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(pool_info.multiplier, multiplier);
+                    assert_eq!(pool_info.is_core, is_core);
+                    assert_eq!(pool_info.deposit_fee, deposit_fee);
+                }
+            }
+        });
+    }
+
+    #[test]
     fn deposit_farming_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1073,6 +1129,175 @@ mod tests {
     }
 
     #[test]
+    fn deposit_xstusd_ok_farm() {
+        preset_initial(|| {
+            let dex_id = DEX_B_ID;
+            let asset_xstusd = XSTUSD;
+            let asset_ceres = CERES_ASSET_ID;
+            let is_farm = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+            let is_xstusd = true;
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_ceres,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_xstusd,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_ceres,
+                asset_ceres,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_ceres,
+                asset_xstusd,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE),
+                dex_id,
+                asset_xstusd,
+                asset_ceres,
+                balance!(500),
+                balance!(700),
+                balance!(500),
+                balance!(700),
+            ));
+
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    asset_xstusd,
+                    asset_ceres,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let mut pooled_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                asset_ceres,
+                asset_ceres,
+                is_farm,
+                pooled_tokens,
+                is_xstusd
+            ));
+            let fee = (FixedWrapper::from(pooled_tokens) * FixedWrapper::from(deposit_fee))
+                .try_into_balance()
+                .unwrap_or(0);
+            pooled_tokens -= fee;
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_ceres);
+            for p_info in &pool_infos {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(p_info.total_tokens_in_pool, pooled_tokens);
+                }
+            }
+
+            let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            for u_info in &user_infos {
+                if u_info.is_farm == is_farm && u_info.is_xstusd == is_xstusd {
+                    assert_eq!(u_info.pooled_tokens, pooled_tokens);
+                }
+            }
+
+            let lp_tokens = pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(
+                pool_account.clone(),
+                demeter_farming_platform::FeeAccount::<Runtime>::get(),
+            )
+            .unwrap_or(0);
+            assert_eq!(lp_tokens, fee);
+
+            // Deposit to other XSTUSD/CERES pool with different reward token
+            pooled_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                pool_account.clone(),
+                ALICE,
+            )
+            .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                asset_ceres,
+                asset_xstusd,
+                is_farm,
+                pooled_tokens,
+                is_xstusd
+            ));
+
+            let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            let mut first_pool = balance!(0);
+            let mut second_pool = balance!(0);
+            for u_info in &user_infos {
+                if u_info.pool_asset == asset_ceres
+                    && u_info.reward_asset == asset_ceres
+                    && u_info.is_farm == is_farm
+                    && u_info.is_xstusd == is_xstusd
+                {
+                    first_pool = u_info.pooled_tokens;
+                } else if u_info.pool_asset == asset_ceres
+                    && u_info.reward_asset == asset_xstusd
+                    && u_info.is_farm == is_farm
+                    && u_info.is_xstusd == is_xstusd
+                {
+                    second_pool = u_info.pooled_tokens;
+                }
+            }
+            assert_eq!(first_pool, second_pool);
+
+            pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_ceres);
+            for p_info in &pool_infos {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(p_info.total_tokens_in_pool, first_pool);
+                }
+            }
+        });
+    }
+
+    #[test]
     fn get_rewards_pool_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1286,6 +1511,78 @@ mod tests {
     }
 
     #[test]
+    fn get_rewards_xstusd_ok() {
+        preset_initial(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: balance!(1000),
+                rewards: balance!(100),
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            let user_info = UserInfo {
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens: balance!(1000),
+                rewards: balance!(100),
+                is_xstusd,
+            };
+
+            demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::get_rewards(
+                Origin::signed(ALICE),
+                pool_asset,
+                reward_asset,
+                is_farm,
+                is_xstusd
+            ));
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for p_info in pool_infos.iter_mut() {
+                if p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
+                    assert_eq!(p_info.rewards, balance!(0))
+                }
+            }
+
+            let mut user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(ALICE);
+            for u_info in user_infos.iter_mut() {
+                if u_info.pool_asset == pool_asset
+                    && u_info.reward_asset == reward_asset
+                    && u_info.is_farm == is_farm
+                    && u_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(u_info.rewards, balance!(0))
+                }
+            }
+
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                    .expect("Failed to query free balance."),
+                balance!(3100)
+            );
+        });
+    }
+
+    #[test]
     fn withdraw_insufficient_funds() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1395,6 +1692,94 @@ mod tests {
     }
 
     #[test]
+    fn withdraw_xstusd_ok() {
+        preset_initial(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let pooled_tokens = balance!(30);
+            let is_farm = true;
+            let is_xstusd = true;
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: balance!(1000),
+                rewards: balance!(100),
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            let user_info = UserInfo {
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens,
+                rewards: 1,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
+                Origin::signed(ALICE),
+                pool_asset,
+                reward_asset,
+                pooled_tokens,
+                is_farm,
+                is_xstusd
+            ));
+
+            let mut user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+
+            for user_info in user_infos.iter_mut() {
+                if user_info.pool_asset == pool_asset
+                    && user_info.reward_asset == reward_asset
+                    && user_info.is_farm == is_farm
+                    && user_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(user_info.pooled_tokens, balance!(0));
+                }
+            }
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for p_info in pool_infos.iter_mut() {
+                if p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
+                    assert_eq!(p_info.total_tokens_in_pool, balance!(970))
+                }
+            }
+
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    pool_asset,
+                    reward_asset,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let pool_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_eq!(pool_tokens, pooled_tokens);
+        });
+    }
+
+    #[test]
     fn remove_pool_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1424,6 +1809,52 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
             let is_xstusd = false;
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 100,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::remove_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                pool_asset,
+                reward_asset,
+                is_farm,
+                is_xstusd
+            ));
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm && pool_info.is_xstusd == is_xstusd {
+                    pool_info.is_removed = true;
+                }
+                assert_eq!(pool_info.is_removed, true);
+            }
+        });
+    }
+
+    #[test]
+    fn remove_pool_xstusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
 
             let pool_info = PoolData {
                 multiplier: 1,
@@ -1711,6 +2142,73 @@ mod tests {
     }
 
     #[test]
+    fn change_pool_multiplier_is_farm_xstusd_true() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
+            let new_multiplier = 2;
+
+            let mut token_info = TokenInfo {
+                farms_total_multiplier: 1,
+                staking_total_multiplier: 0,
+                token_per_block: balance!(1),
+                farms_allocation: balance!(0.2),
+                staking_allocation: balance!(0.4),
+                team_allocation: balance!(0.4),
+                team_account: BOB,
+            };
+
+            demeter_farming_platform::TokenInfos::<Runtime>::insert(&reward_asset, &token_info);
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 0,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            assert_ok!(
+                demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    new_multiplier,
+                    is_xstusd
+                )
+            );
+
+            token_info =
+                demeter_farming_platform::TokenInfos::<Runtime>::get(&reward_asset).unwrap();
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm
+                    && !pool_info.is_removed
+                    && pool_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(pool_info.multiplier, new_multiplier);
+                }
+            }
+            assert_eq!(token_info.farms_total_multiplier, new_multiplier);
+        });
+    }
+
+    #[test]
     fn change_pool_deposit_fee_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1810,6 +2308,57 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
             let is_xstusd = false;
+            let mut deposit_fee = balance!(1);
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee,
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: 0,
+                rewards: 0,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            deposit_fee = balance!(0.8);
+            assert_ok!(
+                demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    deposit_fee,
+                    is_xstusd
+                )
+            );
+
+            let pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for p_info in pool_infos {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(p_info.deposit_fee, deposit_fee)
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn change_pool_deposit_fee_xstusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
             let mut deposit_fee = balance!(1);
 
             let pool_info = PoolData {
@@ -2071,6 +2620,58 @@ mod tests {
     }
 
     #[test]
+    fn change_total_tokens_xstusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
+            let total_tokens = balance!(200);
+
+            let pool_info = PoolData {
+                multiplier: 1,
+                deposit_fee: balance!(0),
+                is_core: true,
+                is_farm,
+                total_tokens_in_pool: balance!(100),
+                rewards: 0,
+                rewards_to_be_distributed: 0,
+                is_removed: false,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::Pools::<Runtime>::append(
+                &pool_asset,
+                &reward_asset,
+                &pool_info,
+            );
+
+            assert_ok!(
+                demeter_farming_platform::Pallet::<Runtime>::change_total_tokens(
+                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    total_tokens,
+                    is_xstusd
+                )
+            );
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for pool_info in pool_infos.iter_mut() {
+                if pool_info.is_farm == is_farm
+                    && !pool_info.is_removed
+                    && pool_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(pool_info.total_tokens_in_pool, total_tokens);
+                }
+            }
+        });
+    }
+
+    #[test]
     fn change_info_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -2078,6 +2679,52 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
             let is_xstusd = false;
+            let pooled_tokens = 10;
+            let rewards = 1;
+
+            let user_info = UserInfo {
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pooled_tokens,
+                rewards,
+                is_xstusd,
+            };
+
+            demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
+
+            let pool_tokens = balance!(69);
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::change_info(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                ALICE.into(),
+                pool_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens,
+                is_xstusd
+            ));
+
+            let user_info_alice = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            for user_info in &user_info_alice {
+                if user_info.pool_asset == pool_asset
+                    && user_info.reward_asset == reward_asset
+                    && user_info.is_farm == is_farm
+                    && user_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(user_info.pooled_tokens, pool_tokens);
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn change_info_xstusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
             let pooled_tokens = 10;
             let rewards = 1;
 
