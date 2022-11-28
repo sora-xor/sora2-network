@@ -1694,55 +1694,119 @@ mod tests {
     #[test]
     fn withdraw_xstusd_ok() {
         preset_initial(|| {
-            let pool_asset = XSTUSD;
-            let reward_asset = CERES_ASSET_ID;
-            let pooled_tokens = balance!(30);
+            let dex_id = DEX_B_ID;
+            let asset_xstusd = XSTUSD;
+            let asset_ceres = CERES_ASSET_ID;
             let is_farm = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
             let is_xstusd = true;
 
-            let pool_info = PoolData {
-                multiplier: 1,
-                deposit_fee: balance!(0),
-                is_core: true,
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_ceres,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                asset_ceres,
+                asset_ceres,
                 is_farm,
-                total_tokens_in_pool: balance!(1000),
-                rewards: balance!(100),
-                rewards_to_be_distributed: 0,
-                is_removed: false,
-                is_xstusd,
-            };
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
 
-            demeter_farming_platform::Pools::<Runtime>::append(
-                &pool_asset,
-                &reward_asset,
-                &pool_info,
-            );
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE),
+                dex_id,
+                asset_xstusd,
+                asset_ceres,
+                balance!(500),
+                balance!(700),
+                balance!(500),
+                balance!(700),
+            ));
 
-            let user_info = UserInfo {
-                pool_asset,
-                reward_asset,
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    asset_xstusd,
+                    asset_ceres,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let mut pooled_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                asset_ceres,
+                asset_ceres,
                 is_farm,
                 pooled_tokens,
-                rewards: 1,
-                is_xstusd,
-            };
+                is_xstusd
+            ));
 
-            demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
+            let fee = (FixedWrapper::from(pooled_tokens) * FixedWrapper::from(deposit_fee))
+                .try_into_balance()
+                .unwrap_or(0);
+            pooled_tokens -= fee;
+
+            let mut pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_ceres);
+            for p_info in &pool_infos {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(p_info.total_tokens_in_pool, pooled_tokens);
+                }
+            }
+
+            let mut user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            for u_info in &user_infos {
+                if u_info.is_farm == is_farm && u_info.is_xstusd == is_xstusd {
+                    assert_eq!(u_info.pooled_tokens, pooled_tokens);
+                }
+            }
+
+            let lp_tokens = pool_xyk::Pallet::<Runtime>::balance_of_pool_provider(
+                pool_account.clone(),
+                demeter_farming_platform::FeeAccount::<Runtime>::get(),
+            )
+            .unwrap_or(0);
+            assert_eq!(lp_tokens, fee);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
                 Origin::signed(ALICE),
-                pool_asset,
-                reward_asset,
+                asset_ceres,
+                asset_ceres,
                 pooled_tokens,
                 is_farm,
                 is_xstusd
             ));
 
-            let mut user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
 
             for user_info in user_infos.iter_mut() {
-                if user_info.pool_asset == pool_asset
-                    && user_info.reward_asset == reward_asset
+                if user_info.pool_asset == asset_ceres
+                    && user_info.reward_asset == asset_ceres
                     && user_info.is_farm == is_farm
                     && user_info.is_xstusd == is_xstusd
                 {
@@ -1750,32 +1814,13 @@ mod tests {
                 }
             }
 
-            let mut pool_infos =
-                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_xstusd, &asset_ceres);
             for p_info in pool_infos.iter_mut() {
                 if p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd {
-                    assert_eq!(p_info.total_tokens_in_pool, balance!(970))
+                    assert_eq!(p_info.total_tokens_in_pool, balance!(0))
                 }
             }
-
-            // Get pool account
-            let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
-                    pool_asset,
-                    reward_asset,
-                )
-                .expect("Pool does not exist")
-                .0;
-
-            // Calculate number of pool tokens of user's account
-            let pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
-                    pool_account.clone(),
-                    ALICE,
-                )
-                .expect("User is not pool provider");
-
-            assert_eq!(pool_tokens, pooled_tokens);
         });
     }
 
@@ -3282,6 +3327,240 @@ mod tests {
     }
 
     #[test]
+    fn check_if_has_enough_liquidity_out_of_farming_xstusd_true() {
+        preset_initial(|| {
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                pool_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                pool_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE),
+                DEX_B_ID.into(),
+                pool_asset,
+                reward_asset,
+                balance!(500),
+                balance!(700),
+                balance!(500),
+                balance!(700),
+            ));
+
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    pool_asset,
+                    reward_asset,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let pool_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens,
+                is_xstusd
+            ));
+
+            let pooled_tokens = (FixedWrapper::from(pool_tokens)
+                * FixedWrapper::from(balance!(0.96)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                pool_asset,
+                is_farm,
+                pooled_tokens,
+                is_xstusd
+            ));
+
+            let mut pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
+                / FixedWrapper::from(balance!(2)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                pooled_tokens_to_withdraw,
+                is_farm,
+                is_xstusd
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
+                Origin::signed(ALICE),
+                reward_asset,
+                pool_asset,
+                pooled_tokens_to_withdraw,
+                is_farm,
+                is_xstusd
+            ));
+
+            pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
+                / FixedWrapper::from(balance!(3)))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_eq!(
+                demeter_farming_platform::Pallet::<Runtime>::check_if_has_enough_liquidity_out_of_farming(
+                    &ALICE,
+                    pool_asset,
+                    reward_asset,
+                    pooled_tokens_to_withdraw,
+                ),
+                true
+            );
+        });
+    }
+
+    #[test]
+    fn check_if_has_enough_liquidity_out_of_farming_xstusd_false() {
+        preset_initial(|| {
+            let dex_id = DEX_B_ID;
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE),
+                dex_id,
+                pool_asset,
+                reward_asset,
+                balance!(500),
+                balance!(700),
+                balance!(500),
+                balance!(700),
+            ));
+
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    pool_asset,
+                    reward_asset,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let pool_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens - balance!(1),
+                is_xstusd
+            ));
+
+            assert_eq!(
+                demeter_farming_platform::Pallet::<Runtime>::check_if_has_enough_liquidity_out_of_farming(
+                    &ALICE,
+                    pool_asset,
+                    reward_asset,
+                    pool_tokens,
+                ),
+                false
+            );
+        });
+    }
+
+    #[test]
     fn check_if_user_lp_is_changed_after_locking() {
         preset_initial(|| {
             let dex_id = DEX_A_ID;
@@ -3289,6 +3568,124 @@ mod tests {
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
             let is_xstusd = false;
+            let multiplier = 1;
+            let deposit_fee = balance!(0.04);
+            let is_core = true;
+            let token_per_block = balance!(1);
+            let farms_allocation = balance!(0.6);
+            let staking_allocation = balance!(0.2);
+            let team_allocation = balance!(0.2);
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                token_per_block,
+                farms_allocation,
+                staking_allocation,
+                team_allocation,
+                BOB
+            ));
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
+                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                multiplier,
+                deposit_fee,
+                is_core,
+                is_xstusd
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE),
+                dex_id,
+                pool_asset,
+                reward_asset,
+                balance!(500),
+                balance!(700),
+                balance!(500),
+                balance!(700),
+            ));
+
+            // Get pool account
+            let pool_account: AccountId =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                    pool_asset,
+                    reward_asset,
+                )
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens of user's account
+            let mut pool_tokens: Balance =
+                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                    pool_account.clone(),
+                    ALICE,
+                )
+                .expect("User is not pool provider");
+
+            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
+                Origin::signed(ALICE),
+                reward_asset,
+                reward_asset,
+                is_farm,
+                pool_tokens,
+                is_xstusd
+            ));
+
+            assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                Origin::signed(ALICE),
+                pool_asset,
+                reward_asset,
+                10u32.into(),
+                balance!(1),
+                true
+            ));
+
+            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                pool_account.clone(),
+                ALICE,
+            )
+            .expect("User is not pool provider");
+
+            let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
+            for u_info in &user_infos {
+                if u_info.is_farm == is_farm && u_info.is_xstusd == is_xstusd {
+                    assert_eq!(u_info.pooled_tokens, pool_tokens);
+                }
+            }
+            let pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&reward_asset, &reward_asset);
+            for p_info in &pool_infos {
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.is_xstusd == is_xstusd
+                {
+                    assert_eq!(p_info.total_tokens_in_pool, pool_tokens);
+                }
+            }
+
+            assert_err!(
+                demeter_farming_platform::Pallet::<Runtime>::deposit(
+                    Origin::signed(ALICE),
+                    reward_asset,
+                    reward_asset,
+                    is_farm,
+                    balance!(14000),
+                    is_xstusd
+                ),
+                demeter_farming_platform::Error::<Runtime>::InsufficientLPTokens
+            );
+        });
+    }
+
+    #[test]
+    fn check_if_user_lp_is_changed_after_locking_xstusd() {
+        preset_initial(|| {
+            let dex_id = DEX_B_ID;
+            let pool_asset = XSTUSD;
+            let reward_asset = CERES_ASSET_ID;
+            let is_farm = true;
+            let is_xstusd = true;
             let multiplier = 1;
             let deposit_fee = balance!(0.04);
             let is_core = true;
