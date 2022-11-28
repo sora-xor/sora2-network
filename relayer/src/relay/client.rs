@@ -49,7 +49,7 @@ pub trait RuntimeClient {
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment>;
     fn client(&self) -> &SubSignedClient;
     fn epoch_duration(&self) -> AnyResult<u64>;
-    async fn latest_beefy_block(&self) -> AnyResult<u32>;
+    async fn latest_beefy_block(&self) -> AnyResult<u64>;
     async fn current_validator_set(&self) -> AnyResult<ValidatorSet>;
     async fn next_validator_set(&self) -> AnyResult<ValidatorSet>;
 }
@@ -94,7 +94,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
         Ok(epoch_duration)
     }
 
-    async fn latest_beefy_block(&self) -> AnyResult<u32> {
+    async fn latest_beefy_block(&self) -> AnyResult<u64> {
         let latest_beefy_block = self
             .0
             .api()
@@ -105,7 +105,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
             )
             .await?
             .ok_or(anyhow!("Error to get latest beefy block"))?;
-        Ok(latest_beefy_block)
+        Ok(latest_beefy_block as u64)
     }
 
     async fn current_validator_set(&self) -> AnyResult<ValidatorSet> {
@@ -176,7 +176,7 @@ impl RuntimeClient for ParachainRuntimeClient {
         Ok(PARACHAIN_EPOCH_DURATION)
     }
 
-    async fn latest_beefy_block(&self) -> AnyResult<u32> {
+    async fn latest_beefy_block(&self) -> AnyResult<u64> {
         let latest_beefy_block = self
             .0
             .api()
