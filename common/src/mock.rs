@@ -114,7 +114,7 @@ impl Default for ComicAssetId {
 // This is never used, and just makes some tests compatible.
 impl From<AssetId32<PredefinedAssetId>> for AssetId32<ComicAssetId> {
     fn from(_asset: AssetId32<PredefinedAssetId>) -> Self {
-        AssetId32::from_asset_id(PredefinedAssetId::XOR)
+        unreachable!()
     }
 }
 

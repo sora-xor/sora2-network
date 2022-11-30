@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -24,6 +25,15 @@ pub trait WeightInfo {
     fn change_token_info() -> Weight;
     fn change_total_tokens() -> Weight;
     fn change_info() -> Weight;
+}
+
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After adding base_asset field
+    V2,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -68,7 +78,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PoolData, TokenInfo, UserInfo, WeightInfo};
+    use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
@@ -101,7 +111,7 @@ pub mod pallet {
 
     type Assets<T> = assets::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -129,6 +139,17 @@ pub mod pallet {
         Vec<PoolData<AssetIdOf<T>>>,
         ValueQuery,
     >;
+
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
@@ -1015,6 +1036,16 @@ pub mod pallet {
             }
 
             counter
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
         }
     }
 
