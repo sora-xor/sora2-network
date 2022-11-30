@@ -2,17 +2,21 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use common::mock::ExistentialDeposits;
-use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
+use common::{
+    Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PSWAP, VAL, XOR,
+    XST,
+};
 use frame_support::assert_noop;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
+use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
 use crate::outbound as incentivized_outbound_channel;
@@ -122,10 +126,19 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
 }
 
 type AssetId = AssetId32<common::PredefinedAssetId>;
+
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
 
 impl assets::Config for Test {
     type Event = Event;
@@ -134,8 +147,13 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Test>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
     type GetTotalBalance = ();
 }

@@ -33,15 +33,15 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquiditySourceFilter,
-    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet,
+    PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
-use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
 
 pub mod weights;
@@ -68,7 +68,7 @@ pub trait WeightInfo {
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
-    /// - `fees_account_id`: Id of Accout which accumulates fees from swaps.
+    /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
     pub fn is_subscribed(fees_account_id: &T::AccountId) -> bool {
         SubscribedAccounts::<T>::get(fees_account_id).is_some()
     }
