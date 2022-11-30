@@ -86,7 +86,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     register {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = bob::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
     }: _(
@@ -105,7 +105,7 @@ benchmarks! {
     }
 
     transfer {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
@@ -130,7 +130,7 @@ benchmarks! {
     }
 
     mint {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
@@ -154,8 +154,34 @@ benchmarks! {
         assert_last_event::<T>(Event::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
     }
 
+    force_mint {
+        add_assets::<T>(100)?;
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ).unwrap();
+    }: _(
+        RawOrigin::Root,
+        USDT.into(),
+        caller.clone(),
+        100_u32.into()
+    )
+    verify {
+        let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
+        assert_eq!(usdt_issuance, 100_u32.into());
+    }
+
     burn {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
@@ -185,7 +211,7 @@ benchmarks! {
     }
 
     set_non_mintable {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
@@ -221,6 +247,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_register());
             assert_ok!(Pallet::<Runtime>::test_benchmark_transfer());
             assert_ok!(Pallet::<Runtime>::test_benchmark_mint());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_force_mint());
             assert_ok!(Pallet::<Runtime>::test_benchmark_burn());
             assert_ok!(Pallet::<Runtime>::test_benchmark_set_non_mintable());
         });

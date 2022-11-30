@@ -29,13 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, LiquidityProxyTrait};
+use crate::Error;
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
-    assert_approx_eq, balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL,
-    XOR,
+    assert_approx_eq, balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, DAI, DOT, ETH,
+    KSM, PSWAP, USDT, VAL, XOR,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};

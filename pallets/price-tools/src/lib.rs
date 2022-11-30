@@ -51,12 +51,12 @@ use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, XOR,
+    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
+    OnPoolReservesChanged, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
-use liquidity_proxy::LiquidityProxyTrait;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
 
@@ -103,10 +103,10 @@ impl Default for PriceInfo {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::LiquidityProxyTrait;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use liquidity_proxy::LiquidityProxyTrait;
 
     #[pallet::config]
     pub trait Config:

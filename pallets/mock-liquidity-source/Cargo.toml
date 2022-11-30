@@ -38,6 +38,7 @@ technical = { path = "../technical", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+hex-literal = "0.3.1"
 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }

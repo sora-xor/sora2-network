@@ -38,15 +38,14 @@ use codec::{Decode, Encode};
 use common::fixed_wrapper;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount};
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
-    XSTUSD,
+    balance, Fixed, LiquidityProxyTrait, OnPswapBurned, PswapRemintInfo, RewardReason,
+    VestedRewardsPallet, PSWAP, VAL, XSTUSD,
 };
 use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use liquidity_proxy::LiquidityProxyTrait;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;

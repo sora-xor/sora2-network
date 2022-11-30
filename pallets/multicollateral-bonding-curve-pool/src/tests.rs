@@ -36,10 +36,10 @@ mod tests {
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, DAI, LiquiditySourceFilter,
         DEFAULT_BALANCE_PRECISION,
+        LiquidityProxyTrait,
     };
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
-    use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::assert_err;
 use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
@@ -1986,7 +1986,7 @@ use frame_support::assert_noop;
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
-                
+
             (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, balance!(200000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),

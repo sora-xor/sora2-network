@@ -196,7 +196,7 @@ pub fn dev_net_coded() -> ChainSpec {
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
-        ChainType::Live,
+        ChainType::Development,
         move || {
             testnet_genesis(
                 true,

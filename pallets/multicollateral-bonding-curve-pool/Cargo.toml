@@ -69,6 +69,15 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
+    "assets/std",
+    "common/std",
+    "dex-api/std",
+    "liquidity-proxy/std",
+    "permissions/std",
+    "pswap-distribution/std",
+    "technical/std",
+    "trading-pair/std",
+    "pallet-timestamp/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
