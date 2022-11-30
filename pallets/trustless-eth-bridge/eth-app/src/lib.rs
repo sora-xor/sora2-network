@@ -81,6 +81,7 @@ pub mod pallet {
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::transactional;
     use frame_system::pallet_prelude::{OriginFor, *};
     use frame_system::RawOrigin;
     use traits::MultiCurrency;
@@ -167,6 +168,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         // Users should burn their holdings to release funds on the Ethereum side
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,

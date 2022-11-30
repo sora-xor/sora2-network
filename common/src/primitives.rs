@@ -51,6 +51,12 @@ use {
 
 pub type Balance = u128;
 
+/// Max length of asset content source. The same value as IE URL length. It should enough for any URI / IPFS address (CID)
+pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
+
+/// Max length of asset description, it should be enough to describe everything the user wants
+pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
@@ -154,6 +160,7 @@ pub enum PredefinedAssetId {
     DAI = 6,
     ETH = 7,
     XSTUSD = 8,
+    XST = 9,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -166,6 +173,7 @@ pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
 pub const XSTUSD: AssetId32<PredefinedAssetId> =
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
+pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XST);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
@@ -353,6 +361,7 @@ where
 #[repr(u8)]
 pub enum DEXId {
     Polkaswap = 0,
+    PolkaswapXSTUSD = 1,
 }
 
 impl From<DEXId> for u32 {
@@ -559,7 +568,7 @@ impl Default for ContentSource {
 
 impl ContentSource {
     pub fn is_valid(&self) -> bool {
-        self.0.is_ascii()
+        self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
     }
 }
 
@@ -616,7 +625,7 @@ impl Default for Description {
 
 impl Description {
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= 200
+        self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
     }
 }
 

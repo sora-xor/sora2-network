@@ -160,8 +160,8 @@ fn test() {
             XOR,
             PSWAP,
             balance!(1),
-            0,
-            0,
+            balance!(0.1),
+            balance!(0.1),
         ));
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(CHARLIE()),

@@ -39,6 +39,8 @@ pub mod parachain_runtime {
     use ::bridge_common::beefy_types::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorProof")]
     use ::bridge_common::beefy_types::ValidatorProof;
+    #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorSet")]
+    use ::bridge_common::beefy_types::ValidatorSet;
     #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
     use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]

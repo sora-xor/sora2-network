@@ -113,8 +113,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DAI.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
@@ -124,8 +124,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         VAL.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
 

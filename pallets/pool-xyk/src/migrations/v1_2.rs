@@ -4,9 +4,9 @@ use frame_support::traits::Get;
 use crate::{AccountPools, Config, PoolProviders, Properties};
 
 pub fn migrate<T: Config>() -> Weight {
-    for (_, target_asset, (pool_account, _)) in Properties::<T>::iter() {
+    for (base_asset_id, target_asset, (pool_account, _)) in Properties::<T>::iter() {
         for (user_account, _pool_tokens_balance) in PoolProviders::<T>::iter_prefix(pool_account) {
-            AccountPools::<T>::mutate(user_account, |set| set.insert(target_asset));
+            AccountPools::<T>::mutate(user_account, &base_asset_id, |set| set.insert(target_asset));
         }
     }
     T::BlockWeights::get().max_block
@@ -98,7 +98,7 @@ mod tests {
 
             for account in [ALICE(), BOB(), CHARLIE()].iter() {
                 assert_eq!(
-                    AccountPools::<Runtime>::get(account),
+                    AccountPools::<Runtime>::get(account, &base_asset),
                     [target_asset_a, target_asset_b, target_asset_c]
                         .iter()
                         .cloned()

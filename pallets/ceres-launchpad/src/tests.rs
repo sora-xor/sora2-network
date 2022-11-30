@@ -2013,8 +2013,8 @@ mod tests {
                     XOR.into(),
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
-                    balance!(0),
-                    balance!(0)
+                    balance!(1),
+                    balance!(1)
                 ),
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );
@@ -2154,8 +2154,8 @@ mod tests {
                     XOR.into(),
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
-                    balance!(0),
-                    balance!(0)
+                    balance!(1),
+                    balance!(1)
                 ),
                 pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
             );

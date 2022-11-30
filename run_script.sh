@@ -6,7 +6,13 @@ chain="local"
 
 execution="--execution native"
 
-getopt_code=`awk -f ./misc/getopt.awk <<EOF
+if which gawk > /dev/null 2>&1; then
+	awk="gawk"
+else
+	awk="awk"
+fi
+
+getopt_code=`$awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
   -h, --help                         Show usage message
@@ -33,12 +39,6 @@ export RUST_LOG="info,runtime=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`
-
-if which gawk > /dev/null 2>&1; then
-	awk="gawk"
-else
-	awk="awk"
-fi
 
 if [ ! -f $binary ]; then
 	echo "Please build framenode binary"

@@ -315,6 +315,7 @@ impl<T: Config> Pallet<T> {
     /// Get current spot price for
     pub fn spot_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         <T as pallet::Config>::LiquidityProxy::quote(
+            DEXId::Polkaswap.into(),
             &XOR.into(),
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
@@ -393,7 +394,7 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
             PriceInfos::<T>::insert(asset_id.clone(), PriceInfo::default());
             Ok(())
         } else {
-            fail!(Error::<T>::UnsupportedQuotePath);
+            fail!(Error::<T>::AssetAlreadyRegistered);
         }
     }
 }

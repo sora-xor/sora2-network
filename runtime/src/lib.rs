@@ -233,10 +233,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 37,
+    spec_version: 41,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 37,
+    transaction_version: 41,
     state_version: 0,
 };
 
@@ -326,7 +326,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
@@ -820,6 +820,7 @@ parameter_types! {
     pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
     pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
     pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
+    pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
@@ -2666,13 +2667,14 @@ impl_runtime_apis! {
             }
 
             LiquidityProxy::inner_quote(
+                dex_id,
                 &input_asset_id,
                 &output_asset_id,
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, amount_without_impact, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -2680,9 +2682,8 @@ impl_runtime_apis! {
                                     amount,
                                     currency,
                                     reason
-                                })
-                                .collect(),
-                amount_without_impact: amount_without_impact.unwrap_or(0)})
+                                }).collect()
+                })
         }
 
         fn is_path_available(
@@ -3030,6 +3031,12 @@ impl_runtime_apis! {
                 total_days: LEASE_TOTAL_DAYS,
                 blocks_per_day: BLOCKS_PER_DAY,
             }
+        }
+    }
+
+    impl farming_runtime_api::FarmingApi<Block, AssetId> for Runtime {
+        fn reward_doubling_assets() -> Vec<AssetId> {
+            Farming::reward_doubling_assets()
         }
     }
 }

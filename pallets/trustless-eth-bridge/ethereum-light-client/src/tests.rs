@@ -21,6 +21,7 @@ use crate::{
     BestBlock, Call, Error, EthereumHeader, FinalizedBlock, GenesisConfig, Headers,
     HeadersByNumber, PruningRange,
 };
+use frame_support::assert_noop;
 use frame_support::{assert_err, assert_ok};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::ValidateUnsigned;
@@ -767,7 +768,7 @@ fn test_register_network() {
 #[test]
 fn test_register_network_exists() {
     new_tester::<Test>().execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             Verifier::register_network(
                 Origin::root(),
                 EthNetworkConfig::Ropsten,

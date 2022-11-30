@@ -1,3 +1,4 @@
+pub mod client;
 pub mod ethereum;
 pub mod ethereum_messages;
 pub mod justification;

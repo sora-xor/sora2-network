@@ -4,6 +4,7 @@ use crate::mock::{
 use crate::{Addresses, Error};
 use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
 use common::{balance, XOR};
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;
 use sp_core::H160;
@@ -58,7 +59,7 @@ fn mint_zero_amount_must_fail() {
         let sender = H160::repeat_byte(7);
         let recipient: AccountId = Keyring::Bob.into();
         let amount = balance!(0);
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
@@ -118,7 +119,7 @@ fn should_not_burn_on_commitment_failure() {
             balance!(500)
         ));
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
@@ -137,7 +138,7 @@ fn should_not_burn_zero_amount() {
         let recipient = H160::repeat_byte(9);
         let amount = balance!(0);
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
@@ -167,7 +168,7 @@ fn test_register_network() {
 fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::register_network_with_existing_asset(
                 Origin::root(),
                 BASE_NETWORK_ID,

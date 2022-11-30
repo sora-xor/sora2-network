@@ -23,6 +23,14 @@ pub enum AssetKind {
     SidechainOwned,
 }
 
+#[derive(
+    Clone, Copy, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo, Serialize, Deserialize,
+)]
+pub enum BridgeSignatureVersion {
+    V1,
+    V2,
+}
+
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/metadata.scale",
     derive_for_all_types = "Clone"
@@ -30,6 +38,8 @@ pub enum AssetKind {
 pub mod runtime {
     #[subxt(substitute_type = "eth_bridge::requests::AssetKind")]
     use crate::AssetKind;
+    #[subxt(substitute_type = "eth_bridge::BridgeSignatureVersion")]
+    use crate::BridgeSignatureVersion;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
@@ -40,6 +50,8 @@ pub mod runtime {
     use ::bridge_common::beefy_types::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorProof")]
     use ::bridge_common::beefy_types::ValidatorProof;
+    #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorSet")]
+    use ::bridge_common::beefy_types::ValidatorSet;
     #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
     use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]

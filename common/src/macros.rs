@@ -164,16 +164,6 @@ macro_rules! storage_remove_all {
     }};
 }
 
-#[macro_export]
-macro_rules! assert_noop_transactional {
-    (
-		$x:expr,
-		$y:expr $(,)?
-	) => {
-        ::frame_support::assert_noop!($crate::with_transaction(|| { $x }), $y);
-    };
-}
-
 #[cfg(test)]
 mod tests {
     #[test]

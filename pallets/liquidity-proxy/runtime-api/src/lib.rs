@@ -67,17 +67,6 @@ pub struct SwapOutcomeInfo<Balance, AssetId: MaybeDisplay + MaybeFromStr> {
     )]
     pub fee: Balance,
     pub rewards: Vec<RewardsInfo<Balance, AssetId>>,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub amount_without_impact: Balance,
 }
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]

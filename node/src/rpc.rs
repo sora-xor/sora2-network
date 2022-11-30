@@ -141,7 +141,7 @@ where
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
-
+    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
     B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
@@ -151,6 +151,9 @@ where
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
+    use farming_rpc::{FarmingApiServer, FarmingClient};
+    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
+    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pallet_mmr_rpc::{Mmr, MmrApiServer};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
@@ -158,9 +161,7 @@ where
     use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
     use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
-    use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
-    use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
@@ -191,7 +192,6 @@ where
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
-    // io.merge(FarmingRpc::new(client.clone()).into_rpc())?;
     io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;
     io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
@@ -202,6 +202,7 @@ where
         io.merge(BridgeChannelClient::new(storage).into_rpc())?;
     }
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
+    io.merge(FarmingClient::new(client.clone()).into_rpc())?;
     io.merge(BeefyLightClientClient::new(client).into_rpc())?;
     Ok(io)
 }
