@@ -987,7 +987,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                asset_ceres,
+                asset_xor,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -998,7 +998,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                asset_ceres,
+                asset_xor,
                 asset_ceres,
                 asset_xor,
                 is_farm,
@@ -1037,12 +1037,13 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xor,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
                 pooled_tokens,
             ));
+
             let fee = (FixedWrapper::from(pooled_tokens) * FixedWrapper::from(deposit_fee))
                 .try_into_balance()
                 .unwrap_or(0);
@@ -1051,9 +1052,7 @@ mod tests {
             let mut pool_infos =
                 demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_ceres);
             for p_info in &pool_infos {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == asset_ceres
+                if !p_info.is_removed && p_info.is_farm == is_farm && p_info.base_asset == asset_xor
                 {
                     assert_eq!(p_info.total_tokens_in_pool, pooled_tokens);
                 }
@@ -1061,7 +1060,7 @@ mod tests {
 
             let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
             for u_info in &user_infos {
-                if u_info.is_farm == is_farm && u_info.base_asset == asset_ceres {
+                if u_info.is_farm == is_farm && u_info.base_asset == asset_xor {
                     assert_eq!(u_info.pooled_tokens, pooled_tokens);
                 }
             }
@@ -1082,7 +1081,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xor,
                 asset_ceres,
                 asset_xor,
                 is_farm,
@@ -1155,9 +1154,10 @@ mod tests {
                 team_allocation,
                 BOB
             ));
+
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -1168,7 +1168,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_xstusd,
                 is_farm,
@@ -1207,7 +1207,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -1223,7 +1223,7 @@ mod tests {
             for p_info in &pool_infos {
                 if !p_info.is_removed
                     && p_info.is_farm == is_farm
-                    && p_info.base_asset == asset_ceres
+                    && p_info.base_asset == asset_xstusd
                 {
                     assert_eq!(p_info.total_tokens_in_pool, pooled_tokens);
                 }
@@ -1231,7 +1231,7 @@ mod tests {
 
             let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
             for u_info in &user_infos {
-                if u_info.is_farm == is_farm && u_info.base_asset == asset_ceres {
+                if u_info.is_farm == is_farm && u_info.base_asset == asset_xstusd {
                     assert_eq!(u_info.pooled_tokens, pooled_tokens);
                 }
             }
@@ -1252,7 +1252,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_xstusd,
                 is_farm,
@@ -1707,7 +1707,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -1746,7 +1746,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -1763,7 +1763,7 @@ mod tests {
             for p_info in &pool_infos {
                 if !p_info.is_removed
                     && p_info.is_farm == is_farm
-                    && p_info.base_asset == asset_ceres
+                    && p_info.base_asset == asset_xstusd
                 {
                     assert_eq!(p_info.total_tokens_in_pool, pooled_tokens);
                 }
@@ -1771,7 +1771,7 @@ mod tests {
 
             let mut user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
             for u_info in &user_infos {
-                if u_info.is_farm == is_farm && u_info.base_asset == asset_ceres {
+                if u_info.is_farm == is_farm && u_info.base_asset == asset_xstusd {
                     assert_eq!(u_info.pooled_tokens, pooled_tokens);
                 }
             }
@@ -1785,7 +1785,7 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
                 Origin::signed(ALICE),
-                asset_ceres,
+                asset_xstusd,
                 asset_ceres,
                 asset_xstusd,
                 pooled_tokens,
@@ -1798,14 +1798,14 @@ mod tests {
                 if user_info.pool_asset == asset_ceres
                     && user_info.reward_asset == asset_xstusd
                     && user_info.is_farm == is_farm
-                    && user_info.base_asset == asset_ceres
+                    && user_info.base_asset == asset_xstusd
                 {
                     assert_eq!(user_info.pooled_tokens, balance!(0));
                 }
             }
 
             pool_infos =
-                demeter_farming_platform::Pools::<Runtime>::get(&asset_xstusd, &asset_ceres);
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_xstusd);
             for p_info in pool_infos.iter_mut() {
                 if p_info.is_farm == is_farm && p_info.base_asset == asset_xstusd {
                     assert_eq!(p_info.total_tokens_in_pool, balance!(0))
@@ -2784,7 +2784,7 @@ mod tests {
             }
         });
     }
-    /*
+
     #[test]
     fn on_initialize_ok() {
         preset_initial(|| {
@@ -3772,6 +3772,4 @@ mod tests {
             );
         });
     }
-
-    */
 }
