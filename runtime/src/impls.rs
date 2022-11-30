@@ -30,9 +30,10 @@
 
 use core::marker::PhantomData;
 
+use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
-use frame_support::weights::{DispatchClass, Weight};
+use frame_support::weights::Weight;
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 
@@ -75,7 +76,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
+            return max_weight.saturating_add(Weight::from_ref_time(1));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_early_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -92,7 +93,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
+            return max_weight.saturating_add(Weight::from_ref_time(1));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -112,23 +113,23 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn propose() -> Weight {
         <() as pallet_democracy::WeightInfo>::propose()
     }
-    fn second(s: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::second(s)
+    fn second() -> Weight {
+        <() as pallet_democracy::WeightInfo>::second()
     }
-    fn vote_new(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::vote_new(r)
+    fn vote_new() -> Weight {
+        <() as pallet_democracy::WeightInfo>::vote_new()
     }
-    fn vote_existing(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::vote_existing(r)
+    fn vote_existing() -> Weight {
+        <() as pallet_democracy::WeightInfo>::vote_existing()
     }
     fn emergency_cancel() -> Weight {
         <() as pallet_democracy::WeightInfo>::emergency_cancel()
     }
-    fn blacklist(p: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::blacklist(p)
+    fn blacklist() -> Weight {
+        <() as pallet_democracy::WeightInfo>::blacklist()
     }
-    fn external_propose(v: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::external_propose(v)
+    fn external_propose() -> Weight {
+        <() as pallet_democracy::WeightInfo>::external_propose()
     }
     fn external_propose_majority() -> Weight {
         <() as pallet_democracy::WeightInfo>::external_propose_majority()
@@ -139,17 +140,14 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn fast_track() -> Weight {
         <() as pallet_democracy::WeightInfo>::fast_track()
     }
-    fn veto_external(v: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::veto_external(v)
+    fn veto_external() -> Weight {
+        <() as pallet_democracy::WeightInfo>::veto_external()
     }
-    fn cancel_proposal(p: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::cancel_proposal(p)
+    fn cancel_proposal() -> Weight {
+        <() as pallet_democracy::WeightInfo>::cancel_proposal()
     }
     fn cancel_referendum() -> Weight {
         <() as pallet_democracy::WeightInfo>::cancel_referendum()
-    }
-    fn cancel_queued(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::cancel_queued(r)
     }
     fn on_initialize_base(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::on_initialize_base(r)
@@ -162,26 +160,6 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     }
     fn clear_public_proposals() -> Weight {
         <() as pallet_democracy::WeightInfo>::clear_public_proposals()
-    }
-    fn note_preimage(bytes: u32) -> Weight {
-        let max_weight: Weight = BlockWeights::get()
-            .get(DispatchClass::Normal)
-            .max_extrinsic
-            .expect("Democracy pallet must have max extrinsic weight");
-        if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
-        }
-        let weight = <() as pallet_democracy::WeightInfo>::note_preimage(bytes);
-        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
-        // We want to keep it as high as possible, but can't risk having it reject,
-        // so we always the base block execution weight as a max
-        max_dispatch_weight.min(weight)
-    }
-    fn note_imminent_preimage(b: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::note_imminent_preimage(b)
-    }
-    fn reap_preimage(b: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::reap_preimage(b)
     }
     fn unlock_remove(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::unlock_remove(r)

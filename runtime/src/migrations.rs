@@ -232,8 +232,8 @@ pub struct SchedulerV3Migration;
 
 impl OnRuntimeUpgrade for SchedulerV3Migration {
     fn on_runtime_upgrade() -> Weight {
-        frame_support::log::warn!("Run migration SchedulerV3Migration");
-        Scheduler::migrate_v2_to_v3()
+        frame_support::log::warn!("Run migration SchedulerV4Migration");
+        Scheduler::migrate_v2_to_v4()
     }
 }
 
