@@ -148,8 +148,6 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
             .is_zero()
             && !pool_tokens.is_zero()
         {
-            // TODO: Currently this function is only used by Ceres pallets and they operate with XOR. If that changes, replace GetBaseAssetId
-
             let pair = Pallet::<T>::strict_sort_pair(&asset_a.clone(), &asset_a, &asset_b)?;
             AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
