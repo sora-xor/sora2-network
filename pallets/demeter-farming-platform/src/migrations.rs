@@ -1,9 +1,9 @@
 use crate::{AssetIdOf, Config, PoolData, Pools, UserInfo, UserInfos, Weight};
+use codec::{Decode, Encode};
 use common::{Balance, XOR};
 use frame_support::log;
 use frame_support::traits::Get;
 use sp_std::vec::Vec;
-use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 struct OldPoolData {
@@ -54,7 +54,7 @@ pub fn migrate_pool_and_user_data<T: Config>() -> Weight {
                         rewards: old_pool_data.rewards,
                         rewards_to_be_distributed: old_pool_data.rewards_to_be_distributed,
                         is_removed: old_pool_data.is_removed,
-                        base_asset: base_asset.into()
+                        base_asset: base_asset.into(),
                     }
                 })
                 .collect::<Vec<PoolData<AssetIdOf<T>>>>(),
@@ -78,7 +78,7 @@ pub fn migrate_pool_and_user_data<T: Config>() -> Weight {
                         reward_asset: old_user_info.reward_asset,
                         is_farm: old_user_info.is_farm,
                         pooled_tokens: old_user_info.pooled_tokens,
-                        rewards: old_user_info.rewards
+                        rewards: old_user_info.rewards,
                     }
                 })
                 .collect::<Vec<UserInfo<AssetIdOf<T>>>>(),
