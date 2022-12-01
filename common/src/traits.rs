@@ -570,6 +570,7 @@ pub trait DemeterFarmingPallet<AccountId, AssetId> {
     fn update_pool_tokens(
         _user: AccountId,
         _pool_tokens: Balance,
+        _base_asset: AssetId,
         _pool_asset: AssetId,
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
