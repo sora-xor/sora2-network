@@ -626,7 +626,6 @@ fn testnet_genesis(
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(2500000000);
-    let initial_pswap_market_maker_rewards = balance!(364988000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
