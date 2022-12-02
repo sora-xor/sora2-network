@@ -389,27 +389,6 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
             .try_into_balance()
             .map_err(|_| Error::<T>::ArithmeticError)?;
 
-        let xor_price = if base_asset == &common::XOR.into() {
-            fixed_wrapper!(1)
-        } else {
-            let price = T::LiquidityProxy::quote(
-                common::DEXId::Polkaswap.into(),
-                base_asset,
-                &common::XOR.into(),
-                QuoteAmount::WithDesiredInput {
-                    desired_amount_in: balance!(1),
-                },
-                common::LiquiditySourceFilter::empty(common::DEXId::Polkaswap.into()),
-                false,
-            )
-            .map_err(|_| Error::<T>::UnableToGetBaseAssetPrice)?
-            .amount;
-            FixedWrapper::from(price)
-        };
-        let xor_volume = (xor_price * base_asset_volume)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::ArithmeticError)?;
-
         if allowed && xor_volume >= balance!(1) {
             MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);

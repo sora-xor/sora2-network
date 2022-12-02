@@ -19,7 +19,7 @@ use sp_core::{H160, H256, U256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::MultiSignature;
 use system::RawOrigin;
 
 use crate as eth_app;

@@ -344,7 +344,6 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     #[cfg(feature = "runtime-benchmarks")]
     pub fn benchmarking() -> Self {
-        use common::PSWAP;
         let mut res = Self::default();
         res.endowed_assets = vec![
             (

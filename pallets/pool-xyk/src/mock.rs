@@ -306,29 +306,23 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             initial_dex_list: vec![
-                            (
-                                DEX_A_ID,
-                                DEXInfo {
-                                    base_asset_id: GoldenTicket.into(),
-            <<<<<<< HEAD
-                                    synthetic_base_asset_id: BatteryForMusicPlayer.into(),
-            =======
-            >>>>>>> 568d7eeea9b9ba321ba63a9fe02aff2f2a10241d
-                                    is_public: true,
-                                },
-                            ),
-                            (
-                                DEX_B_ID,
-                                DEXInfo {
-                                    base_asset_id: AppleTree.into(),
-            <<<<<<< HEAD
-                                    synthetic_base_asset_id: BatteryForMusicPlayer.into(),
-            =======
-            >>>>>>> 568d7eeea9b9ba321ba63a9fe02aff2f2a10241d
-                                    is_public: true,
-                                },
-                            ),
-                        ],
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: GoldenTicket.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: AppleTree.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),

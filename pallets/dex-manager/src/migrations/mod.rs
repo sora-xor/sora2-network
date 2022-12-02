@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-<<<<<<<< HEAD:pallets/dex-manager/src/migrations/mod.rs
 use super::pallet::{Config, Pallet};
 use codec::Decode;
 use common::{DEXInfo, XST};
@@ -62,35 +61,6 @@ pub fn migrate<T: Config>() -> Weight {
 
     StorageVersion::new(2).put::<Pallet<T>>();
     T::DbWeight::get().reads_writes(weight, weight)
-========
-use super::{
-    pallet::{Config, Pallet},
-    WeightInfo as _,
-};
-use common::XST;
-use frame_support::{
-    log::{error, info},
-    pallet_prelude::StorageVersion,
-    traits::GetStorageVersion as _,
-    weights::Weight,
-};
-
-/// Migration which adds `XST` pool
-pub fn migrate<T: Config>() -> Weight {
-    if Pallet::<T>::on_chain_storage_version() >= 1 {
-        info!("Migration to version 1 already applied");
-        return 0;
-    }
-
-    match Pallet::<T>::initialize_pool_unchecked(XST.into(), false) {
-        Ok(()) => StorageVersion::new(1).put::<Pallet<T>>(),
-        Err(err) => error!(
-            "An error occurred during XST pool initialization: {:?}",
-            err
-        ),
-    }
-    <T as Config>::WeightInfo::on_initialize(0)
->>>>>>>> 568d7eeea9b9ba321ba63a9fe02aff2f2a10241d:pallets/multicollateral-bonding-curve-pool/src/migrations/mod.rs
 }
 
 #[cfg(test)]
