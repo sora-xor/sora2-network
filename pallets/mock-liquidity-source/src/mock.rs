@@ -31,6 +31,7 @@
 use crate::{self as mock_liquidity_source, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
+use common::DEXInfo;
 use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
 use common::{DEXInfo, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;

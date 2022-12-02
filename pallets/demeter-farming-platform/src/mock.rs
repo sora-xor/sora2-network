@@ -17,10 +17,11 @@ use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::AccountId32;
 use sp_runtime::{Perbill, Percent};
 
 pub type BlockNumber = u64;
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -53,11 +54,11 @@ construct_runtime! {
     }
 }
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CHARLES: AccountId = 3;
-pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CHARLES: AccountId = AccountId32::new([3u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,12 +69,12 @@ parameter_types! {
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = 100;
-    pub GetPswapDistributionAccountId: AccountId = 101;
-    pub GetMarketMakerRewardsAccountId: AccountId = 102;
-    pub GetBondingCurveRewardsAccountId: AccountId = 103;
-    pub GetFarmingRewardsAccountId: AccountId = 104;
-    pub GetCrowdloanRewardsAccountId: AccountId = 105;
+    pub GetParliamentAccountId: AccountId = AccountId32::new([100u8; 32]);
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::new([101u8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::new([102u8; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::new([103u8; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -126,9 +127,9 @@ parameter_types! {
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -291,24 +292,36 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: XOR.into(),
-                    synthetic_base_asset_id: XST.into(),
-                    is_public: true,
-                },
-            )],
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR.into(),
+                        synthetic_base_asset_id: XST.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: XST.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID.into(), balance!(1000)),
                 (BOB, CERES_ASSET_ID.into(), balance!(500)),
             ],
-            initial_permission_owners: vec![(
-                MANAGE_DEX,
-                Scope::Limited(hash(&DEX_A_ID)),
-                vec![BOB],
-            )],
-            initial_permissions: vec![(ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_permission_owners: vec![
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![BOB]),
+            ],
+            initial_permissions: vec![
+                (ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
+                (ALICE, Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
+            ],
         }
     }
 }

@@ -68,5 +68,5 @@ std = [
     'trading-pair/std',
     'itertools/use_std',
     'itertools/use_alloc',
-    'fallible-iterator/std'
+    'fallible-iterator/std',
 ]

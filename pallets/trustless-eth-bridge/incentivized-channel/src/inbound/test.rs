@@ -10,7 +10,7 @@ use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill};
+use sp_runtime::{AccountId32, MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 

@@ -216,7 +216,7 @@ pub fn run() -> sc_cli::Result<()> {
                     //Role::Light => service::new_light(config),
                     Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
                     // TODO: fix args
-                    _ => service::new_full(config, false, None),
+                    _ => service::new_full(config, true, None),
                 }
                 .map_err(sc_cli::Error::Service)
             })

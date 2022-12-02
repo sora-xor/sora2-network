@@ -40,7 +40,7 @@ use common::{
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{GetStorageVersion, OnInitialize, OnRuntimeUpgrade, StorageVersion};
 use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
 
@@ -592,6 +592,47 @@ fn crowdloan_reward_period_is_whole_days() {
         assert_eq!(
             1257861635220125784,
             assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
+        );
+    });
+}
+
+#[test]
+fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // we call migration for 1.2.0 to prepare crowdloan rewards
+        crate::migrations::add_funds_to_crowdloan_rewards_account::<Runtime>();
+        crate::migrations::add_crowdloan_rewards::<Runtime>();
+
+        // this account is known as having issue with getting PSWAP reward
+        let mut raw_address = &[
+            244, 140, 36, 125, 28, 44, 188, 122, 200, 181, 210, 183, 7, 41, 241, 37, 50, 63, 215,
+            126, 240, 94, 36, 196, 65, 157, 70, 8, 127, 46, 122, 14,
+        ][..];
+
+        let account =
+            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
+
+        let current_block_number = (crate::BLOCKS_PER_DAY * 2 + crate::LEASE_START_BLOCK) as u64;
+
+        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
+
+        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
+            .unwrap();
+
+        assert!(crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP) > 0);
+
+        // the claim history is reset after the migration
+        StorageVersion::new(1).put::<crate::Pallet<Runtime>>();
+        crate::migrations::ResetClaimingForCrowdloadErrors::<Runtime>::on_runtime_upgrade();
+
+        assert_eq!(
+            0,
+            crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP)
+        );
+        assert_eq!(
+            crate::Pallet::<Runtime>::on_chain_storage_version(),
+            StorageVersion::new(2)
         );
     });
 }

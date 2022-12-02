@@ -63,6 +63,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
@@ -365,6 +367,27 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
             .chain(sp_std::iter::once(to_asset_id))
             .tuple_windows()
             .all(|(from, to)| MarketMakingPairs::<T>::contains_key(from, to));
+
+        let xor_price = if base_asset == &common::XOR.into() {
+            fixed_wrapper!(1)
+        } else {
+            let price = T::LiquidityProxy::quote(
+                common::DEXId::Polkaswap.into(),
+                base_asset,
+                &common::XOR.into(),
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(1),
+                },
+                common::LiquiditySourceFilter::empty(common::DEXId::Polkaswap.into()),
+                false,
+            )
+            .map_err(|_| Error::<T>::UnableToGetBaseAssetPrice)?
+            .amount;
+            FixedWrapper::from(price)
+        };
+        let xor_volume = (xor_price * base_asset_volume)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::ArithmeticError)?;
 
         let xor_price = if base_asset == &common::XOR.into() {
             fixed_wrapper!(1)

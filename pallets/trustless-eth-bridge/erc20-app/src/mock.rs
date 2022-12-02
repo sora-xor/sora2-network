@@ -21,7 +21,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::MultiSignature;
+use sp_runtime::{AccountId32, MultiSignature};
 use system::RawOrigin;
 
 use crate as erc20_app;
