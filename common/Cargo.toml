@@ -38,6 +38,7 @@ smallvec = "1.7.0"
 sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 static_assertions = "1.1.0"
@@ -61,6 +62,7 @@ std = [
     'fixnum/std',
     'sp-core/std',
     'sp-runtime/std',
+    'sp-api/std',
     'sp-std/std',
     'currencies/std',
     'orml-traits/std',

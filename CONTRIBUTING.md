@@ -7,7 +7,7 @@
  rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
  ```
 
-## Steps to do before opening a PR
+## Steps to take before opening a PR
 Unless all the steps are executed, CI will fail the build
 * Format the code `cargo fmt`
 * Fix all warnings `RUSTFLAGS="-Dwarnings" cargo check`

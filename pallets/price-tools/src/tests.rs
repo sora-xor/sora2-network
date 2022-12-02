@@ -114,7 +114,7 @@ fn average_price_smoothed_change_without_cap() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             to_avg(
                 PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN
+                AVG_BLOCK_SPAN,
             )
         );
         for &new_price in [999u32, 1000, 1003, 1006, 1009, 1015, 1018, 1021, 1024, 1030].iter() {
@@ -123,7 +123,7 @@ fn average_price_smoothed_change_without_cap() {
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
         }
@@ -133,7 +133,7 @@ fn average_price_smoothed_change_without_cap() {
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
         }
@@ -164,7 +164,7 @@ fn different_average_for_different_assets() {
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
             PriceTools::incoming_spot_price(&ETH, new_price).unwrap();
@@ -174,7 +174,7 @@ fn different_average_for_different_assets() {
                 PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&DAI).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
             PriceTools::incoming_spot_price(&DAI, new_price).unwrap();
@@ -184,7 +184,7 @@ fn different_average_for_different_assets() {
                 PriceTools::get_average_price(&XOR.into(), &VAL.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&VAL).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
             PriceTools::incoming_spot_price(&VAL, new_price).unwrap();
@@ -194,7 +194,7 @@ fn different_average_for_different_assets() {
                 PriceTools::get_average_price(&XOR.into(), &PSWAP.into()).unwrap(),
                 to_avg(
                     PriceTools::price_infos(&PSWAP).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN
+                    AVG_BLOCK_SPAN,
                 )
             );
             PriceTools::incoming_spot_price(&PSWAP, new_price).unwrap();
@@ -348,7 +348,7 @@ fn average_price_large_change_before_no_update_streak_positive() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             to_avg(
                 PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN
+                AVG_BLOCK_SPAN,
             )
         );
         // change of 300% occurs, price smoothing kicks in
@@ -392,7 +392,7 @@ fn average_price_large_change_before_no_update_streak_negative() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             to_avg(
                 PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN
+                AVG_BLOCK_SPAN,
             )
         );
         // change over 15% occurs, price smoothing kicks in

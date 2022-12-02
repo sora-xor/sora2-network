@@ -309,21 +309,6 @@ impl<T: Config> Pallet<T> {
                         amount,
                         filter,
                     )?;
-                    let xor_volume = Self::get_base_asset_amount(
-                        &dex_info.base_asset_id,
-                        from_asset_id,
-                        amount,
-                        outcome.clone(),
-                    );
-                    T::VestedRewardsPallet::update_market_maker_records(
-                        &sender,
-                        &dex_info.base_asset_id,
-                        xor_volume,
-                        1,
-                        &from_asset_id,
-                        &to_asset_id,
-                        None,
-                    )?;
                     Ok((outcome, sources))
                 }
                 ExchangePath::Twofold {
@@ -358,15 +343,6 @@ impl<T: Config> Pallet<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        T::VestedRewardsPallet::update_market_maker_records(
-                            &sender,
-                            &dex_info.base_asset_id,
-                            first_swap.amount,
-                            2,
-                            &from_asset_id,
-                            &to_asset_id,
-                            Some(&intermediate_asset_id),
-                        )?;
                         let cumulative_fee = first_swap
                             .fee
                             .checked_add(second_swap.fee)
@@ -421,15 +397,6 @@ impl<T: Config> Pallet<T> {
                             &to_asset_id,
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
-                        )?;
-                        T::VestedRewardsPallet::update_market_maker_records(
-                            &sender,
-                            &dex_info.base_asset_id,
-                            first_swap.amount,
-                            2,
-                            &from_asset_id,
-                            &to_asset_id,
-                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee

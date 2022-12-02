@@ -35,8 +35,7 @@
 extern crate alloc;
 
 use codec::{Decode, Encode};
-use common::fixed_wrapper;
-use common::prelude::{Balance, FixedWrapper, QuoteAmount};
+use common::prelude::{Balance, FixedWrapper};
 use common::{
     balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
     XSTUSD,
@@ -46,7 +45,6 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use liquidity_proxy::LiquidityProxyTrait;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -70,13 +68,10 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
-pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
-pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
 pub const VAL_CROWDLOAN_REWARDS: Balance = balance!(676393);
 pub const PSWAP_CROWDLOAN_REWARDS: Balance = balance!(9363480);
 pub const XSTUSD_CROWDLOAN_REWARDS: Balance = balance!(77050);
-pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 pub const BLOCKS_PER_DAY: u128 = 14400;
 #[cfg(not(feature = "private-net"))]
 pub const LEASE_START_BLOCK: u128 = 4_397_212;
@@ -99,19 +94,6 @@ pub struct RewardInfo {
     total_available: Balance,
     /// Mapping between reward type represented by `RewardReason` and owned amount by user.
     pub rewards: BTreeMap<RewardReason, Balance>,
-}
-
-/// Denotes information about users who make transactions counted for market makers strategic
-/// rewards programme. To participate in rewards distribution account needs to get 500+ tx's over 1
-/// XOR in volume each.
-#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
-)]
-pub struct MarketMakerInfo {
-    /// Number of eligible transactions - namely those with individual volume over 1 XOR.
-    count: u32,
-    /// Cumulative volume of eligible transactions.
-    volume: Balance,
 }
 
 /// A vested reward for crowdloan.
@@ -148,7 +130,6 @@ pub struct CrowdloanReward {
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
-    fn set_asset_pair() -> Weight;
     fn claim_crowdloan_rewards() -> Weight;
 }
 
@@ -235,7 +216,6 @@ impl<T: Config> Pallet<T> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
-            RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
             RewardReason::Crowdloan => T::GetCrowdloanRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
@@ -267,41 +247,6 @@ impl<T: Config> Pallet<T> {
                 Some(info)
             })
         };
-    }
-
-    /// Returns number of accounts who received rewards.
-    pub fn market_maker_rewards_distribution_routine() -> u32 {
-        // collect list of accounts with volume info
-        let mut eligible_accounts = Vec::new();
-        let mut total_eligible_volume = balance!(0);
-        for (account, info) in MarketMakersRegistry::<T>::drain() {
-            if info.count >= MARKET_MAKER_ELIGIBILITY_TX_COUNT {
-                eligible_accounts.push((account, info.volume));
-                total_eligible_volume = total_eligible_volume.saturating_add(info.volume);
-            }
-        }
-        let eligible_accounts_count = eligible_accounts.len();
-        if total_eligible_volume > 0 {
-            for (account, volume) in eligible_accounts {
-                let reward = (FixedWrapper::from(volume)
-                    * FixedWrapper::from(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
-                    / FixedWrapper::from(total_eligible_volume))
-                .try_into_balance()
-                .unwrap_or(0);
-                if reward > 0 {
-                    let res =
-                        Self::add_pending_reward(&account, RewardReason::MarketMakerVolume, reward);
-                    if res.is_err() {
-                        Self::deposit_event(Event::<T>::FailedToSaveCalculatedReward(account))
-                    }
-                } else {
-                    Self::deposit_event(Event::<T>::AddingZeroMarketMakerReward(account));
-                }
-            }
-        } else {
-            Self::deposit_event(Event::<T>::NoEligibleMarketMakers);
-        }
-        eligible_accounts_count.try_into().unwrap_or(u32::MAX)
     }
 
     pub fn crowdloan_reward_for_asset(
@@ -349,57 +294,6 @@ impl<T: Config> OnPswapBurned for Pallet<T> {
 }
 
 impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
-    /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
-    /// `count` is used as a multiplier if multiple times same volume is transferred inside
-    /// transaction.
-    fn update_market_maker_records(
-        account_id: &T::AccountId,
-        base_asset: &T::AssetId,
-        base_asset_volume: Balance,
-        count: u32,
-        from_asset_id: &T::AssetId,
-        to_asset_id: &T::AssetId,
-        intermediate_asset_id: Option<&T::AssetId>,
-    ) -> DispatchResult {
-        let allowed = if let Some(intermediate) = intermediate_asset_id {
-            MarketMakingPairs::<T>::contains_key(from_asset_id, intermediate)
-                && MarketMakingPairs::<T>::contains_key(intermediate, to_asset_id)
-        } else {
-            MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
-        };
-
-        let xor_price = if base_asset == &common::XOR.into() {
-            fixed_wrapper!(1)
-        } else {
-            let price = T::LiquidityProxy::quote(
-                common::DEXId::Polkaswap.into(),
-                base_asset,
-                &common::XOR.into(),
-                QuoteAmount::WithDesiredInput {
-                    desired_amount_in: balance!(1),
-                },
-                common::LiquiditySourceFilter::empty(common::DEXId::Polkaswap.into()),
-                false,
-            )
-            .map_err(|_| Error::<T>::UnableToGetBaseAssetPrice)?
-            .amount;
-            FixedWrapper::from(price)
-        };
-        let xor_volume = (xor_price * base_asset_volume)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::ArithmeticError)?;
-
-        if allowed && xor_volume >= balance!(1) {
-            MarketMakersRegistry::<T>::mutate(account_id, |info| {
-                info.count = info.count.saturating_add(count);
-                info.volume = info
-                    .volume
-                    .saturating_add(xor_volume.saturating_mul(count as Balance));
-            });
-        }
-        Ok(())
-    }
-
     fn add_tbc_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
         Pallet::<T>::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }
@@ -410,10 +304,6 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
             RewardReason::LiquidityProvisionFarming,
             pswap_amount,
         )
-    }
-
-    fn add_market_maker_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
-        Pallet::<T>::add_pending_reward(account_id, RewardReason::MarketMakerVolume, pswap_amount)
     }
 }
 
@@ -457,13 +347,8 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
-            if (block_number % MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                let elems = Pallet::<T>::market_maker_rewards_distribution_routine();
-                <T as Config>::WeightInfo::on_initialize(elems)
-            } else {
-                <T as Config>::WeightInfo::on_initialize(0)
-            }
+        fn on_initialize(_: T::BlockNumber) -> Weight {
+            <T as Config>::WeightInfo::on_initialize(0)
         }
     }
 
@@ -503,38 +388,6 @@ pub mod pallet {
 
             Ok(().into())
         }
-
-        /// Allow/disallow a market making pair.
-        #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
-
-        pub fn set_asset_pair(
-            origin: OriginFor<T>,
-            from_asset_id: T::AssetId,
-            to_asset_id: T::AssetId,
-            market_making_rewards_allowed: bool,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let error = if market_making_rewards_allowed {
-                Error::<T>::MarketMakingPairAlreadyAllowed
-            } else {
-                Error::<T>::MarketMakingPairAlreadyDisallowed
-            };
-
-            ensure!(
-                MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id)
-                    != market_making_rewards_allowed,
-                error
-            );
-
-            if market_making_rewards_allowed {
-                MarketMakingPairs::<T>::insert(from_asset_id, to_asset_id, ());
-            } else {
-                MarketMakingPairs::<T>::remove(from_asset_id, to_asset_id);
-            }
-
-            Ok(().into())
-        }
     }
 
     #[pallet::error]
@@ -554,10 +407,6 @@ pub mod pallet {
         CantSubtractSnapshot,
         /// Failed to perform reward calculation.
         CantCalculateReward,
-        /// The market making pair already allowed.
-        MarketMakingPairAlreadyAllowed,
-        /// The market making pair is disallowed.
-        MarketMakingPairAlreadyDisallowed,
         /// There are no rewards for the asset ID.
         NoRewardsForAsset,
         /// Something is wrong with arithmetic - overflow happened, for example.
@@ -577,10 +426,6 @@ pub mod pallet {
         ActualDoesntMatchAvailable(RewardReason),
         /// Saving reward for account has failed in a distribution series. [account]
         FailedToSaveCalculatedReward(AccountIdOf<T>),
-        /// Account was chosen as eligible for market maker rewards, however calculated reward turned into 0. [account]
-        AddingZeroMarketMakerReward(AccountIdOf<T>),
-        /// Couldn't find any account with enough transactions to count market maker rewards.
-        NoEligibleMarketMakers,
     }
 
     /// Reserved for future use
@@ -595,25 +440,6 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn total_rewards)]
     pub type TotalRewards<T: Config> = StorageValue<_, Balance, ValueQuery>;
-
-    /// Registry of market makers with large transaction volumes (>1 XOR per transaction).
-    #[pallet::storage]
-    #[pallet::getter(fn market_makers_registry)]
-    pub type MarketMakersRegistry<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, MarketMakerInfo, ValueQuery>;
-
-    /// Market making pairs storage.
-    #[pallet::storage]
-    #[pallet::getter(fn market_making_pairs)]
-    pub type MarketMakingPairs<T: Config> = StorageDoubleMap<
-        _,
-        Blake2_128Concat,
-        T::AssetId,
-        Blake2_128Concat,
-        T::AssetId,
-        (),
-        ValueQuery,
-    >;
 
     /// Crowdloan vested rewards storage.
     #[pallet::storage]

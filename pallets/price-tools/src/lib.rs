@@ -283,7 +283,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Bound `new_avg` value by percentage difference with respect to `old_avg` value. Result will be capped
-    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or nagative difference.
+    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or negative difference.
     pub fn adjust_to_difference(
         old_avg: Balance,
         new_avg: Balance,

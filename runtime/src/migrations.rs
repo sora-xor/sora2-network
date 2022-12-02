@@ -24,6 +24,7 @@ pub type Migrations = (
     ElectionsPhragmenV5Migration,
     StakingV9Migration,
     // vested_rewards::migrations::ResetClaimingForCrowdloadErrors<Runtime>,
+    vested_rewards::migrations::MoveMarketMakerRewardPoolToLiquidityProviderPool<Runtime>,
 );
 
 impl_opaque_keys! {

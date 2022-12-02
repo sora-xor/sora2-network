@@ -976,6 +976,7 @@ pub enum RewardReason {
     /// Providing liquidity on secondary market is rewarded.
     LiquidityProvisionFarming,
     /// High volume trading is rewarded.
+    #[deprecated = "Market maker rewards are cancelled"]
     MarketMakerVolume,
     /// Crowdloan reward.
     Crowdloan,
