@@ -285,7 +285,7 @@ use frame_support::assert_noop;
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
             assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            assert_eq!(xstusd_balance_b, balance!(281.845536609829488538));
+            assert_eq!(xstusd_balance_b, balance!(206.982503473131052895));
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -364,8 +364,8 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.002961909839464486));
-            assert_eq!(price_a.amount, balance!(0.984341369982031081));
+            assert_eq!(price_a.fee, balance!(0.006575439843611160));
+            assert_eq!(price_a.amount, balance!(0.980727839977884407));
 
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -386,8 +386,8 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.300902708124373119));
-            assert_eq!(price_a.amount, balance!(10159.077231695085255731));
+            assert_eq!(price_a.fee, balance!(0.670465298890611472));
+            assert_eq!(price_a.amount, balance!(10196.508748263434473552));
 
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -446,7 +446,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_eq!(price_a.fee, balance!(0.002961909839464486));
+            assert_eq!(price_a.fee, balance!(0.006575439843611160));
 
             // Sell
             let price_c = XSTPool::quote(
@@ -466,7 +466,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_eq!(price_c.fee, balance!(0.002970822306383637));
+            assert_eq!(price_c.fee, balance!(0.006619525886012000));
         });
     }
 
