@@ -238,7 +238,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
-        fixed!(0.003)
+        fixed!(0.00666)
     }
 
     /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.3%.
