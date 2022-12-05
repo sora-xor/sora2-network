@@ -600,15 +600,13 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#c4d23b357f932c97fb8b270e0a348d069b117bce"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
 dependencies = [
  "bridge-common",
  "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "getrandom 0.2.8",
- "libsecp256k1",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -619,7 +617,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#c4d23b357f932c97fb8b270e0a348d069b117bce"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -636,7 +634,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#c4d23b357f932c97fb8b270e0a348d069b117bce"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -896,7 +894,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#c4d23b357f932c97fb8b270e0a348d069b117bce"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
 dependencies = [
  "bitvec 1.0.1",
  "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
@@ -12455,7 +12453,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.8.0",
+ "parking_lot 0.11.2",
  "regex",
  "serde",
  "serde_json",
@@ -12647,7 +12645,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if 1.0.0",
  "digest 0.10.6",
- "rand 0.4.6",
+ "rand 0.8.5",
  "static_assertions",
 ]
 
