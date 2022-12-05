@@ -143,6 +143,7 @@ pub mod weights;
 mod benchmarking;
 mod contract;
 mod macros;
+pub mod migration;
 pub mod offchain;
 pub mod requests;
 mod rpc;
@@ -336,7 +337,11 @@ impl<AssetId> AssetConfig<AssetId> {
 #[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum BridgeSignatureVersion {
     V1,
+    // Fix signature overlapping for addPeer, removePeer and prepareForMigration
+    // Add bridge contract address to the signature
     V2,
+    // Use abi.encode instead of abi.encodePacked and add prefix for each function
+    V3,
 }
 
 #[frame_support::pallet]

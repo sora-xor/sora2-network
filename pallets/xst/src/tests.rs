@@ -287,9 +287,7 @@ use frame_support::assert_noop;
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
             assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            // balance!(115.66760280842527582879) is failing because of
-            // const evaluation limit (to much decimal points)
-            assert_eq!(xstusd_balance_b, 11566760280842527582879);
+            assert_eq!(xstusd_balance_b, balance!(11432.520587110153623278));
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -369,8 +367,8 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.001651803190953404));
-            assert_eq!(price_a.amount, balance!(0.548949260460181357));
+            assert_eq!(price_a.fee, balance!(0.003667003083916557));
+            assert_eq!(price_a.amount, balance!(0.546934060567218204));
 
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -391,8 +389,8 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.300902708124373119));
-            assert_eq!(price_a.amount, balance!(18216.619859578736208560));
+            assert_eq!(price_a.fee, balance!(0.670465298890611472));
+            assert_eq!(price_a.amount, balance!(18283.739706444923188361));
 
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -452,7 +450,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_eq!(price_a.fee, balance!(0.001651803190953404));
+            assert_eq!(price_a.fee, balance!(0.003667003083916557));
 
             // Sell
             let price_c = XSTPool::quote(
@@ -472,7 +470,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_eq!(price_c.fee, balance!(0.001656773511487867));
+            assert_eq!(price_c.fee, balance!(0.003691589067103466));
         });
     }
 

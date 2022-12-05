@@ -63,6 +63,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
 pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
