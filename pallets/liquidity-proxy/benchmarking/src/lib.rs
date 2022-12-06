@@ -75,7 +75,8 @@ fn alice<T: Config>() -> T::AccountId {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config

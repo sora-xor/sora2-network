@@ -29,7 +29,7 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 beefy-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-beefy-light-client = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet-v0.9.31", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet-v0.9.31", default-features = false }
 beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet-v0.9.31", default-features = false }
 
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
@@ -91,7 +91,9 @@ xst = { path = "../pallets/xst", default-features = false }
 # Substrate dependencies
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, features = [
+    "tuples-96",
+] }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }

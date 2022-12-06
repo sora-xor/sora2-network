@@ -40,7 +40,8 @@ pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
     ));
@@ -104,7 +105,8 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
     let ceres_asset_id = common::AssetId32::from_bytes(hex!(
         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
     ));

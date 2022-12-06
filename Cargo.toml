@@ -84,6 +84,7 @@ pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -94,7 +95,7 @@ beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch 
 # The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
 thread_local = { git = "https://github.com/sora-xor/thread_local-rs.git", branch = "patch-1.0.1" }
 
-impl-trait-for-tuples = { git = "https://github.com/sora-xor/impl-trait-for-tuples.git", branch = "sora-v1.6.0" }
+# impl-trait-for-tuples = { git = "https://github.com/sora-xor/impl-trait-for-tuples.git", branch = "sora-v1.6.0" }
 
 #parity-util-mem = { git = "https://github.com/paritytech/parity-common.git" }
 
@@ -202,6 +203,7 @@ pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31" }
 
