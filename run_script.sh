@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 binary="./target/debug/framenode"
 
 chain="local"

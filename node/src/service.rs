@@ -40,7 +40,7 @@ use framenode_runtime::eth_bridge::{
 };
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
-use log::{debug, info};
+use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend, ExecutorProvider};
 use sc_consensus_aura::SlotDuration;
@@ -358,8 +358,6 @@ pub fn new_full(
     config.default_heap_pages = Some(1024 * 2);
 
     debug!("using: {:#?}", config);
-
-    println!("DB path: {:?}", config.database);
 
     let sc_service::PartialComponents {
         client,
