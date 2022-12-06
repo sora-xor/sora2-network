@@ -34,13 +34,13 @@ pub struct Cli {
     #[clap(long, global = true)]
     substrate_url: Option<String>,
     /// Parachain account derive URI
-    #[clap(long, from_global)]
+    #[clap(long, global = true)]
     parachain_key: Option<String>,
     /// File with Parachain account derive URI
-    #[clap(long, from_global)]
+    #[clap(long, global = true)]
     parachain_key_file: Option<String>,
     /// Parachain node endpoint
-    #[clap(long, from_global)]
+    #[clap(long, global = true)]
     parachain_url: Option<String>,
     /// Ethereum private key
     #[clap(long, global = true)]

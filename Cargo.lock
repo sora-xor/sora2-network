@@ -593,15 +593,13 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#307862b83df94ec84a7a88fca63fd2a832eaa0ec"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#4e36177e71b3cc897544ffe875764d79bc70d4bc"
 dependencies = [
  "bridge-common",
  "ethabi 13.0.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "getrandom 0.2.8",
- "libsecp256k1",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -612,7 +610,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#307862b83df94ec84a7a88fca63fd2a832eaa0ec"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#4e36177e71b3cc897544ffe875764d79bc70d4bc"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -629,7 +627,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#307862b83df94ec84a7a88fca63fd2a832eaa0ec"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#4e36177e71b3cc897544ffe875764d79bc70d4bc"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -892,7 +890,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#307862b83df94ec84a7a88fca63fd2a832eaa0ec"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet#4e36177e71b3cc897544ffe875764d79bc70d4bc"
 dependencies = [
  "bitvec 1.0.1",
  "ethabi 13.0.0",
