@@ -628,15 +628,15 @@ impl<T: Config> Pallet<T> {
     }
 
     /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// XST quotes (there can be only single token chosen as reference for all comparisons).
+    /// XOR quotes (there can be only single token chosen as reference for all comparisons).
     /// The reference token here is expected to be DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         // XSTUSD is a special case because it is equal to the reference asset, DAI
-        let price = if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
-            balance!(1)
+        if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
+            Ok(balance!(1))
         } else {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
@@ -651,9 +651,8 @@ impl<T: Config> Pallet<T> {
                 } else {
                     avg
                 }
-            })?
-        };
-        Ok(price)
+            })
+        }
     }
 }
 

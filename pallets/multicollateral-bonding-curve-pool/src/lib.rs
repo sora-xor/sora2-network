@@ -1475,8 +1475,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         if input_asset_id == &T::GetBaseAssetId::get() {
             EnabledTargets::<T>::get().contains(&output_asset_id)
-        } else {
+        } else if output_asset_id == &T::GetBaseAssetId::get() {
             EnabledTargets::<T>::get().contains(&input_asset_id)
+        } else {
+            false
         }
     }
 
