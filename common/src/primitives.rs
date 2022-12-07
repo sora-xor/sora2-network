@@ -101,6 +101,8 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
+    /// AssetId of synthetic base Asset in DEX.
+    pub synthetic_base_asset_id: AssetId,
     /// Determines if DEX can be managed by regular users.
     pub is_public: bool,
 }

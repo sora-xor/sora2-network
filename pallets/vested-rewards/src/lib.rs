@@ -37,8 +37,8 @@ extern crate alloc;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
-    XSTUSD,
+    balance, Fixed, LiquidityProxyTrait, OnPswapBurned, PswapRemintInfo, RewardReason,
+    VestedRewardsPallet, PSWAP, VAL, XSTUSD,
 };
 use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};

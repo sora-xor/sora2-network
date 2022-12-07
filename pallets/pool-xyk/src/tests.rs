@@ -1319,11 +1319,11 @@ fn withdraw_all_liquidity() {
 
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                balance!(899999.999999999999998418),
+                balance!(900000.000000000000000000),
             );
             assert_eq!(
                 assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
-                balance!(1999999.999999999999999367),
+                balance!(2000000.000000000000000000),
             );
             // small fractions are lost due to min_liquidity locked for initial provider
             // and also rounding proportions such that user does not withdraw more thus breaking the pool

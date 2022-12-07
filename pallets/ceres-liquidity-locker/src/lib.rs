@@ -277,7 +277,12 @@ pub mod pallet {
 
             pool_tokens = T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                 .unwrap_or(0);
-            T::DemeterFarmingPlatform::update_pool_tokens(user.clone(), pool_tokens, asset_b)?;
+            T::DemeterFarmingPlatform::update_pool_tokens(
+                user.clone(),
+                pool_tokens,
+                asset_a,
+                asset_b,
+            )?;
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller

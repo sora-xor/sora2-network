@@ -50,12 +50,12 @@ use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
     CrowdloanReward, DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig,
-    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId,
-    GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
-    RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
-    TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
+    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
@@ -196,7 +196,7 @@ pub fn dev_net_coded() -> ChainSpec {
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
-        ChainType::Live,
+        ChainType::Development,
         move || {
             testnet_genesis(
                 true,
@@ -1148,13 +1148,15 @@ fn testnet_genesis(
                     0,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
                 (
                     1,
                     DEXInfo {
-                        base_asset_id: XSTUSD.into(),
+                        base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -1167,17 +1169,14 @@ fn testnet_genesis(
         trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
-                .chain(initial_synthetic_assets.iter())
                 .cloned()
-                .map(|target_asset_id| {
-                    (
-                        DEXId::Polkaswap.into(),
-                        common::TradingPair {
-                            base_asset_id: XOR.into(),
-                            target_asset_id,
-                        },
-                    )
-                })
+                .map(|target_asset_id| create_trading_pair(XOR, target_asset_id))
+                .chain(
+                    initial_synthetic_assets
+                        .iter()
+                        .cloned()
+                        .map(|target_asset_id| create_trading_pair(XST, target_asset_id)),
+                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {
@@ -1880,6 +1879,7 @@ fn mainnet_genesis(
                     0,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -1887,6 +1887,7 @@ fn mainnet_genesis(
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -1927,17 +1928,14 @@ fn mainnet_genesis(
         trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
-                .chain(initial_synthetic_assets.iter())
                 .cloned()
-                .map(|target_asset_id| {
-                    (
-                        DEXId::Polkaswap.into(),
-                        common::TradingPair {
-                            base_asset_id: XOR.into(),
-                            target_asset_id,
-                        },
-                    )
-                })
+                .map(|target_asset_id| create_trading_pair(XOR.into(), target_asset_id))
+                .chain(
+                    initial_synthetic_assets
+                        .iter()
+                        .cloned()
+                        .map(|target_asset_id| create_trading_pair(XST.into(), target_asset_id)),
+                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {
@@ -2007,6 +2005,19 @@ fn mainnet_genesis(
             authorities: vec![],
         },
     }
+}
+
+fn create_trading_pair(
+    base_asset_id: AssetId,
+    target_asset_id: AssetId,
+) -> (u32, common::TradingPair<AssetId>) {
+    (
+        DEXId::Polkaswap.into(),
+        common::TradingPair {
+            base_asset_id,
+            target_asset_id,
+        },
+    )
 }
 
 #[cfg(all(feature = "test", not(feature = "private-net")))]

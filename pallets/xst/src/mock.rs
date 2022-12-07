@@ -35,8 +35,8 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DEFAULT_BALANCE_PRECISION,
-    PSWAP, USDT, VAL, XOR, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -88,6 +88,7 @@ parameter_types! {
     pub const GetDefaultFee: u16 = 30;
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
@@ -98,7 +99,6 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
 }
@@ -172,6 +172,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 
 impl Config for Runtime {
     type Event = Event;
+    type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
@@ -207,6 +208,16 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
@@ -214,8 +225,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -458,6 +474,7 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((VAL, USDT), balance!(50.0)),
         // DAI
         ((XOR, DAI), balance!(102.0)),
+        ((XST, DAI), balance!(182.9)),
         ((VAL, DAI), balance!(51.0)),
         ((USDT, DAI), balance!(1.02)),
         // PSWAP
@@ -470,6 +487,7 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((VAL, XSTUSD), balance!(52.0)),
         ((USDT, XSTUSD), balance!(1.03)),
         ((DAI, XSTUSD), balance!(1.03)),
+        ((XST, XSTUSD), balance!(183.0)),
     ];
     let reverse = direct.clone().into_iter().map(|((a, b), price)| {
         (
@@ -482,7 +500,7 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     direct.into_iter().chain(reverse).collect()
 }
 
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn exchange(
         _dex_id: DEXId,
         sender: &AccountId,
@@ -566,6 +584,14 @@ impl Default for ExtBuilder {
                 ),
                 (
                     alice(),
+                    XST,
+                    balance!(250000),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"Sora Synthetics".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
                     XSTUSD,
                     balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
@@ -577,6 +603,7 @@ impl Default for ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

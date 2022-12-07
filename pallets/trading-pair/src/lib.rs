@@ -197,7 +197,8 @@ pub mod pallet {
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
             let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
             ensure!(
-                base_asset_id == dex_info.base_asset_id,
+                base_asset_id == dex_info.base_asset_id
+                    || base_asset_id == dex_info.synthetic_base_asset_id,
                 Error::<T>::ForbiddenBaseAssetId
             );
             Assets::<T>::ensure_asset_exists(&base_asset_id)?;

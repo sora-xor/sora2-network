@@ -155,8 +155,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 if abstract_checking {
                     None
                 } else {
-                    let fxw_value =
-                        to_fixed_wrapper!(init_x).multiply_and_sqrt(&to_fixed_wrapper!(init_y));
+                    let fxw_init_x = to_fixed_wrapper!(init_x);
+                    let fxw_init_y = to_fixed_wrapper!(init_y);
+                    let fxw_value = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
+                    ensure!(
+                        !((fxw_value.clone() * fxw_init_x.clone())
+                            .try_into_balance()
+                            .is_err()
+                            || (fxw_value.clone() * fxw_init_y).try_into_balance().is_err()),
+                        Error::<T>::CalculatedValueIsOutOfDesiredBounds
+                    );
                     let value = to_balance!(fxw_value.clone());
                     Some(value)
                 }

@@ -223,10 +223,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 43,
+    spec_version: 44,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 43,
+    transaction_version: 44,
     state_version: 0,
 };
 
@@ -811,7 +811,12 @@ parameter_types! {
     pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
-    pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
+    pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![GetValAssetId::get(), GetPswapAssetId::get()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
+    pub const GetBuyBackDexId: DEXId = 0;
+    pub const GetSyntheticBaseAssetId: AssetId = GetXstAssetId::get();
 }
 
 impl currencies::Config for Runtime {
@@ -845,8 +850,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
@@ -1652,8 +1662,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
+}
+
 impl xst::Config for Runtime {
     type Event = Event;
+    type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
@@ -1762,6 +1777,12 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
+impl band::Config for Runtime {
+    type Event = Event;
+    type Symbol = String;
+    type WeightInfo = band::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1842,6 +1863,7 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -1919,6 +1941,7 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
 
 
         // Trustless ethereum bridge
@@ -2565,6 +2588,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, band, Band);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2628,6 +2652,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
+            add_benchmark!(params, batches, band, Band);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
