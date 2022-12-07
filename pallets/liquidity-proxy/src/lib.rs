@@ -373,12 +373,6 @@ impl<T: Config> Pallet<T> {
                         amount,
                         filter,
                     )?;
-                    let xor_volume = Self::get_base_asset_amount(
-                        &dex_info.base_asset_id,
-                        from_asset_id,
-                        amount,
-                        outcome.clone(),
-                    );
                     Ok((outcome, sources))
                 }
                 Some(long_path) => Self::exchange_sequence(
