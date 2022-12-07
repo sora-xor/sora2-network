@@ -51,15 +51,21 @@ pub trait WeightInfo {
     fn remove_relayers() -> Weight;
 }
 
+/// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
 pub struct Rate {
+    /// Rate value in USD.
     pub value: u64,
+    /// Last updated timestamp.
     pub last_updated: u64,
+    /// Request identifier in the *Band* protocol.
+    /// Useful for debugging and in emergency cases.
+    pub request_id: u64,
 }
 
 impl Rate {
-    pub fn update_if_in_the_past(&mut self, new: Rate) {
-        if self.last_updated < new.last_updated {
+    pub fn update_if_outdated(&mut self, new: Rate) {
+        if self.last_updated <= new.last_updated {
             *self = new;
         }
     }
@@ -121,10 +127,11 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T, I = ()> {
         /// An untrusted account tried to relay data.
-        NotATrustedRelayer,
-        /// `symbols` and `rates` provided to `relay` (or `force_relay`) extrinsic have different
-        /// lengths.
-        DivergedLengthsOfSymbolsAndRates,
+        UnauthorizedRelayer,
+        /// A request to add an account, which is already a trusted relayer, was supplied.
+        AlreadyATrustedRelayer,
+        /// A request to remove an account, which is not a trusted relayer, was supplied.
+        NoSuchRelayer,
     }
 
     #[pallet::call]
@@ -135,36 +142,37 @@ pub mod pallet {
         /// - The caller is a relayer;
         /// - The `resolve_time` for a particular symbol is not lower than previous saved value, ignores this rate if so;
         ///
+        /// If `rates` contains duplicated symbols, then the last rate will be stored.
+        ///
         /// - `origin`: the relayer account on whose behalf the transaction is being executed,
-        /// - `symbols`: symbols which rates are provided,
-        /// - `rates`: rates of symbols in the same order as `symbols`,
+        /// - `rates`: symbols with rates in USD,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
         pub fn relay(
             origin: OriginFor<T>,
-            symbols: Vec<T::Symbol>,
-            rates: Vec<u64>,
+            rates: Vec<(T::Symbol, u64)>,
             resolve_time: u64,
-            _request_id: u64,
+            request_id: u64,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
-            ensure!(
-                symbols.len() == rates.len(),
-                Error::<T, I>::DivergedLengthsOfSymbolsAndRates
-            );
 
-            for (symbol, rate_value) in symbols.iter().zip(rates) {
-                let new_rate = Rate {
-                    value: rate_value,
-                    last_updated: resolve_time,
-                };
+            let symbols: Vec<_> = rates
+                .into_iter()
+                .map(|(symbol, rate_value)| {
+                    let new_rate = Rate {
+                        value: rate_value,
+                        last_updated: resolve_time,
+                        request_id,
+                    };
 
-                SymbolRates::<T, I>::mutate(symbol, |option_rate| match option_rate {
-                    Some(rate) => rate.update_if_in_the_past(new_rate),
-                    None => _ = option_rate.insert(new_rate),
-                });
-            }
+                    SymbolRates::<T, I>::mutate(&symbol, |option_rate| match option_rate {
+                        Some(rate) => rate.update_if_outdated(new_rate),
+                        None => _ = option_rate.insert(new_rate),
+                    });
+                    symbol
+                })
+                .collect();
 
             Self::deposit_event(Event::SymbolsRelayed(symbols));
             Ok(().into())
@@ -176,40 +184,43 @@ pub mod pallet {
         /// relayed by a faulty/malicious actor.
         ///
         /// - `origin`: the relayer account on whose behalf the transaction is being executed,
-        /// - `symbols`: symbols which rates are provided,
-        /// - `rates`: rates of symbols in the same order as `symbols`,
+        /// - `rates`: symbols with rates in USD,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
         pub fn force_relay(
             origin: OriginFor<T>,
-            symbols: Vec<T::Symbol>,
-            rates: Vec<u64>,
+            rates: Vec<(T::Symbol, u64)>,
             resolve_time: u64,
-            _request_id: u64,
+            request_id: u64,
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
-            ensure!(
-                symbols.len() == rates.len(),
-                Error::<T, I>::DivergedLengthsOfSymbolsAndRates
-            );
 
-            for (symbol, rate_value) in symbols.iter().zip(rates) {
-                let new_rate = Rate {
-                    value: rate_value,
-                    last_updated: resolve_time,
-                };
+            let symbols: Vec<_> = rates
+                .into_iter()
+                .map(|(symbol, rate_value)| {
+                    let new_rate = Rate {
+                        value: rate_value,
+                        last_updated: resolve_time,
+                        request_id,
+                    };
 
-                SymbolRates::<T, I>::mutate(symbol, |rate| {
-                    _ = rate.insert(new_rate);
-                });
-            }
+                    SymbolRates::<T, I>::mutate(&symbol, |rate| {
+                        _ = rate.insert(new_rate);
+                    });
+                    symbol
+                })
+                .collect();
 
             Self::deposit_event(Event::SymbolsRelayed(symbols));
             Ok(().into())
         }
 
         /// Add `account_ids` to the list of trusted relayers.
+        ///
+        /// Ignores repeated accounts in `account_ids`.
+        /// If one of account is already a trusted relayer an [`Error::AlreadyATrustedRelayer`] will
+        /// be returned.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of new trusted relayers to add.
@@ -220,18 +231,34 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            TrustedRelayers::<T, I>::mutate(|option_relayers| match option_relayers {
-                Some(relayers) => relayers.extend(account_ids.clone()),
-                None => _ = option_relayers.insert(BTreeSet::from_iter(account_ids.clone())),
-            });
+            let added_accounts =
+                TrustedRelayers::<T, I>::mutate(|option_relayers| match option_relayers {
+                    Some(relayers) => {
+                        let to_add = BTreeSet::from_iter(account_ids);
 
-            Self::deposit_event(Event::RelayersAdded(account_ids));
+                        if relayers.is_disjoint(&to_add) {
+                            relayers.append(&mut to_add.clone());
+                            Ok(to_add)
+                        } else {
+                            Err(Error::<T, I>::AlreadyATrustedRelayer)
+                        }
+                    }
+                    None => {
+                        let to_add = BTreeSet::from_iter(account_ids);
+                        let _ = option_relayers.insert(to_add.clone());
+                        Ok(to_add)
+                    }
+                })?;
+
+            Self::deposit_event(Event::RelayersAdded(added_accounts.into_iter().collect()));
             Ok(().into())
         }
 
         /// Remove `account_ids` from the list of trusted relayers.
         ///
-        /// Ignores if some account is not presented in the list.
+        /// Ignores repeated accounts in `account_ids`.
+        /// If one of account is not a trusted relayer an [`Error::AlreadyATrustedRelayer`] will
+        /// be returned.
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of relayers to remove.
@@ -242,16 +269,32 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            TrustedRelayers::<T, I>::mutate(|option_relayers| match option_relayers {
-                Some(relayers) => {
-                    for relayer in &account_ids {
-                        relayers.remove(relayer);
+            let removed_accounts =
+                TrustedRelayers::<T, I>::mutate(|option_relayers| match option_relayers {
+                    Some(relayers) => {
+                        let to_remove = BTreeSet::from_iter(account_ids);
+                        if to_remove.is_subset(&relayers) {
+                            for account in &to_remove {
+                                relayers.remove(account);
+                            }
+                            Ok(to_remove)
+                        } else {
+                            Err(Error::<T, I>::NoSuchRelayer)
+                        }
                     }
-                }
-                None => _ = option_relayers.insert(BTreeSet::new()),
-            });
+                    None => {
+                        let _ = option_relayers.insert(BTreeSet::new());
+                        if account_ids.is_empty() {
+                            Ok(BTreeSet::new())
+                        } else {
+                            Err(Error::<T, I>::NoSuchRelayer)
+                        }
+                    }
+                })?;
 
-            Self::deposit_event(Event::RelayersRemoved(account_ids));
+            Self::deposit_event(Event::RelayersRemoved(
+                removed_accounts.into_iter().collect(),
+            ));
             Ok(().into())
         }
     }
@@ -271,6 +314,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                     None
                 }
             })
-            .ok_or_else(|| Error::<T, I>::NotATrustedRelayer.into())
+            .ok_or_else(|| Error::<T, I>::UnauthorizedRelayer.into())
     }
 }
