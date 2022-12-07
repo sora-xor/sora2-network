@@ -706,3 +706,23 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         unimplemented!()
     }
 }
+
+/// `DataFeed` trait indicates that particular object could be used for querying oracle data.
+pub trait DataFeed<Symbol, Rate, ResolveTime, Error> {
+    /// Get rate for the specified symbol
+    /// - `symbol`: which symbol to query
+    fn quote(symbol: Symbol) -> Result<Option<Rate>, Error>;
+
+    /// Get all supported symbols and their last update time
+    fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, Error>;
+}
+
+impl<Symbol, Rate, ResolveTime, Error> DataFeed<Symbol, Rate, ResolveTime, Error> for () {
+    fn quote(_symbol: Symbol) -> Result<Option<Rate>, Error> {
+        Ok(None)
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, Error> {
+        Ok(Vec::new())
+    }
+}
