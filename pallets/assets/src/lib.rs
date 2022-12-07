@@ -304,7 +304,7 @@ pub mod pallet {
                 DEFAULT_BALANCE_PRECISION
             };
 
-            let asset_id = Self::register_from(
+            Self::register_from(
                 &author,
                 symbol,
                 name,
@@ -314,8 +314,6 @@ pub mod pallet {
                 opt_content_src,
                 opt_desc,
             )?;
-
-            Self::deposit_event(Event::AssetRegistered(asset_id, author));
 
             Ok(().into())
         }
