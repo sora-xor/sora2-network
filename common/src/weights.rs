@@ -58,7 +58,7 @@ pub struct PresetWeightInfo<T>(PhantomData<T>);
 /// by  Operational  extrinsics.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
-const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.mul(2);
+const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_mul(2).set_proof_size(2);
 pub const ON_INITIALIZE_RATIO: Perbill = Perbill::from_perthousand(20);
 
 parameter_types! {
