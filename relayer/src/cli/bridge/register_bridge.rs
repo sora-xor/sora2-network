@@ -52,7 +52,7 @@ impl Command {
             let number = eth.get_block_number().await? - self.descendants_until_final;
             let block = eth.get_block(number).await?.expect("block not found");
             let header = make_header(block);
-            let call = runtime::runtime_types::framenode_runtime::Call::EthereumLightClient(
+            let call = runtime::runtime_types::framenode_runtime::RuntimeCall::EthereumLightClient(
                 runtime::runtime_types::ethereum_light_client::pallet::Call::register_network {
                     header,
                     network_config,
@@ -87,7 +87,7 @@ impl Command {
             .await?
             .is_some();
         if !is_channel_registered {
-            let call = runtime::runtime_types::framenode_runtime::Call::BridgeInboundChannel(
+            let call = runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeInboundChannel(
                 runtime::runtime_types::bridge_inbound_channel::pallet::Call::register_channel {
                     network_id,
                     inbound_channel: self.inbound_channel,

@@ -86,7 +86,7 @@ impl UnsignedClient {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash> {
+    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash, BlockNumber> {
         self.rpc()
     }
 

@@ -132,13 +132,13 @@ impl BeefyJustification {
     pub fn get_payload(commitment: &BeefyCommitment) -> Option<MmrPayload> {
         commitment
             .payload
-            .get_raw(&beefy_primitives::known_payload_ids::MMR_ROOT_ID)
+            .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
             .and_then(|mmr_root: [u8; 32]| {
                 let payload = hex::encode(commitment.payload.encode());
                 let mmr_root_with_id = hex::encode(
                     (
-                        beefy_primitives::known_payload_ids::MMR_ROOT_ID,
+                        beefy_primitives::known_payloads::MMR_ROOT_ID,
                         mmr_root.to_vec(),
                     )
                         .encode(),
