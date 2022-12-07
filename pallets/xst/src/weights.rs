@@ -43,11 +43,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
 
-    fn initialize_pool() -> Weight {
-        (387_780_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(3 as Weight))
-    }
     fn set_reference_asset() -> Weight {
         (210_815_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
@@ -58,19 +53,25 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
+    fn disable_synthetic_asset() -> Weight {
+        // TODO
+        (210_815_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
     fn on_initialize(_elems: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn initialize_pool() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
     fn set_reference_asset() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn enable_synthetic_asset() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn disable_synthetic_asset() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

@@ -47,17 +47,18 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
-    QuoteAmount, SwapAmount, SwapOutcome,
+    QuoteAmount, SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI,
-    XSTUSD,
+    balance, fixed, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, RewardReason,
+    DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use permissions::{Scope, BURN, MINT};
+use scale_info::prelude::{format, string::ToString};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{DispatchError, DispatchResult};
@@ -66,9 +67,9 @@ use sp_std::vec::Vec;
 
 pub trait WeightInfo {
     fn on_initialize(_elems: u32) -> Weight;
-    fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
+    fn disable_synthetic_asset() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -120,8 +121,8 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -131,12 +132,16 @@ pub mod pallet {
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        // TODO Remove
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
             DispatchError,
         >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
+        type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;
+        /// Type of symbol received from oracles
+        type Symbol: Parameter + ToString + From<&'static str> + MaybeSerializeDeserialize;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -159,21 +164,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Enable exchange path on the pool for pair BaseAsset-SyntheticAsset.
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
-        pub fn initialize_pool(
-            origin: OriginFor<T>,
-            synthetic_asset_id: T::AssetId,
-        ) -> DispatchResultWithPostInfo {
-            let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
-                origin,
-                ManagementMode::Private,
-            )?;
-            Self::initialize_pool_unchecked(synthetic_asset_id, true)?;
-            Ok(().into())
-        }
-
         /// Change reference asset which is used to determine collateral assets value. Intended to be e.g., stablecoin DAI.
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
@@ -190,9 +180,33 @@ pub mod pallet {
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
             synthetic_asset: T::AssetId,
+            reference_symbol: T::Symbol,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset));
+
+            Self::enable_synthetic_asset_unchecked(synthetic_asset, reference_symbol, true)?;
+            Ok(().into())
+        }
+
+        /// TODO
+        ///
+        /// Should it unregister asset or just disable exchanging?
+        /// What to do with users?
+        #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
+        pub fn disable_synthetic_asset(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let reference_symbol = EnabledSynthetics::<T>::try_get(synthetic_asset)
+                .map_err(|_| Error::<T>::SyntheticIsNotEnabled)?
+                .expect("Synthetic tables always store `Some`");
+
+            EnabledSynthetics::<T>::remove(synthetic_asset);
+            EnabledSymbols::<T>::remove(reference_symbol);
+
+            Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
             Ok(().into())
         }
     }
@@ -200,10 +214,12 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Pool is initialized for pair. [DEX Id, Synthetic Asset Id]
-        PoolInitialized(DexIdOf<T>, AssetIdOf<T>),
         /// Reference Asset has been changed for pool. [New Reference Asset Id]
         ReferenceAssetChanged(AssetIdOf<T>),
+        /// Synthetic asset has been enabled. [Synthetic Asset Id, Reference Symbol]
+        SyntheticAssetEnabled(AssetIdOf<T>, T::Symbol),
+        /// Synthetic asset has been disabled. [Synthetic Asset Id]
+        SyntheticAssetDisabled(AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -228,6 +244,15 @@ pub mod pallet {
         CantExchange,
         /// Increment account reference error.
         IncRefError,
+        /// Attempt to enable synthetic asset with inexistent symbol.
+        SymbolDoesNotExist,
+        /// Attempt to enable synthetic asset with symbol
+        /// that is already referenced to another synthetic.
+        SymbolAlreadyReferencedToSynthetic,
+        /// Attempt to enable synthetic asset that is already enabled.
+        SyntheticAlreadyEnabled,
+        /// Attempt to disable synthetic asset that is not enabled.
+        SyntheticIsNotEnabled,
     }
 
     // TODO: better by replaced with Get<>
@@ -246,10 +271,21 @@ pub mod pallet {
     #[pallet::getter(fn base_fee)]
     pub(super) type BaseFee<T: Config> = StorageValue<_, Fixed, ValueQuery, DefaultForBaseFee>;
 
-    /// XST Assets allowed to be traded using XST.
+    /// Synthetic assets and their reference symbols.
+    ///
+    /// It's a programmer responsibility to keep this collection consistent with [`EnabledSymbols`].
     #[pallet::storage]
     #[pallet::getter(fn enabled_synthetics)]
-    pub type EnabledSynthetics<T: Config> = StorageValue<_, BTreeSet<T::AssetId>, ValueQuery>;
+    pub type EnabledSynthetics<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AssetId, Option<T::Symbol>, ValueQuery>;
+
+    /// Reference symbols and their synthetic assets.
+    ///
+    /// It's a programmer responsibility to keep this collection consistent with [`EnabledSynthetics`].
+    #[pallet::storage]
+    #[pallet::getter(fn enabled_symbols)]
+    pub type EnabledSymbols<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::Symbol, Option<T::AssetId>, ValueQuery>;
 
     /// Asset that is used to compare collateral assets by value, e.g., DAI.
     #[pallet::storage]
@@ -268,7 +304,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
-        pub initial_synthetic_assets: Vec<T::AssetId>,
+        pub initial_synthetic_assets: Vec<(T::AssetId, T::Symbol)>,
     }
 
     #[cfg(feature = "std")]
@@ -277,7 +313,7 @@ pub mod pallet {
             Self {
                 tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
-                initial_synthetic_assets: [XSTUSD.into()].into(),
+                initial_synthetic_assets: [(XSTUSD.into(), "USD".into())].into(),
             }
         }
     }
@@ -287,13 +323,12 @@ pub mod pallet {
         fn build(&self) {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
-            self.initial_synthetic_assets
-                .iter()
-                .cloned()
-                .for_each(|asset_id| {
-                    Pallet::<T>::initialize_pool_unchecked(asset_id, false)
+            self.initial_synthetic_assets.iter().cloned().for_each(
+                |(asset_id, reference_symbol)| {
+                    Pallet::<T>::enable_synthetic_asset_unchecked(asset_id, reference_symbol, false)
                         .expect("Failed to initialize XST synthetics.")
-                });
+                },
+            );
         }
     }
 }
@@ -309,39 +344,59 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    fn initialize_pool_unchecked(
-        synthetic_asset_id: T::AssetId,
+    fn enable_synthetic_asset_unchecked(
+        synthetic_asset: T::AssetId,
+        reference_symbol: T::Symbol,
         transactional: bool,
     ) -> DispatchResult {
         let code = || {
-            ensure!(
-                !EnabledSynthetics::<T>::get().contains(&synthetic_asset_id),
-                Error::<T>::PoolAlreadyInitializedForPair
-            );
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(
-                &DEXId::Polkaswap.into(),
-                &T::GetSyntheticBaseAssetId::get(),
-                &synthetic_asset_id,
-            )?;
-            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
-                &DEXId::Polkaswap.into(),
-                &T::GetSyntheticBaseAssetId::get(),
-                &synthetic_asset_id,
-                LiquiditySourceType::XSTPool,
-            )?;
+            if EnabledSynthetics::<T>::contains_key(&synthetic_asset) {
+                return Err(Error::<T>::SyntheticAlreadyEnabled.into());
+            }
 
-            EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset_id));
-            Self::deposit_event(Event::PoolInitialized(
-                DEXId::Polkaswap.into(),
-                synthetic_asset_id,
+            if EnabledSymbols::<T>::contains_key(&reference_symbol) {
+                return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
+            }
+
+            Self::ensure_symbol_exists(&reference_symbol)?;
+
+            Self::register_synthetic_asset(synthetic_asset, reference_symbol.clone())?;
+
+            Self::enable_synthetic_pair(synthetic_asset)?;
+
+            // TODO: Technically it's possible to use references to avoid cloning
+            EnabledSynthetics::<T>::insert(synthetic_asset, Some(reference_symbol.clone()));
+            EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset));
+
+            Self::deposit_event(Event::SyntheticAssetEnabled(
+                synthetic_asset,
+                reference_symbol,
             ));
-            Ok(())
+            Ok(().into())
         };
+
         if transactional {
             common::with_transaction(|| code())
         } else {
             code()
         }
+    }
+
+    fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> DispatchResult {
+        trading_pair::Pallet::<T>::register_pair(
+            DEXId::Polkaswap.into(),
+            T::GetSyntheticBaseAssetId::get(),
+            synthetic_asset_id,
+        )?;
+
+        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
+            &DEXId::Polkaswap.into(),
+            &T::GetSyntheticBaseAssetId::get(),
+            &synthetic_asset_id,
+            LiquiditySourceType::XSTPool,
+        )?;
+
+        Ok(())
     }
 
     /// Buys the main asset (e.g., XST).
@@ -654,6 +709,35 @@ impl<T: Config> Pallet<T> {
             })
         }
     }
+
+    fn ensure_symbol_exists(reference_symbol: &T::Symbol) -> Result<(), DispatchError> {
+        let all_symbols = T::Oracle::list_enabled_symbols()?;
+        all_symbols
+            .into_iter()
+            .find(|(symbol, _rate)| symbol == reference_symbol)
+            .map(|_| ())
+            .ok_or_else(|| Error::<T>::SymbolDoesNotExist.into())
+    }
+
+    fn register_synthetic_asset(
+        synthetic_asset: T::AssetId,
+        reference_symbol: T::Symbol,
+    ) -> Result<(), DispatchError> {
+        let permissioned_tech_account_id = Self::permissioned_tech_account();
+        let permissioned_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
+        Assets::<T>::register_asset_id(
+            permissioned_account_id,
+            synthetic_asset,
+            AssetSymbol(format!("XST{}", reference_symbol.to_string()).into_bytes()),
+            AssetName(format!("Sora Synthetic {}", reference_symbol.to_string()).into_bytes()),
+            DEFAULT_BALANCE_PRECISION,
+            balance!(0),
+            true,
+            None,
+            None,
+        )
+    }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
@@ -668,9 +752,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             return false;
         }
         if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::get().contains(&output_asset_id)
+            EnabledSynthetics::<T>::contains_key(&output_asset_id)
         } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
-            EnabledSynthetics::<T>::get().contains(&input_asset_id)
+            EnabledSynthetics::<T>::contains_key(&input_asset_id)
         } else {
             false
         }
@@ -774,6 +858,8 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
 
     /// `target_assets` refer to synthetic assets
     fn enabled_target_assets() -> BTreeSet<T::AssetId> {
-        EnabledSynthetics::<T>::get()
+        EnabledSynthetics::<T>::iter()
+            .map(|(asset_id, _)| asset_id)
+            .collect()
     }
 }

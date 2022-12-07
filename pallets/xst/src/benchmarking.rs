@@ -59,36 +59,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 // TODO: properly implement benchmarks
-benchmarks! {
-    initialize_pool {
-        let caller = alice::<T>();
-        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
-        Permissions::<T>::assign_permission(
-            caller.clone(),
-            &caller,
-            permissions::MANAGE_DEX,
-            permissions::Scope::Limited(common::hash(&dex_id)),
-        ).unwrap();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        DAI.into()
-    )
-    verify {
-        assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
-    }
-}
+// benchmarks! {}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_initialize_pool());
-        });
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::mock::{ExtBuilder, Runtime};
+//     use frame_support::assert_ok;
+// }
