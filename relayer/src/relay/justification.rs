@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, LeafProof};
-use beefy_merkle_tree::Hash;
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
 use bridge_common::bitfield::BitField;
@@ -11,14 +10,6 @@ use sp_runtime::traits::Keccak256;
 use sp_runtime::traits::{Convert, Hash as HashTrait};
 
 use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
-
-pub struct BeefyHasher;
-
-impl beefy_merkle_tree::Hasher for BeefyHasher {
-    fn hash(data: &[u8]) -> Hash {
-        keccak256(data)
-    }
-}
 
 #[derive(Debug)]
 pub struct MmrPayload {
@@ -169,10 +160,12 @@ impl BeefyJustification {
         validator_public_key
     }
 
-    pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<Hash> {
-        let proof =
-            beefy_merkle_tree::merkle_proof::<BeefyHasher, _, _>(self.validators.clone(), pos)
-                .proof;
+    pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<H256> {
+        let proof = beefy_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
+            self.validators.clone(),
+            pos,
+        )
+        .proof;
         debug!("Validator {} proof: {}", pos, proof.len());
         proof
     }

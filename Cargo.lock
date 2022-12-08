@@ -600,10 +600,10 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
 dependencies = [
  "bridge-common",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -634,7 +634,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -939,10 +939,10 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#d947055ab492f21486c373690b819376c41c070a"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
 dependencies = [
  "bitvec 1.0.1",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -964,7 +964,7 @@ dependencies = [
  "dispatch",
  "erc20-app",
  "eth-app",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -994,7 +994,7 @@ dependencies = [
  "assets",
  "bridge-types",
  "common",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -1023,7 +1023,7 @@ dependencies = [
  "beefy-primitives",
  "common",
  "enum-iterator",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "ethash",
  "ethbloom 0.13.0",
  "ethereum-types 0.14.1",
@@ -2836,7 +2836,7 @@ dependencies = [
  "bridge-types",
  "common",
  "dispatch",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -2888,7 +2888,7 @@ dependencies = [
  "bridge-types",
  "common",
  "dispatch",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -2919,7 +2919,7 @@ dependencies = [
  "async-std",
  "common",
  "env_logger 0.8.4",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "ethabi-derive",
  "ethereum-types 0.14.1",
  "frame-benchmarking",
@@ -3022,23 +3022,6 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "17.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4966fba78396ff92db3b817ee71143eccd98acf0f876b8d600e585a670c5d1b"
-dependencies = [
- "ethereum-types 0.13.1",
- "hex",
- "once_cell",
- "regex",
- "serde",
- "serde_json",
- "sha3 0.10.6",
- "thiserror",
- "uint 0.9.5",
-]
-
-[[package]]
-name = "ethabi"
-version = "17.2.0"
 source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#d4e99f047dfd525afa1a64992644727c89bdc368"
 dependencies = [
  "ethereum-types 0.14.1",
@@ -3057,7 +3040,7 @@ name = "ethabi-derive"
 version = "17.2.0"
 source = "git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#d4e99f047dfd525afa1a64992644727c89bdc368"
 dependencies = [
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "heck 0.4.0",
  "proc-macro2",
  "quote",
@@ -3090,19 +3073,6 @@ dependencies = [
 
 [[package]]
 name = "ethbloom"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11da94e443c60508eb62cf256243a64da87304c2802ac2528847f79d750007ef"
-dependencies = [
- "crunchy 0.2.2",
- "fixed-hash 0.7.0",
- "impl-rlp",
- "impl-serde 0.3.2",
- "tiny-keccak 2.0.2",
-]
-
-[[package]]
-name = "ethbloom"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c22d4b5885b6aa2fe5e8b9329fb8d232bf739e434e6b87347c63bdd00c120f60"
@@ -3111,7 +3081,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec",
  "impl-rlp",
- "impl-serde 0.4.0",
+ "impl-serde",
  "scale-info",
  "tiny-keccak 2.0.2",
 ]
@@ -3167,20 +3137,6 @@ dependencies = [
 
 [[package]]
 name = "ethereum-types"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2827b94c556145446fcce834ca86b7abf0c39a805883fe20e72c5bfdb5a0dc6"
-dependencies = [
- "ethbloom 0.12.1",
- "fixed-hash 0.7.0",
- "impl-rlp",
- "impl-serde 0.3.2",
- "primitive-types 0.11.1",
- "uint 0.9.5",
-]
-
-[[package]]
-name = "ethereum-types"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02d215cbf040552efcbe99a38372fe80ab9d00268e20012b79fcd0f073edd8ee"
@@ -3189,7 +3145,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec",
  "impl-rlp",
- "impl-serde 0.4.0",
+ "impl-serde",
  "primitive-types 0.12.1",
  "scale-info",
  "uint 0.9.5",
@@ -3207,7 +3163,7 @@ dependencies = [
 [[package]]
 name = "ethers"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "ethers-addressbook",
  "ethers-contract",
@@ -3222,7 +3178,7 @@ dependencies = [
 [[package]]
 name = "ethers-addressbook"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "ethers-core",
  "once_cell",
@@ -3233,7 +3189,7 @@ dependencies = [
 [[package]]
 name = "ethers-contract"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -3251,7 +3207,7 @@ dependencies = [
 [[package]]
 name = "ethers-contract-abigen"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "Inflector",
  "cfg-if 1.0.0",
@@ -3273,7 +3229,7 @@ dependencies = [
 [[package]]
 name = "ethers-contract-derive"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -3287,7 +3243,7 @@ dependencies = [
 [[package]]
 name = "ethers-core"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "arrayvec 0.7.2",
  "bytes",
@@ -3295,7 +3251,7 @@ dependencies = [
  "chrono",
  "convert_case 0.5.0",
  "elliptic-curve",
- "ethabi 17.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethabi",
  "generic-array 0.14.6",
  "hex",
  "k256",
@@ -3317,7 +3273,7 @@ dependencies = [
 [[package]]
 name = "ethers-etherscan"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "ethers-core",
  "getrandom 0.2.8",
@@ -3333,7 +3289,7 @@ dependencies = [
 [[package]]
 name = "ethers-middleware"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "async-trait",
  "ethers-contract",
@@ -3357,7 +3313,7 @@ dependencies = [
 [[package]]
 name = "ethers-providers"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -3393,7 +3349,7 @@ dependencies = [
 [[package]]
 name = "ethers-signers"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "async-trait",
  "coins-bip32",
@@ -3410,7 +3366,7 @@ dependencies = [
 [[package]]
 name = "ethers-solc"
 version = "0.13.0"
-source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#ec8d4e1ab77297c5c72750d592aa4701d5d7a536"
+source = "git+https://github.com/sora-xor/ethers-rs?branch=sora-v1.6.0#b1e12ff2c8c3c4e94efa71b68ce8f74da657efea"
 dependencies = [
  "cfg-if 1.0.0",
  "colored",
@@ -3644,9 +3600,9 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b9663d381d07ae25dc88dbdf27df458faa83a9b25336bcac83d5e452b5fc9d3"
+checksum = "4e884668cd0c7480504233e951174ddc3b382f7c2666e3b7310b5c4e7b0c37f9"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -3687,9 +3643,6 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
 dependencies = [
- "byteorder",
- "rand 0.8.5",
- "rustc-hex",
  "static_assertions",
 ]
 
@@ -4372,9 +4325,9 @@ dependencies = [
 
 [[package]]
 name = "futures-locks"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3eb42d4fb72227be5778429f9ef5240a38a358925a49f05b5cf702ce7c7e558a"
+checksum = "45ec6fe3675af967e67c5536c0b9d44e34e6c52f86bedc4ea49c5317b8e94d06"
 dependencies = [
  "futures-channel",
  "futures-task",
@@ -4986,15 +4939,6 @@ dependencies = [
 
 [[package]]
 name = "impl-serde"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4551f042f3438e64dbd6226b20527fc84a6e1fe65688b58746a2f53623f25f5c"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "impl-serde"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc88fc67028ae3db0c853baa36269d398d5f45b6982f95549ff5def78c935cd"
@@ -5099,9 +5043,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.5.1"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f88c5561171189e69df9d98bcf18fd5f9558300f7ea7b801eb8a0fd748bd8745"
+checksum = "ec947b7a4ce12e3b87e353abae7ce124d025b6c7d6c5aea5cc0bcf92e9510ded"
 
 [[package]]
 name = "iroha-migration"
@@ -5632,7 +5576,7 @@ dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
  "bridge-types",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -6482,7 +6426,7 @@ dependencies = [
  "dispatch",
  "erc20-app",
  "eth-app",
- "ethabi 17.2.0 (git+https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0)",
+ "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -7030,9 +6974,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl"
-version = "0.10.43"
+version = "0.10.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "020433887e44c27ff16365eaa2d380547a94544ad509aff6eb5b6e3e0b27b376"
+checksum = "29d971fd5722fec23977260f6e81aa67d2f22cadbdc2aa049f1022d9a3be1566"
 dependencies = [
  "bitflags",
  "cfg-if 1.0.0",
@@ -7062,9 +7006,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.78"
+version = "0.9.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07d5c8cb6e57b3a3612064d7b18b117912b4ce70955c2504d4b741c9e244b132"
+checksum = "5454462c0eced1e97f2ec09036abc8da362e66802f66fd20f86854d9d8cbcbc4"
 dependencies = [
  "autocfg 1.1.0",
  "cc",
@@ -8385,19 +8329,6 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
-dependencies = [
- "fixed-hash 0.7.0",
- "impl-codec",
- "impl-rlp",
- "impl-serde 0.3.2",
- "uint 0.9.5",
-]
-
-[[package]]
-name = "primitive-types"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f3486ccba82358b11a77516035647c34ba167dfa53312630de83b12bd4f3d66"
@@ -8405,7 +8336,7 @@ dependencies = [
  "fixed-hash 0.8.0",
  "impl-codec",
  "impl-rlp",
- "impl-serde 0.4.0",
+ "impl-serde",
  "scale-info",
  "uint 0.9.5",
 ]
@@ -10736,9 +10667,9 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.24.1"
+version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff55dc09d460954e9ef2fa8a7ced735a964be9981fd50e870b2b3b0705e14964"
+checksum = "d9512ffd81e3a3503ed401f79c33168b9148c75038956039166cd750eaa037c3"
 dependencies = [
  "secp256k1-sys",
 ]
@@ -11358,7 +11289,7 @@ dependencies = [
  "futures 0.3.25",
  "hash-db",
  "hash256-std-hasher",
- "impl-serde 0.4.0",
+ "impl-serde",
  "lazy_static",
  "libsecp256k1",
  "log",
@@ -11723,7 +11654,7 @@ name = "sp-storage"
 version = "6.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#128244664bffbf0a06900d6fbf9de4ea99fe01d5"
 dependencies = [
- "impl-serde 0.4.0",
+ "impl-serde",
  "parity-scale-codec",
  "ref-cast",
  "serde",
@@ -11825,7 +11756,7 @@ name = "sp-version"
 version = "5.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#128244664bffbf0a06900d6fbf9de4ea99fe01d5"
 dependencies = [
- "impl-serde 0.4.0",
+ "impl-serde",
  "parity-scale-codec",
  "parity-wasm 0.45.0",
  "scale-info",
@@ -11895,9 +11826,9 @@ dependencies = [
 
 [[package]]
 name = "ss58-registry"
-version = "1.35.0"
+version = "1.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa0813c10b9dbdc842c2305f949f724c64866e4ef4d09c9151e96f6a2106773c"
+checksum = "23d92659e7d18d82b803824a9ba5a6022cff101c3491d027c1c1d8d30e749284"
 dependencies = [
  "Inflector",
  "num-format",
