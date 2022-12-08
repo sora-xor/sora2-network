@@ -217,7 +217,7 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
         Rewards::<T>::mutate(id, |reward_info| {
             let market_maker_rewards = *reward_info
                 .rewards
-                .get(&RewardReason::MarketMakerVolume)
+                .get(&RewardReason::MarketMakerVolume_DEPRECATED)
                 .unwrap_or(&Balance::zero());
             weight += T::DbWeight::get().reads(1);
             if let Some(balance) = reward_info
@@ -227,7 +227,7 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
                 *balance += market_maker_rewards;
                 weight += T::DbWeight::get().writes(1);
             }
-            reward_info.rewards.remove(&RewardReason::MarketMakerVolume);
+            reward_info.rewards.remove(&RewardReason::MarketMakerVolume_DEPRECATED);
             weight += T::DbWeight::get().writes(1);
         });
     }

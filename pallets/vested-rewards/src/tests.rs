@@ -1153,7 +1153,7 @@ fn market_maker_reward_pool_migration() {
         )
         .unwrap();
 
-        VestedRewards::add_pending_reward(&alice(), RewardReason::MarketMakerVolume, balance!(100))
+        VestedRewards::add_pending_reward(&alice(), RewardReason::MarketMakerVolume_DEPRECATED, balance!(100))
             .unwrap();
         VestedRewards::add_pending_reward(&alice(), RewardReason::BuyOnBondingCurve, balance!(200))
             .unwrap();
