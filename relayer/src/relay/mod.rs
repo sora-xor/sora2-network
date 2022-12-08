@@ -1,7 +1,9 @@
+pub mod beefy_syncer;
 pub mod client;
 pub mod ethereum;
 pub mod ethereum_messages;
 pub mod justification;
 pub mod parachain;
+pub mod parachain_messages;
 pub mod simplified_proof;
 pub mod substrate;

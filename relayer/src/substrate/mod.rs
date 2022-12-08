@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use crate::prelude::*;
+use bridge_types::types::AuxiliaryDigest;
 use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use pallet_mmr_rpc::MmrApiClient;
@@ -135,6 +136,29 @@ impl UnsignedClient {
     ) -> AnyResult<bridge_channel_rpc::Commitment> {
         Ok(
             bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
+                .await?
+                .ok_or(anyhow!(
+                    "Connect to substrate server with enabled offhcain indexing"
+                ))?,
+        )
+    }
+
+    pub async fn auxiliary_digest<T: Into<NumberOrHash>>(
+        &self,
+        at: Option<T>,
+    ) -> AnyResult<AuxiliaryDigest> {
+        let at = self.block_hash(at).await?;
+        let res =
+            leaf_provider_rpc::LeafProviderAPIClient::latest_digest(self.rpc(), Some(at)).await?;
+        Ok(res.unwrap_or_default())
+    }
+
+    pub async fn substrate_bridge_commitments(
+        &self,
+        hash: H256,
+    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment<Balance>> {
+        Ok(
+            substrate_bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
                 .await?
                 .ok_or(anyhow!(
                     "Connect to substrate server with enabled offhcain indexing"

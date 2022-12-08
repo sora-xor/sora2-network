@@ -21,6 +21,6 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 anyhow = "1.0"
 
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
 bridge-outbound-channel = { path = "../outbound" }
 common = { path = "../../../../common" }

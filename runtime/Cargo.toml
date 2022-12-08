@@ -29,23 +29,22 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
 
-bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
 ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
-dispatch = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
+dispatch = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
 bridge-inbound-channel = { path = "../pallets/trustless-eth-bridge/channel/inbound", default-features = false }
 bridge-outbound-channel = { path = "../pallets/trustless-eth-bridge/channel/outbound", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
 erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
-leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
-leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
 evm-bridge-proxy = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy", default-features = false }
 evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets", default-features = false }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -150,6 +149,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"

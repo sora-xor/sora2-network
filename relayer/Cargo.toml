@@ -9,9 +9,10 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 parachain-gen = { path = "./parachain-gen" }
-beefy-light-client = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
-bridge-common = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "generalize-pallets" }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
 ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "polkadot-v0.9.28", features = [
   "ws",
   "rustls",
@@ -67,3 +68,4 @@ assets-rpc = { path = "../pallets/assets/rpc" }
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
 bridge-channel-rpc = { path = "../pallets/trustless-eth-bridge/channel/rpc" }
+substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }

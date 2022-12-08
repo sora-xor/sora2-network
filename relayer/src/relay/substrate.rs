@@ -9,7 +9,7 @@ use crate::substrate::LeafProof;
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
-use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
+use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::{EVMChainId, GenericNetworkId};
 use ethereum_gen::{beefy_light_client, inbound_channel, BeefyLightClient, InboundChannel};
 use ethers::abi::RawLog;
@@ -207,14 +207,7 @@ impl Relay {
             .block_hash(Some(block_number.into()))
             .await?
             .expect("should exist");
-        let header = self
-            .sub
-            .api()
-            .rpc()
-            .header(Some(block_hash))
-            .await?
-            .expect("should exist");
-        let digest = AuxiliaryDigest::from(header.digest.clone());
+        let digest = self.sub.auxiliary_digest(Some(block_hash)).await?;
         if digest.logs.is_empty() {
             return Ok(());
         }

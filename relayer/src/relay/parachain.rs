@@ -31,6 +31,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+use super::beefy_syncer::BeefySyncer;
 use super::justification::*;
 use crate::prelude::*;
 use crate::relay::client::RuntimeClient;
@@ -44,6 +45,7 @@ use subxt::tx::TxPayload;
 pub struct RelayBuilder<S, R> {
     sender: Option<S>,
     receiver: Option<R>,
+    syncer: Option<BeefySyncer>,
 }
 
 impl<S, R> Default for RelayBuilder<S, R> {
@@ -51,6 +53,7 @@ impl<S, R> Default for RelayBuilder<S, R> {
         Self {
             sender: None,
             receiver: None,
+            syncer: None,
         }
     }
 }
@@ -74,14 +77,23 @@ where
         self
     }
 
+    pub fn with_syncer(mut self, syncer: BeefySyncer) -> Self {
+        self.syncer = Some(syncer);
+        self
+    }
+
     pub async fn build(self) -> AnyResult<Relay<S, R>> {
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
+        let syncer = self.syncer.expect("syncer is needed");
+        let latest_beefy_block = receiver.latest_beefy_block().await?;
+        syncer.update_latest_sent(latest_beefy_block);
         Ok(Relay {
             sender,
             receiver,
             successful_sent: Default::default(),
             failed_to_sent: Default::default(),
+            syncer,
         })
     }
 }
@@ -92,6 +104,7 @@ pub struct Relay<S, R> {
     receiver: R,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
+    syncer: BeefySyncer,
 }
 
 impl<S, R> Relay<S, R>
@@ -179,6 +192,8 @@ where
         let _event = self
             .call_with_event::<R::VerificationSuccessful, _>(call)
             .await?;
+        self.syncer
+            .update_latest_sent(justification.commitment.block_number as u64);
         Ok(())
     }
 
@@ -302,7 +317,12 @@ where
             let is_mandatory = next_validator_set_id
                 < justification.leaf_proof.leaf.beefy_next_authority_set.id as u128;
 
-            let should_send = !ignore_unneeded_commitments || is_mandatory;
+            let latest_requested = self.syncer.latest_requested();
+            let latest_sent = self.syncer.latest_sent();
+            let should_send = !ignore_unneeded_commitments
+                || is_mandatory
+                || (latest_requested < justification.commitment.block_number as u64
+                    && latest_sent < latest_requested);
 
             if should_send {
                 // TODO: Better async message handler

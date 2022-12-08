@@ -49,7 +49,6 @@ pub mod mock;
 pub mod tests;
 
 use crate::impls::{BridgeAssetRegistryImpl, SubstrateBridgeCallFilter};
-use bridge_types::traits::Verifier;
 use bridge_types::types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
@@ -2003,6 +2002,7 @@ impl evm_bridge_proxy::Config for Runtime {
 
 impl beefy_light_client::Config for Runtime {
     type Event = Event;
+    type Message = Vec<ParachainMessage<Balance>>;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
@@ -2018,22 +2018,11 @@ impl dispatch::Config<Instance2> for Runtime {
     type CallFilter = SubstrateBridgeCallFilter;
 }
 
-pub struct MockVerifier;
-
-impl Verifier<SubNetworkId, ParachainMessage<Balance>> for MockVerifier {
-    type Result = Vec<ParachainMessage<Balance>>;
-
-    fn verify(
-        _network_id: SubNetworkId,
-        message: &ParachainMessage<Balance>,
-    ) -> Result<Self::Result, DispatchError> {
-        Ok(vec![message.clone()])
-    }
-}
-
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type Event = Event;
-    type Verifier = MockVerifier;
+    type Verifier = BeefyLightClient;
+    type ProvedMessage =
+        beefy_light_client::ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>;
     type MessageDispatch = SubstrateDispatch;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
@@ -2052,6 +2041,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type MessageStatusNotifier = EvmBridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
+    type AuxiliaryDigestHandler = LeafProvider;
     type Currency = Currencies;
     type WeightInfo = ();
 }
@@ -2890,7 +2880,7 @@ impl_runtime_apis! {
 
     impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
         fn latest_digest() -> Option<bridge_types::types::AuxiliaryDigest> {
-            LeafProvider::latest_digest()
+                LeafProvider::latest_digest().map(|logs| bridge_types::types::AuxiliaryDigest{ logs })
         }
 
     }

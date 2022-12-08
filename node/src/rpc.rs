@@ -164,6 +164,10 @@ where
     use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use substrate_bridge_channel_rpc::{
+        BridgeChannelAPIServer as SubstrateBridgeChannelAPIServer,
+        BridgeChannelClient as SubstrateBridgeChannelClient,
+    };
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
 
@@ -199,7 +203,12 @@ where
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
     io.merge(EvmBridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
-        io.merge(BridgeChannelClient::new(storage).into_rpc())?;
+        // io.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
+        io.merge(
+            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer<Balance>>::into_rpc(
+                SubstrateBridgeChannelClient::new(storage),
+            ),
+        )?;
     }
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
     io.merge(FarmingClient::new(client.clone()).into_rpc())?;

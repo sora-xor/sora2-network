@@ -60,12 +60,20 @@ pub mod runtime {
     use ::bridge_types::network_config::NetworkConfig;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
+    #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
+    use ::bridge_types::types::AuxiliaryDigest;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
+    #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
+    use ::bridge_types::types::ParachainMessage;
+    #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
+    use ::bridge_types::GenericNetworkId;
     #[subxt(substitute_type = "bridge_types::header::Header")]
     use ::bridge_types::Header;
     #[subxt(substitute_type = "bridge_types::header::HeaderId")]
     use ::bridge_types::HeaderId;
+    #[subxt(substitute_type = "bridge_types::SubNetworkId")]
+    use ::bridge_types::SubNetworkId;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use ::common::AssetId32;
     #[subxt(substitute_type = "common::primitives::AssetName")]

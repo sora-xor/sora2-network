@@ -227,6 +227,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     type PostInfo = PostDispatchInfo;
 
     fn dispatch(self, origin: Self::Origin) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+        frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
@@ -234,7 +235,8 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 call.dispatch(origin)
             }
             bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {
-                unimplemented!()
+                // unimplemented!()
+                Ok(().into())
             }
         }
     }
@@ -264,7 +266,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
             bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(_) => true,
-            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => false,
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => true,
         }
     }
 }
