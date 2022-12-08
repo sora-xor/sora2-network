@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use std::fmt::Formatter;
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
@@ -64,6 +65,7 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+pub const TECH_ACCOUNT_BATCH_SWAP: &[u8] = b"batch-swap";
 
 /// Possible exchange paths for two assets.
 enum ExchangePath<T: Config> {
@@ -107,6 +109,7 @@ enum ExchangePath<T: Config> {
     },
 }
 
+#[derive(Debug)]
 enum AssetType {
     Base,
     SyntheticBase,
@@ -149,6 +152,7 @@ impl<T: Config> ExchangePath<T> {
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
+        println!("in: {:?}, out: {:?}", input_type, output_type);
 
         match (input_type, output_type) {
             forward_or_backward!(Base, Basic)
@@ -363,7 +367,6 @@ impl<T: Config> Pallet<T> {
                     to_asset_id,
                 }) => {
                     // Calculations optimized for direct swap
-
                     let (outcome, sources) = Self::exchange_single(
                         sender,
                         receiver,
@@ -390,7 +393,8 @@ impl<T: Config> Pallet<T> {
                     )?;
                     Ok((outcome, sources))
                 }
-                Some(long_path) => Self::exchange_sequence(
+                Some(long_path) => 
+                    Self::exchange_sequence(
                     &dex_info,
                     sender,
                     receiver,
@@ -603,7 +607,7 @@ impl<T: Config> Pallet<T> {
         Ok(amount)
     }
 
-    /// Performs a swap given a number of liquidity sources and a distribuition of the swap amount across the sources.
+    /// Performs a swap given a number of liquidity sources and a distribution of the swap amount across the sources.
     fn exchange_single(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -1511,6 +1515,19 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
 
 pub use pallet::*;
 
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,)]
+#[scale_info(skip_type_params(T))]
+pub struct BatchReceiverInfo<T: Config> {
+    pub account_id: T::AccountId,
+    pub amount: Balance,
+}
+
+impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -1519,6 +1536,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::print;
 
     #[pallet::config]
     pub trait Config:
@@ -1535,12 +1553,19 @@ pub mod pallet {
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
+        type GetBatchSwapTechnicalAccountId: Get<Self::AccountId>;
         type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
+    }
+
+    impl<T: Config> BatchReceiverInfo<T> {
+        pub fn new(account_id: T::AccountId, amount: Balance) -> BatchReceiverInfo<T> {
+            BatchReceiverInfo { account_id, amount }
+        }
     }
 
     /// The current storage version.
@@ -1624,6 +1649,50 @@ pub mod pallet {
                 selected_source_types,
                 filter_mode,
             )?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        pub fn swap_transfer_batch(
+            origin: OriginFor<T>,
+            receivers: Vec<BatchReceiverInfo<T>>,
+            dex_id: T::DEXId,
+            input_asset_id: T::AssetId,
+            output_asset_id: T::AssetId,
+            swap_amount: SwapAmount<Balance>,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        )-> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let tech_account = T::GetBatchSwapTechnicalAccountId::get();
+
+            if Self::is_forbidden_filter(
+                &input_asset_id,
+                &output_asset_id,
+                &selected_source_types,
+                &filter_mode,
+            ) {
+                fail!(Error::<T>::ForbiddenFilter);
+            }
+
+            let (outcome, _) = Self::inner_exchange(
+                dex_id,
+                &who,
+                &tech_account,
+                &input_asset_id,
+                &output_asset_id,
+                swap_amount,
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
+            )?;
+            let total_out = outcome.amount;
+            let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
+            println!("{} == {}", total_out, desired_out);
+            ensure!(total_out == desired_out, Error::<T>::TotalBatchOutputMismatch);
+
+            for receiver in receivers {
+                assets::Pallet::<T>::transfer_from(&output_asset_id , &tech_account, &receiver.account_id, receiver.amount)?;
+            }
+
             Ok(().into())
         }
 
@@ -1732,5 +1801,7 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
+        // Total amount of asset in the batch recipient list mismatches actual output
+        TotalBatchOutputMismatch,
     }
 }
