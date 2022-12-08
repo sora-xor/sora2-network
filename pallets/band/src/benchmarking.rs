@@ -55,11 +55,12 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![euro.clone()], vec![2], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(Rate {
             value: 2,
             last_updated: 100,
+            request_id: 1,
         }));
     }
 
@@ -67,11 +68,12 @@ benchmarks! {
         let relayer = relayer::<T>();
         let euro = symbol::<T>("EURO");
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![relayer.clone()])?;
-    }: _(RawOrigin::Signed(relayer), vec![euro.clone()], vec![2], 100, 1)
+    }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(Rate {
             value: 2,
             last_updated: 100,
+            request_id: 1,
         }));
     }
 
