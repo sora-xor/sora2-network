@@ -30,8 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use std::fmt::Formatter;
 use codec::{Decode, Encode};
+use std::fmt::Formatter;
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
@@ -393,8 +393,7 @@ impl<T: Config> Pallet<T> {
                     )?;
                     Ok((outcome, sources))
                 }
-                Some(long_path) => 
-                    Self::exchange_sequence(
+                Some(long_path) => Self::exchange_sequence(
                     &dex_info,
                     sender,
                     receiver,
@@ -1515,7 +1514,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
 
 pub use pallet::*;
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BatchReceiverInfo<T: Config> {
     pub account_id: T::AccountId,
@@ -1662,7 +1661,7 @@ pub mod pallet {
             swap_amount: SwapAmount<Balance>,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-        )-> DispatchResultWithPostInfo {
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             let tech_account = T::GetBatchSwapTechnicalAccountId::get();
 
@@ -1687,10 +1686,18 @@ pub mod pallet {
             let total_out = outcome.amount;
             let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
             println!("{} == {}", total_out, desired_out);
-            ensure!(total_out == desired_out, Error::<T>::TotalBatchOutputMismatch);
+            ensure!(
+                total_out == desired_out,
+                Error::<T>::TotalBatchOutputMismatch
+            );
 
             for receiver in receivers {
-                assets::Pallet::<T>::transfer_from(&output_asset_id , &tech_account, &receiver.account_id, receiver.amount)?;
+                assets::Pallet::<T>::transfer_from(
+                    &output_asset_id,
+                    &tech_account,
+                    &receiver.account_id,
+                    receiver.amount,
+                )?;
             }
 
             Ok(().into())
