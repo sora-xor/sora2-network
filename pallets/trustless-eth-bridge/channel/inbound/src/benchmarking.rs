@@ -18,7 +18,7 @@ const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 #[allow(unused_imports)]
 use crate::Pallet as BridgeInboundChannel;
 
-fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::Event) {
+fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];

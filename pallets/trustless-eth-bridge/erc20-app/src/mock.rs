@@ -3,6 +3,8 @@ use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
 use bridge_types::types::{AdditionalEVMInboundData, AssetKind};
+use bridge_types::H160;
+use bridge_types::H256;
 use bridge_types::{EVMChainId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
@@ -13,7 +15,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{
@@ -91,8 +92,8 @@ impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -100,7 +101,7 @@ impl system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -120,7 +121,7 @@ impl common::Config for Test {
 }
 
 impl permissions::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -129,7 +130,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -140,13 +141,16 @@ impl pallet_balances::Config for Test {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Test as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -167,7 +171,7 @@ parameter_types! {
 }
 
 impl assets::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -180,15 +184,15 @@ impl assets::Config for Test {
 }
 
 impl dispatch::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = EVMChainId;
     type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
-    type Origin = Origin;
+    type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
-    type Call = Call;
+    type Call = RuntimeCall;
     type CallFilter = Everything;
 }
 
@@ -215,7 +219,7 @@ parameter_types! {
 
 impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
@@ -230,7 +234,7 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl technical::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -251,7 +255,7 @@ impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
 }
 
 impl erc20_app::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
         EVMChainId,

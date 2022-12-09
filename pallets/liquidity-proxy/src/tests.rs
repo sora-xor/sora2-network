@@ -791,7 +791,7 @@ fn test_swap_should_fail_with_bad_origin() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let result = LiquidityProxy::swap(
-            Origin::root(),
+            RuntimeOrigin::root(),
             DEX_C_ID,
             DOT,
             GetBaseAssetId::get(),
@@ -835,7 +835,7 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
 
         assert_noop!(
             LiquidityProxy::swap(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 DEX_C_ID,
                 ETH,
                 GetBaseAssetId::get(),
@@ -848,7 +848,7 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
 
         assert_noop!(
             LiquidityProxy::swap(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 DEX_C_ID,
                 GetBaseAssetId::get(),
                 DOT,
@@ -861,7 +861,7 @@ fn test_swap_shoild_fail_with_non_divisible_assets() {
 
         assert_noop!(
             LiquidityProxy::swap(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 DEX_C_ID,
                 ETH,
                 DOT,
@@ -1595,8 +1595,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_1() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
         let query_b = LiquidityProxy::list_enabled_sources_for_path(0, VAL, XOR);
@@ -1619,8 +1619,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_2() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
@@ -1644,8 +1644,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_3() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
@@ -1670,8 +1670,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_4() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MockPool2).expect("failed to enable source");
@@ -1699,8 +1699,8 @@ fn test_is_path_available_should_pass_1() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
         assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
@@ -1718,8 +1718,8 @@ fn test_is_path_available_should_pass_2() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
         assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), false);
         assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), false);
@@ -1736,8 +1736,8 @@ fn test_is_path_available_should_pass_3() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
@@ -1755,8 +1755,8 @@ fn test_is_path_available_should_pass_4() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
@@ -2500,9 +2500,9 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_1() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &USDT, XYKPool).expect("failed to enable source");
         let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
@@ -2531,8 +2531,8 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_2() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
@@ -2556,8 +2556,8 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_3() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
@@ -2582,9 +2582,9 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_4() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use LiquiditySourceType::*;
-        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
-        TradingPair::register(Origin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(RuntimeOrigin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
 
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
@@ -2902,33 +2902,39 @@ fn test_enable_correct_liquidity_source() {
     ext.execute_with(|| {
         // Only XST & TBC sources could be enabled/disabled
         assert_noop!(
-            LiquidityProxy::enable_liquidity_source(Origin::root(), LiquiditySourceType::XYKPool),
+            LiquidityProxy::enable_liquidity_source(
+                RuntimeOrigin::root(),
+                LiquiditySourceType::XYKPool
+            ),
             Error::<Runtime>::UnableToEnableLiquiditySource
         );
 
         // User cannot enable liquidity source if it was not disabled
         assert_noop!(
-            LiquidityProxy::enable_liquidity_source(Origin::root(), LiquiditySourceType::XSTPool),
+            LiquidityProxy::enable_liquidity_source(
+                RuntimeOrigin::root(),
+                LiquiditySourceType::XSTPool
+            ),
             Error::<Runtime>::LiquiditySourceAlreadyEnabled
         );
 
         // Disable XST & TBC that allows us to enable them
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::XSTPool
         ));
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 
         // Enable success
         assert_ok!(LiquidityProxy::enable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::XSTPool
         ));
         assert_ok!(LiquidityProxy::enable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
     });
@@ -2945,20 +2951,20 @@ fn test_double_enable_liquidity_source() {
     ext.execute_with(|| {
         // Disable TBC that allows us to enable it
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 
         // Enable success
         assert_ok!(LiquidityProxy::enable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 
         // Second enabling failed
         assert_noop!(
             LiquidityProxy::enable_liquidity_source(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 LiquiditySourceType::MulticollateralBondingCurvePool
             ),
             Error::<Runtime>::LiquiditySourceAlreadyEnabled
@@ -2977,17 +2983,20 @@ fn test_disable_correct_liquidity_source() {
     ext.execute_with(|| {
         // Only XST & TBC sources could be enabled/disabled
         assert_noop!(
-            LiquidityProxy::disable_liquidity_source(Origin::root(), LiquiditySourceType::XYKPool),
+            LiquidityProxy::disable_liquidity_source(
+                RuntimeOrigin::root(),
+                LiquiditySourceType::XYKPool
+            ),
             Error::<Runtime>::UnableToDisableLiquiditySource
         );
 
         // Disable success
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::XSTPool
         ));
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
     });
@@ -3004,14 +3013,14 @@ fn test_double_disable_liquidity_source() {
     ext.execute_with(|| {
         // Disable success
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 
         // Second disabling failed
         assert_noop!(
             LiquidityProxy::disable_liquidity_source(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 LiquiditySourceType::MulticollateralBondingCurvePool
             ),
             Error::<Runtime>::LiquiditySourceAlreadyDisabled
@@ -3046,7 +3055,7 @@ fn test_disable_enable_liquidity_source() {
 
         // Disable TBC
         assert_ok!(LiquidityProxy::disable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 
@@ -3069,7 +3078,7 @@ fn test_disable_enable_liquidity_source() {
 
         // Enable TBC
         assert_ok!(LiquidityProxy::enable_liquidity_source(
-            Origin::root(),
+            RuntimeOrigin::root(),
             LiquiditySourceType::MulticollateralBondingCurvePool
         ));
 

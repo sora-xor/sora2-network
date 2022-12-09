@@ -258,7 +258,7 @@ pub mod pallet {
         const TIME_TO_SATURATION: BlockNumberFor<Self>;
         /// Percentage of VAL burned without vesting
         const VAL_BURN_PERCENT: Percent;
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
 
@@ -274,7 +274,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            let mut consumed_weight: Weight = 0;
+            let mut consumed_weight: Weight = Weight::zero();
 
             if (now % T::BLOCKS_PER_DAY).is_zero() {
                 if TotalValRewards::<T>::get() == TotalClaimableVal::<T>::get() {

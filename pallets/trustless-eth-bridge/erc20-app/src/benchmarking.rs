@@ -5,6 +5,7 @@ use bridge_types::types::AdditionalEVMInboundData;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;
+use bridge_types::H256;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
     ETH, XOR,
@@ -12,7 +13,6 @@ use common::{
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
@@ -20,7 +20,7 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
     burn {
         let caller: T::AccountId = whitelisted_caller();

@@ -26,7 +26,7 @@ impl Command {
             }
             let name = common::AssetName(info.name.as_bytes().to_vec());
             let symbol = common::AssetSymbol(info.symbol.as_bytes().to_vec());
-            let call = sub_types::framenode_runtime::Call::Assets(
+            let call = sub_types::framenode_runtime::RuntimeCall::Assets(
                 sub_types::assets::pallet::Call::register {
                     symbol,
                     name,
@@ -39,9 +39,9 @@ impl Command {
             );
             calls.push(call);
             let call = if info.kind == "0x00" {
-                let call = sub_types::framenode_runtime::Call::Sudo(
+                let call = sub_types::framenode_runtime::RuntimeCall::Sudo(
                     sub_types::pallet_sudo::pallet::Call::sudo {
-                        call: Box::new(sub_types::framenode_runtime::Call::EthBridge(
+                        call: Box::new(sub_types::framenode_runtime::RuntimeCall::EthBridge(
                             sub_types::eth_bridge::pallet::Call::add_asset {
                                 asset_id: info.asset_id,
                                 network_id: self.network,
@@ -51,9 +51,9 @@ impl Command {
                 );
                 call
             } else if info.kind == "0x01" {
-                let call = sub_types::framenode_runtime::Call::Sudo(
+                let call = sub_types::framenode_runtime::RuntimeCall::Sudo(
                     sub_types::pallet_sudo::pallet::Call::sudo {
-                        call: Box::new(sub_types::framenode_runtime::Call::EthBridge(
+                        call: Box::new(sub_types::framenode_runtime::RuntimeCall::EthBridge(
                             sub_types::eth_bridge::pallet::Call::add_sidechain_token {
                                 network_id: self.network,
                                 token_address: info.address.expect("should have address"),

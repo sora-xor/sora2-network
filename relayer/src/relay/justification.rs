@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, LeafProof};
-use beefy_merkle_tree::Hash;
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
 use bridge_common::bitfield::BitField;
@@ -11,14 +10,6 @@ use sp_runtime::traits::Keccak256;
 use sp_runtime::traits::{Convert, Hash as HashTrait};
 
 use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
-
-pub struct BeefyHasher;
-
-impl beefy_merkle_tree::Hasher for BeefyHasher {
-    fn hash(data: &[u8]) -> Hash {
-        keccak256(data)
-    }
-}
 
 #[derive(Debug)]
 pub struct MmrPayload {
@@ -64,6 +55,7 @@ impl BeefyJustification {
             .storage()
             .fetch_or_default(&runtime::storage().beefy().authorities(), Some(block_hash))
             .await?
+            .0
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
@@ -97,16 +89,9 @@ impl BeefyJustification {
             .rev()
         {
             let block_hash = sub.block_hash(Some(block_number)).await?;
-            let leaf_count = sub
-                .api()
-                .storage()
-                .fetch_or_default(
-                    &runtime::storage().mmr().number_of_leaves(),
-                    Some(block_hash),
-                )
+            let leaf_proof = sub
+                .mmr_generate_proof(block_number, Some(block_hash))
                 .await?;
-            let leaf_index = leaf_count.saturating_sub(1);
-            let leaf_proof = sub.mmr_generate_proof(leaf_index, Some(block_hash)).await?;
             let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
             let proof = convert_to_simplified_mmr_proof(
                 leaf_proof.proof.leaf_index,
@@ -132,13 +117,13 @@ impl BeefyJustification {
     pub fn get_payload(commitment: &BeefyCommitment) -> Option<MmrPayload> {
         commitment
             .payload
-            .get_raw(&beefy_primitives::known_payload_ids::MMR_ROOT_ID)
+            .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
             .and_then(|mmr_root: [u8; 32]| {
                 let payload = hex::encode(commitment.payload.encode());
                 let mmr_root_with_id = hex::encode(
                     (
-                        beefy_primitives::known_payload_ids::MMR_ROOT_ID,
+                        beefy_primitives::known_payloads::MMR_ROOT_ID,
                         mmr_root.to_vec(),
                     )
                         .encode(),
@@ -169,10 +154,12 @@ impl BeefyJustification {
         validator_public_key
     }
 
-    pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<Hash> {
-        let proof =
-            beefy_merkle_tree::merkle_proof::<BeefyHasher, _, _>(self.validators.clone(), pos)
-                .proof;
+    pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<H256> {
+        let proof = beefy_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
+            self.validators.clone(),
+            pos,
+        )
+        .proof;
         debug!("Validator {} proof: {}", pos, proof.len());
         proof
     }
@@ -199,7 +186,10 @@ impl BeefyJustification {
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs,
+            public_key_merkle_proofs: public_key_merkle_proofs
+                .into_iter()
+                .map(|x| x.into_iter().map(|x| x.0).collect())
+                .collect(),
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof
@@ -227,7 +217,10 @@ impl BeefyJustification {
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs,
+            public_key_merkle_proofs: public_key_merkle_proofs
+                .into_iter()
+                .map(|x| x.into_iter().map(|x| x.0).collect())
+                .collect(),
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof

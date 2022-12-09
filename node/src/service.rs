@@ -41,7 +41,7 @@ use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
-use sc_client_api::{Backend, BlockBackend, ExecutorProvider};
+use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_service::config::PrometheusConfig;
@@ -263,7 +263,7 @@ pub fn new_partial(
             client.clone(),
         );
 
-    let babe_config = sc_consensus_babe::Config::get(&*client)?;
+    let babe_config = sc_consensus_babe::configuration(&*client)?;
     let (babe_block_import, babe_link) =
         sc_consensus_babe::block_import(babe_config.clone(), beefy_block_import, client.clone())?;
 
@@ -284,11 +284,10 @@ pub fn new_partial(
                     slot_duration,
                 );
 
-            Ok((timestamp, slot))
+            Ok((slot, timestamp))
         },
         &task_manager.spawn_essential_handle(),
         config.prometheus_registry(),
-        sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
         telemetry.as_ref().map(|x| x.handle()),
     )?;
 
@@ -390,15 +389,27 @@ pub fn new_full(
             grandpa_protocol_name.clone(),
         ));
 
-    let beefy_protocol_name =
-        beefy_gadget::protocol_standard_name(&genesis_hash, &config.chain_spec);
+    let beefy_gossip_proto_name =
+        beefy_gadget::gossip_protocol_name(&genesis_hash, config.chain_spec.fork_id());
+    let (beefy_on_demand_justifications_handler, beefy_req_resp_cfg) =
+        beefy_gadget::communication::request_response::BeefyJustifsRequestHandler::new(
+            &genesis_hash,
+            config.chain_spec.fork_id(),
+            client.clone(),
+        );
 
-    config
-        .network
-        .extra_sets
-        .push(beefy_gadget::beefy_peers_set_config(
-            beefy_protocol_name.clone(),
-        ));
+    if !disable_beefy {
+        config
+            .network
+            .extra_sets
+            .push(beefy_gadget::communication::beefy_peers_set_config(
+                beefy_gossip_proto_name.clone(),
+            ));
+        config
+            .network
+            .request_response_protocols
+            .push(beefy_req_resp_cfg);
+    }
 
     let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
@@ -406,7 +417,7 @@ pub fn new_full(
         vec![],
     ));
 
-    let (network, system_rpc_tx, network_starter) =
+    let (network, system_rpc_tx, tx_handler_controller, network_starter) =
         sc_service::build_network(sc_service::BuildNetworkParams {
             config: &config,
             client: client.clone(),
@@ -445,6 +456,7 @@ pub fn new_full(
         backend: backend.clone(),
         system_rpc_tx,
         config,
+        tx_handler_controller,
         telemetry: telemetry.as_mut(),
     })?;
 
@@ -461,8 +473,6 @@ pub fn new_full(
 
         let backoff_authoring_blocks =
             Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
-        let can_author_with =
-            sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
         let slot_duration = babe_link.config().slot_duration();
 
         let babe_config = sc_consensus_babe::BabeParams {
@@ -475,7 +485,6 @@ pub fn new_full(
             justification_sync_link: network.clone(),
             force_authoring,
             babe_link,
-            can_author_with,
             block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
             max_block_proposal_slot_portion: None,
             backoff_authoring_blocks,
@@ -491,7 +500,7 @@ pub fn new_full(
                             slot_duration //slot_duration.slot_duration(),
                         );
 
-                    Ok((time, slot))
+                    Ok((slot, time))
                 }
             },
             telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -515,19 +524,28 @@ pub fn new_full(
     };
 
     if !disable_beefy {
-        let beefy_params = beefy_gadget::BeefyParams {
-            protocol_name: beefy_protocol_name,
-            client: client.clone(),
-            runtime: client.clone(),
-            backend: backend.clone(),
-            key_store: keystore.clone(),
+        let justifications_protocol_name = beefy_on_demand_justifications_handler.protocol_name();
+        let network_params = beefy_gadget::BeefyNetworkParams {
             network: network.clone(),
-            links: beefy_links,
+            gossip_protocol_name: beefy_gossip_proto_name,
+            justifications_protocol_name,
+            _phantom: core::marker::PhantomData::<Block>,
+        };
+        let payload_provider = beefy_primitives::mmr::MmrRootProvider::new(client.clone());
+        let beefy_params = beefy_gadget::BeefyParams {
+            client: client.clone(),
+            backend: backend.clone(),
+            payload_provider,
+            runtime: client.clone(),
+            key_store: keystore.clone(),
+            network_params,
             min_block_delta: 8,
             prometheus_registry: prometheus_registry.clone(),
+            links: beefy_links,
+            on_demand_justifications_handler: beefy_on_demand_justifications_handler,
         };
 
-        let gadget = beefy_gadget::start_beefy_gadget::<_, _, _, _, _>(beefy_params);
+        let gadget = beefy_gadget::start_beefy_gadget::<_, _, _, _, _, _>(beefy_params);
 
         task_manager
             .spawn_essential_handle() // FIXME: use `spawn_handle` in non-test case

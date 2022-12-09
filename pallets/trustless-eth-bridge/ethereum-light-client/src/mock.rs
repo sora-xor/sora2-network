@@ -4,10 +4,10 @@ use crate::{EthashProofData, EthereumHeader};
 use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::test_utils::BlockWithProofs;
 use bridge_types::types::{Message, Proof};
+use bridge_types::H256;
 use frame_support::parameter_types;
 use frame_support::traits::GenesisBuild;
 use frame_system as system;
-use sp_core::H256;
 use sp_keystore::{testing::KeyStore, KeystoreExt};
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
@@ -48,8 +48,8 @@ pub mod mock_verifier {
         type BaseCallFilter = Everything;
         type BlockWeights = ();
         type BlockLength = ();
-        type Origin = Origin;
-        type Call = Call;
+        type RuntimeOrigin = RuntimeOrigin;
+        type RuntimeCall = RuntimeCall;
         type Index = u64;
         type BlockNumber = u64;
         type Hash = H256;
@@ -57,7 +57,7 @@ pub mod mock_verifier {
         type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type BlockHashCount = BlockHashCount;
         type DbWeight = ();
         type Version = ();
@@ -77,7 +77,7 @@ pub mod mock_verifier {
     }
 
     impl verifier::Config for Test {
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();
@@ -110,8 +110,8 @@ pub mod mock_verifier_with_pow {
         type BaseCallFilter = Everything;
         type BlockWeights = ();
         type BlockLength = ();
-        type Origin = Origin;
-        type Call = Call;
+        type RuntimeOrigin = RuntimeOrigin;
+        type RuntimeCall = RuntimeCall;
         type Index = u64;
         type BlockNumber = u64;
         type Hash = H256;
@@ -119,7 +119,7 @@ pub mod mock_verifier_with_pow {
         type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type BlockHashCount = BlockHashCount;
         type DbWeight = ();
         type Version = ();
@@ -139,7 +139,7 @@ pub mod mock_verifier_with_pow {
     }
 
     impl verifier::Config for Test {
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type DescendantsUntilFinalized = DescendantsUntilFinalized;
         type VerifyPoW = VerifyPoW;
         type WeightInfo = ();

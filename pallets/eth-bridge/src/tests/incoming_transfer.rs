@@ -16,9 +16,7 @@ use crate::{types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL};
 use codec::Encode;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::assert_noop;
-use frame_support::dispatch::DispatchErrorWithPostInfo;
-use frame_support::weights::Pays;
-use frame_support::weights::PostDispatchInfo;
+use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
@@ -32,14 +30,14 @@ fn should_not_accept_duplicated_incoming_transfer() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         assert_ok!(EthBridge::request_from_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             H256::from_slice(&[1u8; 32]),
             IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         ));
         assert_err!(
             EthBridge::request_from_sidechain(
-                Origin::signed(alice.clone()),
+                RuntimeOrigin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
                 IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
@@ -79,7 +77,7 @@ fn should_not_accept_approved_incoming_transfer() {
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_err!(
             EthBridge::request_from_sidechain(
-                Origin::signed(alice.clone()),
+                RuntimeOrigin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
                 IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
@@ -166,7 +164,7 @@ fn should_cancel_incoming_transfer() {
             should_take_fee: false,
         });
         assert_ok!(EthBridge::register_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
         ));
         assert_eq!(
@@ -178,7 +176,7 @@ fn should_cancel_incoming_transfer() {
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_ok!(
             EthBridge::finalize_incoming_request(
-                Origin::signed(bridge_acc_id.clone()),
+                RuntimeOrigin::signed(bridge_acc_id.clone()),
                 req_hash,
                 net_id,
             ),
@@ -228,7 +226,7 @@ fn should_fail_incoming_transfer() {
             should_take_fee: false,
         });
         assert_ok!(EthBridge::register_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
         ));
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
@@ -246,7 +244,7 @@ fn should_fail_incoming_transfer() {
             100000u32.into()
         );
         assert_ok!(EthBridge::abort_request(
-            Origin::signed(bridge_acc_id),
+            RuntimeOrigin::signed(bridge_acc_id),
             req_hash,
             Error::Other.into(),
             net_id,
@@ -370,7 +368,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         assert_ok!(
             EthBridge::register_incoming_request(
-                Origin::signed(bridge_acc_id.clone()),
+                RuntimeOrigin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
             PostDispatchInfo {
@@ -425,7 +423,7 @@ fn should_import_incoming_request() {
         assert!(incoming_transfer_result.is_ok());
         let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
         assert_ok!(EthBridge::import_incoming_request(
-            Origin::signed(bridge_account_id.clone()),
+            RuntimeOrigin::signed(bridge_account_id.clone()),
             LoadIncomingRequest::Transaction(load_incoming_transaction_request),
             incoming_transfer_result
         ));
@@ -462,13 +460,13 @@ fn should_not_import_incoming_request_twice() {
         assert!(incoming_transfer_result.is_ok());
         let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
         assert_ok!(EthBridge::import_incoming_request(
-            Origin::signed(bridge_account_id.clone()),
+            RuntimeOrigin::signed(bridge_account_id.clone()),
             LoadIncomingRequest::Transaction(load_incoming_transaction_request),
             incoming_transfer_result
         ));
         assert_noop!(
             EthBridge::request_from_sidechain(
-                Origin::signed(alice),
+                RuntimeOrigin::signed(alice),
                 hash,
                 IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR),
                 net_id
@@ -499,7 +497,7 @@ fn ocw_should_handle_incoming_request() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::request_from_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             tx_hash,
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
@@ -571,7 +569,7 @@ fn ocw_should_not_register_pending_incoming_request() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::request_from_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             tx_hash,
             IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
             net_id
@@ -825,12 +823,12 @@ fn should_not_register_and_finalize_incoming_request_twice() {
             should_take_fee: false,
         });
         assert_ok!(EthBridge::register_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
         ));
         assert_noop!(
             EthBridge::register_incoming_request(
-                Origin::signed(bridge_acc_id.clone()),
+                RuntimeOrigin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
             DispatchErrorWithPostInfo {
@@ -840,7 +838,7 @@ fn should_not_register_and_finalize_incoming_request_twice() {
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_ok!(EthBridge::finalize_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
             req_hash,
             net_id,
         ));

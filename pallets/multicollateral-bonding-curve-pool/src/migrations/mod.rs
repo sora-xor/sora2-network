@@ -44,7 +44,7 @@ use frame_support::{
 pub fn migrate<T: Config>() -> Weight {
     if Pallet::<T>::on_chain_storage_version() >= 1 {
         info!("Migration to version 1 already applied");
-        return 0;
+        return Weight::zero();
     }
 
     match Pallet::<T>::initialize_pool_unchecked(XST.into(), false) {

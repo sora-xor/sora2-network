@@ -59,9 +59,9 @@ fn add_rewards<T: Config>(n: u32) {
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -94,13 +94,13 @@ benchmarks! {
         add_rewards::<T>(n);
 
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
         let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
     }: {
         Pallet::<T>::claim(caller_origin, signature).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::Claimed(caller).into())
+        assert_last_event::<T>(Event::<T>::Claimed(caller).into())
     }
 }
 

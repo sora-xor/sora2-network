@@ -434,7 +434,7 @@ pub mod pallet {
         + assets::Config
         + multicollateral_bonding_curve_pool::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
         type GetFarmingRewardsAccountId: Get<Self::AccountId>;

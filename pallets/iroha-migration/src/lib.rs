@@ -56,10 +56,10 @@ use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, Weight};
+use frame_support::dispatch::{DispatchError, Pays};
 use frame_support::log::error;
 use frame_support::sp_runtime::traits::Zero;
-use frame_support::weights::Pays;
+use frame_support::weights::Weight;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 #[cfg(feature = "std")]
@@ -333,7 +333,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + pallet_multisig::Config + referrals::Config + technical::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
 
@@ -385,8 +385,8 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                error!("faucet: iroha_public_key: {}", iroha_public_key);
-                error!("faucet: iroha_signature: {}", iroha_signature);
+                frame_support::log::error!("faucet: iroha_public_key: {}", iroha_public_key);
+                frame_support::log::error!("faucet: iroha_signature: {}", iroha_signature);
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),

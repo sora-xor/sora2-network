@@ -46,14 +46,14 @@ where
         ));
 
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             dex_id.clone(),
             XOR.into(),
             CERES_ASSET_ID.into()
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             dex_id.clone(),
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -150,7 +150,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
         // Deposit liquidity to XOR/CERES pair
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset,
@@ -189,7 +189,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
             .unwrap_or(0);
 
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             base_asset,
             target_asset,
             pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -239,7 +239,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
         // Deposit liquidity to XOR/CERES pair
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset,
@@ -278,7 +278,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
             .unwrap_or(0);
 
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             base_asset,
             target_asset,
             pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -332,7 +332,7 @@ fn lock_liquidity_invalid_percentage() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 pallet_timestamp::Pallet::<Runtime>::get() + 1,
@@ -349,7 +349,7 @@ fn lock_liquidity_invalid_unlocking_timestamp() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 pallet_timestamp::Pallet::<Runtime>::get(),
@@ -366,7 +366,7 @@ fn lock_liquidity_pool_does_not_exist() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 XOR.into(),
                 DOT.into(),
                 pallet_timestamp::Pallet::<Runtime>::get() + 1,
@@ -383,7 +383,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 pallet_timestamp::Pallet::<Runtime>::get() + 1,
@@ -399,7 +399,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
 fn lock_liquidity_insufficient_liquidity_to_lock() {
     preset_initial(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -411,7 +411,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
 
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -421,7 +421,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
 
         // Lock 30% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -432,7 +432,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
         // Try to lock 30% of LP tokens
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
                 pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -449,7 +449,7 @@ fn change_ceres_fee_unauthorized() {
     preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 balance!(100)
             ),
             ceres_liquidity_locker::Error::<Runtime>::Unauthorized
@@ -461,7 +461,7 @@ fn change_ceres_fee_unauthorized() {
 fn change_ceres_fee_ok() {
     preset_initial(|_dex_id| {
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
-            Origin::signed(AUTHORITY::<Runtime>()),
+            RuntimeOrigin::signed(AUTHORITY::<Runtime>()),
             balance!(100)
         ));
 
@@ -478,7 +478,7 @@ fn should_remove_expired_lockups() {
         let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -490,7 +490,7 @@ fn should_remove_expired_lockups() {
 
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             current_timestamp + 5,
@@ -500,7 +500,7 @@ fn should_remove_expired_lockups() {
 
         // Lock 30% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             current_timestamp + 500,
@@ -509,7 +509,7 @@ fn should_remove_expired_lockups() {
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             dex_id,
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -521,7 +521,7 @@ fn should_remove_expired_lockups() {
 
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             current_timestamp + 250,
@@ -531,7 +531,7 @@ fn should_remove_expired_lockups() {
 
         // Lock 30% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             current_timestamp + 20000,
@@ -593,7 +593,7 @@ fn check_if_has_enough_unlocked_liquidity_user_is_not_pool_provider() {
 fn check_if_has_enough_unlocked_liquidity_true() {
     preset_initial(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -605,7 +605,7 @@ fn check_if_has_enough_unlocked_liquidity_true() {
 
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             pallet_timestamp::Pallet::<Runtime>::get() + 5,
@@ -629,7 +629,7 @@ fn check_if_has_enough_unlocked_liquidity_true() {
 fn check_if_has_enough_unlocked_liquidity_false() {
     preset_initial(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR.into(),
             CERES_ASSET_ID.into(),
@@ -641,7 +641,7 @@ fn check_if_has_enough_unlocked_liquidity_false() {
 
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
             pallet_timestamp::Pallet::<Runtime>::get() + 5,

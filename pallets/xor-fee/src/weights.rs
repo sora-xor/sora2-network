@@ -41,7 +41,7 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn update_multiplier(_m: u32) -> Weight {
-        (23_978_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
 }
 

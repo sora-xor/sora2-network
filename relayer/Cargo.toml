@@ -13,7 +13,7 @@ beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", bra
 bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
 leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
-ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "polkadot-v0.9.28", features = [
+ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "sora-v1.6.0", features = [
   "ws",
   "rustls",
 ] }
@@ -32,31 +32,31 @@ clap = { git = "https://github.com/clap-rs/clap", rev = "56ed9981", features = [
   "derive",
 ] }
 async-trait = "0.1.56"
-rlp = "0.5.1"
+rlp = "0.5.2"
 triehash = "0.8.4"
 eth_trie = "0.1.0"
 keccak-hasher = "0.15.3"
 hex = "0.4.3"
 hex-literal = "0.3.4"
 futures = "0.3.17"
-ethash = { git = "https://github.com/sora-xor/ethash", branch = "polkadot-v0.9.28", default-features = false }
+ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
 log = "0.4.14"
 env_logger = "0.9.0"
 sha3 = { version = "0.10.0" }
 sha2 = "0.10.0"
 sha1 = "0.6.0"
-ethereum-types = { version = "0.13.1", features = ["serialize"] }
+ethereum-types = { version = "0.14.0", features = ["serialize"] }
 rayon = "1.5.1"
 serde = { version = "1.0.131", features = ["derive"] }
 serde_json = "1.0.73"
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+beefy-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+pallet-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
   "chain-error",

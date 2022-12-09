@@ -100,7 +100,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     /// Encodes the request to a corresponding Ethereum contract function's arguments.
-    /// Also, serializes some parameters with `encode_packed` to be signed by peers.
+    /// Also, serializes some parameters with `encode` to be signed by peers.
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRequestEncoded, Error<T>> {
         match self {
             OutgoingRequest::Transfer(transfer) => transfer

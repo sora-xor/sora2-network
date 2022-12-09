@@ -1,8 +1,7 @@
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo};
+use frame_support::dispatch::{DispatchInfo, Dispatchable, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::unsigned::TransactionValidityError;
-use frame_support::weights::Pays;
 use pallet_transaction_payment as ptp;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::{DispatchInfoOf, SignedExtension};
@@ -22,7 +21,7 @@ pub struct ChargeTransactionPayment<T: ptp::Config>(ptp::ChargeTransactionPaymen
 impl<T: ptp::Config> ChargeTransactionPayment<T>
 where
     PtpBalanceOf<T>: Send + Sync + FixedPointOperand,
-    T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+    T::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
     pub fn new() -> Self {
         Self(ptp::ChargeTransactionPayment::<T>::from(0u32.into()))
@@ -38,7 +37,7 @@ impl<T: ptp::Config> sp_std::fmt::Debug for ChargeTransactionPayment<T> {
 impl<T: ptp::Config> Decode for ChargeTransactionPayment<T>
 where
     PtpBalanceOf<T>: Send + Sync + FixedPointOperand,
-    T::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+    T::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
 {
     fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
         // The input needs to be checked, but the result is irrelevant
@@ -50,9 +49,9 @@ where
 // Copied from pallet-transaction-payment
 impl<T: ptp::Config + eth_bridge::Config> SignedExtension for ChargeTransactionPayment<T>
 where
-    T: frame_system::Config<Call = crate::Call>,
+    T: frame_system::Config<RuntimeCall = crate::RuntimeCall>,
     PtpBalanceOf<T>: Send + Sync + From<u64> + FixedPointOperand,
-    <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
+    <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
         + IsCalledByBridgePeer<T::AccountId>,
 {
     const IDENTIFIER: &'static str =
@@ -60,7 +59,7 @@ where
 
     type AccountId = <ptp::ChargeTransactionPayment<T> as SignedExtension>::AccountId;
 
-    type Call = crate::Call;
+    type Call = crate::RuntimeCall;
 
     type AdditionalSigned = <ptp::ChargeTransactionPayment<T> as SignedExtension>::AdditionalSigned;
 
@@ -107,7 +106,7 @@ where
     }
 }
 
-impl crate::Call {
+impl crate::RuntimeCall {
     // Filter batch calls containing at least a swap call
     fn check_for_swap_in_batch(&self) -> Result<(), TransactionValidityError> {
         if let Self::Utility(UtilityCall::batch { calls })
@@ -130,16 +129,16 @@ impl crate::Call {
 
 impl<T: ptp::Config + eth_bridge::Config> ChargeTransactionPayment<T>
 where
-    <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
+    <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
         + IsCalledByBridgePeer<T::AccountId>,
 {
     /// Returns dispatch info for the call for `validate` and `pre_dispatch` methods based on the
     /// given one.
     fn pre_dispatch_info<'a>(
         who: &'a <T as frame_system::Config>::AccountId,
-        call: &'a <T as frame_system::Config>::Call,
-        info: &'a DispatchInfoOf<<T as frame_system::Config>::Call>,
-    ) -> Cow<'a, DispatchInfoOf<<T as frame_system::Config>::Call>> {
+        call: &'a <T as frame_system::Config>::RuntimeCall,
+        info: &'a DispatchInfoOf<<T as frame_system::Config>::RuntimeCall>,
+    ) -> Cow<'a, DispatchInfoOf<<T as frame_system::Config>::RuntimeCall>> {
         // In eth-bridge we can't check that the call was called by a peer, since `origin` is not
         // accessible in the `pallet::weight` attribute, so we perform the check here and set
         // `pays_fee` to `Pays::No` if the extrinsic was called by a bridge peer.
@@ -155,7 +154,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use frame_support::weights::{DispatchInfo, Pays};
+    use frame_support::dispatch::{DispatchInfo, Pays};
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     use sp_runtime::traits::SignedExtension;
@@ -164,12 +163,12 @@ mod tests {
     use common::{balance, VAL, XOR};
 
     use crate::extensions::ChargeTransactionPayment;
-    use crate::{Call, Runtime};
+    use crate::{Runtime, RuntimeCall};
 
     #[test]
     fn check_calls_from_bridge_peers_pays_yes() {
-        let call: &<Runtime as frame_system::Config>::Call =
-            &Call::EthBridge(eth_bridge::Call::transfer_to_sidechain {
+        let call: &<Runtime as frame_system::Config>::RuntimeCall =
+            &RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain {
                 asset_id: XOR.into(),
                 to: Default::default(),
                 amount: Default::default(),
@@ -188,8 +187,8 @@ mod tests {
     #[ignore] // TODO: fix check_calls_from_bridge_peers_pays_no test
     fn check_calls_from_bridge_peers_pays_no() {
         framenode_chain_spec::ext().execute_with(|| {
-            let call: &<Runtime as frame_system::Config>::Call =
-                &Call::EthBridge(eth_bridge::Call::finalize_incoming_request {
+            let call: &<Runtime as frame_system::Config>::RuntimeCall =
+                &RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
                     hash: H256::zero(),
                     network_id: 0,
                 });
@@ -205,7 +204,7 @@ mod tests {
 
     #[test]
     fn simple_call_should_pass() {
-        let call = Call::Balances(pallet_balances::Call::transfer {
+        let call = RuntimeCall::Balances(pallet_balances::Call::transfer {
             dest: From::from([1; 32]),
             value: balance!(100),
         });
@@ -228,16 +227,16 @@ mod tests {
             .into(),
         ];
 
-        let call_batch = Call::Utility(UtilityCall::batch {
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
             calls: batch_calls.clone(),
         });
-        let call_batch_all = Call::Utility(UtilityCall::batch_all { calls: batch_calls });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
         assert!(call_batch.check_for_swap_in_batch().is_ok());
         assert!(call_batch_all.check_for_swap_in_batch().is_ok());
     }
 
-    fn test_swap_in_batch(call: Call) {
+    fn test_swap_in_batch(call: RuntimeCall) {
         let batch_calls = vec![
             pallet_balances::Call::transfer {
                 dest: From::from([1; 32]),
@@ -247,10 +246,10 @@ mod tests {
             call,
         ];
 
-        let call_batch = Call::Utility(UtilityCall::batch {
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
             calls: batch_calls.clone(),
         });
-        let call_batch_all = Call::Utility(UtilityCall::batch_all { calls: batch_calls });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
         assert!(call_batch.check_for_swap_in_batch().is_err());
         assert!(call_batch_all.check_for_swap_in_batch().is_err());

@@ -154,7 +154,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
             )
             .await?
             .ok_or(anyhow!("Error to get latest beefy block"))?;
-        Ok(latest_beefy_block as u64)
+        Ok(latest_beefy_block as u32)
     }
 
     async fn first_beefy_block(&self) -> AnyResult<u64> {
@@ -367,7 +367,7 @@ impl RuntimeClient for ParachainRuntimeClient {
             )
             .await?
             .ok_or(anyhow!("Error to get latest beefy block"))?;
-        Ok(latest_beefy_block)
+        Ok(latest_beefy_block as u32)
     }
 
     async fn first_beefy_block(&self) -> AnyResult<u64> {

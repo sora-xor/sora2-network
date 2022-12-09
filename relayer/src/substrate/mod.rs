@@ -9,7 +9,7 @@ use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use pallet_mmr_rpc::MmrApiClient;
 use sp_core::{Bytes, Pair};
-use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafIndex, Proof};
+use sp_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use sp_runtime::MultiSigner;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
@@ -87,7 +87,7 @@ impl UnsignedClient {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash> {
+    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash, BlockNumber> {
         self.rpc()
     }
 
@@ -234,10 +234,10 @@ impl UnsignedClient {
 
     pub async fn mmr_generate_proof(
         &self,
-        leaf_index: LeafIndex,
+        block_number: BlockNumber,
         at: Option<BlockHash>,
     ) -> AnyResult<LeafProof> {
-        let res = self.mmr().generate_proof(leaf_index, at).await?;
+        let res = self.mmr().generate_proof(block_number, at).await?;
         let leaf = MmrLeaf::decode(
             &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
                 .into_opaque_leaf()

@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 
 use common::prelude::SwapVariant;
@@ -41,24 +41,20 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         // Todo: Use all 6 weight formulas defined in benchmarks
         match variant {
             // swap_exact_input_multiple
-            SwapVariant::WithDesiredInput => (773_992_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
+            SwapVariant::WithDesiredInput => Weight::zero(),
             //swap_exact_output_multiple
-            SwapVariant::WithDesiredOutput => (914_277_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
+            SwapVariant::WithDesiredOutput => Weight::zero(),
         }
     }
     fn enable_liquidity_source() -> Weight {
-        (21_575_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::from_ref_time(21_575_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
     }
     fn disable_liquidity_source() -> Weight {
-        (20_003_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::from_ref_time(20_003_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
     }
 }
 

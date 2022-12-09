@@ -60,7 +60,7 @@ pub mod pallet {
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
         type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
@@ -348,7 +348,7 @@ pub mod pallet {
                 PalletStorageVersion::<T>::put(StorageVersion::V2);
                 weight
             } else {
-                0
+                Weight::zero()
             }
         }
     }

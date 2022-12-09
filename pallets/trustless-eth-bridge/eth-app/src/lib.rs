@@ -24,9 +24,9 @@ use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
-use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 use bridge_types::traits::OutboundChannel;
 use bridge_types::EVMChainId;
@@ -78,6 +78,7 @@ pub mod pallet {
         BridgeAssetInfo, CallOriginOutput,
     };
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
+    use bridge_types::{H160, U256};
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -93,7 +94,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + permissions::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<
             EVMChainId,
@@ -102,7 +103,7 @@ pub mod pallet {
         >;
 
         type CallOrigin: EnsureOrigin<
-            Self::Origin,
+            Self::RuntimeOrigin,
             Success = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
         >;
 

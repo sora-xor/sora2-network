@@ -14,7 +14,7 @@ framenode-runtime = { path = "../../runtime", default-features = false, features
     "private-net",
 ] }
 hex = "0.4.3"
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 
 [dependencies]
 common = { path = "../../common" }
@@ -24,13 +24,13 @@ scale-info = { version = "2", features = ["derive"] }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
 bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+beefy-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 jsonrpsee = { version = "0.14", features = [
     "macros",
     "ws-client",
     "http-client",
 ] }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 async-trait = "0.1.49"
 serde = { version = "1.0.137", features = ["derive"] }

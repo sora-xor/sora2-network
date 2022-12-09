@@ -35,83 +35,57 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn create_ilo() -> Weight {
-        (136_800_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+        Weight::zero()
     }
     fn contribute() -> Weight {
-        (130_300_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(8 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn emergency_withdraw() -> Weight {
-        (130_800_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(7 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+        Weight::zero()
     }
     fn finish_ilo() -> Weight {
-        (739_300_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(35 as Weight))
-            .saturating_add(T::DbWeight::get().writes(28 as Weight))
+        Weight::zero()
     }
     fn claim_lp_tokens() -> Weight {
-        (81_800_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn claim() -> Weight {
-        (80_500_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(4 as Weight))
-            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+        Weight::zero()
     }
     fn change_ceres_burn_fee() -> Weight {
-        (28_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn change_ceres_contribution_fee() -> Weight {
-        (27_700_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn claim_pswap_rewards() -> Weight {
-        (153_200_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        Weight::zero()
     }
     fn add_whitelisted_contributor() -> Weight {
-        (32_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn remove_whitelisted_contributor() -> Weight {
-        (31_700_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn add_whitelisted_ilo_organizer() -> Weight {
-        (32_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn remove_whitelisted_ilo_organizer() -> Weight {
-        (31_500_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
 }
 impl crate::WeightInfo for () {
     fn create_ilo() -> Weight {
-        2 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(2)
     }
     fn contribute() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn emergency_withdraw() -> Weight {
-        2 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(2)
     }
     fn finish_ilo() -> Weight {
-        3 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(3)
     }
     fn claim_lp_tokens() -> Weight {
         EXTRINSIC_FIXED_WEIGHT

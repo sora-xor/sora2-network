@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
@@ -66,13 +65,11 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     */
     fn claim_incentives() -> Weight {
-        (740_250_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+        Weight::zero()
     }
 
     fn on_initialize(_n: u32) -> Weight {
-        100_000_000 as Weight // TODO: benchmark
+        Weight::zero()
     }
 
     fn set_asset_pair() -> Weight {

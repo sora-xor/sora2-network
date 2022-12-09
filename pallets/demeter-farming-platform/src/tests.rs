@@ -77,14 +77,14 @@ mod tests {
             ));
 
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 dex_id.clone(),
                 XOR.into(),
                 CERES_ASSET_ID.into()
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 dex_id.clone(),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
@@ -193,7 +193,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::register_token(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     token_per_block,
                     farms_allocation,
@@ -230,7 +230,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::register_token(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -255,7 +257,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::register_token(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -280,7 +284,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::register_token(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -304,7 +310,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -336,7 +342,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -362,7 +368,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -388,7 +396,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -414,7 +424,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -443,7 +455,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -471,7 +483,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -500,7 +514,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -510,7 +524,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -545,7 +559,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -572,7 +586,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -582,7 +596,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -593,7 +607,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -620,7 +634,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -630,7 +644,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -641,7 +655,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -666,7 +680,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -676,7 +690,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -688,7 +702,7 @@ mod tests {
             let pooled_tokens = balance!(10000);
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     reward_asset,
                     reward_asset,
                     is_farm,
@@ -714,7 +728,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -724,7 +738,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -735,7 +749,7 @@ mod tests {
 
             let mut pooled_tokens = balance!(10);
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -802,7 +816,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 asset_ceres,
                 token_per_block,
                 farms_allocation,
@@ -812,7 +826,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 asset_xor,
                 token_per_block,
                 farms_allocation,
@@ -822,7 +836,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -832,7 +846,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 asset_ceres,
                 asset_xor,
                 is_farm,
@@ -842,7 +856,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 dex_id,
                 asset_xor,
                 asset_ceres,
@@ -870,7 +884,7 @@ mod tests {
                 .expect("User is not pool provider");
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 asset_ceres,
                 asset_ceres,
                 is_farm,
@@ -911,7 +925,7 @@ mod tests {
             .expect("User is not pool provider");
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 asset_ceres,
                 asset_xor,
                 is_farm,
@@ -968,7 +982,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm
@@ -1017,7 +1031,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm
@@ -1066,7 +1080,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm
@@ -1111,7 +1125,7 @@ mod tests {
             demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 pool_asset,
                 reward_asset,
                 is_farm
@@ -1164,7 +1178,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     pooled_tokens,
@@ -1211,7 +1225,7 @@ mod tests {
             demeter_farming_platform::UserInfos::<Runtime>::append(ALICE, user_info);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 pool_asset,
                 reward_asset,
                 pooled_tokens,
@@ -1254,7 +1268,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::remove_pool(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm
@@ -1290,7 +1304,7 @@ mod tests {
             );
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::remove_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 reward_asset,
                 is_farm
@@ -1318,7 +1332,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1369,7 +1383,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1403,7 +1419,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1454,7 +1472,9 @@ mod tests {
 
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1515,7 +1535,9 @@ mod tests {
 
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1547,7 +1569,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1569,7 +1591,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1610,7 +1634,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1650,7 +1676,9 @@ mod tests {
             deposit_fee = balance!(0.8);
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1680,7 +1708,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     token_per_block,
                     farms_allocation,
@@ -1705,7 +1733,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -1742,7 +1772,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -1779,7 +1811,9 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -1816,7 +1850,9 @@ mod tests {
 
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_token_info(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     reward_asset,
                     token_per_block,
                     farms_allocation,
@@ -1861,7 +1897,9 @@ mod tests {
 
             assert_ok!(
                 demeter_farming_platform::Pallet::<Runtime>::change_total_tokens(
-                    Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(
+                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
+                    ),
                     pool_asset,
                     reward_asset,
                     is_farm,
@@ -1901,7 +1939,7 @@ mod tests {
 
             let pool_tokens = balance!(69);
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::change_info(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ALICE.into(),
                 pool_asset,
                 reward_asset,
@@ -1942,7 +1980,7 @@ mod tests {
 
             // Register DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 deo,
                 token_per_block,
                 farms_allocation,
@@ -1957,7 +1995,7 @@ mod tests {
             let team_allocation = balance!(0.1);
             // Register UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 util,
                 token_per_block,
                 farms_allocation,
@@ -1968,7 +2006,7 @@ mod tests {
 
             // XOR/CERES - reward DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ceres,
                 deo,
                 is_farm,
@@ -1979,7 +2017,7 @@ mod tests {
 
             // XOR/CERES - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ceres,
                 util,
                 is_farm,
@@ -1990,7 +2028,7 @@ mod tests {
 
             // CERES - reward DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ceres,
                 deo,
                 !is_farm,
@@ -2001,7 +2039,7 @@ mod tests {
 
             // CERES - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ceres,
                 util,
                 !is_farm,
@@ -2019,7 +2057,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 dex_id,
                 xor,
                 ceres,
@@ -2030,7 +2068,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 dex_id,
                 xor,
                 ceres,
@@ -2042,7 +2080,7 @@ mod tests {
 
             // DEPOSIT TO XOR/CERES POOL - reward DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 ceres,
                 deo,
                 is_farm,
@@ -2051,7 +2089,7 @@ mod tests {
 
             // DEPOSIT TO XOR/CERES POOL - reward DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 ceres,
                 deo,
                 is_farm,
@@ -2060,7 +2098,7 @@ mod tests {
 
             // DEPOSIT TO XOR/CERES POOL - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 ceres,
                 util,
                 is_farm,
@@ -2069,7 +2107,7 @@ mod tests {
 
             // DEPOSIT TO CERES POOL - reward DEO
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 ceres,
                 deo,
                 !is_farm,
@@ -2078,7 +2116,7 @@ mod tests {
 
             // DEPOSIT TO CERES POOL - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 ceres,
                 util,
                 !is_farm,
@@ -2167,7 +2205,7 @@ mod tests {
             }
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 ceres,
                 deo,
                 is_farm
@@ -2179,7 +2217,7 @@ mod tests {
             );
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::get_rewards(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 ceres,
                 util,
                 !is_farm
@@ -2207,7 +2245,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -2217,7 +2255,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 token_per_block,
                 farms_allocation,
@@ -2227,7 +2265,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2237,7 +2275,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 pool_asset,
                 is_farm,
@@ -2247,7 +2285,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 DEX_A_ID.into(),
                 pool_asset,
                 reward_asset,
@@ -2275,7 +2313,7 @@ mod tests {
                 .expect("User is not pool provider");
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2288,7 +2326,7 @@ mod tests {
             .unwrap_or(0);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 pool_asset,
                 is_farm,
@@ -2301,7 +2339,7 @@ mod tests {
             .unwrap_or(0);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 reward_asset,
                 pooled_tokens_to_withdraw,
@@ -2309,7 +2347,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 pool_asset,
                 pooled_tokens_to_withdraw,
@@ -2349,7 +2387,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -2359,7 +2397,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2369,7 +2407,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 dex_id,
                 pool_asset,
                 reward_asset,
@@ -2397,7 +2435,7 @@ mod tests {
                 .expect("User is not pool provider");
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2432,7 +2470,7 @@ mod tests {
             let team_allocation = balance!(0.2);
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 token_per_block,
                 farms_allocation,
@@ -2442,7 +2480,7 @@ mod tests {
             ));
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                Origin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2452,7 +2490,7 @@ mod tests {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 dex_id,
                 pool_asset,
                 reward_asset,
@@ -2480,7 +2518,7 @@ mod tests {
                 .expect("User is not pool provider");
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 reward_asset,
                 reward_asset,
                 is_farm,
@@ -2488,7 +2526,7 @@ mod tests {
             ));
 
             assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 pool_asset,
                 reward_asset,
                 10u32.into(),
@@ -2518,7 +2556,7 @@ mod tests {
 
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     reward_asset,
                     reward_asset,
                     is_farm,

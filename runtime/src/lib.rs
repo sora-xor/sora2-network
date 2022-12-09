@@ -40,7 +40,6 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -115,6 +114,7 @@ pub use common::{
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
+pub use frame_support::dispatch::DispatchClass;
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -122,7 +122,7 @@ pub use frame_support::traits::{
 pub use frame_support::weights::constants::{
     BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND,
 };
-pub use frame_support::weights::{DispatchClass, Weight};
+pub use frame_support::weights::Weight;
 pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -305,13 +305,15 @@ parameter_types! {
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
+    pub const DemocracyMaxDeposits: u32 = 100; // todo
+    pub const DemocracyMaxBlacklisted: u32 = 100; // todo
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const CouncilCollectiveMaxProposals: u32 = 100;
     pub const CouncilCollectiveMaxMembers: u32 = 100;
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub const SchedulerMaxWeight: Weight = 1024;
+    pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
@@ -336,9 +338,9 @@ impl frame_system::Config for Runtime {
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type BlockLength = BlockLength;
     /// The ubiquitous origin type.
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     /// The aggregated dispatch type that is available for extrinsics.
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     /// The index type for storing how many extrinsics an account has signed.
     type Index = Index;
     /// The index type for blocks.
@@ -354,7 +356,7 @@ impl frame_system::Config for Runtime {
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
     /// The ubiquitous event type.
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
     type BlockHashCount = BlockHashCount;
     /// The weight of database operations that the runtime can invoke.
@@ -393,9 +395,9 @@ impl pallet_babe::Config for Runtime {
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
-    type Origin = Origin;
-    type Proposal = Call;
-    type Event = Event;
+    type RuntimeOrigin = RuntimeOrigin;
+    type Proposal = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
     type MotionDuration = CouncilCollectiveMotionDuration;
     type MaxProposals = CouncilCollectiveMaxProposals;
     type MaxMembers = CouncilCollectiveMaxMembers;
@@ -404,9 +406,9 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 impl pallet_collective::Config<TechnicalCollective> for Runtime {
-    type Origin = Origin;
-    type Proposal = Call;
-    type Event = Event;
+    type RuntimeOrigin = RuntimeOrigin;
+    type Proposal = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
     type MotionDuration = TechnicalCollectiveMotionDuration;
     type MaxProposals = TechnicalCollectiveMaxProposals;
     type MaxMembers = TechnicalCollectiveMaxMembers;
@@ -415,8 +417,7 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
 }
 
 impl pallet_democracy::Config for Runtime {
-    type Proposal = Call;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type EnactmentPeriod = DemocracyEnactmentPeriod;
     type LaunchPeriod = DemocracyLaunchPeriod;
@@ -449,8 +450,6 @@ impl pallet_democracy::Config for Runtime {
     /// `veto_external` - vetoes and blacklists the external proposal hash
     type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCollective>;
     type CooloffPeriod = DemocracyCooloffPeriod;
-    type PreimageByteDeposit = DemocracyPreimageByteDeposit;
-    type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
     type Slash = OnUnbalancedDemocracySlash<Self>;
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
@@ -458,10 +457,13 @@ impl pallet_democracy::Config for Runtime {
     type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
     type VoteLockingPeriod = DemocracyEnactmentPeriod;
+    type Preimages = Preimage;
+    type MaxDeposits = DemocracyMaxDeposits;
+    type MaxBlacklisted = DemocracyMaxBlacklisted;
 }
 
 impl pallet_elections_phragmen::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type PalletId = ElectionsModuleId;
     type Currency = Balances;
     type ChangeMembers = Council;
@@ -481,7 +483,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 }
 
 impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type AddOrigin = MoreThanHalfCouncil;
     type RemoveOrigin = MoreThanHalfCouncil;
     type SwapOrigin = MoreThanHalfCouncil;
@@ -494,8 +496,7 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 }
 
 impl pallet_grandpa::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
 
     type KeyOwnerProofSystem = Historical;
 
@@ -533,7 +534,7 @@ impl pallet_session::Config for Runtime {
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
     type NextSessionRotation = Babe;
@@ -572,7 +573,7 @@ impl pallet_staking::Config for Runtime {
     type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Slash = ();
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
@@ -677,7 +678,7 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 }
 
 impl pallet_election_provider_multi_phase::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type EstimateCallFee = TransactionPayment;
     type UnsignedPhase = UnsignedPhase;
@@ -720,7 +721,7 @@ parameter_types! {
 }
 
 impl pallet_bags_list::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ScoreProvider = Staking;
     type WeightInfo = ();
     type BagThresholds = BagThresholds;
@@ -751,17 +752,30 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
 }
 
 impl pallet_scheduler::Config for Runtime {
-    type Event = Event;
-    type Origin = Origin;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
     type PalletsOrigin = OriginCaller;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
-    type PreimageProvider = ();
-    type NoPreimagePostponement = NoPreimagePostponement;
+    type Preimages = Preimage;
+}
+
+parameter_types! {
+    pub PreimageBaseDeposit: Balance = deposit(2, 64);
+    pub PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+    type WeightInfo = PreimageWeightInfo;
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+    type BaseDeposit = PreimageBaseDeposit;
+    type ByteDeposit = PreimageByteDeposit;
 }
 
 parameter_types! {
@@ -776,7 +790,7 @@ impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type DustRemoval = ();
     /// The ubiquitous event type.
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
@@ -794,13 +808,16 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -850,7 +867,7 @@ impl assets::GetTotalBalance<Runtime> for GetTotalBalance {
 }
 
 impl assets::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -863,7 +880,7 @@ impl assets::Config for Runtime {
 }
 
 impl trading_pair::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
@@ -875,7 +892,7 @@ pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
 impl technical::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -889,7 +906,7 @@ parameter_types! {
 
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
@@ -938,7 +955,7 @@ parameter_types! {
 }
 
 impl liquidity_proxy::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
@@ -989,8 +1006,8 @@ impl dex_api::Config for Runtime {
 }
 
 impl pallet_multisig::Config for Runtime {
-    type Call = Call;
-    type Event = Event;
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type DepositBase = DepositBase;
     type DepositFactor = DepositFactor;
@@ -999,12 +1016,12 @@ impl pallet_multisig::Config for Runtime {
 }
 
 impl iroha_migration::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
 }
 
 impl pallet_identity::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type BasicDeposit = BasicDeposit;
     type FieldDeposit = FieldDeposit;
@@ -1036,15 +1053,15 @@ impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
-    Call: From<LocalCall>,
+    RuntimeCall: From<LocalCall>,
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-        call: Call,
+        call: RuntimeCall,
         public: <Signature as sp_runtime::traits::Verify>::Signer,
         account: AccountId,
         index: Index,
     ) -> Option<(
-        Call,
+        RuntimeCall,
         <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
     )> {
         let period = BlockHashCount::get() as u64;
@@ -1082,9 +1099,9 @@ impl frame_system::offchain::SigningTypes for Runtime {
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
-    Call: From<C>,
+    RuntimeCall: From<C>,
 {
-    type OverarchingCall = Call;
+    type OverarchingCall = RuntimeCall;
     type Extrinsic = UncheckedExtrinsic;
 }
 
@@ -1100,37 +1117,39 @@ impl rewards::Config for Runtime {
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
 // Multiplied flat fees implementation for the selected extrinsics.
 // Returns a value (* multiplier) if the extrinsic is subject to manual fee
 // adjustment and `None` otherwise
-impl<T> xor_fee::ApplyCustomFees<Call> for xor_fee::Pallet<T> {
-    fn compute_fee(call: &Call) -> Option<Balance> {
+impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
+    fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
         let result = match call {
-            Call::Assets(assets::Call::register { .. })
-            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
-            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
-            | Call::Rewards(rewards::Call::claim { .. })
-            | Call::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => Some(BIG_FEE),
-            Call::Assets(..)
-            | Call::EthBridge(..)
-            | Call::LiquidityProxy(..)
-            | Call::MulticollateralBondingCurvePool(..)
-            | Call::PoolXYK(..)
-            | Call::Rewards(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
-            | Call::TradingPair(..)
-            | Call::Referrals(..) => Some(SMALL_FEE),
+            RuntimeCall::Assets(assets::Call::register { .. })
+            | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
+            | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | RuntimeCall::Rewards(rewards::Call::claim { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
+                Some(BIG_FEE)
+            }
+            RuntimeCall::Assets(..)
+            | RuntimeCall::EthBridge(..)
+            | RuntimeCall::LiquidityProxy(..)
+            | RuntimeCall::MulticollateralBondingCurvePool(..)
+            | RuntimeCall::PoolXYK(..)
+            | RuntimeCall::Rewards(..)
+            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+            | RuntimeCall::TradingPair(..)
+            | RuntimeCall::Referrals(..) => Some(SMALL_FEE),
             _ => None,
         };
         result.map(|fee| XorFee::multiplier().saturating_mul_int(fee))
     }
 }
 
-impl xor_fee::ExtractProxySwap for Call {
+impl xor_fee::ExtractProxySwap for RuntimeCall {
     type AccountId = AccountId;
     type DexId = DEXId;
     type AssetId = AssetId;
@@ -1139,7 +1158,7 @@ impl xor_fee::ExtractProxySwap for Call {
         &self,
     ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
         match self {
-            Call::LiquidityProxy(liquidity_proxy::Call::swap {
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
                 dex_id,
                 input_asset_id,
                 output_asset_id,
@@ -1155,7 +1174,7 @@ impl xor_fee::ExtractProxySwap for Call {
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
             }),
-            Call::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
+            RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
                 receiver,
                 dex_id,
                 input_asset_id,
@@ -1178,10 +1197,10 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
-impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+impl xor_fee::IsCalledByBridgePeer<AccountId> for RuntimeCall {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
-            Call::BridgeMultisig(call) => match call {
+            RuntimeCall::BridgeMultisig(call) => match call {
                 bridge_multisig::Call::as_multi {
                     id: multisig_id, ..
                 }
@@ -1191,7 +1210,7 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
                     .map(|acc| acc.is_signatory(&who)),
                 _ => None,
             },
-            Call::EthBridge(call) => match call {
+            RuntimeCall::EthBridge(call) => match call {
                 eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
@@ -1235,11 +1254,11 @@ pub struct WithdrawFee;
 impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     fn withdraw_fee(
         who: &AccountId,
-        call: &Call,
+        call: &RuntimeCall,
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
         match call {
-            Call::Referrals(referrals::Call::set_referrer { referrer })
+            RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
                 if Referrals::can_set_referrer(who) =>
             {
                 Referrals::withdraw_fee(referrer, fee)?;
@@ -1271,7 +1290,7 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
@@ -1297,6 +1316,9 @@ impl MultiplierUpdate for ConstantFeeMultiplier {
     fn min() -> Multiplier {
         Default::default()
     }
+    fn max() -> Multiplier {
+        Default::default()
+    }
     fn target() -> Perquintill {
         Default::default()
     }
@@ -1315,7 +1337,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OnChargeTransaction = XorFee;
     type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
@@ -1325,17 +1347,17 @@ impl pallet_transaction_payment::Config for Runtime {
 
 #[cfg(feature = "private-net")]
 impl pallet_sudo::Config for Runtime {
-    type Call = Call;
-    type Event = Event;
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl permissions::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl pallet_utility::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
     type WeightInfo = ();
     type PalletsOrigin = OriginCaller;
 }
@@ -1347,8 +1369,8 @@ parameter_types! {
 }
 
 impl bridge_multisig::Config for Runtime {
-    type Call = Call;
-    type Event = Event;
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type DepositBase = DepositBase;
     type DepositFactor = DepositFactor;
@@ -1455,8 +1477,8 @@ parameter_types! {
 pub type NetworkId = u32;
 
 impl eth_bridge::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
     type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = GetEthNetworkId;
@@ -1471,7 +1493,7 @@ impl eth_bridge::Config for Runtime {
 
 #[cfg(feature = "private-net")]
 impl faucet::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = faucet::weights::WeightInfo<Runtime>;
 }
 
@@ -1586,7 +1608,7 @@ impl farming::Config for Runtime {
     const VESTING_COEFF: u32 = FARMING_VESTING_COEFF;
     const VESTING_FREQUENCY: BlockNumber = FARMING_VESTING_FREQUENCY;
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type SchedulerOriginCaller = OriginCaller;
     type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
@@ -1595,7 +1617,7 @@ impl farming::Config for Runtime {
 
 impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetPswapAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
@@ -1697,7 +1719,7 @@ parameter_types! {
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
@@ -1707,7 +1729,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 }
 
 impl xst::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
@@ -1723,7 +1745,7 @@ parameter_types! {
 
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ValidatorSet = Historical;
     type NextSessionRotation = Babe;
     type ReportUnresponsiveness = Offences;
@@ -1735,13 +1757,13 @@ impl pallet_im_online::Config for Runtime {
 }
 
 impl pallet_offences::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
     type OnOffenceHandler = Staking;
 }
 
 impl vested_rewards::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
@@ -1750,7 +1772,7 @@ impl vested_rewards::Config for Runtime {
 }
 
 impl price_tools::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
@@ -1773,7 +1795,7 @@ impl pallet_mmr::Config for Runtime {
 }
 
 impl leaf_provider::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
@@ -1813,13 +1835,13 @@ parameter_types! {
 
 impl ceres_launchpad::Config for Runtime {
     const MILLISECONDS_PER_DAY: Moment = 86_400_000;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type CeresPerDay = CeresPerDay;
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
@@ -1828,7 +1850,7 @@ impl ceres_staking::Config for Runtime {
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type XYKPool = PoolXYK;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
@@ -1836,13 +1858,13 @@ impl ceres_liquidity_locker::Config for Runtime {
 }
 
 impl ceres_token_locker::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_token_locker::weights::WeightInfo<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
     type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
@@ -1852,7 +1874,7 @@ parameter_types! {
 }
 
 impl demeter_farming_platform::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
@@ -1860,7 +1882,7 @@ impl demeter_farming_platform::Config for Runtime {
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
-pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 
 parameter_types! {
     pub const ReferrerWeight: u32 = 10;
@@ -1872,22 +1894,22 @@ parameter_types! {
 // Ethereum bridge pallets
 
 pub struct CallFilter;
-impl Contains<Call> for CallFilter {
-    fn contains(_: &Call) -> bool {
+impl Contains<RuntimeCall> for CallFilter {
+    fn contains(_: &RuntimeCall) -> bool {
         true
     }
 }
 
 impl dispatch::Config<Instance1> for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = EVMChainId;
     type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
-    type Origin = Origin;
+    type RuntimeOrigin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type CallFilter = CallFilter;
 }
 
@@ -1913,7 +1935,7 @@ parameter_types! {
 }
 
 impl bridge_inbound_channel::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Verifier = ethereum_light_client::Pallet<Runtime>;
     type MessageDispatch = Dispatch;
     type Hashing = Keccak256;
@@ -1928,7 +1950,7 @@ impl bridge_inbound_channel::Config for Runtime {
 
 impl bridge_outbound_channel::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
@@ -1950,7 +1972,7 @@ parameter_types! {
 }
 
 impl ethereum_light_client::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DescendantsUntilFinalized = DescendantsUntilFinalized;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
@@ -1961,7 +1983,7 @@ impl ethereum_light_client::Config for Runtime {
 }
 
 impl eth_app::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
         EVMChainId,
@@ -1974,7 +1996,7 @@ impl eth_app::Config for Runtime {
 }
 
 impl erc20_app::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
         EVMChainId,
@@ -1988,20 +2010,20 @@ impl erc20_app::Config for Runtime {
 }
 
 impl migration_app::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type WeightInfo = ();
 }
 
 impl evm_bridge_proxy::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ERC20App = ERC20App;
     type EthApp = EthApp;
     type WeightInfo = ();
 }
 
 impl beefy_light_client::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Message = Vec<ParachainMessage<Balance>>;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
@@ -2149,10 +2171,11 @@ construct_runtime! {
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 105,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 106,
-        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 107,
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 108,
+        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
+        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
     }
 }
 
@@ -2241,10 +2264,11 @@ construct_runtime! {
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 105,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 106,
-        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 107,
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 108,
+        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
+        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
+        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
+        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
+        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
     }
 }
 
@@ -2284,9 +2308,10 @@ pub type SignedExtra = (
     ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+    generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
     Runtime,
@@ -2294,7 +2319,12 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    migrations::Migrations,
+    (
+        pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+        pallet_preimage::migration::v1::Migration<Runtime>,
+        pallet_democracy::migrations::v1::Migration<Runtime>,
+        pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+    ),
 >;
 
 pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
@@ -2719,17 +2749,17 @@ impl_runtime_apis! {
     }
 
     impl sp_consensus_babe::BabeApi<Block> for Runtime {
-            fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
+            fn configuration() -> sp_consensus_babe::BabeConfiguration {
                     // The choice of `c` parameter (where `1 - c` represents the
                     // probability of a slot being empty), is done in accordance to the
                     // slot duration and expected target block time, for safely
                     // resisting network delays of maximum two seconds.
                     // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-                    sp_consensus_babe::BabeGenesisConfiguration {
+                    sp_consensus_babe::BabeConfiguration {
                             slot_duration: Babe::slot_duration(),
                             epoch_length: EpochDuration::get(),
                             c: PRIMARY_PROBABILITY,
-                            genesis_authorities: Babe::authorities().to_vec(),
+                            authorities: Babe::authorities().to_vec(),
                             randomness: Babe::randomness(),
                             allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
                     }
@@ -2781,11 +2811,11 @@ impl_runtime_apis! {
         }
     }
 
-    impl mmr::MmrApi<Block, Hash> for Runtime {
-        fn generate_proof(leaf_index: u64)
+    impl mmr::MmrApi<Block, Hash, BlockNumber> for Runtime {
+        fn generate_proof(block_number: BlockNumber)
             -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(vec![leaf_index])
+            Mmr::generate_batch_proof(vec![block_number])
                 .and_then(|(leaves, proof)| Ok((
                     mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
                     mmr::BatchProof::into_single_leaf_proof(proof)?
@@ -2816,10 +2846,18 @@ impl_runtime_apis! {
             Ok(Mmr::mmr_root())
         }
 
-        fn generate_batch_proof(leaf_indices: Vec<mmr::LeafIndex>)
+        fn generate_batch_proof(block_numbers: Vec<BlockNumber>)
             -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
         {
-            Mmr::generate_batch_proof(leaf_indices)
+            Mmr::generate_batch_proof(block_numbers)
+                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+        }
+
+        fn generate_historical_batch_proof(block_numbers: Vec<BlockNumber>,
+            best_known_block_number: BlockNumber)
+            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
+        {
+            Mmr::generate_historical_batch_proof(block_numbers, best_known_block_number)
                 .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
         }
 

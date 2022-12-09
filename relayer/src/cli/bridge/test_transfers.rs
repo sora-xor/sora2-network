@@ -97,7 +97,7 @@ impl Command {
                         .tx()
                         .sign_and_submit_then_watch_default(
                             &runtime::tx().sudo().sudo(
-                                sub_types::framenode_runtime::Call::Currencies(
+                                sub_types::framenode_runtime::RuntimeCall::Currencies(
                                     sub_types::orml_currencies::module::Call::update_balance {
                                         who: acc,
                                         currency_id: asset,

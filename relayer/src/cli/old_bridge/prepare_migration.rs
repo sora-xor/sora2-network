@@ -18,7 +18,7 @@ impl Command {
             .sign_and_submit_then_watch_default(
                 &runtime::tx()
                     .sudo()
-                    .sudo(sub_types::framenode_runtime::Call::EthBridge(
+                    .sudo(sub_types::framenode_runtime::RuntimeCall::EthBridge(
                         sub_types::eth_bridge::pallet::Call::prepare_for_migration {
                             network_id: self.network,
                         },

@@ -7,7 +7,6 @@ use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use traits::MultiCurrency;
 
 pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
@@ -16,7 +15,7 @@ pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 use crate::Pallet as ETHApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>}
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic

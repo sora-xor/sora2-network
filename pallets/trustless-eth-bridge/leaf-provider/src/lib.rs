@@ -79,7 +79,7 @@ pub mod pallet {
     #[pallet::disable_frame_system_supertrait_check]
     pub trait Config: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Hashing: traits::Hash<Output = <Self as Config>::Hash>;
         type Hash: traits::Member
             + traits::MaybeSerializeDeserialize

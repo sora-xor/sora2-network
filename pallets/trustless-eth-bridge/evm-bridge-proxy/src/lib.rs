@@ -63,7 +63,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
-        type Event: From<Event> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type EthApp: BridgeApp<EVMChainId, Self::AccountId, H160, Self::AssetId, Balance>;
 

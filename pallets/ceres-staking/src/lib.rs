@@ -54,7 +54,7 @@ pub mod pallet {
         /// One day represented in block number
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Number of Ceres distributed per day
         type CeresPerDay: Get<Balance>;

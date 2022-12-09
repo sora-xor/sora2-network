@@ -32,13 +32,13 @@
 
 use common::prelude::SwapAmount;
 use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
-    DispatchInfo, GetDispatchInfo, Pays, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
-    WeightToFeePolynomial,
+    Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use liquidity_proxy::LiquidityProxyTrait;
 use pallet_transaction_payment::{
@@ -75,7 +75,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BalanceOf<T> =
     <<T as Config>::XorCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-type CallOf<T> = <T as frame_system::Config>::Call;
+type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 type Assets<T> = assets::Pallet<T>;
 
 // #[cfg_attr(test, derive(PartialEq))]
@@ -469,7 +469,7 @@ impl<T: Config> Pallet<T> {
         _len: u32,
     ) -> Option<RuntimeDispatchInfo<BalanceOf<T>>>
     where
-        <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
+        <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo>,
     {
         let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
         let DispatchInfo {
@@ -503,7 +503,7 @@ impl<T: Config> Pallet<T> {
         _len: u32,
     ) -> Option<FeeDetails<BalanceOf<T>>>
     where
-        <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
+        <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo>,
     {
         let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(unchecked_extrinsic);
         let maybe_custom_fee = T::CustomFees::compute_fee(&call);
@@ -591,7 +591,7 @@ pub mod pallet {
         + pallet_transaction_payment::Config
         + pallet_session::historical::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<Self::AssetId>;

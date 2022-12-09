@@ -85,7 +85,7 @@ impl Command {
                 }
             }
         };
-        let call = runtime::runtime_types::framenode_runtime::Call::ERC20App(call);
+        let call = runtime::runtime_types::framenode_runtime::RuntimeCall::ERC20App(call);
         info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()

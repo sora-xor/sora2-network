@@ -1,15 +1,17 @@
-use crate::mock::{new_tester, AccountId, Erc20App, Event, Origin, System, Test, BASE_NETWORK_ID};
+use crate::mock::{
+    new_tester, AccountId, Erc20App, RuntimeEvent, RuntimeOrigin, System, Test, BASE_NETWORK_ID,
+};
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput};
+use bridge_types::H160;
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
-use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 use traits::MultiCurrency;
 
-fn last_event() -> Event {
+fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event
 }
 
@@ -26,7 +28,7 @@ fn mints_after_handling_ethereum_event() {
 
         <Test as assets::Config>::Currency::deposit(asset_id, &bob, balance!(500)).unwrap();
         assert_ok!(Erc20App::burn(
-            Origin::signed(bob.clone()),
+            RuntimeOrigin::signed(bob.clone()),
             BASE_NETWORK_ID,
             asset_id,
             H160::repeat_byte(9),
@@ -53,7 +55,7 @@ fn mints_after_handling_ethereum_event() {
         );
 
         assert_eq!(
-            Event::Erc20App(crate::Event::<Test>::Minted(
+            RuntimeEvent::Erc20App(crate::Event::<Test>::Minted(
                 BASE_NETWORK_ID,
                 asset_id,
                 sender,
@@ -105,7 +107,7 @@ fn burn_should_emit_bridge_event() {
         <Test as assets::Config>::Currency::deposit(asset_id, &bob, balance!(500)).unwrap();
 
         assert_ok!(Erc20App::burn(
-            Origin::signed(bob.clone()),
+            RuntimeOrigin::signed(bob.clone()),
             BASE_NETWORK_ID,
             asset_id,
             recipient.clone(),
@@ -113,7 +115,7 @@ fn burn_should_emit_bridge_event() {
         ));
 
         assert_eq!(
-            Event::Erc20App(crate::Event::<Test>::Burned(
+            RuntimeEvent::Erc20App(crate::Event::<Test>::Burned(
                 BASE_NETWORK_ID,
                 asset_id,
                 bob,
@@ -137,7 +139,7 @@ fn should_not_burn_on_commitment_failure() {
 
         for _ in 0..3 {
             let _ = Erc20App::burn(
-                Origin::signed(sender.clone()),
+                RuntimeOrigin::signed(sender.clone()),
                 BASE_NETWORK_ID,
                 asset_id,
                 recipient.clone(),
@@ -148,7 +150,7 @@ fn should_not_burn_on_commitment_failure() {
 
         assert_noop!(
             Erc20App::burn(
-                Origin::signed(sender.clone()),
+                RuntimeOrigin::signed(sender.clone()),
                 BASE_NETWORK_ID,
                 asset_id,
                 recipient.clone(),
@@ -165,7 +167,7 @@ fn should_not_burn_on_commitment_failure() {
         // });
 
         // assert_noop!(
-        //     call.dispatch(Origin::signed(sender.clone())),
+        //     call.dispatch(RuntimeOrigin::signed(sender.clone())),
         //     bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         // );
     });
@@ -182,7 +184,7 @@ fn burn_zero_amount_must_fail() {
 
         assert_noop!(
             Erc20App::burn(
-                Origin::signed(bob.clone()),
+                RuntimeOrigin::signed(bob.clone()),
                 BASE_NETWORK_ID,
                 asset_id,
                 recipient.clone(),
@@ -229,7 +231,7 @@ fn test_register_erc20_asset() {
             network_id, address
         ));
         Erc20App::register_erc20_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             network_id,
             address,
             AssetSymbol(b"ETH".to_vec()),
@@ -247,7 +249,7 @@ fn test_register_native_asset() {
         let asset_id = ETH;
         let network_id = BASE_NETWORK_ID;
         assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
-        Erc20App::register_native_asset(Origin::root(), network_id, asset_id).unwrap();
+        Erc20App::register_native_asset(RuntimeOrigin::root(), network_id, asset_id).unwrap();
         assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
     })
 }
@@ -261,7 +263,7 @@ fn test_register_erc20_app() {
             network_id,
             AssetKind::Sidechain
         ));
-        Erc20App::register_erc20_app(Origin::root(), network_id, address).unwrap();
+        Erc20App::register_erc20_app(RuntimeOrigin::root(), network_id, address).unwrap();
         assert!(AppAddresses::<Test>::contains_key(
             network_id,
             AssetKind::Sidechain
@@ -278,7 +280,7 @@ fn test_register_native_app() {
             network_id,
             AssetKind::Thischain
         ));
-        Erc20App::register_native_app(Origin::root(), network_id, address).unwrap();
+        Erc20App::register_native_app(RuntimeOrigin::root(), network_id, address).unwrap();
         assert!(AppAddresses::<Test>::contains_key(
             network_id,
             AssetKind::Thischain

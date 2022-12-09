@@ -3,6 +3,7 @@ use bridge_types::types::AdditionalEVMOutboundData;
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::OutboundChannel;
+use bridge_types::{H160, H256};
 use common::mock::ExistentialDeposits;
 use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR};
 use frame_support::assert_noop;
@@ -10,7 +11,6 @@ use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
@@ -52,8 +52,8 @@ impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -61,7 +61,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -81,7 +81,7 @@ impl common::Config for Test {
 }
 
 impl permissions::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -90,7 +90,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -101,13 +101,16 @@ impl pallet_balances::Config for Test {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Test as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -130,7 +133,7 @@ parameter_types! {
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
 impl assets::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
@@ -164,7 +167,7 @@ parameter_types! {
 
 impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = b"commitment";
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
@@ -179,7 +182,7 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
 impl technical::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -365,7 +368,7 @@ fn test_set_fee_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
         assert_noop!(
-            BridgeOutboundChannel::set_fee(Origin::signed(bob), 1000u32.into()),
+            BridgeOutboundChannel::set_fee(RuntimeOrigin::signed(bob), 1000u32.into()),
             DispatchError::BadOrigin
         );
     });

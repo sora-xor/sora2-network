@@ -73,7 +73,7 @@ impl<T: Config> TryFrom<Log> for Envelope<T> {
     fn try_from(log: Log) -> Result<Self, Self::Error> {
         let address = log.address;
         let log = get_message_event_abi()
-            .parse_log((log.topics, log.data).into())
+            .parse_log(log.into())
             .map_err(|_| EnvelopeDecodeError)?;
 
         let mut source = None;
