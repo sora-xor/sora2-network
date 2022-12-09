@@ -227,7 +227,9 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
                 *balance += market_maker_rewards;
                 weight += T::DbWeight::get().writes(1);
             }
-            reward_info.rewards.remove(&RewardReason::MarketMakerVolume_DEPRECATED);
+            reward_info
+                .rewards
+                .remove(&RewardReason::MarketMakerVolume_DEPRECATED);
             weight += T::DbWeight::get().writes(1);
         });
     }
