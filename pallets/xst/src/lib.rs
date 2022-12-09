@@ -482,29 +482,28 @@ impl<T: Config> Pallet<T> {
     ///    in curve-like dependency.
     pub fn sell_price(
         main_asset_id: &T::AssetId,
-        _synthetic_asset_id: &T::AssetId,
+        synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
-        let main_asset_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(main_asset_id)?.into();
+        let main_asset_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let synthetic_asset_price: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
 
         match quantity {
-            // Sell desired amount of XST for some XST(USD)
+            // Sell desired amount of synthetic base asset (e.g. XST) for some synthetic asset (e.g. XSTUSD)
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
-                let output_synthetic = quantity_main * main_asset_price_per_reference_unit;
-                let output_synthetic_unwrapped = output_synthetic
+                let output_synthetic = quantity_main * main_asset_price / synthetic_asset_price;
+                output_synthetic
                     .get()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Ok(output_synthetic_unwrapped)
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
-            // Sell some amount of XST for desired amount of XST(USD)
+            // Sell some amount of synthetic base asset (e.g. XST) for desired amount of synthetic asset (e.g. XSTUSD)
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
-                let output_main = quantity_synthetic / main_asset_price_per_reference_unit;
+                let output_main = quantity_synthetic * synthetic_asset_price / main_asset_price;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
