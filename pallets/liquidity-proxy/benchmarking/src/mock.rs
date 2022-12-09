@@ -453,6 +453,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         output_asset_id: &AssetId,
     ) -> Result<Balance, DispatchError> {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
+            0,
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),

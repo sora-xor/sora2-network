@@ -162,7 +162,7 @@ fn transfer_passes_after_limit_is_reset() {
 #[test]
 fn transfer_fails_with_asset_not_supported() {
     ExtBuilder::build().execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             Pallet::transfer(
                 RuntimeOrigin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
@@ -183,7 +183,7 @@ fn transfer_fails_with_amount_above_limit() {
             bob(),
             Pallet::transfer_limit(),
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             Pallet::transfer(
                 RuntimeOrigin::signed(alice()),
                 XOR,
@@ -204,7 +204,7 @@ fn transfer_fails_with_not_enough_reserves() {
             bob(),
             Pallet::transfer_limit()
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             Pallet::transfer(
                 RuntimeOrigin::signed(bob()),
                 XOR,

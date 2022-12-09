@@ -2381,7 +2381,7 @@ dependencies = [
 
 [[package]]
 name = "dex-manager"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "common",
@@ -3534,6 +3534,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "farming-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3982,7 +3992,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "1.4.4"
+version = "1.5.0"
 dependencies = [
  "ansi_term",
  "assert_cmd",
@@ -4135,6 +4145,7 @@ dependencies = [
  "evm-bridge-proxy",
  "evm-bridge-proxy-runtime-api",
  "farming",
+ "farming-runtime-api",
  "faucet",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -4815,9 +4826,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.23.1"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59df7c4e19c950e6e0e868dcc0a300b09a9b88e9ec55bd879ca819087a77355d"
+checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
 dependencies = [
  "http",
  "hyper",
@@ -13760,7 +13771,7 @@ dependencies = [
 
 [[package]]
 name = "xst"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "assets",
  "ceres-liquidity-locker",

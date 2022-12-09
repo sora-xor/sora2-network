@@ -2,6 +2,7 @@ use crate::mock::{new_tester, MigrationApp, RuntimeOrigin, Test, BASE_NETWORK_ID
 use crate::{Addresses, Error};
 use bridge_types::H160;
 use common::DAI;
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 
 #[test]
@@ -21,7 +22,7 @@ fn test_register_network() {
 fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
-        common::assert_noop_transactional!(
+        assert_noop!(
             MigrationApp::register_network(
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID,
@@ -46,7 +47,7 @@ fn test_migrate_eth() {
 #[test]
 fn test_migrate_eth_not_exists() {
     new_tester().execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             MigrationApp::migrate_eth(RuntimeOrigin::root(), BASE_NETWORK_ID + 1),
             Error::<Test>::AppIsNotRegistered
         );
@@ -67,7 +68,7 @@ fn test_migrate_erc20() {
 #[test]
 fn test_migrate_erc20_not_exists() {
     new_tester().execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             MigrationApp::migrate_erc20(
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,
@@ -92,7 +93,7 @@ fn test_migrate_sidechain() {
 #[test]
 fn test_migrate_sidechain_not_exists() {
     new_tester().execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             MigrationApp::migrate_sidechain(
                 RuntimeOrigin::root(),
                 BASE_NETWORK_ID + 1,

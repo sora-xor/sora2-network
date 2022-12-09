@@ -127,8 +127,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         ceres_asset_id.into(),
         balance!(2000),
         balance!(3000),
-        balance!(0),
-        balance!(0),
+        balance!(2000),
+        balance!(3000),
     )?;
 
     Ok(())

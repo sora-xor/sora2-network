@@ -32,6 +32,7 @@ use crate::mock::*;
 use crate::{Error, Pallet};
 use common::prelude::DEXInfo;
 use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR};
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 use permissions::{Scope, MANAGE_DEX};
 
@@ -100,7 +101,7 @@ fn test_share_manage_dex_permission_should_pass() {
             RuntimeOrigin::signed(ALICE),
             ManagementMode::Private,
         );
-        common::assert_noop_transactional!(result, permissions::Error::<Runtime>::Forbidden);
+        assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result = DEXPallet::ensure_can_manage(
             &DEX_A_ID,
             RuntimeOrigin::signed(BOB),
@@ -211,21 +212,21 @@ fn test_can_manage_on_private_dex_should_pass() {
             RuntimeOrigin::signed(BOB),
             ManagementMode::Private,
         );
-        common::assert_noop_transactional!(result, permissions::Error::<Runtime>::Forbidden);
+        assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result = DEXPallet::ensure_can_manage(
             &DEX_A_ID,
             RuntimeOrigin::signed(BOB),
             ManagementMode::Public,
         );
-        common::assert_noop_transactional!(result, permissions::Error::<Runtime>::Forbidden);
+        assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
 
         // sudo account is not handled
         let result =
             DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Private);
-        common::assert_noop_transactional!(result, Error::<Runtime>::InvalidAccountId);
+        assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
             DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Public);
-        common::assert_noop_transactional!(result, Error::<Runtime>::InvalidAccountId);
+        assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
 
@@ -265,7 +266,7 @@ fn test_can_manage_on_public_dex_should_pass() {
             RuntimeOrigin::signed(BOB),
             ManagementMode::Private,
         );
-        common::assert_noop_transactional!(result, permissions::Error::<Runtime>::Forbidden);
+        assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
         let result = DEXPallet::ensure_can_manage(
             &DEX_A_ID,
             RuntimeOrigin::signed(BOB),
@@ -276,10 +277,10 @@ fn test_can_manage_on_public_dex_should_pass() {
         // sudo account is not handled
         let result =
             DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Private);
-        common::assert_noop_transactional!(result, Error::<Runtime>::InvalidAccountId);
+        assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
             DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Public);
-        common::assert_noop_transactional!(result, Error::<Runtime>::InvalidAccountId);
+        assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
 
@@ -300,7 +301,7 @@ fn test_ensure_dex_exists_should_pass() {
     .build();
     ext.execute_with(|| {
         assert_ok!(DEXPallet::ensure_dex_exists(&DEX_A_ID));
-        common::assert_noop_transactional!(
+        assert_noop!(
             DEXPallet::ensure_dex_exists(&DEX_B_ID),
             Error::<Runtime>::DEXDoesNotExist
         );
@@ -357,7 +358,7 @@ fn test_list_dex_ids_should_pass() {
 fn test_queries_for_nonexistant_dex_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        common::assert_noop_transactional!(
+        assert_noop!(
             DEXPallet::ensure_can_manage(
                 &DEX_A_ID,
                 RuntimeOrigin::signed(ALICE),
@@ -365,7 +366,7 @@ fn test_queries_for_nonexistant_dex_should_fail() {
             ),
             Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             DEXPallet::ensure_can_manage(
                 &DEX_A_ID,
                 RuntimeOrigin::signed(ALICE),
@@ -373,11 +374,11 @@ fn test_queries_for_nonexistant_dex_should_fail() {
             ),
             Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             DEXPallet::get_dex_info(&DEX_A_ID),
             Error::<Runtime>::DEXDoesNotExist
         );
-        common::assert_noop_transactional!(
+        assert_noop!(
             DEXPallet::ensure_dex_exists(&DEX_A_ID),
             Error::<Runtime>::DEXDoesNotExist
         );

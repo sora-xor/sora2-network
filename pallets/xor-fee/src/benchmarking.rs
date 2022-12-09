@@ -86,8 +86,8 @@ fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
         VAL.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
 
@@ -112,8 +112,8 @@ fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
         DAI.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
 }

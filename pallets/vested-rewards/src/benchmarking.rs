@@ -76,6 +76,7 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
         VestedRewards::<T>::update_market_maker_records(
             &user_account,
+            &XOR.into(),
             balance!(100),
             500,
             &PSWAP.into(),
@@ -89,6 +90,7 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
         VestedRewards::<T>::update_market_maker_records(
             &user_account,
+            &XOR.into(),
             balance!(100),
             100,
             &PSWAP.into(),

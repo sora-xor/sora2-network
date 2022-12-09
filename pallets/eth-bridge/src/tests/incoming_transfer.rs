@@ -15,6 +15,7 @@ use crate::types::{Log, TransactionReceipt};
 use crate::{types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL};
 use codec::Encode;
 use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
+use frame_support::assert_noop;
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -463,7 +464,7 @@ fn should_not_import_incoming_request_twice() {
             LoadIncomingRequest::Transaction(load_incoming_transaction_request),
             incoming_transfer_result
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthBridge::request_from_sidechain(
                 RuntimeOrigin::signed(alice),
                 hash,
@@ -825,7 +826,7 @@ fn should_not_register_and_finalize_incoming_request_twice() {
             RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
         ));
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthBridge::register_incoming_request(
                 RuntimeOrigin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),

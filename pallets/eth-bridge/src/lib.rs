@@ -157,7 +157,7 @@ const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
 /// Maximum substrate blocks can be handled during single offchain procedure.
-const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 3;
+const SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK: u32 = 20;
 #[cfg(not(test))]
 const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
 #[cfg(test)]
@@ -193,6 +193,8 @@ pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: Weight =
     Weight::from_ref_time(10_000_000_000_000_000u64);
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
+/// Minimum peers required to start bridge migration
+pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
@@ -330,6 +332,14 @@ impl<AssetId> AssetConfig<AssetId> {
     }
 }
 
+/// Bridge function signature version
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum BridgeSignatureVersion {
+    V1,
+    V2,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -341,6 +351,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -443,11 +454,13 @@ pub mod pallet {
         /// - `bridge_contract_address` - address of smart-contract deployed on a corresponding
         /// network.
         /// - `initial_peers` - a set of initial network peers.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
             bridge_contract_address: EthAddress,
             initial_peers: Vec<T::AccountId>,
+            signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
@@ -459,6 +472,7 @@ pub mod pallet {
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
             BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
+            BridgeSignatureVersions::<T>::insert(net_id, signature_version);
             Peers::<T>::insert(net_id, initial_peers.into_iter().collect::<BTreeSet<_>>());
             NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             Ok(().into())
@@ -471,6 +485,7 @@ pub mod pallet {
         /// Parameters:
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -502,6 +517,7 @@ pub mod pallet {
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -546,6 +562,7 @@ pub mod pallet {
         /// - `to` - sidechain account id.
         /// - `amount` - amount of the asset.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -580,6 +597,7 @@ pub mod pallet {
         /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
@@ -654,6 +672,7 @@ pub mod pallet {
         /// - `address` - account id on sidechain.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -700,6 +719,7 @@ pub mod pallet {
         /// - `account_id` - account id on thischain.
         /// - `network_id` - network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -765,6 +785,7 @@ pub mod pallet {
         /// Parameters:
         /// - `network_id` - bridge network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
@@ -772,6 +793,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
+            if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
+                && Peers::<T>::get(network_id).len() < MINIMUM_PEERS_FOR_MIGRATION
+            {
+                return Err(Error::<T>::UnsafeMigration.into());
+            }
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
@@ -796,12 +822,14 @@ pub mod pallet {
         /// - `erc20_native_tokens` - migrated assets ids.
         /// - `network_id` - bridge network identifier.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
             new_contract_address: EthAddress,
             erc20_native_tokens: Vec<EthAddress>,
             network_id: BridgeNetworkId<T>,
+            new_signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
@@ -816,6 +844,7 @@ pub mod pallet {
                     nonce,
                     network_id,
                     timepoint,
+                    new_signature_version,
                 },
             )))?;
             frame_system::Pallet::<T>::inc_account_nonce(&from);
@@ -916,6 +945,7 @@ pub mod pallet {
         ///
         /// Can only be called by a root account.
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
@@ -1181,6 +1211,8 @@ pub mod pallet {
         NotEnoughPeers,
         /// Failed to read value from offchain storage.
         ReadStorageError,
+        /// Bridge needs to have at least 3 peers for migration. Add new peer
+        UnsafeMigration,
     }
 
     impl<T: Config> Error<T> {
@@ -1385,6 +1417,27 @@ pub mod pallet {
     /// `RequestsQueue` before migration procedure started.
     #[pallet::storage]
     pub(super) type MigratingRequests<T: Config> = StorageValue<_, Vec<H256>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_signature_version)]
+    pub(super) type BridgeSignatureVersions<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        BridgeSignatureVersion,
+        ValueQuery,
+        DefaultForBridgeSignatureVersion,
+    >;
+
+    #[pallet::type_value]
+    pub fn DefaultForBridgeSignatureVersion() -> BridgeSignatureVersion {
+        BridgeSignatureVersion::V1
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn pending_bridge_signature_version)]
+    pub(super) type PendingBridgeSignatureVersions<T: Config> =
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BridgeSignatureVersion>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

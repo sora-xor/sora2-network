@@ -282,6 +282,7 @@ pub fn CHARLIE() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = 220;
+pub const DEX_B_ID: DEXId = 221;
 
 pub struct ExtBuilder {
     initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
@@ -293,13 +294,22 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: GoldenTicket.into(),
-                    is_public: true,
-                },
-            )],
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: GoldenTicket.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: AppleTree.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),

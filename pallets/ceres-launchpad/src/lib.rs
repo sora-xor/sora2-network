@@ -94,6 +94,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet, PSWAP};
     use frame_support::pallet_prelude::*;
+    use frame_support::transactional;
     use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
@@ -562,6 +563,7 @@ pub mod pallet {
 
         /// Emergency withdraw
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::emergency_withdraw())]
         pub fn emergency_withdraw(
             origin: OriginFor<T>,
@@ -626,6 +628,7 @@ pub mod pallet {
 
         /// Finish ILO
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
             origin: OriginFor<T>,
@@ -720,8 +723,8 @@ pub mod pallet {
                 asset_id.into(),
                 funds_for_liquidity,
                 tokens_for_liquidity,
-                balance!(0),
-                balance!(0),
+                funds_for_liquidity,
+                tokens_for_liquidity,
             )?;
 
             // Burn unused tokens for liquidity
@@ -1016,6 +1019,7 @@ pub mod pallet {
 
         /// Claim PSWAP rewards
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;

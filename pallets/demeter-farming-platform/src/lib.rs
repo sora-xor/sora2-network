@@ -70,6 +70,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, PoolXykPallet, XOR};
     use frame_support::pallet_prelude::*;
+    use frame_support::transactional;
     use frame_support::PalletId;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -324,6 +325,7 @@ pub mod pallet {
 
         /// Deposit to pool
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
@@ -481,6 +483,7 @@ pub mod pallet {
 
         /// Get rewards
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
@@ -557,6 +560,7 @@ pub mod pallet {
 
         /// Withdraw
 
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,

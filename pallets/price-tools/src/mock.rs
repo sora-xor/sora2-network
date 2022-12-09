@@ -297,6 +297,7 @@ pub struct MockDEXApi;
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn exchange(
+        _dex_id: DEXId,
         _sender: &AccountId,
         _receiver: &AccountId,
         _input_asset_id: &AssetId,
@@ -308,6 +309,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     }
 
     fn quote(
+        _dex_id: DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,

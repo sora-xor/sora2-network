@@ -30,6 +30,7 @@
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::weights::Weight;
+use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 
 use common::prelude::SwapVariant;
@@ -45,10 +46,26 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             SwapVariant::WithDesiredOutput => Weight::zero(),
         }
     }
+    fn enable_liquidity_source() -> Weight {
+        Weight::from_ref_time(21_575_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    fn disable_liquidity_source() -> Weight {
+        Weight::from_ref_time(20_003_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
 }
 
 impl crate::WeightInfo for () {
     fn swap(_variant: SwapVariant) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn enable_liquidity_source() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

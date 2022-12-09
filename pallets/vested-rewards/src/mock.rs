@@ -31,6 +31,8 @@
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
+use common::prelude::{LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome};
+use common::LiquiditySourceFilter;
 use common::{
     balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
     Description, Fixed, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, XOR,
@@ -45,7 +47,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{DispatchError, Perbill, Percent};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -95,6 +97,39 @@ pub fn initial_assets_owner() -> AccountId {
 }
 pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
+
+pub struct MockLiquidityProxy;
+
+impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        match _amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => Ok(SwapOutcome {
+                amount: desired_amount_in * 2,
+                fee: 0,
+            }),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn exchange(
+        _dex_id: DEXId,
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: SwapAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+}
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -220,7 +255,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type LiquidityProxy = ();
+    type LiquidityProxy = MockLiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
@@ -257,7 +292,7 @@ impl pool_xyk::Config for Runtime {
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
+    type LiquidityProxy = MockLiquidityProxy;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
