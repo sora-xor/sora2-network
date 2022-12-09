@@ -154,7 +154,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use frame_support::weights::{DispatchInfo, Pays};
+    use frame_support::dispatch::{DispatchInfo, Pays};
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     use sp_runtime::traits::SignedExtension;
@@ -163,12 +163,12 @@ mod tests {
     use common::{balance, VAL, XOR};
 
     use crate::extensions::ChargeTransactionPayment;
-    use crate::{Call, Runtime};
+    use crate::{Runtime, RuntimeCall};
 
     #[test]
     fn check_calls_from_bridge_peers_pays_yes() {
-        let call: &<Runtime as frame_system::Config>::Call =
-            &Call::EthBridge(eth_bridge::Call::transfer_to_sidechain {
+        let call: &<Runtime as frame_system::Config>::RuntimeCall =
+            &RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain {
                 asset_id: XOR.into(),
                 to: Default::default(),
                 amount: Default::default(),
@@ -187,8 +187,8 @@ mod tests {
     #[ignore] // TODO: fix check_calls_from_bridge_peers_pays_no test
     fn check_calls_from_bridge_peers_pays_no() {
         framenode_chain_spec::ext().execute_with(|| {
-            let call: &<Runtime as frame_system::Config>::Call =
-                &Call::EthBridge(eth_bridge::Call::finalize_incoming_request {
+            let call: &<Runtime as frame_system::Config>::RuntimeCall =
+                &RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
                     hash: H256::zero(),
                     network_id: 0,
                 });
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn simple_call_should_pass() {
-        let call = Call::Balances(pallet_balances::Call::transfer {
+        let call = RuntimeCall::Balances(pallet_balances::Call::transfer {
             dest: From::from([1; 32]),
             value: balance!(100),
         });
@@ -227,16 +227,16 @@ mod tests {
             .into(),
         ];
 
-        let call_batch = Call::Utility(UtilityCall::batch {
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
             calls: batch_calls.clone(),
         });
-        let call_batch_all = Call::Utility(UtilityCall::batch_all { calls: batch_calls });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
         assert!(call_batch.check_for_swap_in_batch().is_ok());
         assert!(call_batch_all.check_for_swap_in_batch().is_ok());
     }
 
-    fn test_swap_in_batch(call: Call) {
+    fn test_swap_in_batch(call: RuntimeCall) {
         let batch_calls = vec![
             pallet_balances::Call::transfer {
                 dest: From::from([1; 32]),
@@ -246,10 +246,10 @@ mod tests {
             call,
         ];
 
-        let call_batch = Call::Utility(UtilityCall::batch {
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
             calls: batch_calls.clone(),
         });
-        let call_batch_all = Call::Utility(UtilityCall::batch_all { calls: batch_calls });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
         assert!(call_batch.check_for_swap_in_batch().is_err());
         assert!(call_batch_all.check_for_swap_in_batch().is_err());

@@ -21,9 +21,9 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -71,7 +71,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::Voted(caller, poll_id, voting_option, number_of_votes).into());
+        assert_last_event::<T>(Event::<T>::Voted(caller, poll_id, voting_option, number_of_votes).into());
     }
 
     create_poll {
@@ -91,7 +91,7 @@ benchmarks! {
         );
     }
     verify {
-        assert_last_event::<T>(Event::Created(caller, voting_option, poll_start_timestamp, poll_end_timestamp).into());
+        assert_last_event::<T>(Event::<T>::Created(caller, voting_option, poll_start_timestamp, poll_end_timestamp).into());
     }
 
    withdraw {
@@ -137,7 +137,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(poll_start_timestamp + 14440u32.into());
     }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
     verify {
-        assert_last_event::<T>(Event::Withdrawn(caller, 0).into());
+        assert_last_event::<T>(Event::<T>::Withdrawn(caller, 0).into());
     }
 
     impl_benchmark_test_suite!(

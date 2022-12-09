@@ -70,3 +70,8 @@ std = [
     'pool-xyk/std',
     'pswap-distribution/std',
 ]
+
+runtime-benchmarks = [
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

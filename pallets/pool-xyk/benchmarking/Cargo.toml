@@ -59,3 +59,8 @@ std = [
     'permissions/std',
     'pool-xyk/std',
 ]
+
+runtime-benchmarks = [
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

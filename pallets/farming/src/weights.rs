@@ -30,19 +30,18 @@
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use core::marker::PhantomData;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn refresh_pool(a: u32) -> Weight {
+    fn refresh_pool(_a: u32) -> Weight {
         Weight::zero()
     }
-    fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight {
+    fn prepare_accounts_for_vesting(_a: u32, _b: u32) -> Weight {
         Weight::zero()
     }
-    fn vest_account_rewards(a: u32) -> Weight {
+    fn vest_account_rewards(_a: u32) -> Weight {
         Weight::zero()
     }
 }

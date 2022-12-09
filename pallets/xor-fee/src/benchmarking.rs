@@ -62,7 +62,8 @@ fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
     assets::Pallet::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))
         .unwrap();
 
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
 
     assets::Pallet::<T>::mint_to(
         &VAL.into(),

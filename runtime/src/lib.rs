@@ -40,7 +40,6 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -136,6 +135,7 @@ use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+    PreimageWeightInfo,
 };
 
 use frame_support::traits::{
@@ -768,7 +768,7 @@ parameter_types! {
 }
 
 impl pallet_preimage::Config for Runtime {
-    type WeightInfo = ();
+    type WeightInfo = PreimageWeightInfo;
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type ManagerOrigin = EnsureRoot<AccountId>;

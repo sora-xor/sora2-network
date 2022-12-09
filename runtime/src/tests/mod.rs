@@ -2,7 +2,7 @@ mod referrals;
 mod xor_fee;
 
 mod tests {
-    use crate::{Currencies, Origin, Referrals};
+    use crate::{Currencies, Referrals, RuntimeOrigin};
     use assets::GetTotalBalance;
     use common::mock::{alice, bob};
     use common::prelude::constants::SMALL_FEE;
@@ -14,12 +14,12 @@ mod tests {
     fn get_total_balance() {
         ext().execute_with(|| {
             assert_ok!(Currencies::update_balance(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 alice(),
                 XOR.into(),
                 SMALL_FEE as i128
             ));
-            Referrals::reserve(Origin::signed(alice()), SMALL_FEE).unwrap();
+            Referrals::reserve(RuntimeOrigin::signed(alice()), SMALL_FEE).unwrap();
             assert_eq!(
                 crate::GetTotalBalance::total_balance(&XOR, &alice()),
                 Ok(SMALL_FEE)

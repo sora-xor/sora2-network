@@ -29,13 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn on_initialize(n: u32) -> Weight {
+    fn on_initialize(_n: u32) -> Weight {
         Weight::zero()
     }
 

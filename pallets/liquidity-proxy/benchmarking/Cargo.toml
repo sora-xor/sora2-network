@@ -76,3 +76,8 @@ std = [
     "technical/std",
     "trading-pair/std",
 ]
+
+runtime-benchmarks = [
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

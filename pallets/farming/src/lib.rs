@@ -48,7 +48,6 @@ use frame_support::weights::Weight;
 use frame_system::pallet_prelude::BlockNumberFor;
 use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
-use sp_runtime::traits::Saturating;
 use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
 

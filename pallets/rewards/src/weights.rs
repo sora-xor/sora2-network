@@ -56,9 +56,6 @@
 
 use core::marker::PhantomData;
 
-use frame_support::dispatch::DispatchClass;
-use frame_support::traits::Get;
-use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
@@ -69,11 +66,11 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim() -> Weight {
         Weight::zero()
     }
-    fn finalize_storage_migration(n: u32) -> Weight {
+    fn finalize_storage_migration(_n: u32) -> Weight {
         Weight::zero()
     }
 
-    fn add_umi_nfts_receivers(n: u64) -> Weight {
+    fn add_umi_nfts_receivers(_n: u64) -> Weight {
         Weight::zero()
     }
 }

@@ -18,7 +18,7 @@ use traits::MultiCurrency;
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 
 benchmarks! {
-    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T: bridge_outbound_channel::Config, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>, T::AssetId: From<AssetId32<PredefinedAssetId>>}
 
     burn {
         let caller: T::AccountId = whitelisted_caller();

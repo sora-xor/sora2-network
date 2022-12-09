@@ -55,6 +55,7 @@ impl BeefyJustification {
             .storage()
             .fetch_or_default(&runtime::storage().beefy().authorities(), Some(block_hash))
             .await?
+            .0
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
@@ -88,16 +89,9 @@ impl BeefyJustification {
             .rev()
         {
             let block_hash = sub.block_hash(Some(block_number)).await?;
-            let leaf_count = sub
-                .api()
-                .storage()
-                .fetch_or_default(
-                    &runtime::storage().mmr().number_of_leaves(),
-                    Some(block_hash),
-                )
+            let leaf_proof = sub
+                .mmr_generate_proof(block_number, Some(block_hash))
                 .await?;
-            let leaf_index = leaf_count.saturating_sub(1);
-            let leaf_proof = sub.mmr_generate_proof(leaf_index, Some(block_hash)).await?;
             let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
             let proof = convert_to_simplified_mmr_proof(
                 leaf_proof.proof.leaf_index,
@@ -192,7 +186,10 @@ impl BeefyJustification {
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs,
+            public_key_merkle_proofs: public_key_merkle_proofs
+                .into_iter()
+                .map(|x| x.into_iter().map(|x| x.0).collect())
+                .collect(),
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof
@@ -220,7 +217,10 @@ impl BeefyJustification {
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs,
+            public_key_merkle_proofs: public_key_merkle_proofs
+                .into_iter()
+                .map(|x| x.into_iter().map(|x| x.0).collect())
+                .collect(),
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof

@@ -24,7 +24,6 @@
 // --output
 // ./
 
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 

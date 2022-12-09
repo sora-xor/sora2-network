@@ -16,7 +16,7 @@ pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 use crate::Pallet as ETHApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic

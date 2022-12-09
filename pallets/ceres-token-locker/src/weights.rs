@@ -1,5 +1,4 @@
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 

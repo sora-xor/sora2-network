@@ -102,7 +102,7 @@ benchmarks! {
     )
     verify {
         let (asset_id, _) = AssetOwners::<T>::iter().find(|(k, v)| v == &caller).unwrap();
-        assert_last_event::<T>(Event::AssetRegistered(asset_id, caller).into())
+        assert_last_event::<T>(Event::<T>::AssetRegistered(asset_id, caller).into())
     }
 
     transfer {
@@ -127,7 +127,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Transfer(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Transfer(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
     }
 
     mint {
@@ -152,7 +152,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
     }
 
     burn {
@@ -182,7 +182,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Burn(caller, USDT.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Burn(caller, USDT.into(), 100_u32.into()).into())
     }
 
     set_non_mintable {
@@ -205,7 +205,7 @@ benchmarks! {
         USDT.into()
     )
     verify {
-        assert_last_event::<T>(Event::AssetSetNonMintable(USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::AssetSetNonMintable(USDT.into()).into())
     }
 }
 

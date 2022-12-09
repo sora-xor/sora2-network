@@ -45,11 +45,74 @@ pub struct CollectiveWeightInfo<T>(PhantomData<T>);
 
 pub struct DemocracyWeightInfo;
 
+pub struct PreimageWeightInfo;
+
 pub struct OnUnbalancedDemocracySlash<T> {
     _marker: PhantomData<T>,
 }
 
 const MAX_PREIMAGE_BYTES: u32 = 5 * 1024 * 1024;
+
+impl pallet_preimage::WeightInfo for PreimageWeightInfo {
+    fn note_preimage(bytes: u32) -> Weight {
+        let max_weight: Weight = BlockWeights::get()
+            .get(DispatchClass::Normal)
+            .max_extrinsic
+            .expect("Democracy pallet must have max extrinsic weight");
+        if bytes > MAX_PREIMAGE_BYTES {
+            return max_weight.saturating_add(Weight::from_ref_time(1));
+        }
+        let weight = <() as pallet_preimage::WeightInfo>::note_preimage(bytes);
+        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
+        // We want to keep it as high as possible, but can't risk having it reject,
+        // so we always the base block execution weight as a max
+        max_dispatch_weight.min(weight)
+    }
+
+    fn note_requested_preimage(s: u32) -> Weight {
+        <() as pallet_preimage::WeightInfo>::note_requested_preimage(s)
+    }
+
+    fn note_no_deposit_preimage(s: u32) -> Weight {
+        <() as pallet_preimage::WeightInfo>::note_no_deposit_preimage(s)
+    }
+
+    fn unnote_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unnote_preimage()
+    }
+
+    fn unnote_no_deposit_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unnote_no_deposit_preimage()
+    }
+
+    fn request_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_preimage()
+    }
+
+    fn request_no_deposit_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_no_deposit_preimage()
+    }
+
+    fn request_unnoted_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_unnoted_preimage()
+    }
+
+    fn request_requested_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_requested_preimage()
+    }
+
+    fn unrequest_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_preimage()
+    }
+
+    fn unrequest_unnoted_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_unnoted_preimage()
+    }
+
+    fn unrequest_multi_referenced_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_multi_referenced_preimage()
+    }
+}
 
 impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeightInfo<T> {
     fn set_members(m: u32, n: u32, p: u32) -> Weight {
@@ -188,32 +251,36 @@ mod test {
     use super::*;
 
     use frame_support::weights::Weight;
-    use pallet_democracy::WeightInfo;
+    use pallet_preimage::WeightInfo;
 
-    const MAX_WEIGHT: Weight = 1_459_875_000_000_u64 as _;
+    const MAX_WEIGHT: Weight = Weight::from_ref_time(1_459_875_000_000_u64);
     const MEBIBYTE: u32 = 1024 * 1024;
 
     #[test]
     fn democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size() {
-        fn t(bytes: u32, expected: Weight) {
-            let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, expected);
-            assert!(actual <= MAX_WEIGHT);
+        fn t(bytes: u32, expected: Weight, name: &str) {
+            let actual = PreimageWeightInfo::note_preimage(bytes);
+            assert_eq!(actual.ref_time(), expected.ref_time(), "{}", name);
+            assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, 152986000);
-        t(1, 152988000);
-        t(500_000, 1_152_986_000);
-        t(1_000_000, 2_152_986_000);
-        t(5 * MEBIBYTE, 10_638_746_000);
+        t(u32::MIN, Weight::from_ref_time(257_591_000), "u32::MIN");
+        t(1, Weight::from_ref_time(257_592_680), "1");
+        t(500_000, Weight::from_ref_time(1_097_591_000), "500_000");
+        t(1_000_000, Weight::from_ref_time(1_937_591_000), "1_000_000");
+        t(
+            5 * MEBIBYTE,
+            Weight::from_ref_time(9_065_629_400),
+            "5 * MEBIBYTE",
+        );
     }
 
     #[test]
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
-            let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, 1_459_913_702_001_u64);
-            assert!(actual > MAX_WEIGHT);
+            let actual = PreimageWeightInfo::note_preimage(bytes);
+            assert_eq!(actual.ref_time(), 1_459_913_702_001_u64);
+            assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 
         t(5 * MEBIBYTE + 1);

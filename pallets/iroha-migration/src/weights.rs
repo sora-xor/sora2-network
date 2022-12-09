@@ -56,7 +56,6 @@
 
 use core::marker::PhantomData;
 
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
