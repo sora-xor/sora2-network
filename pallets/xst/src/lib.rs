@@ -141,7 +141,11 @@ pub mod pallet {
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;
         /// Type of symbol received from oracles
-        type Symbol: Parameter + ToString + From<&'static str> + MaybeSerializeDeserialize;
+        type Symbol: Parameter
+            + ToString
+            + From<&'static str>
+            + PartialEq<&'static str>
+            + MaybeSerializeDeserialize;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -364,7 +368,6 @@ impl<T: Config> Pallet<T> {
 
             Self::enable_synthetic_pair(synthetic_asset)?;
 
-            // TODO: Technically it's possible to use references to avoid cloning
             EnabledSynthetics::<T>::insert(synthetic_asset, Some(reference_symbol.clone()));
             EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset));
 
@@ -711,6 +714,10 @@ impl<T: Config> Pallet<T> {
     }
 
     fn ensure_symbol_exists(reference_symbol: &T::Symbol) -> Result<(), DispatchError> {
+        if *reference_symbol == "USD" {
+            return Ok(());
+        }
+
         let all_symbols = T::Oracle::list_enabled_symbols()?;
         all_symbols
             .into_iter()
@@ -730,7 +737,7 @@ impl<T: Config> Pallet<T> {
             permissioned_account_id,
             synthetic_asset,
             AssetSymbol(format!("XST{}", reference_symbol.to_string()).into_bytes()),
-            AssetName(format!("Sora Synthetic {}", reference_symbol.to_string()).into_bytes()),
+            AssetName(format!("SORA Synthetic {}", reference_symbol.to_string()).into_bytes()),
             DEFAULT_BALANCE_PRECISION,
             balance!(0),
             true,
