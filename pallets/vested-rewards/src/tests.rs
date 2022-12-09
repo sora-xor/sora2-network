@@ -1155,7 +1155,7 @@ fn market_maker_reward_pool_migration() {
 
         VestedRewards::add_pending_reward(
             &alice(),
-            RewardReason::MarketMakerVolume_DEPRECATED,
+            RewardReason::DeprecatedMarketMakerVolume,
             balance!(100),
         )
         .unwrap();
