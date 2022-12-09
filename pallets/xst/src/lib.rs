@@ -60,6 +60,7 @@ use frame_support::{ensure, fail};
 use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_core::H256;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -76,6 +77,7 @@ type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
+pub const SYNTHETIC_ASSET_ID_PREFIX: [u8; 5] = hex_literal::hex!("0200077700");
 
 pub use pallet::*;
 
@@ -181,7 +183,6 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
-            synthetic_asset: T::AssetId,
             asset_symbol: AssetSymbol,
             asset_name: AssetName,
             reference_symbol: T::Symbol,
@@ -189,7 +190,6 @@ pub mod pallet {
             ensure_root(origin)?;
 
             Self::enable_synthetic_asset_unchecked(
-                synthetic_asset,
                 asset_symbol,
                 asset_name,
                 reference_symbol,
@@ -259,8 +259,6 @@ pub mod pallet {
         /// Attempt to enable synthetic asset with symbol
         /// that is already referenced to another synthetic.
         SymbolAlreadyReferencedToSynthetic,
-        /// Attempt to enable synthetic asset that is already enabled.
-        SyntheticAlreadyEnabled,
         /// Attempt to disable synthetic asset that is not enabled.
         SyntheticIsNotEnabled,
     }
@@ -314,7 +312,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
-        pub initial_synthetic_assets: Vec<(T::AssetId, AssetSymbol, AssetName, T::Symbol)>,
+        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol)>,
     }
 
     #[cfg(feature = "std")]
@@ -324,7 +322,6 @@ pub mod pallet {
                 tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
                 initial_synthetic_assets: [(
-                    XSTUSD.into(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
                     "USD".into(),
@@ -340,9 +337,8 @@ pub mod pallet {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets.iter().cloned().for_each(
-                |(asset_id, asset_symbol, asset_name, reference_symbol)| {
+                |(asset_symbol, asset_name, reference_symbol)| {
                     Pallet::<T>::enable_synthetic_asset_unchecked(
-                        asset_id,
                         asset_symbol,
                         asset_name,
                         reference_symbol,
@@ -367,32 +363,26 @@ impl<T: Config> Pallet<T> {
     }
 
     fn enable_synthetic_asset_unchecked(
-        synthetic_asset: T::AssetId,
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
         reference_symbol: T::Symbol,
         transactional: bool,
     ) -> DispatchResult {
         let code = || {
-            if EnabledSynthetics::<T>::contains_key(&synthetic_asset) {
-                return Err(Error::<T>::SyntheticAlreadyEnabled.into());
-            }
-
             if EnabledSymbols::<T>::contains_key(&reference_symbol) {
                 return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
             }
-
             Self::ensure_symbol_exists(&reference_symbol)?;
 
-            Self::register_synthetic_asset(synthetic_asset, asset_symbol, asset_name)?;
+            let synthetic_asset_id = Self::generate_synthetic_asset_id(&reference_symbol);
+            Self::register_synthetic_asset(synthetic_asset_id, asset_symbol, asset_name)?;
+            Self::enable_synthetic_pair(synthetic_asset_id)?;
 
-            Self::enable_synthetic_pair(synthetic_asset)?;
-
-            EnabledSynthetics::<T>::insert(synthetic_asset, Some(reference_symbol.clone()));
-            EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset));
+            EnabledSynthetics::<T>::insert(synthetic_asset_id, Some(reference_symbol.clone()));
+            EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset_id));
 
             Self::deposit_event(Event::SyntheticAssetEnabled(
-                synthetic_asset,
+                synthetic_asset_id,
                 reference_symbol,
             ));
             Ok(().into())
@@ -403,6 +393,25 @@ impl<T: Config> Pallet<T> {
         } else {
             code()
         }
+    }
+
+    fn generate_synthetic_asset_id(reference_symbol: &T::Symbol) -> T::AssetId {
+        use blake2::{Blake2s256, Digest};
+
+        if *reference_symbol == "USD" {
+            return XSTUSD.into();
+        }
+
+        let bytes = reference_symbol.encode();
+        let mut hasher = Blake2s256::new();
+        hasher.update(bytes);
+        let mut hashed_bytes = hasher.finalize();
+
+        hashed_bytes[0..SYNTHETIC_ASSET_ID_PREFIX.len()]
+            .copy_from_slice(&SYNTHETIC_ASSET_ID_PREFIX);
+
+        let h256 = H256::from_slice(&hashed_bytes);
+        h256.into()
     }
 
     fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> DispatchResult {
