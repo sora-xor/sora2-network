@@ -254,6 +254,8 @@ pub mod pallet {
         CantExchange,
         /// Increment account reference error.
         IncRefError,
+        /// Synthetic asset does not exist.
+        SyntheticDoesNotExist,
         /// Attempt to enable synthetic asset with inexistent symbol.
         SymbolDoesNotExist,
         /// Attempt to enable synthetic asset with symbol
@@ -261,6 +263,8 @@ pub mod pallet {
         SymbolAlreadyReferencedToSynthetic,
         /// Attempt to disable synthetic asset that is not enabled.
         SyntheticIsNotEnabled,
+        /// Error quoting price from oracle.
+        OracleQuoteError,
     }
 
     // TODO: better by replaced with Get<>
@@ -721,24 +725,32 @@ impl<T: Config> Pallet<T> {
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
-        // XSTUSD is a special case because it is equal to the reference asset, DAI
-        if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
-            Ok(balance!(1))
-        } else {
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
-                asset_id,
-                &reference_asset_id,
-            )
-            .map(|avg| {
+        let synthetic_base_asset_id = T::GetSyntheticBaseAssetId::get();
+
+        match asset_id {
+            // XSTUSD is a special case because it is equal to the reference asset, DAI
+            id if id == &XSTUSD.into() || id == &reference_asset_id => Ok(balance!(1)),
+            id if id == &synthetic_base_asset_id => {
                 // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
-                if asset_id == &T::GetSyntheticBaseAssetId::get()
-                    && &reference_asset_id == &DAI.into()
-                {
-                    avg.max(balance!(3))
-                } else {
-                    avg
-                }
-            })
+                T::PriceToolsPallet::get_average_price(id, &reference_asset_id).map(|avg| {
+                    if reference_asset_id == DAI.into() {
+                        avg.max(balance!(3))
+                    } else {
+                        avg
+                    }
+                })
+            }
+            id => {
+                let symbol =
+                    EnabledSynthetics::<T>::get(id).ok_or(Error::<T>::SyntheticDoesNotExist)?;
+                let price =
+                    balance!(T::Oracle::quote(symbol)?.ok_or(Error::<T>::OracleQuoteError)?);
+                // Just for convenience. Right now will always return 1.
+                let reference_asset_price = Self::reference_price(&reference_asset_id)?;
+                Ok(price
+                    .checked_div(reference_asset_price)
+                    .expect("Reference asset price is never 0."))
+            }
         }
     }
 
