@@ -58,7 +58,6 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use permissions::{Scope, BURN, MINT};
-use scale_info::prelude::{format, string::ToString};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::{DispatchError, DispatchResult};
@@ -142,7 +141,6 @@ pub mod pallet {
         type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;
         /// Type of symbol received from oracles
         type Symbol: Parameter
-            + ToString
             + From<&'static str>
             + PartialEq<&'static str>
             + MaybeSerializeDeserialize;
@@ -184,11 +182,19 @@ pub mod pallet {
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
             synthetic_asset: T::AssetId,
+            asset_symbol: AssetSymbol,
+            asset_name: AssetName,
             reference_symbol: T::Symbol,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            Self::enable_synthetic_asset_unchecked(synthetic_asset, reference_symbol, true)?;
+            Self::enable_synthetic_asset_unchecked(
+                synthetic_asset,
+                asset_symbol,
+                asset_name,
+                reference_symbol,
+                true,
+            )?;
             Ok(().into())
         }
 
@@ -308,7 +314,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
-        pub initial_synthetic_assets: Vec<(T::AssetId, T::Symbol)>,
+        pub initial_synthetic_assets: Vec<(T::AssetId, AssetSymbol, AssetName, T::Symbol)>,
     }
 
     #[cfg(feature = "std")]
@@ -317,7 +323,13 @@ pub mod pallet {
             Self {
                 tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
-                initial_synthetic_assets: [(XSTUSD.into(), "USD".into())].into(),
+                initial_synthetic_assets: [(
+                    XSTUSD.into(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
+                    "USD".into(),
+                )]
+                .into(),
             }
         }
     }
@@ -328,9 +340,15 @@ pub mod pallet {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets.iter().cloned().for_each(
-                |(asset_id, reference_symbol)| {
-                    Pallet::<T>::enable_synthetic_asset_unchecked(asset_id, reference_symbol, false)
-                        .expect("Failed to initialize XST synthetics.")
+                |(asset_id, asset_symbol, asset_name, reference_symbol)| {
+                    Pallet::<T>::enable_synthetic_asset_unchecked(
+                        asset_id,
+                        asset_symbol,
+                        asset_name,
+                        reference_symbol,
+                        false,
+                    )
+                    .expect("Failed to initialize XST synthetics.")
                 },
             );
         }
@@ -350,6 +368,8 @@ impl<T: Config> Pallet<T> {
 
     fn enable_synthetic_asset_unchecked(
         synthetic_asset: T::AssetId,
+        asset_symbol: AssetSymbol,
+        asset_name: AssetName,
         reference_symbol: T::Symbol,
         transactional: bool,
     ) -> DispatchResult {
@@ -364,7 +384,7 @@ impl<T: Config> Pallet<T> {
 
             Self::ensure_symbol_exists(&reference_symbol)?;
 
-            Self::register_synthetic_asset(synthetic_asset, reference_symbol.clone())?;
+            Self::register_synthetic_asset(synthetic_asset, asset_symbol, asset_name)?;
 
             Self::enable_synthetic_pair(synthetic_asset)?;
 
@@ -728,7 +748,8 @@ impl<T: Config> Pallet<T> {
 
     fn register_synthetic_asset(
         synthetic_asset: T::AssetId,
-        reference_symbol: T::Symbol,
+        asset_symbol: AssetSymbol,
+        asset_name: AssetName,
     ) -> Result<(), DispatchError> {
         let permissioned_tech_account_id = Self::permissioned_tech_account();
         let permissioned_account_id =
@@ -736,8 +757,8 @@ impl<T: Config> Pallet<T> {
         Assets::<T>::register_asset_id(
             permissioned_account_id,
             synthetic_asset,
-            AssetSymbol(format!("XST{}", reference_symbol.to_string()).into_bytes()),
-            AssetName(format!("SORA Synthetic {}", reference_symbol.to_string()).into_bytes()),
+            asset_symbol,
+            asset_name,
             DEFAULT_BALANCE_PRECISION,
             balance!(0),
             true,
