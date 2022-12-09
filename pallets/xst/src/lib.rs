@@ -439,30 +439,28 @@ impl<T: Config> Pallet<T> {
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
-        _synthetic_asset_id: &T::AssetId, //TODO: we will use this once we have more XST assets
+        synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-        let main_asset_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(main_asset_id)?.into();
+        let main_asset_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let synthetic_asset_price: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
 
         match quantity {
-            // Input target amount of XST(USD) to get some XST
+            // Input target amount of synthetic asset (e.g. XSTUSD) to get some synthetic base asset (e.g. XST)
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: synthetic_quantity,
             } => {
-                //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
-                let main_out = synthetic_quantity / main_asset_price_per_reference_unit;
+                let main_out = synthetic_quantity * synthetic_asset_price / main_asset_price;
                 main_out
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
                     .map(|value| value.max(Fixed::ZERO))
             }
-            // Input some XST(USD) to get a target amount of XST
+            // Input some synthetic asset (e.g. XSTUSD) to get a target amount of synthetic base asset (e.g. XST)
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: main_quantity,
             } => {
-                //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
-                let synthetic_quantity = main_quantity * main_asset_price_per_reference_unit;
+                let synthetic_quantity = main_quantity * main_asset_price / synthetic_asset_price;
                 synthetic_quantity
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
