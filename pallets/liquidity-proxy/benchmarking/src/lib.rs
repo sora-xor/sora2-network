@@ -31,6 +31,7 @@
 //! Liquidity Proxy benchmarking module.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "runtime-benchmarks")]
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};

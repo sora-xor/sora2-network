@@ -59,7 +59,8 @@ use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
 pub fn encode_packed(tokens: &[Token]) -> Vec<u8> {
-    unimplemented!()
+    // todo vladimir
+    ethabi::encode(tokens)
 }
 
 /// Outgoing request for transferring the given asset from Thischain to Sidechain.
