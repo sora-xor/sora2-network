@@ -56,7 +56,7 @@ use common::{
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail};
+use frame_support::{ensure, fail, RuntimeDebug};
 use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,14 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
             coefficient,
         }
     }
+}
+
+#[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct SyntheticInfo<Symbol> {
+    reference_symbol: Symbol,
+    buy_fee_percent: Fixed,
+    sell_fee_percent: Fixed,
 }
 
 #[frame_support::pallet]
@@ -211,7 +219,8 @@ pub mod pallet {
 
             let reference_symbol = EnabledSynthetics::<T>::try_get(synthetic_asset)
                 .map_err(|_| Error::<T>::SyntheticIsNotEnabled)?
-                .expect("Synthetic tables always store `Some`");
+                .expect("Synthetic tables always store `Some`")
+                .reference_symbol;
 
             EnabledSynthetics::<T>::remove(synthetic_asset);
             EnabledSymbols::<T>::remove(reference_symbol);
@@ -289,7 +298,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn enabled_synthetics)]
     pub type EnabledSynthetics<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, Option<T::Symbol>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::AssetId, Option<SyntheticInfo<T::Symbol>>, ValueQuery>;
 
     /// Reference symbols and their synthetic assets.
     ///
@@ -382,7 +391,14 @@ impl<T: Config> Pallet<T> {
             Self::register_synthetic_asset(synthetic_asset_id, asset_symbol, asset_name)?;
             Self::enable_synthetic_pair(synthetic_asset_id)?;
 
-            EnabledSynthetics::<T>::insert(synthetic_asset_id, Some(reference_symbol.clone()));
+            EnabledSynthetics::<T>::insert(
+                synthetic_asset_id,
+                Some(SyntheticInfo {
+                    reference_symbol: reference_symbol.clone(),
+                    buy_fee_percent: Fixed::ZERO,
+                    sell_fee_percent: Fixed::ZERO,
+                }),
+            );
             EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset_id));
 
             Self::deposit_event(Event::SyntheticAssetEnabled(
@@ -400,6 +416,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn generate_synthetic_asset_id(reference_symbol: &T::Symbol) -> T::AssetId {
+        // TODO: Maybe we don't need cryptographic hash here, but just a simple hash function.
         use blake2::{Blake2s256, Digest};
 
         if *reference_symbol == "USD" {
@@ -513,6 +530,8 @@ impl<T: Config> Pallet<T> {
 
     /// Decompose SwapAmount into particular buy quotation query.
     ///
+    /// *Buy* means main asset buy (e.g., XST buy).
+    ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_buy_amounts(
         main_asset_id: &T::AssetId,
@@ -568,6 +587,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Decompose SwapAmount into particular sell quotation query.
+    ///
+    /// *Sell* means main asset sell (e.g., XST sell).
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_sell_amounts(
@@ -738,8 +759,9 @@ impl<T: Config> Pallet<T> {
                 })
             }
             id => {
-                let symbol =
-                    EnabledSynthetics::<T>::get(id).ok_or(Error::<T>::SyntheticDoesNotExist)?;
+                let symbol = EnabledSynthetics::<T>::get(id)
+                    .ok_or(Error::<T>::SyntheticDoesNotExist)?
+                    .reference_symbol;
                 let price =
                     balance!(T::Oracle::quote(symbol)?.ok_or(Error::<T>::OracleQuoteError)?);
                 // Just for convenience. Right now will always return 1.
