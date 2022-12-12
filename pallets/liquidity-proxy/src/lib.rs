@@ -971,35 +971,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// For direct path (when input token or output token are xor), extract xor portions of exchange result.
-    fn get_base_asset_amount(
-        base_asset_id: &T::AssetId,
-        input_asset_id: T::AssetId,
-        amount: SwapAmount<Balance>,
-        outcome: SwapOutcome<Balance>,
-    ) -> Balance {
-        match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
-                if input_asset_id == *base_asset_id {
-                    desired_amount_in
-                } else {
-                    outcome.amount
-                }
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
-                if input_asset_id == *base_asset_id {
-                    outcome.amount
-                } else {
-                    desired_amount_out
-                }
-            }
-        }
-    }
-
     /// Implements the "smart" split algorithm.
     ///
     /// - `primary_source_id` - ID of the primary market liquidity source,

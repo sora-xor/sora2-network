@@ -198,18 +198,6 @@ impl Config for Runtime {
 pub struct MockVestedRewards;
 
 impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
-    fn update_market_maker_records(
-        _: &AccountId,
-        _: &AssetId,
-        _: Balance,
-        _: u32,
-        _: &AssetId,
-        _: &AssetId,
-        _: &[AssetId],
-    ) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
     fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
         Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
             *old_amount = old_amount.saturating_add(amount)
@@ -221,11 +209,6 @@ impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
     }
 
     fn add_farming_reward(_: &AccountId, _: Balance) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
-
-    fn add_market_maker_reward(_: &AccountId, _: Balance) -> DispatchResult {
         // do nothing
         Ok(())
     }
