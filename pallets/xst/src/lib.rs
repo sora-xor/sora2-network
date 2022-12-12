@@ -61,7 +61,7 @@ use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
-use sp_runtime::{DispatchError, DispatchResult};
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -70,6 +70,8 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
     fn disable_synthetic_asset() -> Weight;
+    fn set_synthetic_asset_buy_fee() -> Weight;
+    fn set_synthetic_asset_sell_fee() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -167,6 +169,7 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
+    // TODO Remove
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_number: T::BlockNumber) -> Weight {
@@ -226,6 +229,52 @@ pub mod pallet {
             EnabledSymbols::<T>::remove(reference_symbol);
 
             Self::deposit_event(Event::SyntheticAssetDisabled(synthetic_asset));
+            Ok(().into())
+        }
+
+        /// Set synthetic asset buy fee. Default value is `0%`.
+        ///
+        /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
+        /// burned when user buys synthetic asset.
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_buy_fee())]
+        pub fn set_synthetic_asset_buy_fee(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+            fee_percent: Fixed,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            EnabledSynthetics::<T>::try_mutate(synthetic_asset, |option_info| -> DispatchResult {
+                let info = option_info
+                    .as_mut()
+                    .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
+                info.buy_fee_percent = fee_percent;
+                Ok(())
+            })?;
+
+            Ok(().into())
+        }
+
+        /// Set synthetic asset sell fee. Default value is `0%`.
+        ///
+        /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
+        /// burned when user sells synthetic asset.
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_sell_fee())]
+        pub fn set_synthetic_asset_sell_fee(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+            fee_percent: Fixed,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            EnabledSynthetics::<T>::try_mutate(synthetic_asset, |option_info| -> DispatchResult {
+                let info = option_info
+                    .as_mut()
+                    .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
+                info.sell_fee_percent = fee_percent;
+                Ok(())
+            })?;
+
             Ok(().into())
         }
     }
@@ -380,7 +429,7 @@ impl<T: Config> Pallet<T> {
         asset_name: AssetName,
         reference_symbol: T::Symbol,
         transactional: bool,
-    ) -> DispatchResult {
+    ) -> sp_runtime::DispatchResult {
         let code = || {
             if EnabledSymbols::<T>::contains_key(&reference_symbol) {
                 return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
@@ -435,7 +484,7 @@ impl<T: Config> Pallet<T> {
         h256.into()
     }
 
-    fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> DispatchResult {
+    fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
         trading_pair::Pallet::<T>::register_pair(
             DEXId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),

@@ -59,6 +59,18 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
+    fn set_synthetic_asset_buy_fee() -> Weight {
+        // TODO
+        (210_815_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn set_synthetic_asset_sell_fee() -> Weight {
+        // TODO
+        (210_815_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -72,6 +84,12 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn disable_synthetic_asset() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn set_synthetic_asset_buy_fee() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn set_synthetic_asset_sell_fee() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
