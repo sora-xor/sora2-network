@@ -3190,8 +3190,8 @@ fn test_batch_swap_successful() {
             KSM,
             GetBaseAssetId::get(),
             SwapAmount::with_desired_input(balance!(100), 0),
-            [].to_vec(),
-            FilterMode::Disabled,
+            [LiquiditySourceType::MulticollateralBondingCurvePool].to_vec(),
+            FilterMode::AllowSelected,
         ));
     })
 }

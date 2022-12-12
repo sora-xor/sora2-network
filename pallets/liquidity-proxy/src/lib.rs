@@ -31,7 +31,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use std::fmt::Formatter;
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
@@ -152,7 +151,6 @@ impl<T: Config> ExchangePath<T> {
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
         let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
-        println!("in: {:?}, out: {:?}", input_type, output_type);
 
         match (input_type, output_type) {
             forward_or_backward!(Base, Basic)
@@ -1521,9 +1519,13 @@ pub struct BatchReceiverInfo<T: Config> {
     pub amount: Balance,
 }
 
+#[cfg(feature = "std")]
 impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "BatchReceiverInfo {{ account_id: {:?}, amount: {:?} }}",
+            self.account_id, self.amount
+        ))
     }
 }
 
@@ -1535,7 +1537,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::print;
 
     #[pallet::config]
     pub trait Config:
@@ -1685,7 +1686,6 @@ pub mod pallet {
             )?;
             let total_out = outcome.amount;
             let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
-            println!("{} == {}", total_out, desired_out);
             ensure!(
                 total_out == desired_out,
                 Error::<T>::TotalBatchOutputMismatch

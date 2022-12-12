@@ -904,14 +904,29 @@ impl pool_xyk::Config for Runtime {
 
 parameter_types! {
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        // TODO(Harrm): why pswap_distribution?
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
             pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
         );
         tech_account_id
     };
+    pub GetLiquidityProxyBatchSwapTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            liquidity_proxy::TECH_ACCOUNT_BATCH_SWAP.to_vec(),
+        );
+        tech_account_id
+    };
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetLiquidityProxyBatchSwapAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyBatchSwapTechAccountId::get();
         let account_id =
             technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
@@ -941,6 +956,7 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
+    type GetBatchSwapTechnicalAccountId = GetLiquidityProxyBatchSwapAccountId;
     type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type PrimaryMarketXST = xst::Pallet<Runtime>;
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
