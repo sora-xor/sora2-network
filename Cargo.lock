@@ -600,7 +600,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#7f2c26a4dd51d5095197e91502eec220edfd0d80"
 dependencies = [
  "bridge-common",
  "ethabi",
@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#7f2c26a4dd51d5095197e91502eec220edfd0d80"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -634,7 +634,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#7f2c26a4dd51d5095197e91502eec220edfd0d80"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -939,7 +939,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#ed0d3a7ab301c75a37b2068d8d73da7e8fc67c11"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=beefy_light_client_pallet-v0.9.31#7f2c26a4dd51d5095197e91502eec220edfd0d80"
 dependencies = [
  "bitvec 1.0.1",
  "ethabi",
@@ -5069,9 +5069,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.6.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec947b7a4ce12e3b87e353abae7ce124d025b6c7d6c5aea5cc0bcf92e9510ded"
+checksum = "11b0d96e660696543b251e58030cf9787df56da39dab19ad60eae7353040917e"
 
 [[package]]
 name = "iroha-migration"
@@ -8922,11 +8922,10 @@ checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rayon"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e060280438193c554f654141c9ea9417886713b7acd75974c85b18a69a88e0b"
+checksum = "6db3a213adf02b3bcfd2d3846bb41cb22857d131789e01df434fb7e7bc0759b7"
 dependencies = [
- "crossbeam-deque",
  "either",
  "rayon-core",
 ]
@@ -10782,9 +10781,9 @@ checksum = "930c0acf610d3fdb5e2ab6213019aaa04e227ebe9547b0649ba599b16d788bd7"
 
 [[package]]
 name = "serde"
-version = "1.0.149"
+version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "256b9932320c590e707b94576e3cc1f7c9024d0ee6612dfbcf1cb106cbe8e055"
+checksum = "e326c9ec8042f1b5da33252c8a37e9ffbd2c9bef0155215b6e6c80c790e05f91"
 dependencies = [
  "serde_derive",
 ]
@@ -10810,9 +10809,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.149"
+version = "1.0.150"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4eae9b04cbffdfd550eb462ed33bc6a1b68c935127d008b27444d08380f94e4"
+checksum = "42a3df25b0713732468deadad63ab9da1f1fd75a48a15024b50363f128db627e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -13459,9 +13458,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.22.5"
+version = "0.22.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368bfe657969fb01238bb756d351dcade285e0f6fcbd36dcb23359a5169975be"
+checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
 ]
