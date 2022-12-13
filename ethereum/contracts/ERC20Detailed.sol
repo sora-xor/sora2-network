@@ -1,5 +1,6 @@
-pragma solidity ^0.7.4;
-// "SPDX-License-Identifier: Apache License 2.0"
+// SPDX-License-Identifier: Apache 2.0
+
+pragma solidity =0.8.17;
 
 import "./IERC20.sol";
 
@@ -14,14 +15,15 @@ abstract contract ERC20Detailed is IERC20 {
     string private _symbol;
     uint8 private _decimals;
 
-    constructor (
-        string memory name_, 
-        string memory symbol_, 
-        uint8 decimals_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_
+    ) {
         _name = name_;
         _symbol = symbol_;
         _decimals = decimals_;
-    } 
+    }
 
     /**
      * @return the name of the token.

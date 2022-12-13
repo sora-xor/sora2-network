@@ -1,5 +1,6 @@
-pragma solidity ^0.7.4;
-// "SPDX-License-Identifier: Apache License 2.0"
+// SPDX-License-Identifier: Apache 2.0
+
+pragma solidity =0.8.17;
 
 import "./ERC20.sol";
 
