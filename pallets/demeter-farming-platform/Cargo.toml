@@ -1,50 +1,57 @@
 [package]
 description = "Pallet for DEMETER farming platform."
-authors = ["Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>, Jovan Milosevic <jovan.milosevic@cerestoken.io>"]
+authors = [
+    "Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>, Jovan Milosevic <jovan.milosevic@cerestoken.io>",
+]
 license = "BSD-4-Clause"
 homepage = "https://cerestoken.io"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "demeter-farming-platform"
 version = "1.0.0"
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { version = "3", default-features = false, optional = true }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-sp-core = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+serde = { version = "1.0.101", optional = true, features = [
+    "derive",
+], default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
-technical = { path = "../technical" , default-features = false}
-pallet-timestamp = { version = "3", default-features = false }
+technical = { path = "../technical", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
-ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
-demeter-farming-platform = { path = ".", default-features = false }
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-sp-io = { version = "3", default-features = false }
-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
-pallet-balances = { version = "3" }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
+demeter-farming-platform = { path = "." }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 permissions = { path = "../permissions" }
-technical = { path = "../technical", default-features = false }
-pool-xyk = { path = "../pool-xyk", default-features = false }
+technical = { path = "../technical" }
+pool-xyk = { path = "../pool-xyk" }
 pswap-distribution = { path = "../pswap-distribution" }
-multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
-dex-manager = { path = "../dex-manager", default-features = false }
-vested-rewards = { path = "../vested-rewards", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+dex-manager = { path = "../dex-manager" }
+vested-rewards = { path = "../vested-rewards" }
 
 [features]
 default = ["std"]
@@ -57,6 +64,13 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "pallet-timestamp/std",
+    "technical/std",
+    "trading-pair/std",
+    "pswap-distribution/std",
+    "common/std",
+    "assets/std",
+    "ceres-liquidity-locker/std",
 ]
 
 runtime-benchmarks = [

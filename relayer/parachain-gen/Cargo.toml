@@ -1,0 +1,24 @@
+[package]
+name = "parachain-gen"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+reqwest = { version = "0.11.2", features = ["blocking"] }
+
+[dependencies]
+common = { path = "../../common" }
+subxt = "0.24.0"
+codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
+scale-info = { version = "2", features = ["derive"] }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+bridge-common = {git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+jsonrpsee = { version = "0.14", features = [
+    "macros",
+    "ws-client",
+    "http-client",
+] }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+async-trait = "0.1.49"
+serde = { version = "1.0.137", features = ["derive"] }

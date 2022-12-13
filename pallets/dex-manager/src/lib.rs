@@ -40,6 +40,8 @@ use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
 
+pub mod migrations;
+
 #[cfg(test)]
 mod mock;
 
@@ -48,7 +50,7 @@ mod tests;
 
 type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
 
-impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Module<T> {
+impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pallet<T> {
     fn ensure_can_manage<OuterOrigin>(
         dex_id: &T::DEXId,
         origin: OuterOrigin,
@@ -71,7 +73,7 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Modu
     }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
         Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
     }
@@ -89,7 +91,7 @@ impl<T: Config> Module<T> {
     }
 
     fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {
-        permissions::Module::<T>::check_permission_with_scope(
+        permissions::Pallet::<T>::check_permission_with_scope(
             who.clone(),
             MANAGE_DEX,
             &Scope::Limited(hash(&dex_id)),
@@ -104,17 +106,19 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {}
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}

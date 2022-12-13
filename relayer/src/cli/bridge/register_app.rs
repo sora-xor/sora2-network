@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
-use crate::{cli::prelude::*, substrate::AssetId};
-use bridge_types::H160;
+use crate::cli::prelude::*;
+use crate::substrate::AssetId;
+use bridge_types::types::AssetKind;
+use bridge_types::{H160, U256};
 use common::{AssetName, AssetSymbol, ETH};
 use substrate_gen::runtime;
 
@@ -71,6 +73,9 @@ impl Command {
         let eth = self.eth.get_unsigned_ethereum().await?;
         let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
+        if self.check_if_registered(&sub, network_id).await? {
+            return Ok(());
+        }
         let call = match &self.apps {
             Apps::ERC20App { contract } => {
                 runtime::runtime_types::framenode_runtime::Call::ERC20App(
@@ -126,18 +131,93 @@ impl Command {
             )
             }
         };
+        info!("Sudo call extrinsic: {:?}", call);
         let result = sub
             .api()
             .tx()
-            .sudo()
-            .sudo(false, call)?
-            .sign_and_submit_then_watch_default(&sub)
+            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
             .await?
             .wait_for_in_block()
             .await?
             .wait_for_success()
             .await?;
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
+    }
+
+    async fn check_if_registered(
+        &self,
+        sub: &SubSignedClient,
+        network_id: U256,
+    ) -> AnyResult<bool> {
+        let (contract, registered) = match self.apps {
+            Apps::ERC20App { contract } => {
+                let registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage()
+                            .erc20_app()
+                            .app_addresses(&network_id, &AssetKind::Sidechain),
+                        None,
+                    )
+                    .await?;
+                (contract, registered)
+            }
+            Apps::NativeApp { contract } => {
+                let registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage()
+                            .erc20_app()
+                            .app_addresses(&network_id, &AssetKind::Thischain),
+                        None,
+                    )
+                    .await?;
+                (contract, registered)
+            }
+            Apps::EthAppPredefined { contract }
+            | Apps::EthAppNew { contract, .. }
+            | Apps::EthAppExisting { contract, .. } => {
+                let registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage().eth_app().addresses(&network_id),
+                        None,
+                    )
+                    .await?
+                    .map(|(contract, _)| contract);
+                (contract, registered)
+            }
+            Apps::MigrationApp { contract } => {
+                let registered = sub
+                    .api()
+                    .storage()
+                    .fetch(
+                        &sub_runtime::storage()
+                            .migration_app()
+                            .addresses(&network_id),
+                        None,
+                    )
+                    .await?;
+                (contract, registered)
+            }
+        };
+        if let Some(registered) = registered {
+            if registered == contract {
+                info!("App already registered");
+            } else {
+                info!(
+                    "App already registered with different contract address: {} != {}",
+                    contract, registered
+                );
+            }
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }

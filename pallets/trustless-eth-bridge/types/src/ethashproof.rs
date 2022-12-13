@@ -10,11 +10,9 @@ use sp_std::vec;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-use crate::difficulty::EPOCH_LENGTH;
-use crate::difficulty::ETCHASH_EPOCH_LENGTH;
-use crate::ethashdata::ETCHASH_DAGS_MERKLE_ROOTS;
-use crate::ethashdata::ETCHASH_DAGS_START_EPOCH;
+use crate::difficulty::{EPOCH_LENGTH, ETCHASH_EPOCH_LENGTH};
 pub use crate::ethashdata::{DAGS_MERKLE_ROOTS, DAGS_START_EPOCH};
+use crate::ethashdata::{ETCHASH_DAGS_MERKLE_ROOTS, ETCHASH_DAGS_START_EPOCH};
 
 /// Width of mix
 const MIX_BYTES: usize = 128;
@@ -363,7 +361,7 @@ mod tests {
         let mut prover = EthashProver::with_hashimoto_light(EPOCH_LENGTH, 1);
         let (mix_hash, _) =
             prover.hashimoto_light(header_partial_hash, header_nonce, header_number);
-        assert_eq!(mix_hash, header_mix_hash);
+        assert_eq!(header_mix_hash, H256::from(mix_hash.as_bytes()));
     }
 
     #[test]

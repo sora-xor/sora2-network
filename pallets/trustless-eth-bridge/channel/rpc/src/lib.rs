@@ -31,10 +31,11 @@
 use bridge_types::CHANNEL_INDEXING_PREFIX;
 use codec::{Decode, Encode};
 
-use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
+use jsonrpsee::core::RpcResult as Result;
+use jsonrpsee::proc_macros::rpc;
 use sp_api::offchain::OffchainStorage;
 
-pub use bridge_channel::outbound::Commitment;
+pub use bridge_outbound_channel::Commitment;
 use sp_core::H256;
 
 #[rpc(server, client)]

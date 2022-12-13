@@ -29,17 +29,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, Module};
-use common::{EnsureTradingPairExists, LiquiditySourceType, TradingPair, DOT, KSM, XOR};
+use crate::{Error, Pallet};
+use common::{EnsureTradingPairExists, LiquiditySourceType, TradingPair, DOT, KSM, XOR, XSTUSD};
 use frame_support::{assert_noop, assert_ok};
 
-type TradingPairModule = Module<Runtime>;
+type TradingPairPallet = Pallet<Runtime>;
 
 #[test]
 fn should_register_trading_pair() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        assert_ok!(TradingPairModule::register(
+        assert_ok!(TradingPairPallet::register(
             Origin::signed(ALICE),
             DEX_ID,
             XOR,
@@ -49,18 +49,25 @@ fn should_register_trading_pair() {
 }
 
 #[test]
-fn should_not_register_duplicate_trading_pair() {
+fn should_register_with_another_dex_id() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        assert_ok!(TradingPairModule::register(
+        assert_ok!(TradingPairPallet::register(
             Origin::signed(ALICE),
-            DEX_ID,
-            XOR,
+            1,
+            XSTUSD,
             DOT
         ));
+    });
+}
+
+#[test]
+fn should_not_register_with_another_dex_id_with_wrong_base_asset_id() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
         assert_noop!(
-            TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
-            Error::<Runtime>::TradingPairExists
+            TradingPairPallet::register(Origin::signed(ALICE), 1, XOR, DOT),
+            Error::<Runtime>::ForbiddenBaseAssetId
         );
     });
 }
@@ -70,7 +77,7 @@ fn should_not_register_trading_pair_with_wrong_base_asset() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            TradingPairModule::register(Origin::signed(ALICE), DEX_ID, DOT, XOR),
+            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, DOT, XOR),
             Error::<Runtime>::ForbiddenBaseAssetId
         );
     });
@@ -81,7 +88,7 @@ fn should_not_register_trading_pair_with_same_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, XOR),
+            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, XOR),
             Error::<Runtime>::IdenticalAssetIds
         );
     });
@@ -92,55 +99,55 @@ fn should_list_registered_pairs() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_eq!(
-            TradingPairModule::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
+            TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
             vec![]
         );
         assert!(
-            !TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT)
+            !TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT)
                 .expect("Failed to query pair state.")
         );
         assert!(
-            !TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
+            !TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to query pair state.")
         );
         assert_noop!(
-            TradingPairModule::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
+            TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
             Error::<Runtime>::TradingPairDoesntExist
         );
         assert_noop!(
-            TradingPairModule::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
+            TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
             Error::<Runtime>::TradingPairDoesntExist
         );
 
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
         assert_eq!(
-            TradingPairModule::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
+            TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
             vec![TradingPair {
                 base_asset_id: XOR,
                 target_asset_id: DOT
             }]
         );
         assert!(
-            TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT)
+            TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT)
                 .expect("Failed to query pair state.")
         );
         assert!(
-            !TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
+            !TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to query pair state.")
         );
-        assert_ok!(TradingPairModule::ensure_trading_pair_exists(
+        assert_ok!(TradingPairPallet::ensure_trading_pair_exists(
             &DEX_ID, &XOR, &DOT
         ));
         assert_noop!(
-            TradingPairModule::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
+            TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &KSM),
             Error::<Runtime>::TradingPairDoesntExist
         );
 
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
             .expect("Failed to register pair.");
         assert_eq!(
-            TradingPairModule::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
+            TradingPairPallet::list_trading_pairs(&DEX_ID).expect("Failed to list trading pairs."),
             vec![
                 TradingPair {
                     base_asset_id: XOR,
@@ -153,17 +160,17 @@ fn should_list_registered_pairs() {
             ]
         );
         assert!(
-            TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
+            TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to query pair state.")
         );
         assert!(
-            TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
+            TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to query pair state.")
         );
-        assert_ok!(TradingPairModule::ensure_trading_pair_exists(
+        assert_ok!(TradingPairPallet::ensure_trading_pair_exists(
             &DEX_ID, &XOR, &DOT
         ));
-        assert_ok!(TradingPairModule::ensure_trading_pair_exists(
+        assert_ok!(TradingPairPallet::ensure_trading_pair_exists(
             &DEX_ID, &XOR, &KSM
         ));
     });
@@ -173,20 +180,20 @@ fn should_list_registered_pairs() {
 fn should_enable_sources_for_pair_correctly() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, KSM)
             .expect("Failed to register pair.");
         // check initial states after trading pair registration
         assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT)
+            TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
             vec![]
         );
         assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
+            TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
@@ -194,14 +201,14 @@ fn should_enable_sources_for_pair_correctly() {
         );
 
         // pre check for enabled sources
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
             LiquiditySourceType::XYKPool
         )
         .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
@@ -211,20 +218,20 @@ fn should_enable_sources_for_pair_correctly() {
 
         // enable source on one pair and check both trading pairs
         assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
+            TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
             vec![]
         );
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
             LiquiditySourceType::XYKPool
         )
         .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
@@ -233,7 +240,7 @@ fn should_enable_sources_for_pair_correctly() {
         .expect("Failed to query pair state."));
 
         // enable source for another pair
-        TradingPairModule::enable_source_for_trading_pair(
+        TradingPairPallet::enable_source_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
@@ -241,20 +248,20 @@ fn should_enable_sources_for_pair_correctly() {
         )
         .expect("Failed to enable source for pair.");
         assert_eq!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
+            TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &KSM)
                 .expect("Failed to list enabled sources for pair.")
                 .into_iter()
                 .collect::<Vec<_>>(),
             vec![]
         );
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
             LiquiditySourceType::XYKPool
         )
         .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
@@ -263,14 +270,14 @@ fn should_enable_sources_for_pair_correctly() {
         .expect("Failed to query pair state."));
 
         // enable another source for first trading pair
-        assert!(TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
             LiquiditySourceType::XYKPool
         )
         .expect("Failed to query pair state."));
-        assert!(!TradingPairModule::is_source_enabled_for_trading_pair(
+        assert!(!TradingPairPallet::is_source_enabled_for_trading_pair(
             &DEX_ID,
             &XOR,
             &KSM,
@@ -284,15 +291,15 @@ fn should_enable_sources_for_pair_correctly() {
 fn duplicate_enabled_source_should_not_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
-        assert_ok!(TradingPairModule::enable_source_for_trading_pair(
+        assert_ok!(TradingPairPallet::enable_source_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
             LiquiditySourceType::MockPool,
         ));
-        assert_ok!(TradingPairModule::enable_source_for_trading_pair(
+        assert_ok!(TradingPairPallet::enable_source_for_trading_pair(
             &DEX_ID,
             &XOR,
             &DOT,
@@ -305,10 +312,10 @@ fn duplicate_enabled_source_should_not_fail() {
 fn should_not_enable_source_for_unregistered_pair() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
+        TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT)
             .expect("Failed to register pair.");
         assert_noop!(
-            TradingPairModule::enable_source_for_trading_pair(
+            TradingPairPallet::enable_source_for_trading_pair(
                 &DEX_ID,
                 &XOR,
                 &KSM,
@@ -324,27 +331,27 @@ fn should_fail_with_nonexistent_dex() {
     let mut ext = ExtBuilder::without_initialized_dex().build();
     ext.execute_with(|| {
         assert_noop!(
-            TradingPairModule::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
+            TradingPairPallet::register(Origin::signed(ALICE), DEX_ID, XOR, DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
+            TradingPairPallet::ensure_trading_pair_exists(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::list_trading_pairs(&DEX_ID),
+            TradingPairPallet::list_trading_pairs(&DEX_ID),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT),
+            TradingPairPallet::is_trading_pair_enabled(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT),
+            TradingPairPallet::list_enabled_sources_for_trading_pair(&DEX_ID, &XOR, &DOT),
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::is_source_enabled_for_trading_pair(
+            TradingPairPallet::is_source_enabled_for_trading_pair(
                 &DEX_ID,
                 &XOR,
                 &DOT,
@@ -353,7 +360,7 @@ fn should_fail_with_nonexistent_dex() {
             dex_manager::Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            TradingPairModule::enable_source_for_trading_pair(
+            TradingPairPallet::enable_source_for_trading_pair(
                 &DEX_ID,
                 &XOR,
                 &DOT,

@@ -38,20 +38,24 @@ use common::prelude::{Balance, FixedWrapper};
 use crate::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
-use crate::{Config, Error, Module, MIN_LIQUIDITY};
+use crate::{Config, Error, Pallet, MIN_LIQUIDITY};
 
 use crate::bounds::*;
 use crate::operations::*;
 
-impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.0.amount == Bounds::Dummy || self.source.1.amount == Bounds::Dummy
     }
 
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+    fn prepare_and_validate(
+        &mut self,
+        source_opt: Option<&AccountIdOf<T>>,
+        _base_asset_id: &AssetIdOf<T>,
+    ) -> DispatchResult {
+        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
 
         // Check that client account is same as source, because signature is checked for source.
         // Signature checking is used in extrinsics for example, and source is derived from origin.
@@ -83,9 +87,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+            technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
+        Pallet::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
 
         // Balance of source account for asset pair.
         let (balance_bs, balance_ts) = if abstract_checking {
@@ -93,11 +97,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         } else {
             let source = source_opt.unwrap();
             (
-                Some(<assets::Module<T>>::free_balance(
+                Some(<assets::Pallet<T>>::free_balance(
                     &self.source.0.asset,
                     &source,
                 )?),
-                Some(<assets::Module<T>>::free_balance(
+                Some(<assets::Pallet<T>>::free_balance(
                     &self.source.1.asset,
                     &source,
                 )?),
@@ -110,10 +114,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         // Balance of pool account for asset pair basic asset.
         let balance_bp =
-            <assets::Module<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
         // Balance of pool account for asset pair target asset.
         let balance_tp =
-            <assets::Module<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
 
         let mut empty_pool = false;
         if balance_bp == 0 && balance_tp == 0 {
@@ -151,8 +155,16 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 if abstract_checking {
                     None
                 } else {
-                    let fxw_value =
-                        to_fixed_wrapper!(init_x).multiply_and_sqrt(&to_fixed_wrapper!(init_y));
+                    let fxw_init_x = to_fixed_wrapper!(init_x);
+                    let fxw_init_y = to_fixed_wrapper!(init_y);
+                    let fxw_value = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
+                    ensure!(
+                        !((fxw_value.clone() * fxw_init_x.clone())
+                            .try_into_balance()
+                            .is_err()
+                            || (fxw_value.clone() * fxw_init_y).try_into_balance().is_err()),
+                        Error::<T>::CalculatedValueIsOutOfDesiredBounds
+                    );
                     let value = to_balance!(fxw_value.clone());
                     Some(value)
                 }
@@ -186,7 +198,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                             .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
 
                         let (calc_xdes, calc_ydes, calc_marker) =
-                            Module::<T>::calc_deposit_liquidity_1(
+                            Pallet::<T>::calc_deposit_liquidity_1(
                                 total_iss, balance_bp, balance_tp, xdes, ydes, xmin, ymin,
                             )?;
 
@@ -265,23 +277,27 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     }
 }
 
-impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>
     for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+    fn reserve(
+        &self,
+        source: &AccountIdOf<T>,
+        base_asset_id: &AssetIdOf<T>,
+    ) -> dispatch::DispatchResult {
         ensure!(
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
         let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        technical::Module::<T>::transfer_in(
+            technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        technical::Pallet::<T>::transfer_in(
             &self.source.0.asset,
             &source,
             &self.pool_account,
             self.source.0.amount.unwrap(),
         )?;
-        technical::Module::<T>::transfer_in(
+        technical::Pallet::<T>::transfer_in(
             &self.source.1.asset,
             &source,
             &self.pool_account,
@@ -289,20 +305,27 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         )?;
         let receiver_account = self.receiver_account.as_ref().unwrap();
         // Pool tokens balance is zero while minted amount will be non-zero.
-        if Module::<T>::pool_providers(&pool_account_repr_sys, receiver_account)
+        if Pallet::<T>::pool_providers(&pool_account_repr_sys, receiver_account)
             .unwrap_or(0)
             .is_zero()
             && !self.pool_tokens.is_zero()
         {
-            let pair = Module::<T>::strict_sort_pair(&self.source.0.asset, &self.source.1.asset)?;
-            AccountPools::<T>::mutate(receiver_account, |set| set.insert(pair.target_asset_id));
+            let pair = Pallet::<T>::strict_sort_pair(
+                base_asset_id,
+                &self.source.0.asset,
+                &self.source.1.asset,
+            )?;
+            AccountPools::<T>::mutate(receiver_account, &pair.base_asset_id, |set| {
+                set.insert(pair.target_asset_id)
+            });
         }
-        Module::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
+        Pallet::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
         let balance_a =
-            <assets::Module<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
+            <assets::Pallet<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
         let balance_b =
-            <assets::Module<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
-        Module::<T>::update_reserves(
+            <assets::Pallet<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
+        Pallet::<T>::update_reserves(
+            base_asset_id,
             &self.source.0.asset,
             &self.source.1.asset,
             (&balance_a, &balance_b),

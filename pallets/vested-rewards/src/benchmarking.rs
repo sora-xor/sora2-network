@@ -50,7 +50,7 @@ use technical::Pallet as Technical;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
@@ -76,11 +76,12 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
         VestedRewards::<T>::update_market_maker_records(
             &user_account,
+            &XOR.into(),
             balance!(100),
             500,
             &PSWAP.into(),
             &ETH.into(),
-            Some(&XOR.into()),
+            &[XOR.into()],
         )
         .unwrap();
     }
@@ -89,11 +90,12 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
         VestedRewards::<T>::update_market_maker_records(
             &user_account,
+            &XOR.into(),
             balance!(100),
             100,
             &PSWAP.into(),
             &ETH.into(),
-            Some(&XOR.into()),
+            &[XOR.into()],
         )
         .unwrap();
     }
@@ -175,10 +177,10 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_claim_rewards::<Runtime>());
-            assert_ok!(test_benchmark_distribute_limits::<Runtime>());
-            assert_ok!(test_benchmark_distribute_market_maker_rewards::<Runtime>());
-            assert_ok!(test_benchmark_set_asset_pair::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_rewards());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_limits());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_market_maker_rewards());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_asset_pair());
         });
     }
 }

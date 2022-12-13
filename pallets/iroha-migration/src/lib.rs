@@ -53,11 +53,10 @@ mod tests;
 pub mod weights;
 
 use common::prelude::Balance;
-use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, Weight};
-use frame_support::sp_runtime::traits::Zero;
+use frame_support::log::error;
 use frame_support::weights::Pays;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
@@ -85,8 +84,9 @@ where
     446400u32.into()
 }
 
-#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 struct PendingMultisigAccount<T>
 where
     T: frame_system::Config,
@@ -173,7 +173,7 @@ impl<T: Config> Pallet<T> {
             .as_slice()
             .try_into()
             .map_err(|_| Error::<T>::SignatureParsingFailed)?;
-        Ok(Signature::new(signature_bytes))
+        Ok(Signature::from(signature_bytes))
     }
 
     fn verify_signature(
@@ -184,14 +184,14 @@ impl<T: Config> Pallet<T> {
         let public_key = Self::parse_public_key(iroha_public_key)?;
         let signature = Self::parse_signature(iroha_signature)?;
         let message = format!("{}{}", iroha_address, iroha_public_key);
-        frame_support::debug::error!("faucet: message: {}", message);
+        error!("faucet: message: {}", message);
         let mut prehashed_message = Sha3_256::default();
         prehashed_message.update(&message[..]);
         {
             let mut prehashed_message = Sha3_256::default();
             prehashed_message.update(&message[..]);
             let hashed_message = prehashed_message.finalize();
-            frame_support::debug::error!(
+            error!(
                 "faucet: hashed_message: {}",
                 hex::encode(hashed_message.as_slice())
             );
@@ -239,7 +239,7 @@ impl<T: Config> Pallet<T> {
                 pending_account.approving_accounts
             };
             let multi_account =
-                pallet_multisig::Module::<T>::multi_account_id(&signatories, quorum as u16);
+                pallet_multisig::Pallet::<T>::multi_account_id(&signatories, quorum as u16);
             Self::migrate_account(iroha_address, multi_account)?;
         } else {
             let quorum = Quorums::<T>::get(&iroha_address) as usize;
@@ -269,24 +269,9 @@ impl<T: Config> Pallet<T> {
     }
 
     fn migrate_balance(
-        iroha_address: &String,
-        account: &T::AccountId,
+        _iroha_address: &String,
+        _account: &T::AccountId,
     ) -> Result<(), DispatchError> {
-        if let Some(balance) = Balances::<T>::take(iroha_address) {
-            if !balance.is_zero() {
-                let eth_bridge_tech_account_id = <T>::TechAccountId::from_generic_pair(
-                    eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
-                    eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
-                );
-
-                technical::Module::<T>::transfer_out(
-                    &VAL.into(),
-                    &eth_bridge_tech_account_id,
-                    account,
-                    balance,
-                )?;
-            }
-        }
         Ok(())
     }
 
@@ -324,6 +309,7 @@ pub mod pallet {
     use common::AccountIdOf;
     use frame_support::dispatch::PostDispatchInfo;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -334,8 +320,13 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -347,7 +338,7 @@ pub mod pallet {
                     if block_number > migrate_at {
                         value.approving_accounts.sort();
                         let quorum = Quorums::<T>::take(&key);
-                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(
+                        let multi_account = pallet_multisig::Pallet::<T>::multi_account_id(
                             &value.approving_accounts,
                             quorum as u16,
                         );
@@ -377,8 +368,8 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                frame_support::debug::error!("faucet: iroha_public_key: {}", iroha_public_key);
-                frame_support::debug::error!("faucet: iroha_signature: {}", iroha_signature);
+                error!("faucet: iroha_public_key: {}", iroha_public_key);
+                error!("faucet: iroha_signature: {}", iroha_signature);
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),
@@ -410,7 +401,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Migrated. [source, target]
@@ -455,7 +445,7 @@ pub mod pallet {
     pub(super) type Quorums<T: Config> = StorageMap<_, Blake2_128Concat, String, u8, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type Account<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type Account<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub(super) type MigratedAccounts<T: Config> =
@@ -471,7 +461,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub account_id: T::AccountId,
+        pub account_id: Option<T::AccountId>,
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
     }
 
@@ -488,8 +478,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.account_id).unwrap();
-            Account::<T>::put(&self.account_id);
+            frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
+            Account::<T>::put(&self.account_id.as_ref().unwrap());
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
                 Balances::<T>::insert(account_id, *balance);

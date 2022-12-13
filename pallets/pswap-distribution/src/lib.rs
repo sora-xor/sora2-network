@@ -33,15 +33,15 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquiditySourceFilter,
-    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet,
+    PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
-use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
 
 pub mod weights;
@@ -52,15 +52,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod migration;
-
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Assets<T> = assets::Module<T>;
-type System<T> = frame_system::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type System<T> = frame_system::Pallet<T>;
 
 pub trait WeightInfo {
     fn claim_incentive() -> Weight;
@@ -70,7 +68,7 @@ pub trait WeightInfo {
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
-    /// - `fees_account_id`: Id of Accout which accumulates fees from swaps.
+    /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
     pub fn is_subscribed(fees_account_id: &T::AccountId) -> bool {
         SubscribedAccounts::<T>::get(fees_account_id).is_some()
     }
@@ -155,9 +153,10 @@ impl<T: Config> Pallet<T> {
     /// - `dex_id`: Id of DEX to which given account belongs.
     fn exchange_fees_to_incentive(
         fees_account_id: &T::AccountId,
-        dex_id: &T::DEXId,
+        dex_id: T::DEXId,
     ) -> DispatchResult {
-        let base_total = Assets::<T>::free_balance(&T::GetBaseAssetId::get(), &fees_account_id)?;
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let base_total = Assets::<T>::free_balance(&dex_info.base_asset_id, &fees_account_id)?;
         if base_total == 0 {
             Self::deposit_event(Event::<T>::NothingToExchange(
                 dex_id.clone(),
@@ -166,9 +165,10 @@ impl<T: Config> Pallet<T> {
             return Ok(());
         }
         let outcome = T::LiquidityProxy::exchange(
+            dex_id,
             fees_account_id,
             fees_account_id,
-            &T::GetBaseAssetId::get(),
+            &dex_info.base_asset_id,
             &T::GetIncentiveAssetId::get(),
             SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
             LiquiditySourceFilter::with_allowed(
@@ -180,7 +180,7 @@ impl<T: Config> Pallet<T> {
             Ok(swap_outcome) => Self::deposit_event(Event::<T>::FeesExchanged(
                 dex_id.clone(),
                 fees_account_id.clone(),
-                T::GetBaseAssetId::get(),
+                dex_info.base_asset_id,
                 base_total,
                 T::GetIncentiveAssetId::get(),
                 swap_outcome.amount,
@@ -189,7 +189,7 @@ impl<T: Config> Pallet<T> {
             Err(_error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
                 dex_id.clone(),
                 fees_account_id.clone(),
-                T::GetBaseAssetId::get(),
+                dex_info.base_asset_id,
                 base_total,
                 T::GetIncentiveAssetId::get(),
             )),
@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
             // are to be reminted in responsible pallets.
             let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
             // Burn all incentives.
-            assets::Module::<T>::burn_from(
+            assets::Pallet::<T>::burn_from(
                 &incentive_asset_id,
                 tech_account_id,
                 fees_account_id,
@@ -273,14 +273,14 @@ impl<T: Config> Pallet<T> {
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
                 distribution.liquidity_providers,
             )?;
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 &T::GetParliamentAccountId::get(),
@@ -337,7 +337,7 @@ impl<T: Config> Pallet<T> {
             SubscribedAccounts::<T>::iter()
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
-                let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, &dex_id);
+                let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, dex_id);
                 let distribute_result = Self::distribute_incentive(
                     &fees_account,
                     &dex_id,
@@ -395,11 +395,16 @@ pub mod pallet {
     use common::{AccountIdOf, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::Percent;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + technical::Config
+        + dex_manager::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -420,8 +425,13 @@ pub mod pallet {
         type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -433,10 +443,6 @@ pub mod pallet {
             Self::burn_rate_update_routine(block_num);
 
             <T as Config>::WeightInfo::on_initialize(is_distributing)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
         }
     }
 
@@ -451,7 +457,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fees successfully exchanged for appropriate amount of pool tokens.

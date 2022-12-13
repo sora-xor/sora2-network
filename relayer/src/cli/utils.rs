@@ -147,6 +147,48 @@ impl SubstrateClient {
 }
 
 #[derive(Args, Debug, Clone)]
+pub struct ParachainClient {
+    #[clap(long, from_global)]
+    parachain_key: Option<String>,
+    #[clap(long, from_global)]
+    parachain_key_file: Option<String>,
+    #[clap(long, from_global)]
+    parachain_url: Option<String>,
+}
+
+impl ParachainClient {
+    pub fn get_key_string(&self) -> AnyResult<String> {
+        match (&self.parachain_key, &self.parachain_key_file) {
+            (Some(_), Some(_)) => Err(CliError::BothKeyTypesProvided.into()),
+            (None, None) => Err(CliError::ParachainKey.into()),
+            (Some(key), _) => Ok(key.clone()),
+            (_, Some(key_file)) => Ok(std::fs::read_to_string(key_file)?),
+        }
+    }
+
+    pub fn get_url(&self) -> AnyResult<String> {
+        Ok(self
+            .parachain_url
+            .clone()
+            .ok_or(CliError::ParachainEndpoint)?)
+    }
+
+    pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient> {
+        let sub = SubUnsignedClient::new(self.get_url()?).await?;
+        Ok(sub)
+    }
+
+    pub async fn get_signed_substrate(&self) -> AnyResult<SubSignedClient> {
+        let sub = self
+            .get_unsigned_substrate()
+            .await?
+            .try_sign_with(self.get_key_string()?.as_str())
+            .await?;
+        Ok(sub)
+    }
+}
+
+#[derive(Args, Debug, Clone)]
 pub struct EthereumClient {
     #[clap(long, global = true, from_global)]
     ethereum_key: Option<String>,

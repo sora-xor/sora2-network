@@ -1,7 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::unnecessary_mut_passed)]
-
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -32,18 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::Codec;
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use sp_std::prelude::*;
 
-sp_api::decl_runtime_apis! {
-    pub trait FarmingRuntimeApi<AccountId, FarmName, FarmInfo, FarmerInfo> where
-        AccountId: Codec,
-        FarmName: Codec,
-        FarmInfo: Codec,
-        FarmerInfo: Codec,
-    {
-        fn get_farm_info(who: AccountId, name: FarmName) -> Option<FarmInfo>;
+use codec::Codec;
 
-        fn get_farmer_info(who: AccountId, name: FarmName) -> Option<FarmerInfo>;
+sp_api::decl_runtime_apis! {
+    pub trait FarmingApi<AssetId: Codec> {
+        fn reward_doubling_assets() -> Vec<AssetId>;
     }
 }

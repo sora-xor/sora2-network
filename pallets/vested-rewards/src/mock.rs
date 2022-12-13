@@ -30,22 +30,26 @@
 
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, DEXInfo};
+use common::prelude::{
+    Balance, DEXInfo, LiquiditySourceType, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use common::{
     balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, XOR,
+    Description, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION, DOT,
+    KSM, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
+use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{DispatchError, Perbill, Percent};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -56,22 +60,22 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        Technical: technical::{Module, Call, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -96,6 +100,39 @@ pub fn initial_assets_owner() -> AccountId {
 pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
+pub struct MockLiquidityProxy;
+
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        match _amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => Ok(SwapOutcome {
+                amount: desired_amount_in * 2,
+                fee: 0,
+            }),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn exchange(
+        _dex_id: DEXId,
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: SwapAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+}
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -110,13 +147,12 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([156; 32]);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -138,6 +174,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl Config for Runtime {
@@ -157,6 +195,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
@@ -164,7 +208,6 @@ parameter_types! {
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -178,6 +221,16 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = 0;
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
@@ -185,15 +238,20 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -210,7 +268,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type LiquidityProxy = ();
+    type LiquidityProxy = MockLiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
@@ -218,7 +276,7 @@ impl pswap_distribution::Config for Runtime {
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
-    type PoolXykPallet = pool_xyk::Module<Runtime>;
+    type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
 }
 
@@ -238,18 +296,18 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
-    type OnPoolCreated = pswap_distribution::Module<Runtime>;
+    type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
-    type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type LiquidityProxy = MockLiquidityProxy;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type PriceToolsPallet = ();
     type WeightInfo = ();
@@ -270,6 +328,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl permissions::Config for Runtime {
@@ -366,6 +426,7 @@ impl Default for ExtBuilder {
                 DEX_ID,
                 DEXInfo {
                     base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
                     is_public: true,
                 },
             )],
@@ -412,7 +473,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+            balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

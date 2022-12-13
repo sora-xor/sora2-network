@@ -2,9 +2,10 @@ use crate::mock::{
     new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test, BASE_NETWORK_ID,
 };
 use crate::{Addresses, Error};
+use bridge_types::types::CallOriginOutput;
 use common::{balance, XOR};
-use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;
+use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
@@ -21,7 +22,12 @@ fn mints_after_handling_ethereum_event() {
         let amount = balance!(10);
         let old_balance = Assets::total_balance(&XOR, &recipient).unwrap();
         assert_ok!(EthApp::mint(
-            dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), peer_contract).into(),
+            dispatch::RawOrigin::new(CallOriginOutput {
+                network_id: BASE_NETWORK_ID,
+                contract: peer_contract,
+                ..Default::default()
+            })
+            .into(),
             sender,
             recipient.clone(),
             amount.into()
@@ -39,6 +45,30 @@ fn mints_after_handling_ethereum_event() {
                 amount
             )),
             last_event()
+        );
+    });
+}
+
+#[test]
+fn mint_zero_amount_must_fail() {
+    new_tester().execute_with(|| {
+        let peer_contract = H160::default();
+        let sender = H160::repeat_byte(7);
+        let recipient: AccountId = Keyring::Bob.into();
+        let amount = balance!(0);
+        assert_noop!(
+            EthApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID,
+                    contract: peer_contract,
+                    ..Default::default()
+                })
+                .into(),
+                sender,
+                recipient.clone(),
+                amount.into()
+            ),
+            Error::<Test>::WrongAmount
         );
     });
 }
@@ -84,7 +114,7 @@ fn should_not_burn_on_commitment_failure() {
             balance!(500)
         ));
 
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 BASE_NETWORK_ID,
@@ -92,6 +122,25 @@ fn should_not_burn_on_commitment_failure() {
                 amount
             ),
             DispatchError::Other("some error!")
+        );
+    });
+}
+
+#[test]
+fn should_not_burn_zero_amount() {
+    new_tester().execute_with(|| {
+        let sender: AccountId = Keyring::Eve.into();
+        let recipient = H160::repeat_byte(9);
+        let amount = balance!(0);
+
+        assert_noop!(
+            EthApp::burn(
+                Origin::signed(sender.clone()),
+                BASE_NETWORK_ID,
+                recipient.clone(),
+                amount
+            ),
+            Error::<Test>::WrongAmount
         );
     });
 }
@@ -114,7 +163,7 @@ fn test_register_network() {
 fn test_existing_register_network() {
     new_tester().execute_with(|| {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
-        common::assert_noop_transactional!(
+        assert_noop!(
             EthApp::register_network_with_existing_asset(
                 Origin::root(),
                 BASE_NETWORK_ID,

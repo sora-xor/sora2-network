@@ -148,8 +148,8 @@ impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
             .is_zero()
             && !pool_tokens.is_zero()
         {
-            let pair = Module::<T>::strict_sort_pair(&asset_a, &asset_b)?;
-            AccountPools::<T>::mutate(target_account_id.clone(), |set| {
+            let pair = Pallet::<T>::strict_sort_pair(&asset_a.clone(), &asset_a, &asset_b)?;
+            AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
         }
@@ -173,10 +173,10 @@ impl<T: Config> Pallet<T> {
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
     ) -> DispatchResult {
-        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
-        let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
+        let (sorted_asset_a, sorted_asset_b) = if dex_info.base_asset_id == *asset_a {
             (asset_a, asset_b)
-        } else if &base_asset_id == asset_b {
+        } else if dex_info.base_asset_id == *asset_b {
             (asset_b, asset_a)
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
@@ -184,7 +184,7 @@ impl<T: Config> Pallet<T> {
                 common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
             (asset_a_pair.0, asset_b_pair.0)
         };
-        trading_pair::Module::<T>::enable_source_for_trading_pair(
+        trading_pair::Pallet::<T>::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
             sorted_asset_b,
@@ -199,15 +199,15 @@ impl<T: Config> Pallet<T> {
     }
 
     fn update_reserves(
+        base_asset_id: &T::AssetId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
         balance_pair: (&Balance, &Balance),
     ) {
-        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
-        if base_asset_id == asset_a.clone() {
+        if base_asset_id == asset_a {
             Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
             T::OnPoolReservesChanged::reserves_changed(asset_b);
-        } else if base_asset_id == asset_b.clone() {
+        } else if base_asset_id == asset_b {
             Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
             T::OnPoolReservesChanged::reserves_changed(asset_a);
         } else {
@@ -237,15 +237,15 @@ impl<T: Config> Pallet<T> {
         DispatchError,
     > {
         let (trading_pair, tech_acc_id) =
-            Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+            Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
         // Function initialize_pools is usually called once, just quick check if tech
         // account is not registered is enough to do the job.
         // If function is called second time, than this is not usual case and additional checks
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
-        if technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
-            if technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && trading_pair::Module::<T>::ensure_trading_pair_exists(
+        if technical::Pallet::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
+            if technical::Pallet::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
+                && trading_pair::Pallet::<T>::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
                     &trading_pair.target_asset_id.into(),
@@ -257,8 +257,8 @@ impl<T: Config> Pallet<T> {
                 Err(Error::<T>::PoolInitializationIsInvalid)?;
             }
         }
-        technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
-        technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
+        technical::Pallet::<T>::register_tech_account_id(tech_acc_id.clone())?;
+        technical::Pallet::<T>::register_tech_account_id(fee_acc_id.clone())?;
         Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
@@ -272,15 +272,12 @@ impl<T: Config> Pallet<T> {
         input_a_min: Balance,
         input_b_min: Balance,
     ) -> DispatchResult {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             input_asset_a,
             input_asset_b,
         )?;
-        ensure!(
-            input_a_desired >= input_a_min && input_b_desired >= input_b_min,
-            Error::<T>::InvalidMinimumBoundValueOfBalance
-        );
         let action = PolySwapActionStructOf::<T>::DepositLiquidity(DepositLiquidityActionOf::<T> {
             client_account: None,
             receiver_account: None,
@@ -300,7 +297,7 @@ impl<T: Config> Pallet<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::create_swap(source, &mut action)?;
+        technical::Pallet::<T>::create_swap(source, &mut action, &dex_info.base_asset_id)?;
         Ok(())
     }
 
@@ -313,7 +310,8 @@ impl<T: Config> Pallet<T> {
         output_a_min: Balance,
         output_b_min: Balance,
     ) -> DispatchResult {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             output_asset_a,
             output_asset_b,
@@ -338,14 +336,14 @@ impl<T: Config> Pallet<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::create_swap(source, &mut action)?;
+        technical::Pallet::<T>::create_swap(source, &mut action, &dex_info.base_asset_id)?;
         Ok(())
     }
 
     pub fn get_pool_trading_pair(
         pool_account: &T::AccountId,
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
-        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_account)?;
+        let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
             TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
                 base_asset_id: trading_pair.base_asset_id.into(),
@@ -357,23 +355,26 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
-    for Module<T>
+    for Pallet<T>
 {
     fn can_exchange(
-        _dex_id: &T::DEXId,
+        dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        let base_asset_id = T::GetBaseAssetId::get();
-        let target_asset_id = if input_asset_id == &base_asset_id {
-            output_asset_id
-        } else if output_asset_id == &base_asset_id {
-            input_asset_id
-        } else {
-            return false;
-        };
+        if let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) {
+            let target_asset_id = if *input_asset_id == dex_info.base_asset_id {
+                output_asset_id
+            } else if *output_asset_id == dex_info.base_asset_id {
+                input_asset_id
+            } else {
+                return false;
+            };
 
-        Properties::<T>::contains_key(&base_asset_id, &target_asset_id)
+            Properties::<T>::contains_key(&dex_info.base_asset_id, &target_asset_id)
+        } else {
+            false
+        }
     }
 
     fn quote(
@@ -383,17 +384,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
             *output_asset_id,
         )?;
-        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+        let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -403,13 +405,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         // Decide which side should be used for fee.
-        let get_fee_from_destination =
-            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
 
         // Calculate quote.
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                let (calculated, fee) = Pallet::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
@@ -420,7 +425,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Ok(SwapOutcome::new(calculated, fee))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
                     &reserve_input,
@@ -441,13 +446,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
             *output_asset_id,
         )?;
         let (source_amount, destination_amount) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
+            Pallet::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
         let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
             client_account: None,
             receiver_account: Some(receiver.clone()),
@@ -464,9 +470,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fee_account: None,
             get_fee_from_destination: None,
         });
-        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
             &mut action,
             Some(sender),
+            &dex_info.base_asset_id,
         )?;
 
         // It is guarantee that unwrap is always ok.
@@ -488,7 +495,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Pallet::<T>::create_swap_unchecked(
+            sender.clone(),
+            &mut action,
+            &dex_info.base_asset_id,
+        )?;
 
         retval
     }
@@ -511,17 +522,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
             *input_asset_id,
             *output_asset_id,
         )?;
-        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+        let pool_acc_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
 
         // Get actual pool reserves.
-        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
-        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+        let reserve_input = <assets::Pallet<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Pallet<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
 
         // Check reserves validity.
         if reserve_input == 0 && reserve_output == 0 {
@@ -531,8 +543,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
 
         // Decide which side should be used for fee.
-        let get_fee_from_destination =
-            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+        let get_fee_from_destination = Pallet::<T>::decide_is_fee_from_destination(
+            &dex_info.base_asset_id,
+            input_asset_id,
+            output_asset_id,
+        )?;
 
         let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
         let fee_fraction = if deduce_fee {
@@ -604,7 +619,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
+impl<T: Config> GetPoolReserves<T::AssetId> for Pallet<T> {
     fn reserves(base_asset: &T::AssetId, other_asset: &T::AssetId) -> (Balance, Balance) {
         Reserves::<T>::get(base_asset, other_asset)
     }
@@ -618,7 +633,7 @@ pub mod pallet {
     use super::*;
     use common::{AccountIdOf, Fixed, OnPoolCreated};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -637,13 +652,13 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         //TODO: implement and use + Into<SwapActionOf<T> for this types.
-        type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter;
-        type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+        type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
             + Parameter
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
@@ -655,22 +670,19 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-                Some(PalletVersion {
-                    major: 1,
-                    minor: 1,
-                    patch: 0,
-                }) => migrations::v1_2::migrate::<T>(),
-                _ => 0,
-            }
+            migrations::migrate::<T>()
         }
     }
 
@@ -688,7 +700,24 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
-            Module::<T>::deposit_liquidity_unchecked(
+            ensure!(
+                assets::AssetInfos::<T>::get(input_asset_a).2 != 0
+                    && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
+                Error::<T>::UnableToOperateWithIndivisibleAssets
+            );
+            ensure!(
+                input_a_desired > 0 && input_a_min > 0,
+                Error::<T>::InvalidDepositLiquidityBasicAssetAmount
+            );
+            ensure!(
+                input_b_desired > 0 && input_b_min > 0,
+                Error::<T>::InvalidDepositLiquidityTargetAssetAmount
+            );
+            ensure!(
+                input_a_desired >= input_a_min && input_b_desired >= input_b_min,
+                Error::<T>::InvalidMinimumBoundValueOfBalance
+            );
+            Pallet::<T>::deposit_liquidity_unchecked(
                 source,
                 dex_id,
                 input_asset_a,
@@ -712,7 +741,20 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
-            Module::<T>::withdraw_liquidity_unchecked(
+            ensure!(
+                assets::AssetInfos::<T>::get(output_asset_a).2 != 0
+                    && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
+                Error::<T>::UnableToOperateWithIndivisibleAssets
+            );
+            ensure!(
+                output_a_min > 0,
+                Error::<T>::InvalidWithdrawLiquidityBasicAssetAmount
+            );
+            ensure!(
+                output_b_min > 0,
+                Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
+            );
+            Pallet::<T>::withdraw_liquidity_unchecked(
                 source,
                 dex_id,
                 output_asset_a,
@@ -743,17 +785,17 @@ pub mod pallet {
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
-                let (_, tech_account_id, fees_account_id) = Module::<T>::initialize_pool_unchecked(
+                let (_, tech_account_id, fees_account_id) = Pallet::<T>::initialize_pool_unchecked(
                     source.clone(),
                     dex_id,
                     asset_a,
                     asset_b,
                 )?;
                 let ta_repr =
-                    technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
+                    technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr =
-                    technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
-                Module::<T>::initialize_pool_properties(
+                    technical::Pallet::<T>::tech_account_id_to_account_id(&fees_account_id)?;
+                Pallet::<T>::initialize_pool_properties(
                     &dex_id,
                     &asset_a,
                     &asset_b,
@@ -761,9 +803,9 @@ pub mod pallet {
                     &fees_ta_repr,
                 )?;
                 let (_, pool_account) =
-                    Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+                    Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
                 let pool_account =
-                    technical::Module::<T>::tech_account_id_to_account_id(&pool_account)?;
+                    technical::Pallet::<T>::tech_account_id_to_account_id(&pool_account)?;
                 T::OnPoolCreated::on_pool_created(fees_ta_repr, dex_id, pool_account)?;
                 Self::deposit_event(Event::PoolIsInitialized(ta_repr));
                 Ok(().into())
@@ -772,7 +814,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         // New pool for particular pair was initialized. [Reserves Account Id]
@@ -900,6 +941,8 @@ pub mod pallet {
         NotEnoughUnlockedLiquidity,
         /// Cannot create a pool with indivisible assets
         UnableToCreatePoolWithIndivisibleAssets,
+        /// Unable to proceed operation with indivisible assets
+        UnableToOperateWithIndivisibleAssets,
         /// Not enough liquidity out of farming to withdraw
         NotEnoughLiquidityOutOfFarming,
     }
@@ -933,8 +976,15 @@ pub mod pallet {
     /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
     #[pallet::storage]
     #[pallet::getter(fn account_pools)]
-    pub type AccountPools<T: Config> =
-        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
+    pub type AccountPools<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        AccountIdOf<T>,
+        Blake2_128Concat,
+        AssetIdOf<T>,
+        BTreeSet<AssetIdOf<T>>,
+        ValueQuery,
+    >;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance

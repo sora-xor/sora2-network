@@ -32,11 +32,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
-use liquidity_proxy::*;
-
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
@@ -45,8 +40,9 @@ use common::{
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
-use frame_system::RawOrigin;
+use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use liquidity_proxy::Call;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -60,7 +56,17 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Config>(liquidity_proxy::Module<T>);
+fn assert_last_event<T: liquidity_proxy::Config>(
+    generic_event: <T as liquidity_proxy::Config>::Event,
+) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
+}
+
+pub struct Pallet<T: Config>(liquidity_proxy::Pallet<T>);
 pub trait Config:
     liquidity_proxy::Config
     + pool_xyk::Config
@@ -72,13 +78,13 @@ pub trait Config:
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
 // Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
@@ -205,8 +211,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DOT.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
@@ -216,8 +222,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         VAL.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
@@ -227,8 +233,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DAI.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
@@ -238,8 +244,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         PSWAP.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
     XYKPool::<T>::deposit_liquidity(
@@ -249,15 +255,15 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         USDT.into(),
         balance!(1000),
         balance!(2000),
-        balance!(0),
-        balance!(0),
+        balance!(1000),
+        balance!(2000),
     )
     .unwrap();
 
     MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     for _ in 0..price_tools::AVG_BLOCK_SPAN {
-        price_tools::Module::<T>::average_prices_calculation_routine();
+        price_tools::Pallet::<T>::average_prices_calculation_routine();
     }
 
     Ok(())
@@ -271,7 +277,7 @@ benchmarks! {
         let to_asset: T::AssetId = XOR.into();
         let initial_from_balance = Assets::<T>::free_balance(&from_asset, &caller).unwrap();
     }: {
-        liquidity_proxy::Module::<T>::swap(
+        liquidity_proxy::Pallet::<T>::swap(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             from_asset.clone(),
@@ -295,12 +301,12 @@ benchmarks! {
         let to_asset: T::AssetId = XOR.into();
         let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
     }: {
-        liquidity_proxy::Module::<T>::swap(
+        liquidity_proxy::Pallet::<T>::swap(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             from_asset.clone(),
             to_asset.clone(),
-            SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
+            SwapAmount::with_desired_output(balance!(1), balance!(10000000)),
             [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
             FilterMode::AllowSelected
         ).unwrap();
@@ -399,6 +405,42 @@ benchmarks! {
             Into::<u128>::into(initial_to_balance) + balance!(0.999999999999999996) // FIXME: this happens because routing via two pools can't guarantee exact amount
         );
     }
+
+    enable_liquidity_source {
+        setup_benchmark::<T>()?;
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        )?;
+    }: {
+        liquidity_proxy::Pallet::<T>::enable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceEnabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
+
+    disable_liquidity_source {
+        setup_benchmark::<T>()?;
+    }: {
+        liquidity_proxy::Pallet::<T>::disable_liquidity_source(
+            RawOrigin::Root.into(),
+            LiquiditySourceType::XSTPool
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(
+            liquidity_proxy::Event::<T>::LiquiditySourceDisabled(
+                LiquiditySourceType::XSTPool
+            ).into()
+        );
+    }
 }
 
 #[cfg(test)]
@@ -410,12 +452,14 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());
-            // assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_multiple::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_primary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_primary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_multiple());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_enable_liquidity_source());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_disable_liquidity_source());
         });
     }
 }

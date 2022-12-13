@@ -1,5 +1,6 @@
 use crate::cli::prelude::*;
 use bridge_types::H160;
+use ethereum_gen::ValidatorSet;
 use ethers::prelude::builders::ContractCall;
 
 #[derive(Args, Debug)]
@@ -11,6 +12,8 @@ pub(crate) struct Command {
     /// EthApp contract address
     #[clap(long)]
     eth_app: H160,
+    #[clap(long)]
+    reset_channels: bool,
 }
 
 impl Command {
@@ -26,55 +29,38 @@ impl Command {
             ethereum_gen::OutboundChannel::new(outbound_channel_address, eth.inner());
         let beefy_address = inbound_channel.beefy_light_client().call().await?;
         let beefy = ethereum_gen::BeefyLightClient::new(beefy_address, eth.inner());
-        let validator_registry_address = beefy.validator_registry().call().await?;
-        let validator_registry =
-            ethereum_gen::ValidatorRegistry::new(validator_registry_address, eth.inner());
-        let registry_owner = validator_registry.owner().call().await?;
-        if registry_owner == eth.address() {
-            let block_hash = sub.block_hash(Some(1u32)).await?;
-            let autorities = sub
-                .api()
-                .storage()
-                .mmr_leaf()
-                .beefy_next_authorities(false, Some(block_hash))
-                .await?;
-            info!("Updating validator registry");
-            let call: ContractCall<_, _> =
-                validator_registry.update(autorities.root.0, autorities.len.into(), autorities.id);
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
-
-            info!("Transfer ownership of validator registry to Beefy");
-            let call: ContractCall<_, _> = validator_registry.transfer_ownership(beefy_address);
-            let call = call.legacy().from(eth.address());
-            debug!("Static call: {:?}", call);
-            call.call().await?;
-            debug!("Send transaction");
-            let pending = call.send().await?;
-            debug!("Pending transaction: {:?}", pending);
-            let result = pending.await?;
-            debug!("Confirmed: {:?}", result);
-        } else if registry_owner == beefy_address && beefy.owner().call().await? == eth.address() {
+        if beefy.owner().call().await? == eth.address() {
             let block_number = sub.block_number::<u32>(None).await?;
             let block_hash = sub.block_hash(Some(1u32)).await?;
             let autorities = sub
                 .api()
                 .storage()
-                .mmr_leaf()
-                .beefy_next_authorities(false, Some(block_hash))
+                .fetch_or_default(
+                    &runtime::storage().mmr_leaf().beefy_authorities(),
+                    Some(block_hash),
+                )
+                .await?;
+            let next_autorities = sub
+                .api()
+                .storage()
+                .fetch_or_default(
+                    &runtime::storage().mmr_leaf().beefy_next_authorities(),
+                    Some(block_hash),
+                )
                 .await?;
             info!("Reset beefy contract");
             let call: ContractCall<_, _> = beefy.reset(
                 block_number as u64,
-                autorities.root.0,
-                autorities.len.into(),
-                autorities.id,
+                ValidatorSet {
+                    root: autorities.root.0,
+                    length: autorities.len.into(),
+                    id: autorities.id.into(),
+                },
+                ValidatorSet {
+                    root: next_autorities.root.0,
+                    length: next_autorities.len.into(),
+                    id: next_autorities.id.into(),
+                },
             );
             let call = call.legacy().from(eth.address());
             debug!("Static call: {:?}", call);
@@ -85,16 +71,18 @@ impl Command {
             let result = pending.await?;
             debug!("Confirmed: {:?}", result);
 
-            for call in [inbound_channel.reset(), outbound_channel.reset()] {
-                info!("Reset {:?}", call.tx.to());
-                let call = call.legacy().from(eth.address());
-                debug!("Static call: {:?}", call);
-                call.call().await?;
-                debug!("Send transaction");
-                let pending = call.send().await?;
-                debug!("Pending transaction: {:?}", pending);
-                let result = pending.await?;
-                debug!("Confirmed: {:?}", result);
+            if self.reset_channels {
+                for call in [inbound_channel.reset(), outbound_channel.reset()] {
+                    info!("Reset {:?}", call.tx.to());
+                    let call = call.legacy().from(eth.address());
+                    debug!("Static call: {:?}", call);
+                    call.call().await?;
+                    debug!("Send transaction");
+                    let pending = call.send().await?;
+                    debug!("Pending transaction: {:?}", pending);
+                    let result = pending.await?;
+                    debug!("Confirmed: {:?}", result);
+                }
             }
         }
         Ok(())

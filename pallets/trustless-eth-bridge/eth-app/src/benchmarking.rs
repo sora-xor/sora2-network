@@ -1,12 +1,14 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
-use common::{balance, AssetId32, PredefinedAssetId, XOR};
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use bridge_types::types::CallOriginOutput;
+use common::{
+    balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, XOR,
+};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
-use sp_core::H160;
+use sp_core::{H160, H256};
 use traits::MultiCurrency;
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
@@ -15,7 +17,7 @@ pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 use crate::Pallet as ETHApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic
@@ -36,7 +38,7 @@ benchmarks! {
     // * `mint` successfully adds amount to recipient account
     mint {
         let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin(BASE_NETWORK_ID, Default::default(), contract);
+        let origin = dispatch::RawOrigin::new(CallOriginOutput{network_id: BASE_NETWORK_ID, contract, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());

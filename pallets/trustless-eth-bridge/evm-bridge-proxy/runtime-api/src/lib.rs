@@ -30,7 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_types::{types::AppKind, EthNetworkId, H160};
+use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
+use bridge_types::EthNetworkId;
 use codec::Codec;
 use sp_std::prelude::*;
 
@@ -38,7 +39,7 @@ sp_api::decl_runtime_apis! {
     pub trait EvmBridgeProxyAPI<AssetId> where
         AssetId: Codec
     {
-        fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)>;
-        fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, AssetId)>;
+        fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo>;
+        fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<AssetId>>;
     }
 }

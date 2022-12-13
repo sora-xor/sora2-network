@@ -1,7 +1,7 @@
 use crate::cli::prelude::*;
 use crate::substrate::AssetId;
+use bridge_types::types::AssetKind;
 use std::collections::HashMap;
-use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
@@ -29,22 +29,29 @@ impl Command {
         let sidechain_app = sub
             .api()
             .storage()
-            .erc20_app()
-            .app_addresses(false, &network_id, &AssetKind::Thischain, None)
+            .fetch(
+                &runtime::storage()
+                    .erc20_app()
+                    .app_addresses(&network_id, &AssetKind::Thischain),
+                None,
+            )
             .await?
             .unwrap();
         let erc20_app = sub
             .api()
             .storage()
-            .erc20_app()
-            .app_addresses(false, &network_id, &AssetKind::Sidechain, None)
+            .fetch(
+                &runtime::storage()
+                    .erc20_app()
+                    .app_addresses(&network_id, &AssetKind::Sidechain),
+                None,
+            )
             .await?
             .unwrap();
         let (eth_app, native_asset) = sub
             .api()
             .storage()
-            .eth_app()
-            .addresses(false, &network_id, None)
+            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
             .await?
             .unwrap();
 
@@ -53,22 +60,33 @@ impl Command {
         let mut assets_iter = sub
             .api()
             .storage()
-            .erc20_app()
-            .assets_by_addresses_iter(false, None)
+            .iter(
+                runtime::storage().erc20_app().assets_by_addresses_root(),
+                32,
+                None,
+            )
             .await?;
         while let Some((_, asset)) = assets_iter.next().await? {
             let asset_kind = sub
                 .api()
                 .storage()
-                .erc20_app()
-                .asset_kinds(false, &network_id, &asset, None)
+                .fetch(
+                    &runtime::storage()
+                        .erc20_app()
+                        .asset_kinds(&network_id, &asset),
+                    None,
+                )
                 .await?
                 .unwrap();
             let address = sub
                 .api()
                 .storage()
-                .erc20_app()
-                .token_addresses(false, &network_id, &asset, None)
+                .fetch(
+                    &runtime::storage()
+                        .erc20_app()
+                        .token_addresses(&network_id, &asset),
+                    None,
+                )
                 .await?
                 .unwrap();
             match asset_kind {
@@ -77,18 +95,18 @@ impl Command {
                     let sub = sub.clone().unsigned().try_sign_with("//Alice").await?;
                     sub.api()
                         .tx()
-                        .sudo()
-                        .sudo(
-                            false,
-                            sub_types::framenode_runtime::Call::Currencies(
-                                sub_types::orml_currencies::module::Call::update_balance {
-                                    who: acc,
-                                    currency_id: asset,
-                                    amount: 1000000000000000000000,
-                                },
+                        .sign_and_submit_then_watch_default(
+                            &runtime::tx().sudo().sudo(
+                                sub_types::framenode_runtime::Call::Currencies(
+                                    sub_types::orml_currencies::module::Call::update_balance {
+                                        who: acc,
+                                        currency_id: asset,
+                                        amount: 1000000000000000000000,
+                                    },
+                                ),
                             ),
-                        )?
-                        .sign_and_submit_then_watch_default(&sub)
+                            &sub,
+                        )
                         .await?
                         .wait_for_in_block()
                         .await?
@@ -163,9 +181,12 @@ impl Command {
                     let in_block = sub
                         .api()
                         .tx()
-                        .erc20_app()
-                        .burn(false, network_id, *asset, eth.address(), 110)?
-                        .sign_and_submit_then_watch_default(&sub)
+                        .sign_and_submit_then_watch_default(
+                            &runtime::tx()
+                                .erc20_app()
+                                .burn(network_id, *asset, eth.address(), 110),
+                            &sub,
+                        )
                         .await?
                         .wait_for_in_block()
                         .await?;
@@ -185,9 +206,10 @@ impl Command {
                     let in_block = sub
                         .api()
                         .tx()
-                        .eth_app()
-                        .burn(false, network_id, eth.address(), 9)?
-                        .sign_and_submit_then_watch_default(&sub)
+                        .sign_and_submit_then_watch_default(
+                            &runtime::tx().eth_app().burn(network_id, eth.address(), 9),
+                            &sub,
+                        )
                         .await?
                         .wait_for_in_block()
                         .await?;

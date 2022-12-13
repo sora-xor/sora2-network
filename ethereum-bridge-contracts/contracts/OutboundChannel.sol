@@ -24,26 +24,26 @@ contract OutboundChannel is IOutboundChannel, ChannelAccess, AccessControl {
     // Once-off post-construction call to set initial configuration.
     function initialize(
         address[] calldata configUpdaters,
-        address[] calldata defaultOperators,
-        uint256 initial_fee
+        address[] calldata defaultOperatorsSet,
+        uint256 initialFee
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Set initial configuration
         for (uint256 i = 0; i < configUpdaters.length; i++) {
             grantRole(CONFIG_UPDATE_ROLE, configUpdaters[i]);
         }
-        for (uint256 i = 0; i < defaultOperators.length; i++) {
-            _authorizeDefaultOperator(defaultOperators[i]);
+        for (uint256 i = 0; i < defaultOperatorsSet.length; i++) {
+            _authorizeDefaultOperator(defaultOperatorsSet[i]);
         }
-        _fee = initial_fee;
+        _fee = initialFee;
 
         // drop admin privileges
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     // Update message submission fee.
-    function setFee(uint256 _amount) external onlyRole(CONFIG_UPDATE_ROLE) {
-        emit FeeChanged(_fee, _amount);
-        _fee = _amount;
+    function setFee(uint256 amount) external onlyRole(CONFIG_UPDATE_ROLE) {
+        emit FeeChanged(_fee, amount);
+        _fee = amount;
     }
 
     // Authorize an operator/app to submit messages for *all* users.

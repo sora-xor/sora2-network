@@ -5,9 +5,8 @@ mod tests {
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
-    use frame_support::{assert_err, assert_ok, Identity};
+    use frame_support::{assert_err, assert_ok, Identity, PalletId};
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
 
     #[test]
     fn create_poll_invalid_number_of_option() {
@@ -298,7 +297,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let governance = ModuleId(*b"ceresgov").into_account();
+            let governance = PalletId(*b"ceresgov").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &governance)
                     .expect("Failed to query free balance."),
@@ -406,7 +405,7 @@ mod tests {
             );
 
             // Check pallet's balances
-            let governance = ModuleId(*b"ceresgov").into_account();
+            let governance = PalletId(*b"ceresgov").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &governance)
                     .expect("Failed to query free balance."),

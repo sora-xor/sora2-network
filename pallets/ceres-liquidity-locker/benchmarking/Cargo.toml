@@ -1,47 +1,53 @@
 [package]
 description = "Crate for CERES liquidity locker benchmarking."
-authors = ["Jovan Milosevic <jovan.milosevic@cerestoken.io>, Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>"]
+authors = [
+    "Jovan Milosevic <jovan.milosevic@cerestoken.io>, Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>",
+]
 license = "BSD-4-Clause"
 homepage = "https://cerestoken.io"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "ceres-liquidity-locker-benchmarking"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
 getrandom = { version = "0.2", default-features = false, features = ["js"] }
 ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 demeter-farming-platform = { path = "../../demeter-farming-platform", default-features = false }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { version = "3", default-features = false }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
-sp-core = { version = "3", default-features = false }
 common = { path = "../../../common", default-features = false }
 assets = { path = "../../assets", default-features = false }
 pool-xyk = { path = "../../pool-xyk", default-features = false }
 technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
-pallet-timestamp = { version = "3", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
-ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker" }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-io = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-pallet-balances = { version = "3", default-features = false }
-dex-manager = { path = "../../dex-manager", default-features = false }
-dex-api = { path = "../../dex-api", default-features = false }
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
+dex-manager = { path = "../../dex-manager" }
+dex-api = { path = "../../dex-api" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+common = { path = "../../../common", features = ["test"] }
 
 [features]
 default = ["std"]
@@ -56,9 +62,11 @@ std = [
     'common/std',
     'assets/std',
     'ceres-liquidity-locker/std',
+    'demeter-farming-platform/std',
     'technical/std',
     'pallet-timestamp/std',
     'trading-pair/std',
     'permissions/std',
     'pool-xyk/std',
+    'pswap-distribution/std',
 ]

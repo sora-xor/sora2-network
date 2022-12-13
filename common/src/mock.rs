@@ -29,14 +29,32 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::DispatchError;
+use frame_support::weights::{
+    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+};
 use orml_traits::parameter_type_with_key;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use smallvec::smallvec;
+use sp_arithmetic::Perbill;
+use sp_runtime::AccountId32;
 use sp_std::convert::TryFrom;
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum ComicAssetId {
@@ -53,6 +71,7 @@ pub enum ComicAssetId {
     Headphones,
     GreenPromise,
     BluePromise,
+    Mango,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -80,6 +99,8 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::PSWAP => RedPepper,
             PredefinedAssetId::DAI => BlackPepper,
             PredefinedAssetId::ETH => AcmeSpyKit,
+            PredefinedAssetId::XSTUSD => Mango,
+            PredefinedAssetId::XST => BatteryForMusicPlayer,
         }
     }
 }
@@ -121,8 +142,35 @@ impl From<PredefinedAssetId> for TechAssetId<ComicAssetId> {
     }
 }
 
+pub struct WeightToFixedFee;
+
+impl WeightToFeePolynomial for WeightToFixedFee {
+    type Balance = Balance;
+
+    fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
+        smallvec!(WeightToFeeCoefficient {
+            coeff_integer: 7_000_000,
+            coeff_frac: Perbill::zero(),
+            negative: false,
+            degree: 1,
+        })
+    }
+}
+
 parameter_type_with_key! {
     pub ExistentialDeposits: |_currency_id: AssetId32<PredefinedAssetId>| -> Balance {
         0
     };
+}
+
+pub fn alice() -> AccountId32 {
+    AccountId32::from([1; 32])
+}
+
+pub fn bob() -> AccountId32 {
+    AccountId32::from([2; 32])
+}
+
+pub fn charlie() -> AccountId32 {
+    AccountId32::from([3; 32])
 }

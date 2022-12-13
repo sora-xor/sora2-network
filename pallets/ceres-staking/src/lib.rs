@@ -20,7 +20,7 @@ pub trait WeightInfo {
     fn change_rewards_remaining() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct StakingInfo {
     /// Amount of deposited CERES
@@ -37,13 +37,13 @@ pub mod pallet {
     use common::balance;
     use common::prelude::{Balance, FixedWrapper};
     use frame_support::pallet_prelude::*;
+    use frame_support::PalletId;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use sp_runtime::traits::{AccountIdConversion, Zero};
-    use sp_runtime::ModuleId;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"cerstake");
+    const PALLET_ID: PalletId = PalletId(*b"cerstake");
 
     type Assets<T> = assets::Pallet<T>;
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -71,10 +71,10 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf < T > = "AccountId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Ceres deposited. [who, amount]
@@ -96,7 +96,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account which has permissions for changing remaining rewards
@@ -264,7 +264,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
     }
 }

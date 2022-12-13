@@ -55,7 +55,8 @@ type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
 
 /// Pending atomic swap operation.
-#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
+#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct PendingSwap<T: Config> {
     /// Source of the swap.
     pub source: T::AccountId,
@@ -82,9 +83,13 @@ pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 
 
 impl<T: Config> Pallet<T> {
     /// Perform creation of swap, version without validation
-    pub fn create_swap_unchecked(source: AccountIdOf<T>, action: &T::SwapAction) -> DispatchResult {
+    pub fn create_swap_unchecked(
+        source: AccountIdOf<T>,
+        action: &T::SwapAction,
+        base_asset_id: &T::AssetId,
+    ) -> DispatchResult {
         common::with_transaction(|| {
-            action.reserve(&source)?;
+            action.reserve(&source, base_asset_id)?;
             if action.is_able_to_claim() {
                 if action.instant_auto_claim_used() {
                     if action.claim(&source) {
@@ -107,13 +112,17 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.
-    pub fn create_swap(source: AccountIdOf<T>, action: &mut T::SwapAction) -> DispatchResult {
+    pub fn create_swap(
+        source: AccountIdOf<T>,
+        action: &mut T::SwapAction,
+        base_asset_id: &T::AssetId,
+    ) -> DispatchResult {
         ensure!(
             !action.is_abstract_checking(),
             Error::<T>::OperationWithAbstractCheckingIsImposible
         );
-        action.prepare_and_validate(Some(&source))?;
-        Module::<T>::create_swap_unchecked(source, action)
+        action.prepare_and_validate(Some(&source), base_asset_id)?;
+        Pallet::<T>::create_swap_unchecked(source, action, base_asset_id)
     }
 
     /// Creates an `T::AccountId` based on `T::TechAccountId`.
@@ -180,7 +189,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Module::<T>::transfer_from(asset, source, &to, amount)?;
+        assets::Pallet::<T>::transfer_from(asset, source, &to, amount)?;
         Ok(())
     }
 
@@ -193,7 +202,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let from = Self::tech_account_id_to_account_id(tech_source)?;
         Self::ensure_account_registered(&from)?;
-        assets::Module::<T>::transfer_from(asset, &from, to, amount)?;
+        assets::Pallet::<T>::transfer_from(asset, &from, to, amount)?;
         Ok(())
     }
 
@@ -208,7 +217,7 @@ impl<T: Config> Pallet<T> {
         Self::ensure_account_registered(&from)?;
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Module::<T>::transfer_from(asset, &from, &to, amount)
+        assets::Pallet::<T>::transfer_from(asset, &from, &to, amount)
     }
 
     /// Mint specific asset to the given `TechAccountId`.
@@ -219,7 +228,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Module::<T>::mint_to(asset, &account_id, &account_id, amount)
+        assets::Pallet::<T>::mint_to(asset, &account_id, &account_id, amount)
     }
 
     /// Burn specific asset from the given `TechAccountId`.
@@ -229,7 +238,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let account_id = Self::tech_account_id_to_account_id(tech_id)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Module::<T>::total_balance(asset_id, &account_id)
+        assets::Pallet::<T>::total_balance(asset_id, &account_id)
     }
 }
 
@@ -239,6 +248,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -276,12 +286,17 @@ pub mod pallet {
         type Condition: Default + Copy + Member + Parameter;
 
         /// Swap action.
-        type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self>
+        type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self::AssetId, Self>
             + Parameter;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -291,7 +306,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", TechAssetIdOf<T> = "TechAssetId", TechAccountIdOf<T> = "TechAccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Some pure technical assets were minted. [asset, owner, minted_amount, total_exist].

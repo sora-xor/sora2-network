@@ -39,6 +39,7 @@ use sp_std::vec::Vec;
 
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 use crate::{balance, fixed_wrapper};
+use rustc_hex::FromHex;
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -111,12 +112,11 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
     let a: FixedWrapper = a.into();
     let b: FixedWrapper = b.into();
-    let width = FixedWrapper::from(n as u128 * balance!(1)) + fixed_wrapper!(1);
+    let width = FixedWrapper::from(balance!(n)) + fixed_wrapper!(1);
     (1..=n)
         .map(|x| -> Fixed {
             let x: FixedWrapper = a.clone()
-                + (b.clone() - a.clone())
-                    / (width.clone() / FixedWrapper::from(x as u128 * balance!(1)));
+                + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(balance!(x)));
             x.get().unwrap()
         })
         .collect()
@@ -144,8 +144,37 @@ pub mod string_serialization {
     }
 }
 
+#[cfg(feature = "std")]
+pub mod string_serialization_opt {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer, T: std::fmt::Display>(
+        t: &Option<T>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        match t {
+            Some(t) => serializer.serialize_str(&t.to_string()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+        deserializer: D,
+    ) -> Result<Option<T>, D::Error> {
+        match Option::<String>::deserialize(deserializer)? {
+            Some(s) => {
+                let value = s
+                    .parse::<T>()
+                    .map_err(|_| serde::de::Error::custom("Parse from string failed"))?;
+                Ok(Some(value))
+            }
+            None => Ok(None),
+        }
+    }
+}
+
 /// Generalized filtration mechanism for listing liquidity sources.
-#[derive(Encode, Decode, Clone, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, scale_info::TypeInfo)]
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
     pub dex_id: DEXId,
@@ -503,4 +532,8 @@ mod tests {
             ]
         );
     }
+}
+
+pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
+    s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }

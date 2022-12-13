@@ -30,9 +30,9 @@
 
 use codec::Codec;
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::core::{Error as RpcError, RpcResult as Result};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -44,7 +44,7 @@ use std::sync::Arc;
 pub use assets_runtime_api::AssetsAPI as AssetsRuntimeAPI;
 use assets_runtime_api::{AssetInfo, BalanceInfo};
 
-#[rpc]
+#[rpc(client, server)]
 pub trait AssetsAPI<
     BlockHash,
     AccountId,
@@ -56,7 +56,7 @@ pub trait AssetsAPI<
     VecAssetId,
 >
 {
-    #[rpc(name = "assets_freeBalance")]
+    #[method(name = "assets_freeBalance")]
     fn free_balance(
         &self,
         account_id: AccountId,
@@ -64,7 +64,7 @@ pub trait AssetsAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
-    #[rpc(name = "assets_usableBalance")]
+    #[method(name = "assets_usableBalance")]
     fn usable_balance(
         &self,
         account_id: AccountId,
@@ -72,7 +72,7 @@ pub trait AssetsAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
-    #[rpc(name = "assets_totalBalance")]
+    #[method(name = "assets_totalBalance")]
     fn total_balance(
         &self,
         account_id: AccountId,
@@ -80,16 +80,16 @@ pub trait AssetsAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
-    #[rpc(name = "assets_totalSupply")]
+    #[method(name = "assets_totalSupply")]
     fn total_supply(&self, asset_id: AssetId, at: Option<BlockHash>) -> Result<OptionBalanceInfo>;
 
-    #[rpc(name = "assets_listAssetIds")]
+    #[method(name = "assets_listAssetIds")]
     fn list_asset_ids(&self, at: Option<BlockHash>) -> Result<VecAssetId>;
 
-    #[rpc(name = "assets_listAssetInfos")]
+    #[method(name = "assets_listAssetInfos")]
     fn list_asset_infos(&self, at: Option<BlockHash>) -> Result<VecAssetInfo>;
 
-    #[rpc(name = "assets_getAssetInfo")]
+    #[method(name = "assets_getAssetInfo")]
     fn get_asset_info(&self, asset_id: AssetId, at: Option<BlockHash>) -> Result<OptionAssetInfo>;
 }
 
@@ -120,7 +120,7 @@ impl<
         ContentSource,
         Description,
     >
-    AssetsAPI<
+    AssetsAPIServer<
         <Block as BlockT>::Hash,
         AccountId,
         AssetId,
@@ -166,11 +166,7 @@ where
             self.client.info().best_hash,
         ));
         api.free_balance(&at, account_id, asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get free balance.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn usable_balance(
@@ -185,11 +181,7 @@ where
             self.client.info().best_hash,
         ));
         api.usable_balance(&at, account_id, asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get usable balance.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn total_balance(
@@ -204,11 +196,7 @@ where
             self.client.info().best_hash,
         ));
         api.total_balance(&at, account_id, asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get total balance.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn total_supply(
@@ -221,11 +209,8 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.total_supply(&at, asset_id).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get total supply.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.total_supply(&at, asset_id)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_asset_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<AssetId>> {
@@ -234,11 +219,8 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.list_asset_ids(&at).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to list registered Asset Ids.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.list_asset_ids(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_asset_infos(
@@ -252,11 +234,8 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.list_asset_infos(&at).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to list registered Asset Infos.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.list_asset_infos(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn get_asset_info(
@@ -271,10 +250,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.get_asset_info(&at, asset_id).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get Asset Info.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.get_asset_info(&at, asset_id)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

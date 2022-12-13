@@ -29,41 +29,30 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use common::InvokeRPCError;
-pub use farming_runtime_api::FarmingRuntimeApi;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+pub use farming_runtime_api::FarmingApi as FarmingRuntimeApi;
+use jsonrpsee::core::{Error as RpcError, RpcResult};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
 
-#[rpc]
-pub trait FarmingApi<BlockHash, AccountId, FarmName, FarmInfo, FarmerInfo> {
-    #[rpc(name = "farming_getFarmInfo")]
-    fn get_farm_info(
-        &self,
-        who: AccountId,
-        name: FarmName,
-        at: Option<BlockHash>,
-    ) -> Result<Option<FarmInfo>>;
-
-    #[rpc(name = "farming_getFarmerInfo")]
-    fn get_farmer_info(
-        &self,
-        who: AccountId,
-        name: FarmName,
-        at: Option<BlockHash>,
-    ) -> Result<Option<FarmerInfo>>;
+#[rpc(client, server)]
+pub trait FarmingApi<BlockHash, AssetId> {
+    #[method(name = "farming_rewardDoublingAssets")]
+    fn reward_doubling_assets(&self, at: Option<BlockHash>) -> RpcResult<Vec<AssetId>>;
 }
 
-pub struct FarmingRpc<C, M> {
+/// A struct that implements the `FarmingApi`.
+pub struct FarmingClient<C, Block> {
     client: Arc<C>,
-    _marker: std::marker::PhantomData<M>,
+    _marker: std::marker::PhantomData<Block>,
 }
 
-impl<C, M> FarmingRpc<C, M> {
+impl<C, Block> FarmingClient<C, Block> {
+    /// Create new `Farming` instance with the given reference to the client.
     pub fn new(client: Arc<C>) -> Self {
         Self {
             client,
@@ -72,60 +61,19 @@ impl<C, M> FarmingRpc<C, M> {
     }
 }
 
-impl<C, Block, AccountId, FarmName, FarmInfo, FarmerInfo>
-    FarmingApi<<Block as BlockT>::Hash, AccountId, FarmName, FarmInfo, FarmerInfo>
-    for FarmingRpc<C, Block>
+impl<C, Block, AssetId> FarmingApiServer<<Block as BlockT>::Hash, AssetId>
+    for FarmingClient<C, Block>
 where
     Block: BlockT,
-    C: Send + Sync + 'static,
-    C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: FarmingRuntimeApi<Block, AccountId, FarmName, FarmInfo, FarmerInfo>,
-    AccountId: Codec,
-    FarmName: Codec,
-    FarmInfo: Codec,
-    FarmerInfo: Codec,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: FarmingRuntimeApi<Block, AssetId>,
+    AssetId: Codec,
 {
-    fn get_farm_info(
-        &self,
-        who: AccountId,
-        name: FarmName,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<FarmInfo>> {
+    fn reward_doubling_assets(&self, at: Option<Block::Hash>) -> RpcResult<Vec<AssetId>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        let runtime_api_result = api.get_farm_info(&at, who, name);
-        runtime_api_result.map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Failed to get Farm Info".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
-    }
 
-    fn get_farmer_info(
-        &self,
-        who: AccountId,
-        name: FarmName,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<FarmerInfo>> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        let runtime_api_result = api.get_farmer_info(&at, who, name);
-        runtime_api_result.map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Failed to get Farmer Info".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
-    }
-}
-
-pub enum Error {
-    RuntimeError,
-}
-
-impl Into<i64> for Error {
-    fn into(self) -> i64 {
-        match self {
-            Error::RuntimeError => 1,
-        }
+        api.reward_doubling_assets(&at)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

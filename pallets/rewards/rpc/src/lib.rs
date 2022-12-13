@@ -30,9 +30,9 @@
 
 use codec::Codec;
 
-use common::InvokeRPCError;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use jsonrpsee::core::{Error as RpcError, RpcResult as Result};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -43,9 +43,9 @@ use std::sync::Arc;
 // Runtime API imports.
 pub use rewards_runtime_api::{BalanceInfo, RewardsAPI as RewardsRuntimeAPI};
 
-#[rpc]
+#[rpc(server, client)]
 pub trait RewardsAPI<BlockHash, EthAddress, VecBalanceInfo> {
-    #[rpc(name = "rewards_claimables")]
+    #[method(name = "rewards_claimables")]
     fn claimables(&self, eth_address: EthAddress, at: Option<BlockHash>) -> Result<VecBalanceInfo>;
 }
 
@@ -65,7 +65,7 @@ impl<C, B> RewardsClient<C, B> {
 }
 
 impl<C, Block, EthAddress, Balance>
-    RewardsAPI<<Block as BlockT>::Hash, EthAddress, Vec<BalanceInfo<Balance>>>
+    RewardsAPIServer<<Block as BlockT>::Hash, EthAddress, Vec<BalanceInfo<Balance>>>
     for RewardsClient<C, Block>
 where
     Block: BlockT,
@@ -85,10 +85,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.claimables(&at, eth_address).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get claimables.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.claimables(&at, eth_address)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

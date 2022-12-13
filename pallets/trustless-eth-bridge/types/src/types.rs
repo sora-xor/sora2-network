@@ -2,6 +2,7 @@
 
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
+use ethereum_types::H160;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -145,8 +146,8 @@ pub enum MessageStatus {
     InQueue,
     Committed,
     Done,
-    // TODO: add extrinsic to track status of committed messages
     Failed,
+    Refunded,
 }
 
 #[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -161,6 +162,54 @@ pub enum AppKind {
 pub struct LeafExtraData<Hash, RandomSeed> {
     pub random_seed: RandomSeed,
     pub digest_hash: Hash,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BridgeAssetInfo<AssetId> {
+    pub asset_id: AssetId,
+    pub evm_address: Option<H160>,
+    pub app_kind: AppKind,
+}
+
+#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct BridgeAppInfo {
+    pub evm_address: H160,
+    pub app_kind: AppKind,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    Default,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct CallOriginOutput<NetworkId, Contract, MessageId> {
+    pub network_id: NetworkId,
+    pub message_id: MessageId,
+    pub contract: Contract,
+    pub timestamp: u64,
+}
+
+impl<NetworkId, Source> crate::traits::OriginOutput<NetworkId, Source>
+    for CallOriginOutput<NetworkId, Source, H256>
+{
+    fn new(network_id: NetworkId, source: Source, message_id: H256, timestamp: u64) -> Self {
+        Self {
+            network_id,
+            message_id,
+            contract: source,
+            timestamp,
+        }
+    }
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

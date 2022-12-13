@@ -3,18 +3,8 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_validatorRegistry",
+        "name": "testMMRVerification",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_mmrVerification",
-        "type": "address"
-      },
-      {
-        "internalType": "uint64",
-        "name": "_startingBeefyBlock",
-        "type": "uint64"
       }
     ],
     "stateMutability": "nonpayable",
@@ -208,6 +198,35 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "addr",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pos",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "proof",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "checkValidatorInSet",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "components": [
           {
             "internalType": "bytes",
@@ -281,6 +300,11 @@
         "internalType": "uint256[]",
         "name": "validatorClaimsBitfield",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "numberOfValidators",
+        "type": "uint256"
       }
     ],
     "name": "createRandomBitfield",
@@ -289,6 +313,29 @@
         "internalType": "uint256[]",
         "name": "",
         "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "currentValidatorSet",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "id",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "length",
+        "type": "uint128"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "root",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -390,6 +437,63 @@
   {
     "inputs": [
       {
+        "internalType": "uint64",
+        "name": "startingBeefyBlock",
+        "type": "uint64"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "id",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "length",
+            "type": "uint128"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "root",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.ValidatorSet",
+        "name": "_currentValidatorSet",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "id",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "length",
+            "type": "uint128"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "root",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.ValidatorSet",
+        "name": "_nextValidatorSet",
+        "type": "tuple"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "root",
         "type": "bytes32"
@@ -479,6 +583,29 @@
   },
   {
     "inputs": [],
+    "name": "nextValidatorSet",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "id",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "length",
+        "type": "uint128"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "root",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "owner",
     "outputs": [
       {
@@ -533,23 +660,52 @@
     "inputs": [
       {
         "internalType": "uint64",
-        "name": "_startingBeefyBlock",
+        "name": "startingBeefyBlock",
         "type": "uint64"
       },
       {
-        "internalType": "bytes32",
-        "name": "_authoritySetRoot",
-        "type": "bytes32"
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "id",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "length",
+            "type": "uint128"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "root",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.ValidatorSet",
+        "name": "_currentValidatorSet",
+        "type": "tuple"
       },
       {
-        "internalType": "uint256",
-        "name": "_authoritySetLen",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint64",
-        "name": "_authoritySetId",
-        "type": "uint64"
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "id",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "length",
+            "type": "uint128"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "root",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct BeefyLightClient.ValidatorSet",
+        "name": "_nextValidatorSet",
+        "type": "tuple"
       }
     ],
     "name": "reset",
@@ -704,19 +860,6 @@
     "name": "transferOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "validatorRegistry",
-    "outputs": [
-      {
-        "internalType": "contract IValidatorRegistry",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

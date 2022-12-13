@@ -1,28 +1,33 @@
 [package]
 description = "Pallet for CERES liquidity locker."
-authors = ["Jovan Milosevic <jovan.milosevic@cerestoken.io>, Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>"]
+authors = [
+    "Jovan Milosevic <jovan.milosevic@cerestoken.io>, Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>",
+]
 license = "BSD-4-Clause"
 homepage = "https://cerestoken.io"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "ceres-liquidity-locker"
 version = "1.2.0"
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-sp-core = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
-pallet-timestamp = { version = "3", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
@@ -30,14 +35,14 @@ hex-literal = "0.3.1"
 [dev-dependencies]
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false}
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 ceres-liquidity-locker = { path = ".", default-features = false }
-pallet-balances = { version = "3", default-features = false }
-sp-io = { version = "3", default-features = false }
-orml-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
-orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution" }
@@ -57,6 +62,5 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
-    "pallet-timestamp/std"
+    "pallet-timestamp/std",
 ]
-

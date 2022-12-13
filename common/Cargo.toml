@@ -5,28 +5,44 @@ authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 blake2-rfc = { version = "0.2.18", default-features = false }
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-derive_more = { version = "0.99.11", default-features = false }
-fixnum = { version = "0.5", default-features = false, features = ["i128", "parity"] }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
-libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+# derive_more = { version = "0.99.17", default-features = false }
+fixnum = { git = "https://github.com/sora-xor/fixnum", branch = "polkadot-v0.9.28", default-features = false, features = [
+    "i128",
+    "parity",
+    "scale-info",
+    "serde",
+] }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+secp256k1 = { version = "0.7", features = [
+    'hmac',
+], default-features = false, package = "libsecp256k1" }
 num-traits = { version = "0.2.12", default-features = false }
-orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+paste = "1.0.0"
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
-serde = { version = "1.0", features = ["derive"], optional = true, default-features = false }
-smallvec = "1.5.0"
-sp-arithmetic = { version = "3", default-features = false }
-sp-core = { version = "3", default-features = false }
-sp-io = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
+serde = { version = "1.0", features = [
+    "derive",
+], optional = true, default-features = false }
+smallvec = "1.7.0"
+sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 static_assertions = "1.1.0"
+hex = { version = "*", default-features = false }
+hex-literal = "0.3.1"
 
 [dev-dependencies]
 serde_json = "1.0.41"
@@ -35,18 +51,24 @@ serde_json = "1.0.41"
 default = ['std']
 std = [
     'codec/std',
+    "scale-info/std",
     'serde',
+    'secp256k1/std',
     'rustc-hex/std',
     'blake2-rfc/std',
     'num-traits/std',
     'frame-support/std',
     'frame-system/std',
-    'fixnum/serde',
     'fixnum/std',
+    'pallet-timestamp/std',
+    'sp-arithmetic/std',
     'sp-core/std',
+    'sp-io/std',
     'sp-runtime/std',
     'sp-std/std',
     'currencies/std',
     'orml-traits/std',
+    'hex/std',
+    "fixnum/std",
 ]
 test = []

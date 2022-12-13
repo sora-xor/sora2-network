@@ -8,12 +8,12 @@
       },
       {
         "internalType": "address",
-        "name": "_inbound",
+        "name": "inboundChannel",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_outbound",
+        "name": "outboundChannel",
         "type": "address"
       }
     ],
@@ -43,6 +43,25 @@
       }
     ],
     "name": "Locked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Rewarded",
     "type": "event"
   },
   {
@@ -262,7 +281,7 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "_recipient",
+        "name": "recipient",
         "type": "bytes32"
       }
     ],
@@ -331,12 +350,12 @@
     "inputs": [
       {
         "internalType": "address payable",
-        "name": "_recipient",
+        "name": "recipient",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_amount",
+        "name": "amount",
         "type": "uint256"
       }
     ],
@@ -368,17 +387,17 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "_sender",
+        "name": "sender",
         "type": "bytes32"
       },
       {
         "internalType": "address payable",
-        "name": "_recipient",
+        "name": "recipient",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_amount",
+        "name": "amount",
         "type": "uint256"
       }
     ],

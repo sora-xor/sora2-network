@@ -7,19 +7,20 @@ use bridge_types::{EthNetworkId, U256};
 use common::mock::ExistentialDeposits;
 use common::{
     balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
-    PredefinedAssetId, DAI, ETH, XOR,
+    PredefinedAssetId, DAI, ETH, PSWAP, VAL, XOR, XST,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
+use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::MultiSignature;
 
 use crate as erc20_app;
 
@@ -71,8 +72,8 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
-        Dispatch: dispatch::{Pallet, Call, Storage, Origin, Event<T>},
-        BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
         Erc20App: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
@@ -163,7 +164,16 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
+}
+
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl assets::Config for Test {
@@ -173,15 +183,23 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Test>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
     type GetTotalBalance = ();
 }
 
 impl dispatch::Config for Test {
-    type Origin = Origin;
     type Event = Event;
+    type NetworkId = EthNetworkId;
+    type Source = H160;
+    type OriginOutput = bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>;
+    type Origin = Origin;
     type MessageId = u64;
     type Hashing = Keccak256;
     type Call = Call;
@@ -209,7 +227,7 @@ parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
 
-impl bridge_channel::outbound::Config for Test {
+impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type Event = Event;
     type Hashing = Keccak256;
@@ -249,7 +267,11 @@ impl AppRegistry for AppRegistryImpl {
 impl erc20_app::Config for Test {
     type Event = Event;
     type OutboundChannel = BridgeOutboundChannel;
-    type CallOrigin = dispatch::EnsureEthereumAccount;
+    type CallOrigin = dispatch::EnsureAccount<
+        EthNetworkId,
+        H160,
+        bridge_types::types::CallOriginOutput<EthNetworkId, H160, H256>,
+    >;
     type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
     type WeightInfo = ();
     type MessageStatusNotifier = ();
@@ -324,7 +346,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &bridge_channel::outbound::GenesisConfig {
+        &bridge_outbound_channel::GenesisConfig {
             fee: 10000,
             interval: 10,
         },

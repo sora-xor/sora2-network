@@ -1,25 +1,20 @@
 [package]
-description = 'Polkaswap RPC for farming operations.'
-edition = "2018"
+name = "farming-rpc"
+version = "0.1.0"
+edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
-name = "farming-rpc"
-version = "0.1.0"
 
 [dependencies]
-serde = { version = "1.0.101", features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "2" }
-jsonrpc-core = "15.0.0"
-jsonrpc-core-client = "15.0.0"
-jsonrpc-derive = "15.0.0"
-sp-runtime = "3"
-sp-api = "3"
-sp-blockchain = "3"
-sp-std = "3"
-sp-core = "3"
-sp-rpc = "3"
-farming = { path = "../" }
+codec = { package = "parity-scale-codec", version = "3" }
+jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 farming-runtime-api = { path = "../runtime-api" }
-common = { path = "../../../common" }
+
+[features]
+default = ["std"]
+std = ["sp-api/std", "sp-runtime/std", "farming-runtime-api/std"]

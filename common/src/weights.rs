@@ -32,19 +32,22 @@ use frame_support::parameter_types;
 use frame_support::weights::constants::{
     BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
 };
-use frame_support::weights::{
-    DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
-};
+use frame_support::weights::{DispatchClass, Pays, Weight};
 use frame_system::limits;
-use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_std::marker::PhantomData;
 
 use crate::primitives::Balance;
+use frame_support::dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo};
+use sp_runtime::DispatchError;
+
 pub mod constants {
+    use crate::{balance, Balance};
     use frame_support::weights::Weight;
 
     pub const EXTRINSIC_FIXED_WEIGHT: Weight = 100_000_000;
+    pub const SMALL_FEE: Balance = balance!(0.0007);
+    pub const BIG_FEE: Balance = balance!(0.007);
 }
 
 pub struct PresetWeightInfo<T>(PhantomData<T>);
@@ -77,48 +80,31 @@ parameter_types! {
     .avg_block_initialization(ON_INITIALIZE_RATIO)
     .build_or_panic();
     pub BlockLength: limits::BlockLength =
-        limits::BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+        limits::BlockLength::max_with_normal_ratio(7 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
     pub const TransactionByteFee: Balance = 0;
 }
 
-pub struct WeightToFixedFee;
-
-impl WeightToFeePolynomial for WeightToFixedFee {
-    type Balance = Balance;
-
-    fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-        smallvec!(WeightToFeeCoefficient {
-            coeff_integer: 7_000_000,
-            coeff_frac: Perbill::zero(),
-            negative: false,
-            degree: 1,
+#[inline(always)]
+pub fn pays_no_with_maybe_weight<E: Into<DispatchError>>(
+    result: Result<Option<Weight>, E>,
+) -> DispatchResultWithPostInfo {
+    result
+        .map_err(|e| DispatchErrorWithPostInfo {
+            post_info: Pays::No.into(),
+            error: e.into(),
         })
-    }
+        .map(|weight| (weight, Pays::No).into())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::super::balance;
-    use super::*;
-    use frame_support::weights::Weight;
+#[inline(always)]
+pub fn pays_no<T, E: Into<DispatchError>>(result: Result<T, E>) -> DispatchResultWithPostInfo {
+    pays_no_with_maybe_weight(result.map(|_| None))
+}
 
-    type Fee = WeightToFixedFee;
-
-    #[test]
-    fn weight_to_fixed_fee_works() {
-        assert_eq!(Fee::calc(&100_000_000_000), balance!(0.7));
-        assert_eq!(Fee::calc(&500_000_000), balance!(0.0035));
-        assert_eq!(Fee::calc(&72_000_000), balance!(0.000504));
-        assert_eq!(Fee::calc(&210_200_000_000), balance!(1.4714));
-    }
-
-    #[test]
-    fn weight_to_fixed_fee_does_not_underflow() {
-        assert_eq!(Fee::calc(&0), 0);
-    }
-
-    #[test]
-    fn weight_to_fixed_fee_does_not_overflow() {
-        assert_eq!(Fee::calc(&Weight::max_value()), 129127208515966861305000000);
+#[inline(always)]
+pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
+    DispatchErrorWithPostInfo {
+        post_info: Pays::No.into(),
+        error: err.into(),
     }
 }

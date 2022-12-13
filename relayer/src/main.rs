@@ -34,6 +34,7 @@ pub mod prelude {
     };
     pub use crate::substrate::runtime::runtime_types as sub_types;
     pub use crate::substrate::{
+        event_to_string as sub_event_to_string, log_tx_events as sub_log_tx_events,
         runtime as sub_runtime, SignedClient as SubSignedClient,
         UnsignedClient as SubUnsignedClient,
     };
@@ -41,6 +42,8 @@ pub mod prelude {
     pub use codec::{Decode, Encode};
     pub use hex_literal::hex;
     pub use http::Uri;
+    pub use parachain_gen::parachain_runtime;
     pub use serde::{Deserialize, Serialize};
+    pub use substrate_gen::runtime;
     pub use url::Url;
 }

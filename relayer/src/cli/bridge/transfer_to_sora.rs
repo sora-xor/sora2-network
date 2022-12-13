@@ -1,6 +1,6 @@
 use crate::cli::prelude::*;
 use crate::substrate::{AccountId, AssetId};
-use substrate_gen::runtime::runtime_types::bridge_types::types::AssetKind;
+use bridge_types::types::AssetKind;
 
 #[derive(Args, Clone, Debug)]
 pub(crate) struct Command {
@@ -31,8 +31,7 @@ impl Command {
         let (eth_app_address, eth_asset) = sub
             .api()
             .storage()
-            .eth_app()
-            .addresses(false, &network_id, None)
+            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
             .await?
             .ok_or(anyhow!("Network not registered"))?;
         let balance = eth.get_balance(eth.address(), None).await?;
@@ -51,26 +50,51 @@ impl Command {
             let asset_kind = sub
                 .api()
                 .storage()
-                .erc20_app()
-                .asset_kinds(false, &network_id, &self.asset_id, None)
+                .fetch(
+                    &runtime::storage()
+                        .erc20_app()
+                        .asset_kinds(&network_id, &self.asset_id),
+                    None,
+                )
                 .await?
                 .ok_or(anyhow!("Asset is not registered"))?;
             let app_address = sub
                 .api()
                 .storage()
-                .erc20_app()
-                .app_addresses(false, &network_id, &asset_kind, None)
+                .fetch(
+                    &runtime::storage()
+                        .erc20_app()
+                        .app_addresses(&network_id, &asset_kind),
+                    None,
+                )
                 .await?
                 .expect("should be registered");
             let token_address = sub
                 .api()
                 .storage()
-                .erc20_app()
-                .token_addresses(false, &network_id, &self.asset_id, None)
+                .fetch(
+                    &runtime::storage()
+                        .erc20_app()
+                        .token_addresses(&network_id, &self.asset_id),
+                    None,
+                )
                 .await?
                 .expect("should be registered");
             match asset_kind {
                 AssetKind::Thischain => {
+                    info!("Approve");
+                    let token = ethereum_gen::TestToken::new(token_address, eth.inner());
+                    let mut call = token.approve(app_address, self.amount.into()).legacy();
+                    eth.inner()
+                        .fill_transaction(&mut call.tx, call.block)
+                        .await?;
+                    debug!("Check {:?}", call);
+                    call.call().await?;
+                    if !self.dry_run {
+                        debug!("Send");
+                        let tx = call.send().await?.confirmations(1).await?.unwrap();
+                        debug!("Tx: {:?}", tx);
+                    }
                     info!("Transfer native Sora token");
                     let sidechain_app = ethereum_gen::SidechainApp::new(app_address, eth.inner());
                     sidechain_app.lock(token_address, recipient, self.amount.into())

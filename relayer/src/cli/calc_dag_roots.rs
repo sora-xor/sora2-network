@@ -1,8 +1,9 @@
 use std::time::Instant;
 
 use super::*;
+use crate::ethereum::ethashproof::cache::make_dataset;
 use crate::ethereum::ethashproof::mtree::{sha256_hash, ElementData};
-use crate::{ethereum::ethashproof::cache::make_dataset, prelude::*};
+use crate::prelude::*;
 use bridge_types::ethashproof::calc_seedhash;
 use ethash::{get_cache_size, get_full_size, make_cache};
 use ethereum_types::H128;

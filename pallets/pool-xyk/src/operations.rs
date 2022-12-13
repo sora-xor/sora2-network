@@ -34,7 +34,7 @@ use sp_runtime::RuntimeDebug;
 
 use crate::bounds::*;
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub struct Resource<AssetId, Balance> {
     // This is `AssetId` of `Resource`.
     pub asset: AssetId,
@@ -42,13 +42,13 @@ pub struct Resource<AssetId, Balance> {
     pub amount: Bounds<Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub struct ResourcePair<AssetId, Balance>(
     pub Resource<AssetId, Balance>,
     pub Resource<AssetId, Balance>,
 );
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub struct PairSwapAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
@@ -60,7 +60,7 @@ pub struct PairSwapAction<AssetId, AccountId, TechAccountId> {
     pub get_fee_from_destination: Option<bool>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
@@ -70,7 +70,7 @@ pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub min_liquidity: Option<Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account_a: Option<AccountId>,
@@ -80,7 +80,7 @@ pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub destination: ResourcePair<AssetId, Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum PolySwapAction<AssetId, AccountId, TechAccountId> {
     PairSwap(PairSwapAction<AssetId, AccountId, TechAccountId>),
     DepositLiquidity(DepositLiquidityAction<AssetId, AccountId, TechAccountId>),

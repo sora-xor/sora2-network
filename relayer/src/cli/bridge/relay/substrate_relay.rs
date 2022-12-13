@@ -23,8 +23,7 @@ impl Command {
             let eth_app = sub
                 .api()
                 .storage()
-                .eth_app()
-                .addresses(false, &network_id, None)
+                .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
                 .await?;
             if let Some((eth_app, _)) = eth_app {
                 break eth_app;

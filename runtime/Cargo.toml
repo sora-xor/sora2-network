@@ -1,199 +1,314 @@
 [package]
-edition = '2018'
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+edition = "2021"
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-name = 'framenode-runtime'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "framenode-runtime"
+version = "1.5.2"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = "3.0.0"
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+    "chain-error",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = "0.3.1"
-serde = { features = ['derive'], optional = true, version = '1.0.101' }
-common = { path = "../common", default-features = false }
-faucet = { path = "../pallets/faucet", default-features = false, optional = true }
+log = { version = "0.4.14" }
+serde = { features = [
+    'derive',
+], default-features = false, optional = true, version = '1.0.101' }
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.28", package = "pallet-multisig", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy_light_client_pallet", default-features = false }
+
+bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
+ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
+bridge-inbound-channel = { path = "../pallets/trustless-eth-bridge/channel/inbound", default-features = false }
+bridge-outbound-channel = { path = "../pallets/trustless-eth-bridge/channel/outbound", default-features = false }
+dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
+eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
+migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
+erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
+leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
+leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
+evm-bridge-proxy = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy", default-features = false }
+evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api", default-features = false }
+
 assets = { path = "../pallets/assets", default-features = false }
-bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
-multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
+assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
+band = { path = "../pallets/band", default-features = false }
+common = { path = "../common", default-features = false }
+ceres-governance-platform = { path = "../pallets/ceres-governance-platform", default-features = false }
+ceres-launchpad = { path = "../pallets/ceres-launchpad", default-features = false }
+ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
+ceres-token-locker = { path = "../pallets/ceres-token-locker", default-features = false }
+ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
+demeter-farming-platform = { path = "../pallets/demeter-farming-platform", default-features = false }
+demeter-farming-platform-benchmarking = { path = "../pallets/demeter-farming-platform/benchmarking", default-features = false, optional = true }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
-farming = { path = "../pallets/farming", default-features = false}
+dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false }
+dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false }
+farming = { path = "../pallets/farming", default-features = false }
+farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false }
+faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
-liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false}
-mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false}
-permissions = { path = "../pallets/permissions", default-features = false}
-pool-xyk = { path = "../pallets/pool-xyk", default-features = false}
-referral-system = { path = "../pallets/referral-system", default-features = false}
+iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
+liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
+liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
+liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false }
+mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
+permissions = { path = "../pallets/permissions", default-features = false }
+pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
+pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+price-tools = { path = "../pallets/price-tools", default-features = false }
+pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
+pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
+pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
+referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
-technical = { path = "../pallets/technical", default-features = false}
-trading-pair = { path = "../pallets/trading-pair", default-features = false}
-xor-fee = { path = "../pallets/xor-fee", default-features = false}
-dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
-dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
-trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
-assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
-liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
-eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
-eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig", default-features = false }
-farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
-iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
-pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
-pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
-dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
+technical = { path = "../pallets/technical", default-features = false }
+trading-pair = { path = "../pallets/trading-pair", default-features = false }
+trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
+vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
+vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false }
+xor-fee = { path = "../pallets/xor-fee", default-features = false }
+xst = { path = "../pallets/xst", default-features = false }
 
 # Substrate dependencies
-frame-benchmarking = { default-features = false, optional = true, version = '3' }
-pallet-collective = { default-features = false, version = '3' }
-pallet-democracy = { default-features = false, version = '3' }
-frame-executive = { default-features = false, version = '3' }
-frame-support = { default-features = false, version = '3' }
-frame-system = { default-features = false, version = '3' }
-frame-system-benchmarking = { default-features = false, optional = true, version = '3' }
-frame-system-rpc-runtime-api = { default-features = false, version = '3' }
-pallet-aura = { default-features = false, version = '3' }
-pallet-balances = { default-features = false, version = '3' }
-pallet-grandpa = { default-features = false, version = '3' }
-pallet-babe = { default-features = false, version = '3' }
-pallet-im-online = { default-features = false, version = '3' }
-pallet-multisig = { version = "3", default-features = false }
-pallet-offences = { default-features = false, version = '3' }
-pallet-randomness-collective-flip = { default-features = false, version = '3' }
-pallet-sudo = { default-features = false, version = '3' }
-pallet-timestamp = { default-features = false, version = '3' }
-pallet-scheduler = { default-features = false, version = '3' }
-#pallet-session = { default-features = false, version = '3' }
-pallet-session = { default-features = false, features = ["historical"], version = '3' }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.0.0"}
-pallet-transaction-payment = { version = '3', default-features = false }
-pallet-transaction-payment-rpc-runtime-api = { version = '3', default-features = false }
-pallet-utility = { default-features = false, version = '3' }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false, optional = true }
+frame-executive = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false, optional = true }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-aura = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-collective = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-democracy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-im-online = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-identity = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-membership = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-multisig = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-offences = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-sudo = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+#pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false, features = [
+    "historical",
+] }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "polkadot-v0.9.28" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-utility = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-bags-list = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 
-sp-api = { default-features = false, version = '3' }
-sp-block-builder = { default-features = false, version = '3' }
-sp-consensus-aura = { default-features = false, version = '0.9' }
-sp-consensus-babe = { default-features = false, version = '0.9' }
-sp-core = { default-features = false, version = '3' }
-sp-inherents = { default-features = false, version = '3' }
-sp-offchain = { default-features = false, version = '3' }
-sp-runtime = { default-features = false, version = '3' }
-sp-session = { default-features = false, version = '3' }
-sp-std = { default-features = false, version = '3' }
-sp-transaction-pool = { default-features = false, version = '3' }
-sp-version = { default-features = false, version = '3' }
-sp-staking = { default-features = false, version = '3' }
-pallet-authorship = { default-features = false, version = '3' }
+sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-block-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-inherents = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-version = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-staking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-npos-elections = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-authorship = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-election-provider-multi-phase = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
+frame-election-provider-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.28", default-features = false }
 
 # Other
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 static_assertions = "1.1.0"
-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
-traits = { version = "0.4", package = "orml-traits", default-features = false }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+
+[dev-dependencies]
+env_logger = "0.9.0"
+framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
-default = ['std']
+default = ["std", "build-wasm-binary"]
 
 std = [
-    'codec/std',
-    'serde',
-    'frame-executive/std',
-    'frame-support/std',
-    'frame-system/std',
-    'frame-system-rpc-runtime-api/std',
-    'pallet-aura/std',
-    'pallet-babe/std',
-    'pallet-balances/std',
-    'pallet-collective/std',
-    'pallet-democracy/std',
-    'pallet-grandpa/std',
-    'pallet-im-online/std',
-    'pallet-offences/std',
-    'pallet-randomness-collective-flip/std',
-    'pallet-scheduler/std',
-    'pallet-sudo/std',
-    'pallet-timestamp/std',
-    'pallet-transaction-payment/std',
-    'pallet-transaction-payment-rpc-runtime-api/std',
-    'pallet-session/std',
-    'pallet-staking/std',
-    'pallet-utility/std',
-    'sp-api/std',
-    'sp-block-builder/std',
-    'sp-consensus-aura/std',
-    'sp-consensus-babe/std',
-    'sp-core/std',
-    'sp-inherents/std',
-    'sp-offchain/std',
-    'sp-runtime/std',
-    'sp-session/std',
-    'sp-std/std',
-    'sp-transaction-pool/std',
-    'sp-version/std',
-    'sp-staking/std',
-    'pallet-authorship/std',
-    'common/std',
-    'assets/std',
-    'bonding-curve-pool/std',
-    'multicollateral-bonding-curve-pool/std',
-    'dex-api/std',
-    'dex-manager/std',
-    'eth-bridge/std',
-    'eth-bridge-runtime-api/std',
-    'farming/std',
-    'farming-runtime-api/std',
-    'faucet?/std',
-    'iroha-migration/std',
-    'iroha-migration-runtime-api/std',
-    'liquidity-proxy/std',
-    'mock-liquidity-source/std',
-    'bridge-multisig/std',
-    'permissions/std',
-    'pool-xyk/std',
-    'referral-system/std',
-    'rewards/std',
-    'rewards-runtime-api/std',
-    'technical/std',
-    'trading-pair/std',
-    'xor-fee/std',
-    'dex-runtime-api/std',
-    'dex-manager-runtime-api/std',
-    'trading-pair-runtime-api/std',
-    'assets-runtime-api/std',
-    'liquidity-proxy-runtime-api/std',
-    'pswap-distribution/std',
-    'pswap-distribution-runtime-api/std',
+    "assets-runtime-api/std",
+    "assets/std",
+    "band/std",
+    "bridge-multisig/std",
+    "pallet-beefy/std",
+    "sp-mmr-primitives/std",
+    "beefy-primitives/std",
+    "beefy-light-client/std",
+    "beefy-light-client-runtime-api/std",
+    "codec/std",
+    "scale-info/std",
+    "common/std",
+    "ceres-governance-platform/std",
+    "ceres-launchpad/std",
+    "ceres-liquidity-locker/std",
+    "ceres-staking/std",
+    "ceres-token-locker/std",
+    "demeter-farming-platform/std",
+    "dex-api/std",
+    "dex-manager-runtime-api/std",
+    "dex-manager/std",
+    "dex-runtime-api/std",
+    "ethereum-light-client/std",
+    "bridge-inbound-channel/std",
+    "bridge-outbound-channel/std",
+    "dispatch/std",
+    "eth-app/std",
+    "migration-app/std",
+    "erc20-app/std",
+    "leaf-provider/std",
+    "leaf-provider-runtime-api/std",
+    "evm-bridge-proxy/std",
+    "evm-bridge-proxy-runtime-api/std",
+    "bridge-types/std",
+    "farming/std",
+    "farming-runtime-api/std",
+    "faucet/std",
+    "frame-executive/std",
+    "frame-support/std",
+    "frame-system-rpc-runtime-api/std",
+    "frame-system/std",
+    "iroha-migration-runtime-api/std",
+    "iroha-migration/std",
+    "liquidity-proxy-runtime-api/std",
+    "liquidity-proxy/std",
+    "mock-liquidity-source/std",
+    "multicollateral-bonding-curve-pool/std",
+    "pallet-aura/std",
+    "pallet-authorship/std",
+    "pallet-babe/std",
+    "pallet-balances/std",
+    "pallet-collective/std",
+    "pallet-democracy/std",
+    "pallet-elections-phragmen/std",
+    "pallet-grandpa/std",
+    "pallet-identity/std",
+    "pallet-im-online/std",
+    "pallet-membership/std",
+    "pallet-multisig/std",
+    "pallet-offences/std",
+    "pallet-randomness-collective-flip/std",
+    "pallet-scheduler/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "pallet-sudo/std",
+    "pallet-timestamp/std",
+    "pallet-transaction-payment-rpc-runtime-api/std",
+    "pallet-transaction-payment/std",
+    "pallet-utility/std",
+    "permissions/std",
+    "pool-xyk/std",
+    "price-tools/std",
+    "pswap-distribution-runtime-api/std",
+    "pswap-distribution/std",
+    "referrals/std",
+    "rewards-runtime-api/std",
+    "rewards/std",
+    "serde/std",
+    "sp-api/std",
+    "sp-block-builder/std",
+    "sp-consensus-aura/std",
+    "sp-consensus-babe/std",
+    "sp-core/std",
+    "sp-inherents/std",
+    "sp-offchain/std",
+    "sp-runtime/std",
+    "sp-session/std",
+    "sp-staking/std",
+    "sp-std/std",
+    "sp-transaction-pool/std",
+    "sp-version/std",
+    "sp-npos-elections/std",
+    "technical/std",
+    "trading-pair-runtime-api/std",
+    "trading-pair/std",
+    "vested-rewards/std",
+    "vested-rewards-runtime-api/std",
+    "xor-fee/std",
+    "xst/std",
 ]
 
-private-net = ["faucet"]
+private-net = [
+    "faucet",
+    "farming/private-net",
+    "vested-rewards/private-net",
+    "framenode-chain-spec/private-net",
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
-    "eth-bridge/runtime-benchmarks",
-    "dex-api-benchmarking",
-    "faucet?/runtime-benchmarks",
+    "band/runtime-benchmarks",
+    "ceres-governance-platform/runtime-benchmarks",
+    "ceres-launchpad/runtime-benchmarks",
+    "ceres-liquidity-locker-benchmarking",
+    "demeter-farming-platform-benchmarking",
+    "ceres-staking/runtime-benchmarks",
+    "ceres-token-locker/runtime-benchmarks",
+    "ethereum-light-client/runtime-benchmarks",
+    "bridge-inbound-channel/runtime-benchmarks",
+    "bridge-outbound-channel/runtime-benchmarks",
+    "dispatch/runtime-benchmarks",
+    "eth-app/runtime-benchmarks",
+    "migration-app/runtime-benchmarks",
+    "erc20-app/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
+    "evm-bridge-proxy/runtime-benchmarks",
+    "farming/runtime-benchmarks",
+    "faucet/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking",
     "frame-system/runtime-benchmarks",
     "iroha-migration/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
+    "price-tools/runtime-benchmarks",
+    "pswap-distribution-benchmarking/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
+    "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "price-tools/runtime-benchmarks",
+    "vested-rewards/runtime-benchmarks",
+    "xor-fee/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []
+
+build-wasm-binary = []

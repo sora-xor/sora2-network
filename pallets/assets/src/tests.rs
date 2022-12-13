@@ -34,13 +34,12 @@ mod tests {
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
     use common::{
-        balance, AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL,
-        XOR,
+        balance, AssetId32, ContentSource, Description, ASSET_CONTENT_SOURCE_MAX_LENGTH,
+        ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL, XOR, XST,
     };
     use frame_support::{assert_err, assert_noop, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
-    use traits::MultiCurrency;
 
     #[test]
     fn should_gen_and_register_asset() {
@@ -583,19 +582,6 @@ mod tests {
     }
 
     #[test]
-    fn migration_v0_1_0_to_v0_2_0() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let expected_minted = balance!(3000000000);
-            Currencies::deposit(PSWAP, &GetTeamReservesAccountId::get(), balance!(1000)).unwrap();
-            let balance_before = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            crate::migration::mint_team_rewards::<Runtime>().expect("Failed to migrate");
-            let balance_after = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
-            assert_eq!(balance_after - balance_before, expected_minted);
-        });
-    }
-
-    #[test]
     fn should_register_indivisible() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -636,6 +622,29 @@ mod tests {
     }
 
     #[test]
+    fn should_fail_content_source() {
+        let mut ext = ExtBuilder::default().build();
+        let source: Vec<u8> = vec![0; ASSET_CONTENT_SOURCE_MAX_LENGTH + 1];
+        let content_src = ContentSource(source);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    Some(content_src.clone()),
+                    None,
+                ),
+                Error::<Runtime>::InvalidContentSource
+            );
+        })
+    }
+
+    #[test]
     fn should_associate_desciption() {
         let mut ext = ExtBuilder::default().build();
         let desc = Description(b"Lorem ipsum".to_vec());
@@ -652,6 +661,86 @@ mod tests {
                 Some(desc.clone()),
             ));
             assert_eq!(Assets::get_asset_description(&XOR), Some(desc));
+        })
+    }
+
+    #[test]
+    fn should_fail_description() {
+        let mut ext = ExtBuilder::default().build();
+        let text: Vec<u8> = vec![0; ASSET_DESCRIPTION_MAX_LENGTH + 1];
+        let desc = Description(text);
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(10u32),
+                    true,
+                    None,
+                    Some(desc.clone()),
+                ),
+                Error::<Runtime>::InvalidDescription
+            );
+        })
+    }
+
+    #[test]
+    fn buy_back_and_burn_should_be_performed() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let xst_balance = balance!(1000);
+            Assets::register_asset_id(
+                MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
+                XST,
+                AssetSymbol(b"XST".to_vec()),
+                AssetName(b"Sora Synthetics".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                xst_balance,
+                true,
+                None,
+                None,
+            )
+            .expect("Failed to register XST asset");
+
+            let xst_total = Tokens::total_issuance(XST);
+            // Just a sanity check, not a real test
+            assert_eq!(xst_total, xst_balance);
+
+            let pswap_balance = balance!(10);
+            Assets::register_asset_id(
+                ALICE,
+                PSWAP,
+                AssetSymbol(b"PSWAP".to_vec()),
+                AssetName(b"Polkaswap".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                pswap_balance,
+                true,
+                None,
+                None,
+            )
+            .expect("Failed to register PSWAP asset");
+
+            let amount_to_mint = balance!(100);
+            Assets::force_mint(Origin::root(), PSWAP, ALICE, amount_to_mint)
+                .expect("Failed to mint PSWAP");
+
+            let pswap_balance_after = Assets::free_balance(&PSWAP, &ALICE)
+                .expect("Failed to query PSWAP free balance after mint.");
+            assert_eq!(
+                pswap_balance_after,
+                pswap_balance + (amount_to_mint * 9 / 10)
+            );
+
+            // Same as `Assets::free_balance(&XST, &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT)`,
+            // but it better represents the meaning of buy-back and burning
+            let xst_total_after = Tokens::total_issuance(XST);
+
+            // Since `MockLiquidityProxy` exchanges 1 to 1
+            // there is no need to calculate PSWAP-XST swap-rate
+            assert_eq!(xst_total_after, xst_total - (amount_to_mint / 10));
         })
     }
 }

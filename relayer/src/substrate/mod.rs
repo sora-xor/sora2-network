@@ -7,38 +7,83 @@ use crate::prelude::*;
 use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
 use pallet_mmr_rpc::MmrApiClient;
+use sp_core::{Bytes, Pair};
 use sp_mmr_primitives::{EncodableOpaqueLeaf, LeafIndex, Proof};
+use sp_runtime::MultiSigner;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
-use subxt::extrinsic::Signer;
+use subxt::events::EventDetails;
 pub use subxt::rpc::Subscription;
-use subxt::rpc::{rpc_params, ClientT};
-use subxt::sp_core::{Bytes, Pair};
-use subxt::sp_runtime::MultiSigner;
-use subxt::{ClientBuilder, Config, RpcClient};
+use subxt::rpc::{rpc_params, RpcClientT};
+use subxt::tx::{Signer, TxEvents};
+use subxt::Config;
 pub use types::*;
 
-pub struct UnsignedClient(ApiInner);
+pub fn event_to_string(ev: EventDetails) -> String {
+    let input = &mut ev.bytes();
+    let phase = subxt::events::Phase::decode(input);
+    let event = sub_runtime::Event::decode(input);
+    format!("(Phase: {:?}, Event: {:?})", phase, event)
+}
 
-impl Clone for UnsignedClient {
-    fn clone(&self) -> Self {
-        Self(self.0.client.clone().into())
+pub fn log_tx_events(events: TxEvents<DefaultConfig>) {
+    for ev in events.iter() {
+        match ev {
+            Ok(ev) => {
+                debug!("{}", event_to_string(ev));
+            }
+            Err(err) => {
+                warn!("Failed to decode event: {:?}", err);
+            }
+        }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClonableClient(Arc<jsonrpsee::async_client::Client>);
+
+impl RpcClientT for ClonableClient {
+    fn request_raw<'a>(
+        &'a self,
+        method: &'a str,
+        params: Option<Box<jsonrpsee::core::JsonRawValue>>,
+    ) -> subxt::rpc::RpcFuture<'a, Box<jsonrpsee::core::JsonRawValue>> {
+        self.0.request_raw(method, params)
+    }
+
+    fn subscribe_raw<'a>(
+        &'a self,
+        sub: &'a str,
+        params: Option<Box<jsonrpsee::core::JsonRawValue>>,
+        unsub: &'a str,
+    ) -> subxt::rpc::RpcFuture<'a, subxt::rpc::RpcSubscription> {
+        self.0.subscribe_raw(sub, params, unsub)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnsignedClient {
+    api: ApiInner,
+    client: ClonableClient,
 }
 
 impl UnsignedClient {
     pub async fn new(url: impl Into<String>) -> AnyResult<Self> {
-        let api = ClientBuilder::new()
-            .set_url(url)
-            .build()
-            .await
-            .context("Substrate client api build")?
-            .to_runtime_api::<ApiInner>();
-        Ok(Self(api))
+        let url: Uri = url.into().parse()?;
+        let (sender, receiver) =
+            jsonrpsee::client_transport::ws::WsTransportClientBuilder::default()
+                .build(url)
+                .await?;
+        let client = jsonrpsee::async_client::ClientBuilder::default()
+            .max_notifs_per_subscription(4096)
+            .build_with_tokio(sender, receiver);
+        let client = ClonableClient(Arc::new(client));
+        let api = subxt::OnlineClient::<DefaultConfig>::from_rpc_client(client.clone()).await?;
+        Ok(Self { api, client })
     }
 
-    pub fn rpc(&self) -> &RpcClient {
-        &self.api().client.rpc().client
+    pub fn rpc(&self) -> &jsonrpsee::async_client::Client {
+        &self.client.0
     }
 
     pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash> {
@@ -112,10 +157,9 @@ impl UnsignedClient {
     }
 
     pub async fn beefy_start_block(&self) -> AnyResult<u64> {
-        let latest_finalized_hash = self.api().client.rpc().finalized_head().await?;
+        let latest_finalized_hash = self.api().rpc().finalized_head().await?;
         let latest_finalized_number = self
             .api()
-            .client
             .rpc()
             .block(Some(latest_finalized_hash))
             .await?
@@ -126,10 +170,9 @@ impl UnsignedClient {
         let mmr_leaves = self
             .api()
             .storage()
-            .mmr()
-            .number_of_leaves(false, Some(latest_finalized_hash))
+            .fetch_or_default(&runtime::storage().mmr().number_of_leaves(), None)
             .await?;
-        let beefy_start_block = latest_finalized_number as u64 - mmr_leaves;
+        let beefy_start_block = (latest_finalized_number as u64).saturating_sub(mmr_leaves);
         debug!("Beefy started at: {}", beefy_start_block);
         Ok(beefy_start_block)
     }
@@ -141,9 +184,7 @@ impl UnsignedClient {
     ) -> AnyResult<Option<Vec<u8>>> {
         let res = self
             .api()
-            .client
             .rpc()
-            .client
             .request::<Option<Bytes>>(
                 "offchain_localStorageGet",
                 rpc_params![storage.as_string(), Bytes(key)],
@@ -187,14 +228,13 @@ impl UnsignedClient {
     }
 
     pub fn api(&self) -> &ApiInner {
-        &self.0
+        &self.api
     }
 
     pub async fn block<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<SignedBlock> {
         let hash = self.block_hash(block).await?;
         let block = self
             .api()
-            .client
             .rpc()
             .block(Some(hash))
             .await?
@@ -213,7 +253,6 @@ impl UnsignedClient {
         };
         let hash = self
             .api()
-            .client
             .rpc()
             .block_hash(number.map(|x| x.into()))
             .await?
@@ -225,7 +264,6 @@ impl UnsignedClient {
         let hash = self.block_hash(block).await?;
         let header = self
             .api()
-            .client
             .rpc()
             .header(Some(hash))
             .await?
@@ -269,7 +307,7 @@ impl SignedClient {
     }
 
     pub fn api(&self) -> &ApiInner {
-        &self.inner.0
+        &self.inner.api()
     }
 
     pub fn set_nonce(&self, index: Index) {
@@ -281,7 +319,6 @@ impl SignedClient {
         let nonce = self
             .inner
             .api()
-            .client
             .rpc()
             .system_account_next_index(&self.account_id())
             .await?;

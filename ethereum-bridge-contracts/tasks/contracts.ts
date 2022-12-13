@@ -6,7 +6,8 @@ export async function main() {
     log("Run contracts");
     const dl = await hh.deployments.all();
     for (let key in dl) {
-        log(`__${key}__: \`${dl[key].address}\``);
+        log(key);
+        log(dl[key].address);
     }
 }
 

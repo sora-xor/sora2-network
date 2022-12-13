@@ -4,7 +4,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 description = "Polkaswap pallet for defining permissions model."
-edition = "2018"
+edition = "2021"
 name = "permissions"
 version = "1.1.0"
 
@@ -12,24 +12,28 @@ version = "1.1.0"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-frame-support = { version = "3", default-features = false }
-frame-system = { version = "3", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-core = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 
 common = { path = "../../common", default-features = false }
 
 [dev-dependencies]
-sp-io = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-pallet-balances = { version = "3" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 
 [features]
 default = ["std"]
 std = [
     "codec/std",
+    "scale-info/std",
     "common/std",
     "frame-support/std",
     "frame-system/std",

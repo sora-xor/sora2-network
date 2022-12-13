@@ -28,8 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId};
+use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
+use crate::{
+    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, PswapRemintInfo,
+    RewardReason,
+};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -41,6 +44,7 @@ use frame_system::RawOrigin;
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
 use codec::{Decode, Encode};
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -98,13 +102,13 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
     ) -> bool;
 
-    /// Get spot price of tokens based on desired amount, None returned if liquidity source
-    /// does not have available exchange methods for indicated path.
+    /// Get spot price of tokens based on desired amount.
     fn quote(
         target_id: &TargetId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Amount>,
+        amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -115,6 +119,25 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
+    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Get rewards that are given for perfoming given exchange.
+    fn check_rewards(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        input_amount: Amount,
+        output_amount: Amount,
+    ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
+
+    /// Get spot price of tokens based on desired amount, ignoring non-linearity
+    /// of underlying liquidity source.
+    fn quote_without_impact(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 }
 
@@ -133,7 +156,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Fixed>,
+        _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -145,6 +169,26 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Fixed>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Fixed,
+        _output_amount: Fixed,
+    ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_without_impact(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -165,7 +209,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Balance>,
+        _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -177,6 +222,26 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_without_impact(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -229,10 +294,10 @@ pub trait Config: frame_system::Config + currencies::Config {
 /// succeeds with best efforts.
 /// - **Claim**: claim any resources reserved in the first phrase.
 /// - **Cancel**: cancel any resources reserved in the first phrase.
-pub trait SwapAction<SourceAccountId, TargetAccountId, T: Config> {
+pub trait SwapAction<SourceAccountId, TargetAccountId, AssetId, T: Config> {
     /// Reserve the resources needed for the swap, from the given `source`. The reservation is
     /// allowed to fail. If that is the case, the the full swap creation operation is cancelled.
-    fn reserve(&self, source: &SourceAccountId) -> DispatchResult;
+    fn reserve(&self, source: &SourceAccountId, base_asset_id: &AssetId) -> DispatchResult;
     /// Claim the reserved resources, with `source`. Returns whether the claim succeeds.
     fn claim(&self, source: &SourceAccountId) -> bool;
     /// Weight for executing the operation.
@@ -242,10 +307,10 @@ pub trait SwapAction<SourceAccountId, TargetAccountId, T: Config> {
 }
 
 /// Dummy implementation for cases then () used in runtime as empty SwapAction.
-impl<SourceAccountId, TargetAccountId, T: Config> SwapAction<SourceAccountId, TargetAccountId, T>
-    for ()
+impl<SourceAccountId, TargetAccountId, AssetId, T: Config>
+    SwapAction<SourceAccountId, TargetAccountId, AssetId, T> for ()
 {
-    fn reserve(&self, _source: &SourceAccountId) -> DispatchResult {
+    fn reserve(&self, _source: &SourceAccountId, _base_asset_id: &AssetId) -> DispatchResult {
         Ok(())
     }
     fn claim(&self, _source: &SourceAccountId) -> bool {
@@ -259,15 +324,19 @@ impl<SourceAccountId, TargetAccountId, T: Config> SwapAction<SourceAccountId, Ta
     }
 }
 
-pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Config>:
-    SwapAction<SourceAccountId, TargetAccountId, T>
+pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, AssetId, T: Config>:
+    SwapAction<SourceAccountId, TargetAccountId, AssetId, T>
 {
     /// If action is only for abstract checking, shoud not apply by `reserve` function.
     fn is_abstract_checking(&self) -> bool;
 
     /// Validate action if next steps must be applied by `reserve` function
     /// or if source account is None, than just ability to do operation is checked.
-    fn prepare_and_validate(&mut self, source: Option<&SourceAccountId>) -> DispatchResult;
+    fn prepare_and_validate(
+        &mut self,
+        source: Option<&SourceAccountId>,
+        base_asset_id: &AssetId,
+    ) -> DispatchResult;
 
     /// Instant auto claim is performed just after reserve.
     /// If triggered is not used, than it is one time auto claim, it will be canceled if it fails.
@@ -281,13 +350,17 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Config>:
     fn is_able_to_claim(&self) -> bool;
 }
 
-impl<SourceAccountId, TargetAccountId, T: Config>
-    SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
+impl<SourceAccountId, TargetAccountId, AssetId, T: Config>
+    SwapRulesValidation<SourceAccountId, TargetAccountId, AssetId, T> for ()
 {
     fn is_abstract_checking(&self) -> bool {
         true
     }
-    fn prepare_and_validate(&mut self, _source: Option<&SourceAccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&SourceAccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -377,21 +450,19 @@ pub trait FromGenericPair {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self;
 }
 
-/// Trait for bounding liquidity proxy associated type representing primary market.
+/// Trait for bounding liquidity proxy associated type representing primary market in TBC.
 pub trait GetMarketInfo<AssetId> {
-    /// The price in terms of the `collateral_asset` at which one can buy
-    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool).
-    fn buy_price(base_asset: &AssetId, collateral_asset: &AssetId) -> Result<Fixed, DispatchError>;
-    /// The price in terms of the `collateral_asset` at which one can sell
-    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool).
-    fn sell_price(base_asset: &AssetId, collateral_asset: &AssetId)
-        -> Result<Fixed, DispatchError>;
-    /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
-    /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
-    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+    /// The price in terms of the `target_asset` at which one can buy
+    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool or xst).
+    fn buy_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// The price in terms of the `target_asset` at which one can sell
+    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool or xst).
+    fn sell_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// Returns set of enabled collateral/synthetic/reserve assets on bonding curve.
+    fn enabled_target_assets() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId> GetMarketInfo<AssetId> for () {
+impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
@@ -406,8 +477,8 @@ impl<AssetId> GetMarketInfo<AssetId> for () {
         Ok(Default::default())
     }
 
-    fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        Ok(Default::default())
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
+        Default::default()
     }
 }
 
@@ -421,5 +492,217 @@ pub trait GetPoolReserves<AssetId> {
 impl<AssetId> GetPoolReserves<AssetId> for () {
     fn reserves(_base_asset: &AssetId, _other_asset: &AssetId) -> (Balance, Balance) {
         Default::default()
+    }
+}
+
+/// General trait for passing pswap amount burned information to required pallets.
+pub trait OnPswapBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
+    fn on_pswap_burned(distribution: PswapRemintInfo);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_distribution: PswapRemintInfo) {
+        // do nothing
+    }
+}
+
+/// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
+pub trait VestedRewardsPallet<AccountId, AssetId> {
+    /// Report that swaps with xor were performed.
+    /// - `account_id`: account performing transaction.
+    /// - `xor_volume`: amount of xor passed in transaction.
+    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
+    fn update_market_maker_records(
+        account_id: &AccountId,
+        base_asset: &AssetId,
+        base_asset_volume: Balance,
+        count: u32,
+        from_asset_id: &AssetId,
+        to_asset_id: &AssetId,
+        intermediate_asset_ids: &[AssetId],
+    ) -> DispatchResult;
+
+    /// Report that account has received pswap reward for buying from tbc.
+    fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
+    fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received pswap reward for performing large volume trade over month.
+    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+}
+
+pub trait PoolXykPallet<AccountId, AssetId> {
+    type PoolProvidersOutput: IntoIterator<Item = (AccountId, Balance)>;
+    type PoolPropertiesOutput: IntoIterator<Item = (AssetId, AssetId, (AccountId, AccountId))>;
+
+    fn pool_providers(pool_account: &AccountId) -> Self::PoolProvidersOutput;
+
+    fn total_issuance(pool_account: &AccountId) -> Result<Balance, DispatchError>;
+
+    fn all_properties() -> Self::PoolPropertiesOutput;
+
+    fn properties_of_pool(
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Option<(AccountId, AccountId)> {
+        None
+    }
+
+    fn balance_of_pool_provider(
+        _pool_account: AccountId,
+        _liquidity_provider_account: AccountId,
+    ) -> Option<Balance> {
+        None
+    }
+
+    fn transfer_lp_tokens(
+        _pool_account: AccountId,
+        _asset_a: AssetId,
+        _asset_b: AssetId,
+        _base_account_id: AccountId,
+        _target_account_id: AccountId,
+        _pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
+pub trait DemeterFarmingPallet<AccountId, AssetId> {
+    fn update_pool_tokens(
+        _user: AccountId,
+        _pool_tokens: Balance,
+        _base_asset: AssetId,
+        _pool_asset: AssetId,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
+pub trait OnPoolCreated {
+    type AccountId;
+    type DEXId;
+
+    fn on_pool_created(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult;
+}
+
+pub trait PriceToolsPallet<AssetId> {
+    /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError>;
+
+    /// Add asset to be tracked for average price.
+    fn register_asset(asset_id: &AssetId) -> DispatchResult;
+}
+
+impl<AssetId> PriceToolsPallet<AssetId> for () {
+    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
+impl<AccountId, DEXId, A, B> OnPoolCreated for (A, B)
+where
+    AccountId: Clone,
+    DEXId: Clone,
+    A: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+    B: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+{
+    type AccountId = AccountId;
+    type DEXId = DEXId;
+
+    fn on_pool_created(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        A::on_pool_created(fee_account.clone(), dex_id.clone(), pool_account.clone())?;
+        B::on_pool_created(fee_account, dex_id, pool_account)
+    }
+}
+
+pub trait OnPoolReservesChanged<AssetId> {
+    // Reserves of given pool has either changed proportion or volume.
+    fn reserves_changed(target_asset_id: &AssetId);
+}
+
+impl<AssetId> OnPoolReservesChanged<AssetId> for () {
+    fn reserves_changed(_: &AssetId) {
+        // do nothing
+    }
+}
+
+/// General trait for passing on the amount of burned VAL.
+pub trait OnValBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
+    fn on_val_burned(amount: Balance);
+}
+
+impl OnValBurned for () {
+    fn on_val_burned(_: Balance) {
+        // do nothing
+    }
+}
+
+/// Indicates that particular object can be used to perform exchanges with aggregation capability.
+pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
+    /// Get spot price of tokens based on desired amount, None returned if liquidity source
+    /// does not have available exchange methods for indicated path.
+    fn quote(
+        dex_id: DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+
+    /// Perform exchange based on desired amount.
+    fn exchange(
+        dex_id: DEXId,
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+}
+
+impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
+    for ()
+{
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+
+    fn exchange(
+        _dex_id: DEXId,
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: SwapAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
     }
 }

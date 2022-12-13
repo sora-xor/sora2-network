@@ -14,8 +14,8 @@ pub const EPOCH_LENGTH: u64 = 30000;
 /// Etchash have increased epoch length
 /// https://ecips.ethereumclassic.org/ECIPs/ecip-1099
 pub const ETCHASH_EPOCH_LENGTH: u64 = 60000;
-
-const DIFFICULTY_BOUND_DIVISOR: u32 = 11; // right-shifts equivalent to division by 2048
+/// right-shifts equivalent to division by 2048
+const DIFFICULTY_BOUND_DIVISOR: u32 = 11;
 const EXP_DIFFICULTY_PERIOD: u64 = 100000;
 const MINIMUM_DIFFICULTY: u32 = 131072;
 
@@ -31,11 +31,12 @@ pub enum BombDelay {
     London = 9700000,
     // See https://eips.ethereum.org/EIPS/eip-4345
     ArrowGlacier = 10700000,
+    // See https://eips.ethereum.org/EIPS/eip-5133
+    GrayGlacier = 11400000,
 }
 
-/// Describes when hard forks occurred in Etheerum Mainnet based networks
-/// that affect difficulty calculations. These
-/// values are network-specific.
+/// Describes when hard forks occurred in Ethereum Mainnet based networks
+/// that affect difficulty calculations. These values are network-specific.
 #[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ForkConfig {
@@ -49,11 +50,15 @@ pub struct ForkConfig {
     pub london_fork_block: u64,
     // Block number on which ArrowGlacier (EIP-4345) activated
     pub arrow_glacier_fork_block: u64,
+    // Block number on which GrayGlacier (EIP-5133) activated
+    pub gray_glacier_fork_block: u64,
 }
 
 impl ForkConfig {
     pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
-        if block_number >= self.arrow_glacier_fork_block {
+        if block_number >= self.gray_glacier_fork_block {
+            Some(BombDelay::GrayGlacier)
+        } else if block_number >= self.arrow_glacier_fork_block {
             Some(BombDelay::ArrowGlacier)
         } else if block_number >= self.london_fork_block {
             Some(BombDelay::London)
@@ -75,6 +80,7 @@ impl ForkConfig {
             muir_glacier_fork_block: 9_200_000,
             london_fork_block: 12_965_000,
             arrow_glacier_fork_block: 13_773_000,
+            gray_glacier_fork_block: 15_050_000,
         }
     }
 
@@ -84,7 +90,9 @@ impl ForkConfig {
             constantinople_fork_block: 4_230_000,
             muir_glacier_fork_block: 7_117_117,
             london_fork_block: 10_499_401,
-            arrow_glacier_fork_block: u64::max_value(),
+            // Ropsten is PoS network and isn't affected by the difficulty bomb delay
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
         }
     }
 
@@ -94,7 +102,9 @@ impl ForkConfig {
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
             london_fork_block: 0,
-            arrow_glacier_fork_block: u64::max_value(),
+            // Sepolia is PoS network and isn't affected by the difficulty bomb delay
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
         }
     }
 
@@ -112,8 +122,7 @@ impl ForkConfig {
 }
 
 /// Describes when hard forks occurred in Ethereum Classic based networks
-/// that affect difficulty calculations. These
-/// values are network-specific.
+/// that affect difficulty calculations. These values are network-specific.
 #[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassicForkConfig {
@@ -198,13 +207,20 @@ pub fn calc_difficulty(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::header::EMPTY_OMMERS_HASH;
     use ethereum_types::H256;
+    use hex_literal::hex;
     use serde::{Deserialize, Deserializer};
+    use serde_json::Value;
     use sp_std::convert::TryInto;
     use std::collections::BTreeMap;
     use std::fmt::Display;
     use std::fs::File;
     use std::path::PathBuf;
+
+    // anything different from EMPTY_OMMERS_HASH
+    const NON_EMPTY_OMMERS_HASH: [u8; 32] =
+        hex!("1111111111111111111111111111111111111111111111111111111111111111");
 
     pub fn deserialize_uint_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
@@ -237,16 +253,17 @@ mod tests {
         }
     }
 
+    /// Test case in `fixtures/tests/BasicTests/difficulty*.json` with explicit parent uncles hash.
     #[derive(Debug, PartialEq, Deserialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct DifficultyTestCase {
+    pub struct BasicTestCase {
         /// Parent timestamp.
         #[serde(deserialize_with = "deserialize_uint_from_string")]
         pub parent_timestamp: u64,
         /// Parent difficulty.
         #[serde(deserialize_with = "deserialize_uint_from_string")]
         pub parent_difficulty: U256,
-        /// Parent uncle hash.
+        /// Parent uncle hash flag:
         pub parent_uncles: H256,
         /// Current timestamp.
         #[serde(deserialize_with = "deserialize_uint_from_string")]
@@ -259,10 +276,86 @@ mod tests {
         pub current_block_number: u64,
     }
 
+    /// Test suite in `fixtures/tests/BasicTests/difficulty.*.json`.
     #[derive(Debug, PartialEq, Deserialize)]
-    pub struct DifficultyTest(BTreeMap<String, DifficultyTestCase>);
+    pub struct BasicTestSuite(BTreeMap<String, BasicTestCase>);
 
-    impl DifficultyTest {
+    impl BasicTestSuite {
+        /// Loads test from json.
+        pub fn from_fixture(fixture: &str) -> Self {
+            let path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", fixture]
+                .iter()
+                .collect();
+            serde_json::from_reader(File::open(&path).unwrap()).unwrap()
+        }
+    }
+
+    /// Test case in `fixtures/tests/DifficultyTests/*.json` with parent uncles hash set as flag.
+    #[derive(Debug, PartialEq, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct DifficultyTestCase {
+        /// Parent timestamp.
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub parent_timestamp: u64,
+        /// Parent difficulty.
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub parent_difficulty: U256,
+        /// Parent uncle hash flag:
+        /// - 0 - is absent - use empty ommers hash
+        /// - 1 - present - use any other hash
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub parent_uncles: u64,
+        /// Current timestamp.
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub current_timestamp: u64,
+        /// Current difficulty.
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub current_difficulty: U256,
+        /// Current block number.
+        #[serde(deserialize_with = "deserialize_uint_from_string")]
+        pub current_block_number: u64,
+    }
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    pub struct DifficultyTestSet {
+        #[serde(skip)]
+        pub _info: Value,
+        #[serde(
+            alias = "Frontier",
+            alias = "Homestead",
+            alias = "Byzantium",
+            alias = "Constantinople",
+            alias = "Berlin",
+            alias = "ArrowGlacier",
+            alias = "GrayGlacier"
+        )]
+        pub test_cases: BTreeMap<String, DifficultyTestCase>,
+    }
+
+    /// Test suite in `fixtures/tests/DifficultyTests/*.json`.
+    #[derive(Debug, PartialEq, Deserialize)]
+    pub struct DifficultyTestSuite {
+        #[serde(
+            alias = "difficultyFrontier",
+            alias = "difficultyHomestead",
+            alias = "difficultyByzantium",
+            alias = "difficultyConstantinople",
+            alias = "difficultyEIP2384",
+            alias = "difficultyEIP2384_random",
+            alias = "difficultyEIP2384_random_to20M",
+            alias = "difficultyArrowGlacier",
+            alias = "difficultyArrowGlacierForkBlock",
+            alias = "difficultyArrowGlacierMinus1",
+            alias = "difficultyArrowGlacierTimeDiff1",
+            alias = "difficultyGrayGlacier",
+            alias = "difficultyGrayGlacierForkBlock",
+            alias = "difficultyGrayGlacierMinus1",
+            alias = "difficultyGrayGlacierTimeDiff1"
+        )]
+        pub difficulty_test: DifficultyTestSet,
+    }
+
+    impl DifficultyTestSuite {
         /// Loads test from json.
         pub fn from_fixture(fixture: &str) -> Self {
             let path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", fixture]
@@ -273,8 +366,32 @@ mod tests {
     }
 
     macro_rules! test_difficulty {
+        ($config:ident, $test_case_name:ident, $test_case:ident, $parent:ident) => {
+            let difficulty = $config.calc_difficulty($test_case.current_timestamp, &$parent);
+            if $config.byzantium_fork_block > $test_case.current_block_number {
+                assert_eq!(
+                    difficulty,
+                    Err("Cannot calculate difficulty for block number prior to Byzantium"),
+                    "Test case {} failed: {:?}",
+                    $test_case_name,
+                    $test_case,
+                );
+            } else {
+                assert_eq!(
+                    difficulty,
+                    Ok($test_case.current_difficulty),
+                    "Test case {} failed: {:?}",
+                    $test_case_name,
+                    $test_case,
+                );
+            }
+        };
+    }
+
+    /// Reads and executes test suite from `fixtures/tests/BasicTests/difficulty.*.json`.
+    macro_rules! run_basic_test {
         ($fixture:literal, $config:ident) => {
-            let test_cases = DifficultyTest::from_fixture($fixture);
+            let test_cases = BasicTestSuite::from_fixture($fixture);
 
             for (test_case_name, test_case) in &test_cases.0 {
                 let mut parent: Header = Default::default();
@@ -282,82 +399,204 @@ mod tests {
                 parent.timestamp = test_case.parent_timestamp;
                 parent.difficulty = test_case.parent_difficulty;
                 parent.ommers_hash = test_case.parent_uncles;
+                test_difficulty!($config, test_case_name, test_case, parent);
+            }
+        };
+    }
 
-                let difficulty = $config.calc_difficulty(test_case.current_timestamp, &parent);
-                if $config.byzantium_fork_block > test_case.current_block_number {
-                    assert_eq!(
-                        difficulty,
-                        Err("Cannot calculate difficulty for block number prior to Byzantium"),
-                        "Test case {} failed: {:?}",
-                        test_case_name,
-                        test_case,
-                    );
+    /// Reads and executes test suite from `fixtures/tests/DifficultyTests/*.json`.
+    macro_rules! run_difficulty_test {
+        ($fixture:literal, $config:ident) => {
+            let test_cases = DifficultyTestSuite::from_fixture($fixture);
+
+            for (test_case_name, test_case) in &test_cases.difficulty_test.test_cases {
+                let mut parent: Header = Default::default();
+                parent.number = test_case.current_block_number - 1;
+                parent.timestamp = test_case.parent_timestamp;
+                parent.difficulty = test_case.parent_difficulty;
+                parent.ommers_hash = if test_case.parent_uncles == 0 {
+                    EMPTY_OMMERS_HASH.into()
                 } else {
-                    assert_eq!(
-                        difficulty,
-                        Ok(test_case.current_difficulty),
-                        "Test case {} failed: {:?}",
-                        test_case_name,
-                        test_case,
-                    );
-                }
+                    NON_EMPTY_OMMERS_HASH.into()
+                };
+                test_difficulty!($config, test_case_name, test_case, parent);
             }
         };
     }
 
     #[test]
-    fn byzantium_difficulty_calc_is_correct() {
-        let all_blocks_are_byzantium = ForkConfig {
-            byzantium_fork_block: 0,
-            constantinople_fork_block: u64::max_value(),
-            muir_glacier_fork_block: u64::max_value(),
-            london_fork_block: u64::max_value(),
-            arrow_glacier_fork_block: u64::max_value(),
+    #[ignore]
+    fn frontier_difficulty_calc_is_correct() {
+        let all_blocks_are_frontier = ForkConfig {
+            byzantium_fork_block: u64::MAX,
+            constantinople_fork_block: u64::MAX,
+            muir_glacier_fork_block: u64::MAX,
+            london_fork_block: u64::MAX,
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
         };
-        test_difficulty!("difficultyByzantium.json", all_blocks_are_byzantium);
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfFrontier/difficultyFrontier.json",
+            all_blocks_are_frontier
+        );
     }
 
     #[test]
+    #[ignore]
+    fn homestead_difficulty_calc_is_correct() {
+        let all_blocks_are_homestead = ForkConfig {
+            byzantium_fork_block: u64::MAX,
+            constantinople_fork_block: u64::MAX,
+            muir_glacier_fork_block: u64::MAX,
+            london_fork_block: u64::MAX,
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
+        };
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfHomestead/difficultyHomestead.json",
+            all_blocks_are_homestead
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn byzantium_difficulty_calc_is_correct() {
+        let all_blocks_are_byzantium = ForkConfig {
+            byzantium_fork_block: 0,
+            constantinople_fork_block: u64::MAX,
+            muir_glacier_fork_block: u64::MAX,
+            london_fork_block: u64::MAX,
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
+        };
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfByzantium/difficultyByzantium.json",
+            all_blocks_are_byzantium
+        );
+    }
+
+    #[test]
+    #[ignore]
     fn constantinople_difficulty_calc_is_correct() {
         let all_blocks_are_constantinople = ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
-            muir_glacier_fork_block: u64::max_value(),
-            london_fork_block: u64::max_value(),
-            arrow_glacier_fork_block: u64::max_value(),
+            muir_glacier_fork_block: u64::MAX,
+            london_fork_block: u64::MAX,
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
         };
-        test_difficulty!(
-            "difficultyConstantinople.json",
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfConstantinople/difficultyConstantinople.json",
             all_blocks_are_constantinople
         );
     }
 
     #[test]
+    #[ignore]
     fn muir_glacier_difficulty_calc_is_correct() {
         let all_blocks_are_muir_glacier = ForkConfig {
             byzantium_fork_block: 0,
             constantinople_fork_block: 0,
             muir_glacier_fork_block: 0,
-            london_fork_block: u64::max_value(),
-            arrow_glacier_fork_block: u64::max_value(),
+            london_fork_block: u64::MAX,
+            arrow_glacier_fork_block: u64::MAX,
+            gray_glacier_fork_block: u64::MAX,
         };
-        test_difficulty!("difficultyEIP2384.json", all_blocks_are_muir_glacier);
-        test_difficulty!("difficultyEIP2384_random.json", all_blocks_are_muir_glacier);
-        test_difficulty!(
-            "difficultyEIP2384_random_to20M.json",
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384.json",
+            all_blocks_are_muir_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384_random.json",
+            all_blocks_are_muir_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384_random_to20M.json",
             all_blocks_are_muir_glacier
         );
     }
 
     #[test]
-    fn mainnet_difficulty_calc_is_correct() {
-        let mainnet_config = ForkConfig::mainnet();
-        test_difficulty!("difficultyMainNetwork.json", mainnet_config);
+    #[ignore]
+    fn arrow_glacier_difficulty_calc_is_correct() {
+        let all_blocks_are_arrow_glacier = ForkConfig {
+            byzantium_fork_block: 0,
+            constantinople_fork_block: 0,
+            muir_glacier_fork_block: 0,
+            london_fork_block: 0,
+            arrow_glacier_fork_block: 0,
+            gray_glacier_fork_block: u64::MAX,
+        };
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacier.json",
+            all_blocks_are_arrow_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierForkBlock.json",
+            all_blocks_are_arrow_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierMinus1.json",
+            all_blocks_are_arrow_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierTimeDiff1.json",
+            all_blocks_are_arrow_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierTimeDiff2.json",
+            all_blocks_are_arrow_glacier
+        );
     }
 
     #[test]
+    #[ignore]
+    fn gray_glacier_difficulty_calc_is_correct() {
+        let all_blocks_are_gray_glacier = ForkConfig {
+            byzantium_fork_block: 0,
+            constantinople_fork_block: 0,
+            muir_glacier_fork_block: 0,
+            london_fork_block: 0,
+            arrow_glacier_fork_block: 0,
+            gray_glacier_fork_block: 0,
+        };
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacier.json",
+            all_blocks_are_gray_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierForkBlock.json",
+            all_blocks_are_gray_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierMinus1.json",
+            all_blocks_are_gray_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierTimeDiff1.json",
+            all_blocks_are_gray_glacier
+        );
+        run_difficulty_test!(
+            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierTimeDiff2.json",
+            all_blocks_are_gray_glacier
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn mainnet_difficulty_calc_is_correct() {
+        let mainnet_config = ForkConfig::mainnet();
+        run_basic_test!(
+            "tests/BasicTests/difficultyMainNetwork.json",
+            mainnet_config
+        );
+    }
+
+    #[test]
+    #[ignore]
     fn ropsten_difficulty_calc_is_correct() {
         let ropsten_config = ForkConfig::ropsten();
-        test_difficulty!("difficultyRopsten.json", ropsten_config);
+        run_basic_test!("tests/BasicTests/difficultyRopsten.json", ropsten_config);
     }
 }

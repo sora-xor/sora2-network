@@ -33,11 +33,11 @@ use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, VAL,
+    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP,
+    VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
@@ -60,6 +60,7 @@ pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
 pub const REFERRALS_RESERVES_ACC: AccountId = 22;
+pub const BUY_BACK_ACCOUNT: AccountId = 23;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -71,7 +72,6 @@ parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
-    pub GetTeamReservesAccountId: AccountId = 3000u64;
     pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
@@ -81,21 +81,21 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
-        Currencies: currencies::{Module, Call, Storage,  Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Event<T>},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        Referrals: referrals::{Module, Call, Storage, Config<T>},
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>}
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Referrals: referrals::{Pallet, Call, Storage, Config<T>},
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>}
     }
 );
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -117,6 +117,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl technical::Config for Runtime {
@@ -128,6 +130,14 @@ impl technical::Config for Runtime {
     type SwapAction = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
+    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = u64;
@@ -135,8 +145,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -152,7 +167,6 @@ impl permissions::Config for Runtime {
 
 // Required by assets::Config
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -168,6 +182,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -178,6 +194,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl referrals::Config for Runtime {
@@ -241,27 +263,14 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
-    let eth_bridge_tech_account_id = TechAccountId::Generic(
-        eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
-        eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
-    );
-    let eth_bridge_account_id =
-        Technical::tech_account_id_to_account_id(&eth_bridge_tech_account_id).unwrap();
-
     tokens::GenesisConfig::<Runtime> {
-        endowed_accounts: vec![
-            (ALICE, VAL, 0u128.into()),
-            (eth_bridge_account_id, VAL, balance!(1000)),
-        ],
+        balances: vec![(ALICE, VAL, 0u128.into())],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     technical::GenesisConfig::<Runtime> {
-        register_tech_accounts: vec![
-            (MINTING_ACCOUNT, tech_account_id.clone()),
-            (eth_bridge_account_id, eth_bridge_tech_account_id),
-        ],
+        register_tech_accounts: vec![(MINTING_ACCOUNT, tech_account_id.clone())],
     }
     .assimilate_storage(&mut t)
     .unwrap();
@@ -322,7 +331,7 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     IrohaMigrationConfig {
         iroha_accounts,
-        account_id: MINTING_ACCOUNT,
+        account_id: Some(MINTING_ACCOUNT),
     }
     .assimilate_storage(&mut t)
     .unwrap();

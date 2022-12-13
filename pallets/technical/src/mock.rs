@@ -31,12 +31,14 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
+use common::{PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
+use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -71,7 +73,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
     pub const ExistentialDeposit: u128 = 0;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -80,18 +81,18 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -113,6 +114,8 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl permissions::Config for Runtime {
@@ -132,6 +135,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -142,15 +147,30 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Pallet<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
+}
+
+parameter_types! {
+    pub GetBuyBackAssetId: AssetId = XST.into();
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = 0;
 }
 
 impl assets::Config for Runtime {
@@ -160,8 +180,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -214,7 +239,7 @@ impl Default for ExtBuilder {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct GenericPairSwapActionExample {
     pub give_minted: bool,
     pub give_asset: AssetId,
@@ -225,16 +250,18 @@ pub struct GenericPairSwapActionExample {
     pub take_account: TechAccountId,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapActionExample {
-    fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime>
+    for GenericPairSwapActionExample
+{
+    fn reserve(&self, source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         //FIXME now in this place exist two operations, and it is not lock.
-        crate::Module::<Runtime>::transfer_in(
+        crate::Pallet::<Runtime>::transfer_in(
             &self.give_asset.into(),
             source,
             &self.take_account,
             self.give_amount,
         )?;
-        crate::Module::<Runtime>::transfer_out(
+        crate::Pallet::<Runtime>::transfer_out(
             &self.take_asset.into(),
             &self.take_account,
             source,
@@ -255,13 +282,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapAc
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime>
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
     for GenericPairSwapActionExample
 {
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -275,7 +306,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime>
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MultiSwapActionExample {
     give_amount_a: TechAmount,
     give_amount_b: TechAmount,
@@ -284,8 +315,8 @@ pub struct MultiSwapActionExample {
     take_amount_e: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
-    fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for MultiSwapActionExample {
+    fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         Ok(())
     }
     fn claim(&self, _source: &AccountId) -> bool {
@@ -299,11 +330,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for MultiSwapActionEx
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for MultiSwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -317,15 +354,15 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for MultiSwa
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct CrowdSwapActionExample {
     crowd_id: u32,
     give_amount: TechAmount,
     take_amount: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
-    fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for CrowdSwapActionExample {
+    fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
         unimplemented!()
     }
     fn claim(&self, _source: &AccountId) -> bool {
@@ -339,11 +376,17 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for CrowdSwapActionEx
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for CrowdSwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         false
     }
-    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        _source: Option<&AccountId>,
+        _base_asset_id: &AssetId,
+    ) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -357,19 +400,19 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for CrowdSwa
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub enum PolySwapActionExample {
     GenericPair(GenericPairSwapActionExample),
     Multi(MultiSwapActionExample),
     Crowd(CrowdSwapActionExample),
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
-    fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
+impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for PolySwapActionExample {
+    fn reserve(&self, source: &AccountId, base_asset_id: &AssetId) -> dispatch::DispatchResult {
         match self {
-            GenericPair(a) => a.reserve(source),
-            Multi(a) => a.reserve(source),
-            Crowd(a) => a.reserve(source),
+            GenericPair(a) => a.reserve(source, base_asset_id),
+            Multi(a) => a.reserve(source, base_asset_id),
+            Crowd(a) => a.reserve(source, base_asset_id),
         }
     }
     fn claim(&self, source: &AccountId) -> bool {
@@ -395,7 +438,9 @@ impl common::SwapAction<AccountId, TechAccountId, Runtime> for PolySwapActionExa
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
+    for PolySwapActionExample
+{
     fn is_abstract_checking(&self) -> bool {
         match self {
             GenericPair(a) => a.is_abstract_checking(),
@@ -404,11 +449,15 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for PolySwap
         }
     }
 
-    fn prepare_and_validate(&mut self, source: Option<&AccountId>) -> DispatchResult {
+    fn prepare_and_validate(
+        &mut self,
+        source: Option<&AccountId>,
+        base_asset_id: &AssetId,
+    ) -> DispatchResult {
         match self {
-            GenericPair(a) => a.prepare_and_validate(source),
-            Multi(a) => a.prepare_and_validate(source),
-            Crowd(a) => a.prepare_and_validate(source),
+            GenericPair(a) => a.prepare_and_validate(source, base_asset_id),
+            Multi(a) => a.prepare_and_validate(source, base_asset_id),
+            Crowd(a) => a.prepare_and_validate(source, base_asset_id),
         }
     }
 
@@ -453,7 +502,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: self.endowed_accounts,
+            balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

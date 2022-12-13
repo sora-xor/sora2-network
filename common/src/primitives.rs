@@ -29,29 +29,36 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
-use rustc_hex::{FromHex, ToHex};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use hex_literal::hex;
 use sp_core::H256;
-use sp_std::convert::{TryFrom, TryInto};
-use sp_std::fmt::Display;
+use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
-#[cfg(feature = "std")]
-use sp_std::str::FromStr;
 use sp_std::vec::Vec;
-use static_assertions::_core::fmt::Formatter;
+
 #[cfg(feature = "std")]
-#[allow(unused)]
-use std::fmt;
+use {
+    rustc_hex::ToHex,
+    serde::{Deserialize, Deserializer, Serialize, Serializer},
+    sp_std::convert::TryInto,
+    sp_std::fmt::Display,
+    sp_std::str::FromStr,
+    static_assertions::_core::fmt::Formatter,
+};
 
 pub type Balance = u128;
 
+/// Max length of asset content source. The same value as IE URL length. It should enough for any URI / IPFS address (CID)
+pub const ASSET_CONTENT_SOURCE_MAX_LENGTH: usize = 2048;
+
+/// Max length of asset description, it should be enough to describe everything the user wants
+pub const ASSET_DESCRIPTION_MAX_LENGTH: usize = 512;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
-#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
 
 impl From<Balance> for BalanceWrapper {
@@ -89,18 +96,32 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
 }
 
 /// Information about state of particular DEX.
-#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
+    /// AssetId of synthetic base Asset in DEX.
+    pub synthetic_base_asset_id: AssetId,
     /// Determines if DEX can be managed by regular users.
     pub is_public: bool,
 }
 
 //TODO: consider replacing base_asset_id with dex_id, and getting base asset from dex
 /// Trading pair data.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, Hash)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    Hash,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
     /// Base token of exchange.
@@ -109,8 +130,26 @@ pub struct TradingPair<AssetId> {
     pub target_asset_id: AssetId,
 }
 
+impl<AssetId: Eq> TradingPair<AssetId> {
+    pub fn consists_of(&self, asset_id: &AssetId) -> bool {
+        &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
+    }
+}
+
 /// Asset identifier.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum PredefinedAssetId {
@@ -122,6 +161,8 @@ pub enum PredefinedAssetId {
     PSWAP = 5,
     DAI = 6,
     ETH = 7,
+    XSTUSD = 8,
+    XST = 9,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -132,6 +173,15 @@ pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
 pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
 pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+pub const XSTUSD: AssetId32<PredefinedAssetId> =
+    AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
+pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XST);
+pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
+pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
@@ -150,7 +200,19 @@ pub type AssetId32Code = [u8; 32];
 
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32<AssetId> {
     /// Internal data representing given AssetId.
@@ -207,14 +269,8 @@ impl<AssetId> FromStr for AssetId32<AssetId> {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.to_owned();
-        if s.starts_with("0x") {
-            s = (&s[2..]).to_owned();
-        } else {
-            return Err("expected hex string, e.g. 0x00..00");
-        }
-        let code: Vec<u8> = s.from_hex().map_err(|_| "error parsing hex string")?;
-        let code: [u8; 32] = code
+        let vec: Vec<u8> = crate::utils::parse_hex_string(s).ok_or("error parsing hex string")?;
+        let code: [u8; 32] = vec
             .try_into()
             .map_err(|_| "expected hex string representing 32-byte object")?;
         Ok(AssetId32 {
@@ -300,11 +356,14 @@ where
 }
 
 /// DEX identifier.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum DEXId {
     Polkaswap = 0,
+    PolkaswapXSTUSD = 1,
 }
 
 impl From<DEXId> for u32 {
@@ -322,7 +381,9 @@ impl Default for DEXId {
 pub type BalancePrecision = u8;
 pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION as u8;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
 
@@ -371,7 +432,25 @@ impl Default for AssetSymbol {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
+
+impl AssetSymbol {
+    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
+    /// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
+    pub fn is_valid(&self) -> bool {
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+            && self
+                .0
+                .iter()
+                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+    }
+}
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetName(pub Vec<u8>);
 
@@ -420,14 +499,150 @@ impl Default for AssetName {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
+const ASSET_NAME_MAX_LENGTH: usize = 33;
+
+impl AssetName {
+    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
+    /// guarantees that all graphemes are of length 1, therefore length check is valid.
+    pub fn is_valid(&self) -> bool {
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_NAME_MAX_LENGTH
+            && self.0.iter().all(|byte| {
+                (b'A'..=b'Z').contains(&byte)
+                    || (b'a'..=b'z').contains(&byte)
+                    || (b'0'..=b'9').contains(&byte)
+                    || byte == &b' '
+            })
+    }
+}
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(Hash))]
+pub struct ContentSource(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for ContentSource {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for ContentSource {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for ContentSource {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(ContentSource(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for ContentSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for ContentSource {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl ContentSource {
+    pub fn is_valid(&self) -> bool {
+        self.0.is_ascii() && self.0.len() <= ASSET_CONTENT_SOURCE_MAX_LENGTH
+    }
+}
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(Hash))]
+pub struct Description(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for Description {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for Description {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for Description {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(Description(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for Description {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for Description {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl Description {
+    pub fn is_valid(&self) -> bool {
+        self.0.len() <= ASSET_DESCRIPTION_MAX_LENGTH
+    }
+}
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
     Escaped(AssetId32Code),
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
     DEXId(DEXId),
@@ -448,7 +663,9 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Enumaration of all available liquidity sources.
-#[derive(Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum LiquiditySourceType {
@@ -459,9 +676,10 @@ pub enum LiquiditySourceType {
     MockPool2,
     MockPool3,
     MockPool4,
+    XSTPool,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum FilterMode {
@@ -479,7 +697,7 @@ impl Default for FilterMode {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum ManagementMode {
@@ -496,7 +714,9 @@ impl Default for ManagementMode {
 }
 
 /// Identification of liquidity source.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct LiquiditySourceId<DEXId: Copy, LiquiditySourceIndex: Copy> {
     /// Identification of target DEX.
     pub dex_id: DEXId,
@@ -538,7 +758,7 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Code of purpose for technical account.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechPurpose<AssetId> {
     FeeCollector,
@@ -550,7 +770,7 @@ pub enum TechPurpose<AssetId> {
 /// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
@@ -558,6 +778,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+    None,
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
@@ -580,9 +801,9 @@ impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
     }
 }
 
-impl<AccountId: Default, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
+impl<AccountId, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
     fn default() -> Self {
-        TechAccountId::Wrapped(AccountId::default())
+        TechAccountId::None
     }
 }
 
@@ -734,6 +955,45 @@ impl From<InvokeRPCError> for i64 {
             InvokeRPCError::RuntimeError => 1,
         }
     }
+}
+
+impl From<InvokeRPCError> for i32 {
+    fn from(item: InvokeRPCError) -> i32 {
+        match item {
+            InvokeRPCError::RuntimeError => 1,
+        }
+    }
+}
+
+/// Reason for particular reward during swap.
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug, scale_info::TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum RewardReason {
+    /// Reason is unknown.
+    Unspecified,
+    /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
+    BuyOnBondingCurve,
+    /// Providing liquidity on secondary market is rewarded.
+    LiquidityProvisionFarming,
+    /// High volume trading is rewarded.
+    MarketMakerVolume,
+    /// Crowdloan reward.
+    Crowdloan,
+}
+
+impl Default for RewardReason {
+    fn default() -> Self {
+        Self::Unspecified
+    }
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
+pub struct PswapRemintInfo {
+    pub liquidity_providers: Balance,
+    pub parliament: Balance,
+    pub vesting: Balance,
 }
 
 #[cfg(test)]

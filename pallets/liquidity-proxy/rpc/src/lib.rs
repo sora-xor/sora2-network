@@ -29,9 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use common::{BalanceWrapper, InvokeRPCError};
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
+use common::BalanceWrapper;
+use jsonrpsee::core::{Error as RpcError, RpcResult as Result};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
@@ -42,7 +43,7 @@ use std::sync::Arc;
 pub use liquidity_proxy_runtime_api::LiquidityProxyAPI as LiquidityProxyRuntimeAPI;
 use liquidity_proxy_runtime_api::SwapOutcomeInfo;
 
-#[rpc]
+#[rpc(server, client)]
 pub trait LiquidityProxyAPI<
     BlockHash,
     DEXId,
@@ -54,7 +55,7 @@ pub trait LiquidityProxyAPI<
     OutputTy,
 >
 {
-    #[rpc(name = "liquidityProxy_quote")]
+    #[method(name = "liquidityProxy_quote")]
     fn quote(
         &self,
         dex_id: DEXId,
@@ -67,7 +68,7 @@ pub trait LiquidityProxyAPI<
         at: Option<BlockHash>,
     ) -> Result<OutputTy>;
 
-    #[rpc(name = "liquidityProxy_isPathAvailable")]
+    #[method(name = "liquidityProxy_isPathAvailable")]
     fn is_path_available(
         &self,
         dex_id: DEXId,
@@ -76,7 +77,7 @@ pub trait LiquidityProxyAPI<
         at: Option<BlockHash>,
     ) -> Result<bool>;
 
-    #[rpc(name = "liquidityProxy_listEnabledSourcesForPath")]
+    #[method(name = "liquidityProxy_listEnabledSourcesForPath")]
     fn list_enabled_sources_for_path(
         &self,
         dex_id: DEXId,
@@ -102,7 +103,7 @@ impl<C, B> LiquidityProxyClient<C, B> {
 }
 
 impl<C, Block, DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode>
-    LiquidityProxyAPI<
+    LiquidityProxyAPIServer<
         <Block as BlockT>::Hash,
         DEXId,
         AssetId,
@@ -158,11 +159,7 @@ where
             selected_source_types,
             filter_mode,
         )
-        .map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to quote price.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn is_path_available(
@@ -178,11 +175,7 @@ where
             self.client.info().best_hash,
         ));
         api.is_path_available(&at, dex_id, input_asset_id, output_asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to query path availability.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_enabled_sources_for_path(
@@ -198,10 +191,6 @@ where
             self.client.info().best_hash,
         ));
         api.list_enabled_sources_for_path(&at, dex_id, input_asset_id, output_asset_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to query sources for path.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

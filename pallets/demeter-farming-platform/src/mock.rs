@@ -3,9 +3,12 @@ pub use common::mock::*;
 use common::prelude::Balance;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, XOR};
+use common::{
+    balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, DEMETER_ASSET_ID, PSWAP, VAL, XOR,
+    XST, XSTUSD,
+};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Hooks};
+use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -14,10 +17,10 @@ use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{AccountId32, Perbill, Percent};
 
 pub type BlockNumber = u64;
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type Amount = i128;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
@@ -31,29 +34,31 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>}
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>}
     }
 }
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const CHARLES: AccountId = 3;
+pub const ALICE: AccountId = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId = AccountId32::new([2u8; 32]);
+pub const CHARLES: AccountId = AccountId32::new([3u8; 32]);
+pub const BUY_BACK_ACCOUNT: AccountId = AccountId32::new([23u8; 32]);
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -64,17 +69,17 @@ parameter_types! {
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = 100;
-    pub GetPswapDistributionAccountId: AccountId = 101;
-    pub GetMarketMakerRewardsAccountId: AccountId = 102;
-    pub GetBondingCurveRewardsAccountId: AccountId = 103;
-    pub GetFarmingRewardsAccountId: AccountId = 104;
-    pub GetCrowdloanRewardsAccountId: AccountId = 105;
+    pub GetParliamentAccountId: AccountId = AccountId32::new([100u8; 32]);
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::new([101u8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::new([102u8; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::new([103u8; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::new([104u8; 32]);
+    pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::new([105u8; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -96,6 +101,8 @@ impl frame_system::Config for Runtime {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
@@ -111,18 +118,27 @@ impl demeter_farming_platform::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const GetTeamReservesAccountId: AccountId = 3000u128;
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -140,7 +156,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -153,7 +169,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -183,8 +199,8 @@ impl ceres_liquidity_locker::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
@@ -232,10 +248,15 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -257,6 +278,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 pub struct ExtBuilder {
@@ -269,23 +292,36 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: XOR.into(),
-                    is_public: true,
-                },
-            )],
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR.into(),
+                        synthetic_base_asset_id: XST.into(),
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: XST.into(),
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID.into(), balance!(1000)),
                 (BOB, CERES_ASSET_ID.into(), balance!(500)),
             ],
-            initial_permission_owners: vec![(
-                MANAGE_DEX,
-                Scope::Limited(hash(&DEX_A_ID)),
-                vec![BOB],
-            )],
-            initial_permissions: vec![(ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_permission_owners: vec![
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![BOB]),
+            ],
+            initial_permissions: vec![
+                (ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
+                (ALICE, Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
+            ],
         }
     }
 }
@@ -301,7 +337,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: self.endowed_accounts,
+            balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

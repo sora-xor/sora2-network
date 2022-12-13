@@ -20,6 +20,7 @@ pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
@@ -72,11 +73,14 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use bridge_types::traits::{EvmBridgeApp, MessageStatusNotifier};
-    use bridge_types::types::AppKind;
+    use bridge_types::types::{
+        AppKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
+    };
     use bridge_types::H256;
     use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::transactional;
     use frame_system::pallet_prelude::{OriginFor, *};
     use frame_system::RawOrigin;
     use traits::MultiCurrency;
@@ -92,7 +96,10 @@ pub mod pallet {
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H256, H160)>;
+        type CallOrigin: EnsureOrigin<
+            Self::Origin,
+            Success = CallOriginOutput<EthNetworkId, H160, H256>,
+        >;
 
         type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
 
@@ -124,6 +131,7 @@ pub mod pallet {
     pub enum Event<T: Config> {
         Burned(EthNetworkId, AccountIdOf<T>, H160, BalanceOf<T>),
         Minted(EthNetworkId, H160, AccountIdOf<T>, BalanceOf<T>),
+        Refunded(EthNetworkId, AccountIdOf<T>, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -140,13 +148,19 @@ pub mod pallet {
         DestAccountIsNotSet,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Amount must be > 0
+        WrongAmount,
+        /// Wrong bridge request for refund
+        WrongRequest,
+        /// Wrong bridge request status, must be Failed
+        WrongRequestStatus,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         // Users should burn their holdings to release funds on the Ethereum side
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -159,19 +173,27 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-
         pub fn mint(
             origin: OriginFor<T>,
             sender: H160,
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: U256,
         ) -> DispatchResult {
-            let (network_id, message_id, who) = T::CallOrigin::ensure_origin(origin)?;
-            let (contract, asset_id) =
+            let CallOriginOutput {
+                network_id,
+                message_id,
+                contract,
+                timestamp,
+            } = T::CallOrigin::ensure_origin(origin)?;
+            let (registered_contract, asset_id) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
-            ensure!(who == contract, Error::<T>::InvalidAppAddress);
+            ensure!(
+                contract == registered_contract,
+                Error::<T>::InvalidAppAddress
+            );
 
             let amount: BalanceOf<T> = amount.as_u128().into();
+            ensure!(amount > 0, Error::<T>::WrongAmount);
             let recipient = T::Lookup::lookup(recipient)?;
             T::Currency::deposit(asset_id, &recipient, amount)?;
             T::MessageStatusNotifier::inbound_request(
@@ -181,6 +203,7 @@ pub mod pallet {
                 recipient.clone(),
                 asset_id,
                 amount,
+                timestamp,
             );
             Self::deposit_event(Event::Minted(network_id, sender, recipient.clone(), amount));
 
@@ -188,7 +211,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -218,7 +240,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -275,6 +296,8 @@ pub mod pallet {
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(amount > 0, Error::<T>::WrongAmount);
+
             let (target, asset_id) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
@@ -304,6 +327,32 @@ pub mod pallet {
             Self::deposit_event(Event::Burned(network_id, who, recipient, amount.into()));
 
             Ok(message_id)
+        }
+
+        pub fn refund_inner(
+            network_id: EthNetworkId,
+            message_id: H256,
+            recipient: T::AccountId,
+            asset_id: T::AssetId,
+            amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            ensure!(amount > 0, Error::<T>::WrongAmount);
+
+            let (_, ether_asset_id) =
+                Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+            ensure!(asset_id == ether_asset_id, Error::<T>::WrongRequest);
+
+            T::Currency::deposit(asset_id, &recipient, amount)?;
+
+            T::MessageStatusNotifier::update_status(
+                network_id,
+                message_id,
+                MessageStatus::Refunded,
+                None,
+            );
+            Self::deposit_event(Event::Refunded(network_id, recipient, amount));
+
+            Ok(())
         }
     }
 
@@ -351,15 +400,36 @@ pub mod pallet {
             }
         }
 
-        fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, T::AssetId)> {
+        fn refund(
+            network_id: EthNetworkId,
+            message_id: H256,
+            recipient: T::AccountId,
+            asset_id: AssetIdOf<T>,
+            amount: Balance,
+        ) -> DispatchResult {
+            Pallet::<T>::refund_inner(network_id, message_id, recipient, asset_id, amount)
+        }
+
+        fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<T::AssetId>> {
             Addresses::<T>::get(network_id)
-                .map(|(_contract, asset_id)| vec![(AppKind::EthApp, asset_id)])
+                .map(|(_app_address, asset_id)| {
+                    vec![BridgeAssetInfo {
+                        app_kind: AppKind::EthApp,
+                        asset_id,
+                        evm_address: None,
+                    }]
+                })
                 .unwrap_or_default()
         }
 
-        fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)> {
+        fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo> {
             Addresses::<T>::get(network_id)
-                .map(|(contract, _asset_id)| vec![(AppKind::EthApp, contract)])
+                .map(|(evm_address, _asset_id)| {
+                    vec![BridgeAppInfo {
+                        app_kind: AppKind::EthApp,
+                        evm_address,
+                    }]
+                })
                 .unwrap_or_default()
         }
     }

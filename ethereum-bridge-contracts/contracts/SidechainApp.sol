@@ -9,6 +9,10 @@ import "./libraries/ScaleCodec.sol";
 import "./interfaces/IAssetRegister.sol";
 import "./GenericApp.sol";
 
+/** 
+* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
+* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
+*/
 contract SidechainApp is GenericApp, IAssetRegister, ReentrancyGuard {
     using ScaleCodec for uint256;
 
@@ -32,65 +36,66 @@ contract SidechainApp is GenericApp, IAssetRegister, ReentrancyGuard {
     );
 
     constructor(
-        address _inbound,
-        address _outbound,
+        address inboundChannel,
+        address outboundChannel,
         address migrationApp
-    ) GenericApp(_inbound, _outbound) {
+    ) GenericApp(inboundChannel, outboundChannel) {
         _setupRole(INBOUND_CHANNEL_ROLE, migrationApp);
     }
 
     function lock(
-        address _token,
-        bytes32 _recipient,
-        uint256 _amount
+        address token,
+        bytes32 recipient,
+        uint256 amount
     ) external nonReentrant {
-        require(tokens[_token], "Token is not registered");
+        require(tokens[token], "Token is not registered");
 
-        ERC20Burnable mtoken = ERC20Burnable(_token);
-        mtoken.burnFrom(msg.sender, _amount);
-        emit Burned(_token, msg.sender, _recipient, _amount);
+        ERC20Burnable mtoken = ERC20Burnable(token);
+        mtoken.burnFrom(msg.sender, amount);
+        emit Burned(token, msg.sender, recipient, amount);
 
-        bytes memory call = mintCall(_token, msg.sender, _recipient, _amount);
+        bytes memory call = mintCall(token, msg.sender, recipient, amount);
         outbound.submit(msg.sender, call);
     }
 
     function unlock(
-        address _token,
-        bytes32 _sender,
-        address _recipient,
-        uint256 _amount
+        address token,
+        bytes32 sender,
+        address recipient,
+        uint256 amount
     ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
-        require(tokens[_token], "Token is not registered");
+        require(tokens[token], "Token is not registered");
 
-        MasterToken tokenInstance = MasterToken(_token);
-        tokenInstance.mintTokens(_recipient, _amount);
-        emit Minted(_token, _sender, _recipient, _amount);
+        MasterToken tokenInstance = MasterToken(token);
+        tokenInstance.mintTokens(recipient, amount);
+        // slither-disable-next-line reentrancy-events
+        emit Minted(token, sender, recipient, amount);
     }
 
     // SCALE-encode payload
     function mintCall(
-        address _token,
-        address _sender,
-        bytes32 _recipient,
-        uint256 _amount
+        address token,
+        address sender,
+        bytes32 recipient,
+        uint256 amount
     ) private pure returns (bytes memory) {
         return
             abi.encodePacked(
                 MINT_CALL,
-                _token,
-                _sender,
-                _recipient,
-                _amount.encode256()
+                token,
+                sender,
+                recipient,
+                amount.encode256()
             );
     }
 
     // SCALE-encode payload
-    function registerAssetCall(address _token, bytes32 _asset_id)
+    function registerAssetCall(address token, bytes32 assetId)
         private
         pure
         returns (bytes memory)
     {
-        return abi.encodePacked(REGISTER_ASSET_CALL, _asset_id, _token);
+        return abi.encodePacked(REGISTER_ASSET_CALL, assetId, token);
     }
 
     /**

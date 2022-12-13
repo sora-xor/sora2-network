@@ -896,7 +896,7 @@ pub mod pallet {
         fn verify_receipt_inclusion(
             network_id: EthNetworkId,
             proof: &Proof,
-        ) -> Result<Receipt, DispatchError> {
+        ) -> Result<(Receipt, u64), DispatchError> {
             let stored_header =
                 <Headers<T>>::get(network_id, proof.block_hash).ok_or(Error::<T>::MissingHeader)?;
 
@@ -908,7 +908,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::InvalidProof)?;
 
             match result {
-                Ok(receipt) => Ok(receipt),
+                Ok(receipt) => Ok((receipt, stored_header.header.timestamp)),
                 Err(err) => {
                     log::trace!(
                         target: "ethereum-light-client",
@@ -1031,16 +1031,30 @@ pub mod pallet {
     }
 
     impl<T: Config> Verifier for Pallet<T> {
+        type Result = (Log, u64);
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
-        fn verify(network_id: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
-            let receipt = Self::verify_receipt_inclusion(network_id, &message.proof)?;
+        fn verify(
+            network_id: EthNetworkId,
+            message: &Message,
+        ) -> Result<Self::Result, DispatchError> {
+            let (receipt, timestamp) = Self::verify_receipt_inclusion(network_id, &message.proof)?;
 
             log::trace!(
                 target: "ethereum-light-client",
                 "Verified receipt inclusion for transaction at index {} in block {}",
                 message.proof.tx_index, message.proof.block_hash,
             );
+
+            // Check transaction status according https://eips.ethereum.org/EIPS/eip-658
+            if receipt.post_state_or_status != vec![1] {
+                log::trace!(
+                    target: "ethereum-light-client",
+                    "Receipt has failed status for transaction at index {} in block {}",
+                    message.proof.tx_index, message.proof.block_hash,
+                );
+                return Err(Error::<T>::InvalidProof.into());
+            }
 
             let log: Log = rlp::decode(&message.data).map_err(|_| Error::<T>::DecodeFailed)?;
 
@@ -1053,7 +1067,7 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidProof.into());
             }
 
-            Ok(log)
+            Ok((log, timestamp))
         }
 
         fn initialize_storage(

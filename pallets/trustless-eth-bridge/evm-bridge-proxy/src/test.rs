@@ -32,14 +32,16 @@ use crate::mock::{
     new_tester, AccountId, BridgeOutboundChannel, Call, Currencies, Dispatch, ERC20App, Event,
     EvmBridgeProxy, System, Test, BASE_NETWORK_ID,
 };
-use crate::{BridgeRequest, Transactions, UserTransactions};
+use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
 use codec::Encode;
-use common::{assert_noop_transactional, balance, DAI, XOR};
+use common::{balance, DAI, XOR};
+use frame_support::assert_noop;
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
+use sp_runtime::traits::Hash;
 
 use bridge_types::types::{AssetKind, MessageId, MessageStatus};
 
@@ -69,15 +71,17 @@ fn burn_successfull() {
             1000,
         )
         .unwrap();
-        let message_id = UserTransactions::<Test>::get(BASE_NETWORK_ID, caller.clone())[0];
+        let message_id = BridgeOutboundChannel::make_message_id(1);
         assert_eq!(
-            Transactions::<Test>::get(BASE_NETWORK_ID, message_id),
+            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
                 dest: H160::default(),
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::InQueue,
+                start_timestamp: 0,
+                end_timestamp: None,
             })
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::InQueue).into());
@@ -86,13 +90,15 @@ fn burn_successfull() {
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
         assert_eq!(
-            Transactions::<Test>::get(BASE_NETWORK_ID, message_id),
+            Transactions::<Test>::get(&caller, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
                 dest: H160::default(),
                 asset_id: XOR,
                 amount: 1000,
                 status: MessageStatus::Committed,
+                start_timestamp: 0,
+                end_timestamp: None,
             })
         );
     })
@@ -102,7 +108,7 @@ fn burn_successfull() {
 fn burn_failed() {
     new_tester().execute_with(|| {
         let caller: AccountId = Keyring::Alice.into();
-        assert_noop_transactional!(
+        assert_noop!(
             EvmBridgeProxy::burn(
                 RawOrigin::Signed(caller.clone()).into(),
                 BASE_NETWORK_ID,
@@ -112,10 +118,7 @@ fn burn_failed() {
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
         );
-        assert_eq!(
-            UserTransactions::<Test>::get(BASE_NETWORK_ID, caller.clone()).len(),
-            0
-        );
+        assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 0);
     })
 }
@@ -130,6 +133,7 @@ fn mint_successfull() {
             BASE_NETWORK_ID,
             source,
             MessageId::inbound(0),
+            0,
             &Call::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
@@ -138,15 +142,18 @@ fn mint_successfull() {
             })
             .encode(),
         );
-        let message_id = UserTransactions::<Test>::get(BASE_NETWORK_ID, recipient.clone())[0];
+        let message_id =
+            MessageId::inbound(0).using_encoded(<Test as dispatch::Config>::Hashing::hash);
         assert_eq!(
-            Transactions::<Test>::get(BASE_NETWORK_ID, message_id),
+            Transactions::<Test>::get(&recipient, (BASE_NETWORK_ID, message_id)),
             Some(BridgeRequest::IncomingTransfer {
                 source: H160::default(),
                 dest: recipient.clone(),
                 asset_id: DAI,
                 amount: 1000,
                 status: MessageStatus::Done,
+                start_timestamp: 0,
+                end_timestamp: 0,
             })
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::Done).into());
@@ -163,6 +170,7 @@ fn mint_failed() {
             BASE_NETWORK_ID,
             source,
             MessageId::inbound(0),
+            0,
             &Call::ERC20App(erc20_app::Call::mint {
                 token,
                 sender: Default::default(),
@@ -171,10 +179,7 @@ fn mint_failed() {
             })
             .encode(),
         );
-        assert_eq!(
-            UserTransactions::<Test>::get(BASE_NETWORK_ID, recipient.clone()).len(),
-            0
-        );
+        assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 1);
     })
 }

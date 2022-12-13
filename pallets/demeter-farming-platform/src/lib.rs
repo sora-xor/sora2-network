@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -26,9 +27,18 @@ pub trait WeightInfo {
     fn change_info() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After adding base_asset field
+    V2,
+}
+
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PoolData {
+pub struct PoolData<AssetId> {
     pub multiplier: u32,
     pub deposit_fee: Balance,
     pub is_core: bool,
@@ -37,9 +47,10 @@ pub struct PoolData {
     pub rewards: Balance,
     pub rewards_to_be_distributed: Balance,
     pub is_removed: bool,
+    pub base_asset: AssetId,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct TokenInfo<AccountId> {
     pub farms_total_multiplier: u32,
@@ -51,9 +62,10 @@ pub struct TokenInfo<AccountId> {
     pub team_account: AccountId,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct UserInfo<AssetId> {
+    pub base_asset: AssetId,
     pub pool_asset: AssetId,
     pub reward_asset: AssetId,
     pub is_farm: bool,
@@ -66,19 +78,18 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PoolData, TokenInfo, UserInfo, WeightInfo};
+    use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, PoolXykPallet, XOR};
+    use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::Vec;
-    use frame_support::transactional;
+    use frame_support::{transactional, PalletId};
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
     use sp_runtime::traits::{AccountIdConversion, Zero};
-    use sp_runtime::ModuleId;
+    use sp_std::prelude::*;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"deofarms");
+    const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
     #[pallet::config]
     pub trait Config:
@@ -99,10 +110,11 @@ pub mod pallet {
 
     type Assets<T> = assets::Pallet<T>;
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetIdOf<T> = <T as assets::Config>::AssetId;
+    pub type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::storage]
@@ -123,14 +135,25 @@ pub mod pallet {
         AssetIdOf<T>,
         Identity,
         AssetIdOf<T>,
-        Vec<PoolData>,
+        Vec<PoolData<AssetIdOf<T>>>,
         ValueQuery,
     >;
 
     #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
+    #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     #[pallet::storage]
@@ -141,7 +164,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultFeeAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("fc096e24663f4dd1e2d48092c73213354c067c0c715ec68e7fcad185da626801");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
     }
 
     /// Account for fees
@@ -151,31 +174,91 @@ pub mod pallet {
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultFeeAccount<T>>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Token registered [who, what]
         TokenRegistered(AccountIdOf<T>, AssetIdOf<T>),
-        /// Pool added [who, pool_asset, reward_asset, is_farm]
-        PoolAdded(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Reward Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
-        RewardWithdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Withdrawn [who, amount, pool_asset, reward_asset, is_farm]
-        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Pool removed [who, pool_asset, reward_asset, is_farm]
-        PoolRemoved(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool),
-        /// Deposited [who, pool_asset, reward_asset, is_farm, amount]
-        Deposited(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
-        /// Multiplier Changed [who, pool_asset, reward_asset, is_farm, amount]
-        MultiplierChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, u32),
-        /// DepositFeeChanged [who, pool_asset, reward_asset, is_farm, amount]
-        DepositFeeChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Pool added [who, base_asset, pool_asset, reward_asset, is_farm]
+        PoolAdded(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+        ),
+        /// Reward Withdrawn [who, amount, base_asset, pool_asset, reward_asset, is_farm]
+        RewardWithdrawn(
+            AccountIdOf<T>,
+            Balance,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+        ),
+        /// Withdrawn [who, amount, base_asset, pool_asset, reward_asset, is_farm]
+        Withdrawn(
+            AccountIdOf<T>,
+            Balance,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+        ),
+        /// Pool removed [who, base_asset, pool_asset, reward_asset, is_farm]
+        PoolRemoved(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+        ),
+        /// Deposited [who, base_asset, pool_asset, reward_asset, is_farm, amount]
+        Deposited(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+            Balance,
+        ),
+        /// Multiplier Changed [who, base_asset, pool_asset, reward_asset, is_farm, amount]
+        MultiplierChanged(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+            u32,
+        ),
+        /// DepositFeeChanged [who, base_asset, pool_asset, reward_asset, is_farm, amount]
+        DepositFeeChanged(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+            Balance,
+        ),
         /// Token info changed [who, what]
         TokenInfoChanged(AccountIdOf<T>, AssetIdOf<T>),
-        /// Total tokens changed [who, pool_asset, reward_asset, is_farm, amount]
-        TotalTokensChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
-        /// Info changed [who, pool_asset, reward_asset, is_farm, amount]
-        InfoChanged(AccountIdOf<T>, AssetIdOf<T>, AssetIdOf<T>, bool, Balance),
+        /// Total tokens changed [who, base_asset, pool_asset, reward_asset, is_farm, amount]
+        TotalTokensChanged(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+            Balance,
+        ),
+        /// Info changed [who, base_asset, pool_asset, reward_asset, is_farm, amount]
+        InfoChanged(
+            AccountIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            bool,
+            Balance,
+        ),
     }
 
     #[pallet::error]
@@ -227,12 +310,9 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Get token info
-            let mut token_info = <TokenInfos<T>>::get(&pool_asset).unwrap_or_default();
-
             // Check if token is already registered
             ensure!(
-                token_info.token_per_block == 0,
+                !<TokenInfos<T>>::contains_key(&pool_asset),
                 Error::<T>::TokenAlreadyRegistered
             );
 
@@ -245,7 +325,7 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidAllocationParameters.into());
             }
 
-            token_info = TokenInfo {
+            let token_info = TokenInfo {
                 farms_total_multiplier: 0,
                 staking_total_multiplier: 0,
                 token_per_block,
@@ -268,6 +348,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_pool())]
         pub fn add_pool(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -294,7 +375,10 @@ pub mod pallet {
             // Check if pool already exists
             let pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos {
-                if !pool_info.is_removed && pool_info.is_farm == is_farm {
+                if !pool_info.is_removed
+                    && pool_info.is_farm == is_farm
+                    && pool_info.base_asset == base_asset
+                {
                     return Err(Error::<T>::PoolAlreadyExists.into());
                 }
             }
@@ -308,6 +392,7 @@ pub mod pallet {
                 rewards: 0,
                 rewards_to_be_distributed: 0,
                 is_removed: false,
+                base_asset,
             };
 
             if is_farm {
@@ -320,17 +405,25 @@ pub mod pallet {
             <Pools<T>>::append(&pool_asset, &reward_asset, pool_info);
 
             // Emit an event
-            Self::deposit_event(Event::PoolAdded(user, pool_asset, reward_asset, is_farm));
+            Self::deposit_event(Event::PoolAdded(
+                user,
+                base_asset,
+                pool_asset,
+                reward_asset,
+                is_farm,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
         }
 
         /// Deposit to pool
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -343,7 +436,10 @@ pub mod pallet {
             let mut exist = false;
             let mut pool_info = &mut Default::default();
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     exist = true;
                     pool_info = p_info;
                 }
@@ -352,6 +448,7 @@ pub mod pallet {
 
             // Get user info if exists or create new if does not exist
             let mut user_info = UserInfo {
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -364,6 +461,7 @@ pub mod pallet {
                 if u_info.pool_asset == pool_asset
                     && u_info.reward_asset == reward_asset
                     && u_info.is_farm == is_farm
+                    && u_info.base_asset == base_asset
                 {
                     user_info.pooled_tokens = u_info.pooled_tokens;
                     user_info.rewards = u_info.rewards;
@@ -389,9 +487,10 @@ pub mod pallet {
                 }
                 Assets::<T>::transfer_from(&pool_asset, &user, &Self::account_id(), pooled_tokens)?;
             } else {
-                let pool_account = T::XYKPool::properties_of_pool(XOR.into(), pool_asset.clone())
+                let pool_account = T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
+
                 let mut lp_tokens =
                     T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                         .unwrap_or(0);
@@ -412,7 +511,7 @@ pub mod pallet {
 
                     T::XYKPool::transfer_lp_tokens(
                         pool_account.clone(),
-                        XOR.into(),
+                        base_asset,
                         pool_asset,
                         user.clone(),
                         FeeAccount::<T>::get(),
@@ -424,18 +523,22 @@ pub mod pallet {
                             .unwrap_or(0);
                 }
 
-                // Handle total LP changed in other XOR/pool_asset farming pools
+                // Handle total LP changed in other XOR or XSTUSD/pool_asset farming pools
                 for u_info in user_infos.iter_mut() {
                     if u_info.pool_asset == pool_asset
                         && u_info.reward_asset != reward_asset
                         && u_info.is_farm
+                        && u_info.base_asset == base_asset
                     {
                         if u_info.pooled_tokens > lp_tokens {
                             let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
                             u_info.pooled_tokens = lp_tokens;
                             let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
                             for p_info in pool_data.iter_mut() {
-                                if !p_info.is_removed && p_info.is_farm == is_farm {
+                                if !p_info.is_removed
+                                    && p_info.is_farm == is_farm
+                                    && p_info.base_asset == base_asset
+                                {
                                     p_info.total_tokens_in_pool -= pool_tokens_diff;
                                 }
                             }
@@ -451,6 +554,7 @@ pub mod pallet {
                     if u_info.pool_asset == pool_asset
                         && u_info.reward_asset == reward_asset
                         && u_info.is_farm == is_farm
+                        && u_info.base_asset == base_asset
                     {
                         u_info.pooled_tokens += pooled_tokens;
                     }
@@ -463,7 +567,10 @@ pub mod pallet {
 
             // Update pool info
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     p_info.total_tokens_in_pool += pooled_tokens;
                 }
             }
@@ -473,6 +580,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::Deposited(
                 user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -484,10 +592,12 @@ pub mod pallet {
         }
 
         /// Get rewards
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -500,7 +610,7 @@ pub mod pallet {
             let mut pool_info_rewards = balance!(0);
 
             for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm {
+                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
                     exist = true;
                     pool_info_rewards = p_info.rewards;
                 }
@@ -509,13 +619,13 @@ pub mod pallet {
 
             // Get user info
             let mut user_infos = <UserInfos<T>>::get(&user);
-
             let mut rewards = 0;
 
             for user_info in user_infos.iter_mut() {
                 if user_info.pool_asset == pool_asset
                     && user_info.reward_asset == reward_asset
                     && user_info.is_farm == is_farm
+                    && user_info.base_asset == base_asset
                 {
                     ensure!(user_info.rewards != 0, Error::<T>::ZeroRewards);
                     ensure!(
@@ -537,7 +647,7 @@ pub mod pallet {
             }
 
             for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm {
+                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
                     p_info.rewards = pool_info_rewards;
                 }
             }
@@ -550,6 +660,7 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::RewardWithdrawn(
                 user,
                 rewards,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -560,10 +671,12 @@ pub mod pallet {
         }
 
         /// Withdraw
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             pooled_tokens: Balance,
@@ -578,6 +691,7 @@ pub mod pallet {
                 if user_info.pool_asset == pool_asset
                     && user_info.reward_asset == reward_asset
                     && user_info.is_farm == is_farm
+                    && user_info.base_asset == base_asset
                 {
                     ensure!(
                         pooled_tokens <= user_info.pooled_tokens,
@@ -599,7 +713,7 @@ pub mod pallet {
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm {
+                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
                     pool_info.total_tokens_in_pool -= pooled_tokens;
                 }
             }
@@ -612,6 +726,7 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::Withdrawn(
                 user,
                 pooled_tokens,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -625,6 +740,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::remove_pool())]
         pub fn remove_pool(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -638,7 +754,7 @@ pub mod pallet {
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
             for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm {
+                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
                     pool_info.is_removed = true;
                 }
             }
@@ -648,6 +764,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::<T>::PoolRemoved(
                 user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -661,6 +778,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_pool_multiplier())]
         pub fn change_pool_multiplier(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -681,7 +799,10 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     exist = true;
                     old_multiplier = p_info.multiplier;
                     p_info.multiplier = new_multiplier;
@@ -706,6 +827,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::<T>::MultiplierChanged(
                 user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -720,6 +842,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_total_tokens())]
         pub fn change_total_tokens(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -736,7 +859,10 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     exist = true;
                     p_info.total_tokens_in_pool = total_tokens;
                 }
@@ -748,6 +874,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::<T>::TotalTokensChanged(
                 user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -763,6 +890,7 @@ pub mod pallet {
         pub fn change_info(
             origin: OriginFor<T>,
             changed_user: AccountIdOf<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -780,6 +908,7 @@ pub mod pallet {
                 if u_info.pool_asset == pool_asset
                     && u_info.reward_asset == reward_asset
                     && u_info.is_farm == is_farm
+                    && u_info.base_asset == base_asset
                 {
                     u_info.pooled_tokens = pool_tokens;
                 }
@@ -790,6 +919,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::<T>::InfoChanged(
                 changed_user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -804,6 +934,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_pool_deposit_fee())]
         pub fn change_pool_deposit_fee(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
@@ -822,7 +953,10 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed && p_info.is_farm == is_farm {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     exist = true;
                     p_info.deposit_fee = deposit_fee;
                 }
@@ -834,6 +968,7 @@ pub mod pallet {
             // Emit an event
             Self::deposit_event(Event::<T>::DepositFeeChanged(
                 user,
+                base_asset,
                 pool_asset,
                 reward_asset,
                 is_farm,
@@ -904,17 +1039,31 @@ pub mod pallet {
 
             counter
         }
+
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                let weight = migrations::migrate::<T>();
+                PalletStorageVersion::<T>::put(StorageVersion::V2);
+                weight
+            } else {
+                0
+            }
+        }
     }
 
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
-            PALLET_ID.into_account()
+            PALLET_ID.into_account_truncating()
         }
 
         fn mint_deo() {
             let blocks = 14400_u32;
-            let deo_info = <TokenInfos<T>>::get(&T::DemeterAssetId::get()).unwrap_or_default();
+            let deo_info = if let Some(info) = <TokenInfos<T>>::get(&T::DemeterAssetId::get()) {
+                info
+            } else {
+                return;
+            };
 
             let amount = (FixedWrapper::from(balance!(blocks))
                 * FixedWrapper::from(deo_info.token_per_block))
@@ -1024,6 +1173,7 @@ pub mod pallet {
                                 if user_info.pool_asset == pool_asset
                                     && user_info.reward_asset == reward_asset
                                     && user_info.is_farm == pool_info.is_farm
+                                    && user_info.base_asset == pool_info.base_asset
                                 {
                                     let amount_per_user = (FixedWrapper::from(amount_per_hour)
                                         * (FixedWrapper::from(user_info.pooled_tokens)
@@ -1078,7 +1228,10 @@ pub mod pallet {
             let mut pooled_tokens = balance!(0);
             let user_infos = <UserInfos<T>>::get(&user);
             for user_info in user_infos {
-                if user_info.pool_asset == asset_b && user_info.is_farm {
+                if user_info.pool_asset == asset_b
+                    && user_info.is_farm
+                    && user_info.base_asset == asset_a
+                {
                     if pooled_tokens < user_info.pooled_tokens {
                         pooled_tokens = user_info.pooled_tokens;
                     }
@@ -1096,17 +1249,19 @@ impl<T: Config> DemeterFarmingPallet<T::AccountId, T::AssetId> for Pallet<T> {
     fn update_pool_tokens(
         user: T::AccountId,
         pool_tokens: Balance,
+        base_asset: T::AssetId,
         pool_asset: T::AssetId,
     ) -> Result<(), DispatchError> {
         let mut user_infos = <UserInfos<T>>::get(&user);
         for u_info in user_infos.iter_mut() {
-            if u_info.pool_asset == pool_asset && u_info.is_farm {
+            if u_info.pool_asset == pool_asset && u_info.is_farm && u_info.base_asset == base_asset
+            {
                 if u_info.pooled_tokens > pool_tokens {
                     let pool_tokens_diff = u_info.pooled_tokens - pool_tokens;
                     u_info.pooled_tokens = pool_tokens;
                     let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
                     for p_info in pool_data.iter_mut() {
-                        if !p_info.is_removed && p_info.is_farm {
+                        if !p_info.is_removed && p_info.is_farm && p_info.base_asset == base_asset {
                             p_info.total_tokens_in_pool -= pool_tokens_diff;
                         }
                     }

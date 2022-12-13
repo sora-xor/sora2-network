@@ -11,9 +11,10 @@ contract GenericApp is AccessControl {
     bytes32 public constant INBOUND_CHANNEL_ROLE =
         keccak256("INBOUND_CHANNEL_ROLE");
 
-    constructor(address _inbound, address _outbound) {
-        _setupRole(INBOUND_CHANNEL_ROLE, _inbound);
-        outbound = IOutboundChannel(_outbound);
-        inbound = _inbound;
+    constructor(address inboundChannel, address outboundChannel) {
+        require(inboundChannel != address(0), "Invalid inbound channel address");
+        _setupRole(INBOUND_CHANNEL_ROLE, inboundChannel);
+        outbound = IOutboundChannel(outboundChannel);
+        inbound = inboundChannel;
     }
 }

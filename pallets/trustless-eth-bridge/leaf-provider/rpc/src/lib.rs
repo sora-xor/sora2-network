@@ -30,11 +30,9 @@
 
 use codec::Codec;
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::core::{Error as RpcError, RpcResult as Result};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use leaf_provider_runtime_api::AuxiliaryDigest;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;

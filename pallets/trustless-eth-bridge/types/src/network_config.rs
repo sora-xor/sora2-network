@@ -1,7 +1,5 @@
-use crate::{
-    difficulty::{ClassicForkConfig, ForkConfig},
-    EthNetworkId,
-};
+use crate::difficulty::{ClassicForkConfig, ForkConfig};
+use crate::EthNetworkId;
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 

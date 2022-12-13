@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_on_initialize::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
         });
     }
 }

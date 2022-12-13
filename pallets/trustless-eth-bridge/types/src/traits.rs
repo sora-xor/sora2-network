@@ -2,10 +2,8 @@
 //!
 //! Common traits and types
 
-use crate::{
-    types::{AppKind, MessageStatus},
-    EthNetworkId, Log,
-};
+use crate::types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus};
+use crate::EthNetworkId;
 use common::Balance;
 use ethereum_types::H256;
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -19,7 +17,8 @@ use crate::types::Message;
 ///
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
 pub trait Verifier {
-    fn verify(network_id: EthNetworkId, message: &Message) -> Result<Log, DispatchError>;
+    type Result;
+    fn verify(network_id: EthNetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
     fn initialize_storage(
         network_id: EthNetworkId,
         headers: Vec<crate::Header>,
@@ -40,8 +39,14 @@ pub trait OutboundChannel<AccountId> {
 }
 
 /// Dispatch a message
-pub trait MessageDispatch<T: Config, MessageId> {
-    fn dispatch(network_id: EthNetworkId, source: H160, id: MessageId, payload: &[u8]);
+pub trait MessageDispatch<T: Config, NetworkId, Source, MessageId> {
+    fn dispatch(
+        network_id: NetworkId,
+        source: Source,
+        id: MessageId,
+        timestamp: u64,
+        payload: &[u8],
+    );
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::Event>;
 }
@@ -64,6 +69,7 @@ impl AppRegistry for () {
 pub trait EvmBridgeApp<AccountId, AssetId, Balance> {
     fn is_asset_supported(network_id: EthNetworkId, asset_id: AssetId) -> bool;
 
+    // Initiates transfer to Ethereum by burning the asset on substrate side
     fn transfer(
         network_id: EthNetworkId,
         asset_id: AssetId,
@@ -72,13 +78,26 @@ pub trait EvmBridgeApp<AccountId, AssetId, Balance> {
         amount: Balance,
     ) -> Result<H256, DispatchError>;
 
-    fn list_supported_assets(network_id: EthNetworkId) -> Vec<(AppKind, AssetId)>;
+    fn refund(
+        network_id: EthNetworkId,
+        message_id: H256,
+        recipient: AccountId,
+        asset_id: AssetId,
+        amount: Balance,
+    ) -> DispatchResult;
 
-    fn list_apps(network_id: EthNetworkId) -> Vec<(AppKind, H160)>;
+    fn list_supported_assets(network_id: EthNetworkId) -> Vec<BridgeAssetInfo<AssetId>>;
+
+    fn list_apps(network_id: EthNetworkId) -> Vec<BridgeAppInfo>;
 }
 
 pub trait MessageStatusNotifier<AssetId, AccountId> {
-    fn update_status(network_id: EthNetworkId, id: H256, status: MessageStatus);
+    fn update_status(
+        network_id: EthNetworkId,
+        message_id: H256,
+        status: MessageStatus,
+        end_timestamp: Option<u64>,
+    );
 
     fn inbound_request(
         network_id: EthNetworkId,
@@ -87,6 +106,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId> {
         dest: AccountId,
         asset_id: AssetId,
         amount: Balance,
+        start_timestamp: u64,
     );
 
     fn outbound_request(
@@ -100,7 +120,13 @@ pub trait MessageStatusNotifier<AssetId, AccountId> {
 }
 
 impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
-    fn update_status(_network_id: EthNetworkId, _id: H256, _status: MessageStatus) {}
+    fn update_status(
+        _network_id: EthNetworkId,
+        _message_id: H256,
+        _status: MessageStatus,
+        _end_timestamp: Option<u64>,
+    ) {
+    }
 
     fn inbound_request(
         _network_id: EthNetworkId,
@@ -109,6 +135,7 @@ impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
         _dest: AccountId,
         _asset_id: AssetId,
         _amount: Balance,
+        _start_timestamp: u64,
     ) {
     }
 
@@ -121,4 +148,10 @@ impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
         _amount: Balance,
     ) {
     }
+}
+
+/// Trait that every origin (like Ethereum origin or Parachain origin) should implement
+pub trait OriginOutput<NetworkId, Source> {
+    /// Construct new origin
+    fn new(network_id: NetworkId, source: Source, message_id: H256, timestamp: u64) -> Self;
 }

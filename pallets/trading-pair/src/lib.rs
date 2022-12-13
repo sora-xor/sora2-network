@@ -37,7 +37,7 @@ extern crate alloc;
 use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
-use frame_support::traits::{Get, IsType};
+use frame_support::traits::IsType;
 use frame_support::weights::Weight;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -105,7 +105,13 @@ impl<T: Config> Pallet<T> {
             base_asset_id,
             target_asset_id,
         };
-        Ok(Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?)
+        let mut sources =
+            Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?;
+        let locked = LockedLiquiditySources::<T>::get();
+        for locked_source in &locked {
+            sources.remove(&locked_source);
+        }
+        Ok(sources)
     }
 
     pub fn is_source_enabled_for_trading_pair(
@@ -147,6 +153,7 @@ pub mod pallet {
     use super::*;
     use common::DexIdOf;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -159,8 +166,13 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -183,15 +195,17 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _author =
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
+            let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
+            ensure!(
+                base_asset_id == dex_info.base_asset_id
+                    || base_asset_id == dex_info.synthetic_base_asset_id,
+                Error::<T>::ForbiddenBaseAssetId
+            );
             Assets::<T>::ensure_asset_exists(&base_asset_id)?;
             Assets::<T>::ensure_asset_exists(&target_asset_id)?;
             ensure!(
                 base_asset_id != target_asset_id,
                 Error::<T>::IdenticalAssetIds
-            );
-            ensure!(
-                base_asset_id == T::GetBaseAssetId::get(),
-                Error::<T>::ForbiddenBaseAssetId
             );
             let trading_pair = TradingPair::<T> {
                 base_asset_id,
@@ -212,7 +226,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", TradingPair<T> = "TradingPair")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Trading pair has been redistered on a DEX. [DEX Id, Trading Pair]
@@ -241,6 +254,10 @@ pub mod pallet {
         TradingPair<T>,
         BTreeSet<LiquiditySourceType>,
     >;
+
+    #[pallet::storage]
+    pub type LockedLiquiditySources<T: Config> =
+        StorageValue<_, Vec<LiquiditySourceType>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

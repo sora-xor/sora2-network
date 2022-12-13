@@ -30,29 +30,33 @@
 
 use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
-use common::prelude::{
-    Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome, TransactionByteFee,
-};
+use common::prelude::{Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned, VAL, XOR,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    PSWAP, VAL, XOR, XST,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+use frame_election_provider_support::{generate_solution_type, NoElection};
 use frame_support::traits::{
-    Currency, ExistenceRequirement, GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote,
-    WithdrawReasons,
+    ConstU128, ConstU32, Currency, Everything, ExistenceRequirement, GenesisBuild, Get,
+    OneSessionHandler, PrivilegeCmp, U128CurrencyToVote, WithdrawReasons,
 };
-use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight};
+use frame_support::weights::{
+    ConstantMultiplier, DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight,
+};
 use frame_support::{construct_runtime, parameter_types};
 use pallet_session::historical;
+use pallet_staking::UseNominatorsAndValidatorsMap;
 use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
+use std::cmp::Ordering;
 
-pub use crate::{self as xor_fee, Config, Module};
+pub use crate::{self as xor_fee, Config, Pallet};
 
 // Configure a mock runtime to test the pallet.
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -78,6 +82,8 @@ impl AppCrypto<UintAuthorityId, TestSignature> for TestAppCrypto {
     type GenericSignature = TestSignature;
 }
 
+pub const BUY_BACK_ACCOUNT: AccountId = 23;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const ReferrerWeight: u32 = 10;
@@ -93,11 +99,11 @@ parameter_types! {
     pub const UncleGenerations: u64 = 0;
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(25);
     pub const MinimumPeriod: u64 = 5;
-    pub const BondingDuration: pallet_staking::EraIndex = 3;
+    pub const BondingDuration: sp_staking::EraIndex = 3;
     pub const MaxNominatorRewardedPerValidator: u32 = 64;
     pub const UnsignedPriority: u64 = 1 << 20;
     pub const MinSolutionScoreBump: Perbill = Perbill::zero();
-    pub const TestValRewardCurve: pallet_staking::ValRewardCurve = pallet_staking::ValRewardCurve {
+    pub const TestValRewardCurve: pallet_staking::sora::ValRewardCurve = pallet_staking::sora::ValRewardCurve {
         duration_to_reward_flatline: Duration::from_millis(100_000),
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
@@ -115,8 +121,6 @@ parameter_types! {
         AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id")
     };
     pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
-    pub GetTeamReservesAccountId: AccountId = 3000u64;
-    pub const EthNetworkId: <Runtime as eth_bridge::Config>::NetworkId = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub RemoveTemporaryPeerAccountId: Vec<(AccountId, H160)> = Vec::new();
@@ -139,31 +143,30 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        ReferralSystem: referrals::{Module, Call, Config<T>, Storage},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        TransactionPayment: pallet_transaction_payment::{Module, Storage},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Session: pallet_session::{Module, Call, Config<T>, Storage, Event},
-        Historical: historical::{Module},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Event<T>},
-        LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Module, Call, Storage, Event<T>},
-        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ReferralSystem: referrals::{Pallet, Call, Config<T>, Storage},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Pallet, Call, Config<T>, Storage, Event},
+        Historical: historical::{Pallet},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
+        XorFee: xor_fee::{Pallet, Call, Event<T>},
+        LiquidityProxy: mock_liquidity_proxy::{Pallet, Call, Event<T>},
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -176,14 +179,14 @@ impl xor_fee::ExtractProxySwap for Call {
     fn extract(
         &self,
     ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap {
             dex_id,
             input_asset_id,
             output_asset_id,
-            amount,
+            swap_amount: amount,
             selected_source_types,
             filter_mode,
-        )) = self
+        }) = self
         {
             Some(xor_fee::SwapInfo {
                 fee_source: None,
@@ -204,31 +207,11 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
             Call::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi(multisig_id, ..) => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
+                bridge_multisig::Call::as_multi { id, .. } => {
+                    bridge_multisig::Accounts::<Runtime>::get(id).map(|acc| acc.is_signatory(&who))
                 }
-                bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
-                }
-                _ => None,
-            },
-            Call::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request(_, _, _, network_id) => {
-                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
-                }
-                eth_bridge::Call::register_incoming_request(request) => {
-                    let net_id = request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::import_incoming_request(load_request, _) => {
-                    let net_id = load_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::finalize_incoming_request(_, network_id)
-                | eth_bridge::Call::abort_request(_, _, network_id) => {
-                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                bridge_multisig::Call::as_multi_threshold_1 { id, .. } => {
+                    bridge_multisig::Accounts::<Runtime>::get(id).map(|acc| acc.is_signatory(&who))
                 }
                 _ => None,
             },
@@ -276,21 +259,6 @@ impl frame_system::offchain::SigningTypes for Runtime {
     type Signature = Signature;
 }
 
-impl eth_bridge::Config for Runtime {
-    type Event = Event;
-    type PeerId = TestAppCrypto;
-    type Call = Call;
-    type NetworkId = u32;
-    type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = ();
-    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
-    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
-    type SchedulerOriginCaller = OriginCaller;
-    type Scheduler = Scheduler;
-    type WeightToFee = XorFee;
-}
-
 impl bridge_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -299,6 +267,24 @@ impl bridge_multisig::Config for Runtime {
     type DepositFactor = DepositFactor;
     type MaxSignatories = MaxSignatories;
     type WeightInfo = ();
+}
+
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -310,10 +296,13 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
+    type PreimageProvider = ();
+    type NoPreimagePostponement = ();
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = BlockWeights;
     type BlockLength = BlockLength;
     type Origin = Origin;
@@ -335,19 +324,21 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -364,13 +355,21 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+}
+
+parameter_types! {
+    pub const OperationalFeeMultiplier: u8 = 5;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type Event = Event;
     type OnChargeTransaction = XorFee;
-    type TransactionByteFee = TransactionByteFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
+    type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
+    type OperationalFeeMultiplier = OperationalFeeMultiplier;
 }
 
 impl common::Config for Runtime {
@@ -388,11 +387,18 @@ impl technical::Config for Runtime {
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
+}
+
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl assets::Config for Runtime {
@@ -402,8 +408,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -420,6 +431,12 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -454,7 +471,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -478,7 +495,6 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Runtime>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = ();
     type WeightInfo = ();
 }
@@ -495,8 +511,31 @@ impl pallet_timestamp::Config for Runtime {
     type WeightInfo = ();
 }
 
+generate_solution_type!(
+    #[compact]
+    pub struct NposCompactSolution24::<
+        VoterIndex = u32,
+        TargetIndex = u16,
+        Accuracy = sp_runtime::PerU16,
+        MaxVoters = MaxElectingVoters,
+    >(24)
+);
+
+parameter_types! {
+    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
+    pub const MaxNominations: u32 = <NposCompactSolution24 as frame_election_provider_support::NposSolution>::LIMIT as u32;
+    pub const MaxElectingVoters: u32 = 12_500;
+}
+
+pub struct StakingBenchmarkingConfig;
+impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
+    type MaxValidators = ConstU32<1000>;
+    type MaxNominators = ConstU32<1000>;
+}
+
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
+    type CurrencyBalance = Balance;
     type MultiCurrency = Tokens;
     type ValTokenId = ValId;
     type ValRewardCurve = TestValRewardCurve;
@@ -510,14 +549,16 @@ impl pallet_staking::Config for Runtime {
     type BondingDuration = BondingDuration;
     type SessionInterface = Self;
     type NextNewSession = Session;
-    type ElectionLookahead = ();
-    type Call = Call;
-    type MaxIterations = ();
-    type MinSolutionScoreBump = MinSolutionScoreBump;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type UnsignedPriority = UnsignedPriority;
-    type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
+    type ElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
+    type GenesisElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
+    type OnStakerSlash = ();
+    type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
+    type MaxNominations = MaxNominations;
     type WeightInfo = ();
+    type VoterList = UseNominatorsAndValidatorsMap<Runtime>;
+    type MaxUnlockingChunks = ConstU32<32>;
+    type BenchmarkingConfig = StakingBenchmarkingConfig;
 }
 
 impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
@@ -535,9 +576,9 @@ pub struct CustomFees;
 impl xor_fee::ApplyCustomFees<Call> for CustomFees {
     fn compute_fee(call: &Call) -> Option<Balance> {
         match call {
-            Call::Assets(assets::Call::register(..)) => Some(balance!(0.007)),
+            Call::Assets(assets::Call::register { .. }) => Some(balance!(0.007)),
             Call::Assets(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
             | Call::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
         }
@@ -548,7 +589,7 @@ pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
 where
-    T: pallet_staking::ValBurnedNotifier<Balance>,
+    T: pallet_staking::sora::ValBurnedNotifier<Balance>,
 {
     fn on_val_burned(amount: Balance) {
         T::notify_val_burned(amount);
@@ -612,6 +653,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -634,21 +676,21 @@ pub mod mock_liquidity_proxy {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     pub enum Event<T: Config> {}
 
     #[pallet::error]
     pub enum Error<T> {}
 }
 
-type MockLiquidityProxy = mock_liquidity_proxy::Module<Runtime>;
+type MockLiquidityProxy = mock_liquidity_proxy::Pallet<Runtime>;
 
 impl mock_liquidity_proxy::Config for Runtime {
     type Event = Event;
 }
 
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
+        _dex_id: DEXId,
         sender: &AccountId,
         receiver: &AccountId,
         input_asset_id: &AssetId,
@@ -667,6 +709,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     }
 
     fn quote(
+        _dex_id: DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
@@ -720,7 +763,7 @@ impl OneSessionHandler<AccountId> for OtherSessionHandler {
     {
     }
 
-    fn on_disabled(_validator_index: usize) {}
+    fn on_disabled(_validator_index: u32) {}
 }
 
 impl sp_runtime::BoundToRuntimeAppPublic for OtherSessionHandler {
@@ -816,7 +859,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
+            balances: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

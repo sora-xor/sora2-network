@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/IRewardSource.sol";
 
 contract MockRewardSource is IRewardSource {
-    function reward(address payable, uint256 _amount) pure external override {
+    function reward(address payable, uint256 amount) pure external override {
         // Simulate the case where there are no funds to reward the relayer
-        require(_amount != 1024, "No funds available");
+        require(amount != 1024, "No funds available");
     }
 }

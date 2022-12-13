@@ -265,14 +265,17 @@ impl<T: Config<I>, I: 'static>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
-            <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
-        } else if output_asset_id == base_asset_id {
-            <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
+        if let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) {
+            if input_asset_id == &dex_info.base_asset_id {
+                <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
+            } else if output_asset_id == &dex_info.base_asset_id {
+                <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
+            } else {
+                <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
+                    && <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
+            }
         } else {
-            <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
-                && <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
+            false
         }
     }
 
@@ -283,11 +286,11 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         let amount = amount
             .try_into()
             .map_err(|_| Error::<T, I>::CalculationError)?;
-        let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
+        if input_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             Ok(match amount {
                 QuoteAmount::WithDesiredInput {
@@ -313,7 +316,7 @@ impl<T: Config<I>, I: 'static>
                 .try_into()
                 .map_err(|_| Error::<T, I>::CalculationError)?,
             })
-        } else if output_asset_id == base_asset_id {
+        } else if output_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
             Ok(match amount {
                 QuoteAmount::WithDesiredInput {
@@ -436,8 +439,8 @@ impl<T: Config<I>, I: 'static>
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
+        if input_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             let base_price_wrt_target = FixedWrapper::from(target_reserve) / base_reserve;
             Ok(match amount {
@@ -504,11 +507,16 @@ pub mod pallet {
     use super::*;
     use common::{EnsureDEXManager, EnsureTradingPairExists, ManagementMode};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config<I: 'static = ()>:
-        frame_system::Config + common::Config + assets::Config + technical::Config
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + technical::Config
+        + dex_manager::Config
     {
         type GetFee: Get<Fixed>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -519,8 +527,13 @@ pub mod pallet {
         >;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
     #[pallet::hooks]

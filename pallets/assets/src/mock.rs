@@ -30,10 +30,10 @@
 
 use crate::{self as assets, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
-use common::{AssetId32, XOR};
+use common::prelude::{Balance, SwapOutcome};
+use common::{AssetId32, DEXId, PSWAP, VAL, XOR, XST};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -51,12 +51,12 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -67,6 +67,8 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const BUY_BACK_ACCOUNT: AccountId = 23;
+pub const MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT: AccountId = 24;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -76,7 +78,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -98,28 +100,39 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
+    type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const GetTeamReservesAccountId: AccountId = 3000u128;
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl crate::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = MockLiquidityProxy;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
 impl common::Config for Runtime {
-    type DEXId = common::DEXId;
+    type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
@@ -135,10 +148,15 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 impl currencies::Config for Runtime {
-    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as Config>::GetBaseAssetId;
@@ -160,6 +178,55 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+}
+
+pub struct MockLiquidityProxy;
+
+impl common::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: common::prelude::QuoteAmount<Balance>,
+        _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+        // Implement if needed
+        unimplemented!()
+    }
+
+    /// Perform 1 to 1 exchange using [`MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT`] as a liquidity provider.
+    ///
+    /// Make sure to give some liquidity to this account before calling this function.
+    fn exchange(
+        _dex_id: DEXId,
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: common::prelude::SwapAmount<Balance>,
+        _filter: common::LiquiditySourceFilter<DEXId, common::LiquiditySourceType>,
+    ) -> Result<common::prelude::SwapOutcome<Balance>, sp_runtime::DispatchError> {
+        let amount = amount.amount();
+
+        <Currencies as traits::MultiCurrency<_>>::transfer(
+            *input_asset_id,
+            sender,
+            &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
+            amount,
+        )?;
+
+        <Currencies as traits::MultiCurrency<_>>::transfer(
+            *output_asset_id,
+            &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
+            receiver,
+            amount,
+        )?;
+
+        Ok(SwapOutcome::new(amount, 0))
+    }
 }
 
 pub struct ExtBuilder {
@@ -169,7 +236,11 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, XOR, 0), (BOB, XOR, 0)],
+            endowed_accounts: vec![
+                (ALICE, XOR, 0),
+                (BOB, XOR, 0),
+                (MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT, XOR, 0),
+            ],
         }
     }
 }
@@ -196,7 +267,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: self.endowed_accounts,
+            balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

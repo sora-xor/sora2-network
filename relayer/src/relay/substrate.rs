@@ -93,8 +93,15 @@ pub struct Relay {
 }
 
 impl Relay {
-    async fn create_random_bitfield(&self, initial_bitfield: Vec<U256>) -> AnyResult<Vec<U256>> {
-        let call = self.beefy.create_random_bitfield(initial_bitfield).legacy();
+    async fn create_random_bitfield(
+        &self,
+        initial_bitfield: Vec<U256>,
+        num_validators: U256,
+    ) -> AnyResult<Vec<U256>> {
+        let call = self
+            .beefy
+            .create_random_bitfield(initial_bitfield, num_validators)
+            .legacy();
         let random_bitfield = call.call().await?;
         debug!("Random bitfield: {:?}", random_bitfield);
         Ok(random_bitfield)
@@ -118,12 +125,12 @@ impl Relay {
             payload_prefix: justification.payload.prefix.clone().into(),
             payload: justification.payload.mmr_root.into(),
             payload_suffix: justification.payload.suffix.clone().into(),
-            block_number: justification.commitment.block_number as u32,
+            block_number: justification.commitment.block_number,
             validator_set_id: justification.commitment.validator_set_id as u64,
         };
 
         let random_bitfield = self
-            .create_random_bitfield(initial_bitfield.clone())
+            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
             .await?;
         let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;
@@ -175,9 +182,6 @@ impl Relay {
     }
 
     pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
-        if false && self.tx_pool_contains_tx().await? {
-            return Ok(());
-        }
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
@@ -193,13 +197,12 @@ impl Relay {
 
     async fn send_messages_from_block(
         &self,
-        block_number: u32,
+        block_number: u64,
         latest_hash: H256,
     ) -> AnyResult<()> {
         let block_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(block_number.into()))
             .await?
@@ -207,7 +210,6 @@ impl Relay {
         let header = self
             .sub
             .api()
-            .client
             .rpc()
             .header(Some(block_hash))
             .await?
@@ -221,10 +223,7 @@ impl Relay {
         debug!("Digest hash: {}", digest_hash);
         let LeafProof { leaf, proof, .. } = self
             .sub
-            .mmr_generate_proof(
-                block_number as u64 - self.beefy_start_block,
-                Some(latest_hash),
-            )
+            .mmr_generate_proof(block_number - self.beefy_start_block, Some(latest_hash))
             .await?;
         let leaf_encoded = hex::encode(&leaf.encode());
         debug!("Leaf: {}", leaf_encoded);
@@ -317,16 +316,15 @@ impl Relay {
 
     pub async fn handle_complete_commitment_success(self) -> AnyResult<()> {
         self.successful_sent.fetch_add(1, Ordering::Relaxed);
-        let latest_block = self.beefy.latest_beefy_block().call().await? as u32;
+        let latest_block = self.beefy.latest_beefy_block().call().await? as u64;
         let latest_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(latest_block.into()))
             .await?
             .unwrap();
-        if self.check_new_messages(latest_block as u32 - 1).await? {
+        if self.check_new_messages(latest_block - 1).await? {
             let start_messages_block = self.find_start_block(latest_block).await?;
             for block_number in start_messages_block..=latest_block {
                 self.send_messages_from_block(block_number, latest_hash)
@@ -340,17 +338,19 @@ impl Relay {
         messages_total_gas.saturating_add(260000.into())
     }
 
-    pub async fn find_start_block(&self, mut block_number: u32) -> AnyResult<u32> {
+    pub async fn find_start_block(&self, mut block_number: u64) -> AnyResult<u64> {
         let channel_interval = self
             .sub
             .api()
             .storage()
-            .bridge_outbound_channel()
-            .interval(false, None)
-            .await?;
+            .fetch_or_default(
+                &runtime::storage().bridge_outbound_channel().interval(),
+                None,
+            )
+            .await? as u64;
         let chain_mod = self.chain_id % channel_interval;
         while block_number > 0 {
-            if block_number % channel_interval == chain_mod.as_u32()
+            if block_number % channel_interval == chain_mod.as_u64()
                 && !self.check_new_messages(block_number - 1).await?
             {
                 break;
@@ -360,12 +360,11 @@ impl Relay {
         Ok(block_number)
     }
 
-    pub async fn check_new_messages(&self, block_number: u32) -> AnyResult<bool> {
+    pub async fn check_new_messages(&self, block_number: u64) -> AnyResult<bool> {
         let channel_nonce = self.inbound_channel.nonce().call().await?;
         let block_hash = self
             .sub
             .api()
-            .client
             .rpc()
             .block_hash(Some(block_number.into()))
             .await?;
@@ -373,53 +372,28 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .bridge_outbound_channel()
-            .channel_nonces(false, &self.chain_id, block_hash)
+            .fetch_or_default(
+                &runtime::storage()
+                    .bridge_outbound_channel()
+                    .channel_nonces(&self.chain_id),
+                block_hash,
+            )
             .await?;
         Ok(channel_nonce < sub_channel_nonce)
     }
 
-    pub async fn tx_pool_contains_tx(&self) -> AnyResult<bool> {
-        let pool = self.eth.inner().txpool_content().await?;
-        for (_sender, pending) in pool.pending {
-            for (_nonce, pending) in pending {
-                let to = if let Some(NameOrAddress::Address(to)) = pending.to {
-                    to
-                } else {
-                    continue;
-                };
-                if to != self.beefy.address() {
-                    continue;
-                }
-                let data = if let Some(data) = pending.data {
-                    data
-                } else {
-                    continue;
-                };
-                if data.0.len() < 4 {
-                    continue;
-                }
-                if data.as_ref()
-                    != ethereum_gen::beefy_light_client::SubmitSignatureCommitmentCall::selector()
-                        .as_slice()
-                {
-                    continue;
-                }
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
     pub async fn sync_historical_commitments(&self) -> AnyResult<()> {
         let beefy_block_gap = self.beefy.maximum_block_gap().call().await? - 1;
-        let epoch_duration = self.sub.api().constants().babe().epoch_duration(false)?;
+        let epoch_duration = self
+            .sub
+            .api()
+            .constants()
+            .at(&runtime::constants().babe().epoch_duration())?;
         let sessions_per_era = self
             .sub
             .api()
             .constants()
-            .staking()
-            .sessions_per_era(false)?;
+            .at(&runtime::constants().staking().sessions_per_era())?;
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
@@ -428,11 +402,13 @@ impl Relay {
                 .sub
                 .api()
                 .storage()
-                .staking()
-                .active_era(false, Some(latest_beefy_block_hash))
+                .fetch(
+                    &runtime::storage().staking().active_era(),
+                    Some(latest_beefy_block_hash),
+                )
                 .await?
                 .expect("should exist");
-            let current_block_hash = self.sub.api().client.rpc().finalized_head().await?;
+            let current_block_hash = self.sub.api().rpc().finalized_head().await?;
             let current_block = self.sub.block_number(Some(current_block_hash)).await?;
             let next_block = latest_beefy_block + beefy_block_gap.min(era_duration + 1);
             if next_block > current_block as u64 {
@@ -443,8 +419,10 @@ impl Relay {
                 .sub
                 .api()
                 .storage()
-                .staking()
-                .bonded_eras(false, Some(next_block_hash))
+                .fetch_or_default(
+                    &runtime::storage().staking().bonded_eras(),
+                    Some(next_block_hash),
+                )
                 .await?;
             debug!("latest era: {latest_era:?}, next block: {next_block}, eras: {next_eras:?}");
             let next_block = if let Some((_, session)) = next_eras
@@ -459,13 +437,16 @@ impl Relay {
                 "latest beefy block: {}, next block: {}",
                 latest_beefy_block, next_block
             );
+            let current_validator_set_id =
+                self.beefy.current_validator_set().call().await?.0 as u64;
+            let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             for next_block in ((latest_beefy_block + 1)..=next_block).rev() {
                 let block = self.sub.block(Some(next_block)).await?;
                 debug!("Check block {:?}", block.block.header.number);
                 if let Some(justifications) = block.justifications {
                     for (engine, justification) in justifications {
                         if &engine == b"BEEF" {
-                            let VersionedFinalityProof::V1(commitment) =
+                            let commitment =
                                 VersionedFinalityProof::decode(&mut justification.as_slice())?;
                             let justification = match BeefyJustification::create(
                                 self.sub.clone(),
@@ -480,6 +461,17 @@ impl Relay {
                                 }
                             };
                             debug!("Justification: {:?}", justification);
+                            if justification.commitment.validator_set_id != current_validator_set_id
+                                && justification.commitment.validator_set_id
+                                    != next_validator_set_id
+                            {
+                                warn!(
+                                    "validator set id mismatch: {} + 1 != {}",
+                                    justification.commitment.validator_set_id,
+                                    current_validator_set_id
+                                );
+                                continue;
+                            }
 
                             let _ =
                                 self.clone()
@@ -514,7 +506,6 @@ impl Relay {
         self.sync_historical_commitments()
             .await
             .context("sync historical commitments")?;
-        let mut validator_set_id = 0;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification =
@@ -527,20 +518,25 @@ impl Relay {
                         continue;
                     }
                 };
+
             let latest_block = self.beefy.latest_beefy_block().call().await?;
+
             let has_messages = self
-                .check_new_messages(justification.commitment.block_number - 1)
+                .check_new_messages((justification.commitment.block_number - 1) as u64)
                 .await?;
+
+            let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             let is_mandatory =
-                validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
+                next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
+
             let should_send = !ignore_unneeded_commitments
                 || has_messages
                 || is_mandatory
                 || (justification.commitment.block_number as u64
                     > latest_block + beefy_block_gap - 20);
+
             if should_send {
                 // TODO: Better async message handler
-                validator_set_id = justification.leaf_proof.leaf.beefy_next_authority_set.id;
                 let _ = self
                     .clone()
                     .send_commitment(justification)

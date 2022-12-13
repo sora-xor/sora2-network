@@ -3,10 +3,11 @@ use std::time::Duration;
 use crate::ethereum::make_header;
 use crate::ethereum::proof_loader::ProofLoader;
 use crate::prelude::*;
-use bridge_types::{network_config::Consensus, EthNetworkId};
+use bridge_types::network_config::Consensus;
+use bridge_types::EthNetworkId;
 use ethers::prelude::*;
 use substrate_gen::runtime;
-use subxt::extrinsic::Signer;
+use subxt::tx::Signer;
 
 const MAX_HEADER_IMPORTS_WITHOUT_CHECK: u64 = 20;
 
@@ -29,8 +30,12 @@ impl Relay {
         let consensus = sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .network_config(false, &chain_id, None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .network_config(&chain_id),
+                None,
+            )
             .await?
             .ok_or(anyhow!("Network is not registered"))?
             .consensus();
@@ -48,8 +53,12 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .finalized_block(false, &self.chain_id, None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .finalized_block(&self.chain_id),
+                None,
+            )
             .await?
             .ok_or(anyhow::anyhow!("Network is not registered"))?;
 
@@ -65,8 +74,12 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .best_block(false, &self.chain_id, None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .best_block(&self.chain_id),
+                None,
+            )
             .await?
             .expect("should exist")
             .0;
@@ -81,8 +94,12 @@ impl Relay {
                     .sub
                     .api()
                     .storage()
-                    .ethereum_light_client()
-                    .best_block(false, &self.chain_id, None)
+                    .fetch(
+                        &runtime::storage()
+                            .ethereum_light_client()
+                            .best_block(&self.chain_id),
+                        None,
+                    )
                     .await?
                     .expect("should exist")
                     .0;
@@ -119,8 +136,12 @@ impl Relay {
             .sub
             .api()
             .storage()
-            .ethereum_light_client()
-            .headers(false, &self.chain_id, &header.compute_hash(), None)
+            .fetch(
+                &runtime::storage()
+                    .ethereum_light_client()
+                    .headers(&self.chain_id, &header.compute_hash()),
+                None,
+            )
             .await;
         if let Ok(Some(_)) = has_block {
             return Ok(());
@@ -136,27 +157,17 @@ impl Relay {
         let header_signature = self
             .sub
             .sign(&bridge_types::import_digest(&self.chain_id, &header)[..]);
-        let call = sub_types::framenode_runtime::Call::EthereumLightClient(
-            runtime::runtime_types::ethereum_light_client::pallet::Call::import_header {
-                network_id: self.chain_id,
-                header: header.clone(),
-                proof: proof.clone(),
-                mix_nonce,
-                submitter: self.sub.public_key(),
-                signature: header_signature,
-            },
+        let tx = runtime::tx().ethereum_light_client().import_header(
+            self.chain_id,
+            header.clone(),
+            proof.clone(),
+            mix_nonce,
+            self.sub.public_key(),
+            header_signature,
         );
-        let ext_encoded = subxt::Encoded(
-            sp_runtime::generic::UncheckedExtrinsic::<(), _, (), ()>::new_unsigned(call.clone())
-                .encode(),
-        );
-        // let ext_hash = <DefaultConfig as Config>::Hashing::hash_of(&ext_encoded);
+        let tx = self.sub.api().tx().create_unsigned(&tx)?;
         debug!("Sending ethereum header to substrate");
-        self.sub
-            .api()
-            .client
-            .rpc()
-            .submit_extrinsic(ext_encoded)
+        tx.submit()
             .await
             .context("submit import header extrinsic")?;
         Ok(())

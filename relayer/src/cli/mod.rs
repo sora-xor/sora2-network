@@ -3,7 +3,6 @@ mod calc_dag_roots;
 mod error;
 mod fetch_ethereum_header;
 mod mint_test_token;
-mod old_bridge;
 mod subscribe_beefy;
 pub mod utils;
 
@@ -21,6 +20,8 @@ pub struct Cli {
     #[clap(flatten)]
     sub: SubstrateClient,
     #[clap(flatten)]
+    para: ParachainClient,
+    #[clap(flatten)]
     eth: EthereumClient,
     /// Substrate account derive URI
     #[clap(long, global = true)]
@@ -31,6 +32,15 @@ pub struct Cli {
     /// Substrate node endpoint
     #[clap(long, global = true)]
     substrate_url: Option<String>,
+    /// Parachain account derive URI
+    #[clap(long, global = true)]
+    parachain_key: Option<String>,
+    /// File with Parachain account derive URI
+    #[clap(long, global = true)]
+    parachain_key_file: Option<String>,
+    /// Parachain node endpoint
+    #[clap(long, global = true)]
+    parachain_url: Option<String>,
     /// Ethereum private key
     #[clap(long, global = true)]
     ethereum_key: Option<String>,
@@ -64,9 +74,6 @@ enum Commands {
     /// Operations with bridge
     #[clap(subcommand)]
     Bridge(bridge::Commands),
-    /// Operations with old bridge
-    #[clap(subcommand)]
-    OldBridge(old_bridge::Commands),
     /// Calculate DAG roots for light client
     CalcDagRoots(calc_dag_roots::Command),
 }
@@ -78,7 +85,6 @@ impl Commands {
             Self::FetchEthereumHeader(cmd) => cmd.run().await,
             Self::MintTestToken(cmd) => cmd.run().await,
             Self::Bridge(cmd) => cmd.run().await,
-            Self::OldBridge(cmd) => cmd.run().await,
             Self::CalcDagRoots(cmd) => cmd.run().await,
         }
     }

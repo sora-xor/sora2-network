@@ -44,7 +44,7 @@ use crate::Pallet as ETHApp;
 use assets::Pallet as Assets;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>> }
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic
@@ -57,8 +57,8 @@ benchmarks! {
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), H160::default(), 1000)
     verify {
-        let message_id = UserTransactions::<T>::get(BASE_NETWORK_ID, caller.clone())[0];
-            let req = Transactions::<T>::get(BASE_NETWORK_ID, message_id).unwrap();
+        let (message_id, _) = Senders::<T>::iter_prefix(BASE_NETWORK_ID).next().unwrap();
+        let req = Transactions::<T>::get(&caller, (BASE_NETWORK_ID, message_id)).unwrap();
         assert!(
             req == BridgeRequest::OutgoingTransfer {
                 source: caller.clone(),
@@ -66,6 +66,8 @@ benchmarks! {
                 asset_id: XOR.into(),
                 amount: 1000,
                 status: MessageStatus::InQueue,
+                start_timestamp: 0u32.into(),
+                end_timestamp: None,
             }
         );
     }

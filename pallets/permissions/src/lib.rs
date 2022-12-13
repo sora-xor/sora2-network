@@ -53,8 +53,6 @@ use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
 
-mod migrations;
-
 #[cfg(test)]
 mod mock;
 
@@ -68,7 +66,7 @@ pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 pub type PermissionId = u32;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Scope {
     Limited(H512),
@@ -257,7 +255,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -266,25 +264,22 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-                _ => 0,
-            }
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Permission was granted to a holder. [permission, who]

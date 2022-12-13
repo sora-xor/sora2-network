@@ -1,10 +1,28 @@
-#!/bin/sh
+#!/bin/bash
 
 binary="./target/debug/framenode"
 
 chain="local"
 
-getopt_code=`awk -f ./misc/getopt.awk <<EOF
+execution="--execution native"
+
+if which gawk > /dev/null 2>&1; then
+	awk="gawk"
+else
+	awk="awk"
+fi
+
+# Program to preserve log colors
+#
+# sudo apt-get install expect-dev
+# brew install expect
+if which unbuffer > /dev/null 2>&1; then
+	unbuffer="unbuffer"
+else
+	unbuffer=""
+fi
+
+getopt_code=`$awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
   -h, --help                         Show usage message
@@ -18,20 +36,19 @@ offchain_flags="--offchain-worker Never"
 binary="./target/release/framenode"
   -s, --staging                      Using staging chain spec
 chain="staging"
+  -f, --fork                         Use fork chain spec
+chain="fork.json"
+  -e, --execution-wasm               Use wasm runtime
+execution="--execution wasm --wasm-execution compiled"
 EOF
 `
 eval "$getopt_code"
 
-export RUST_LOG="runtime=debug"
+#export RUST_LOG="beefy=info,ethereum_light_client=debug,bridge_channel=debug,dispatch=debug,eth_app=debug"
+export RUST_LOG="info,runtime=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`
-
-if which gawk > /dev/null 2>&1; then
-	awk="gawk"
-else
-	awk="awk"
-fi
 
 if [ ! -f $binary ]; then
 	echo "Please build framenode binary"
@@ -66,17 +83,16 @@ find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-loc
 port="10000"
 wsport="9944"
 num="0"
-for name in alice bob charlie dave eve
+for name in alice bob charlie dave eve ferdie
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
-		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
-	sleep 5
 	port="$newport"
 	wsport=`expr $wsport + 1`
 	num=$(($num + 1))

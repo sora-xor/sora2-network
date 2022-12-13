@@ -28,14 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::{types::AppKind, EthNetworkId, H160};
+use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
+use bridge_types::{EthNetworkId, U256};
 use codec::{Codec, Decode, Encode};
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::core::{Error as RpcError, RpcResult as Result};
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::error::CallError;
 use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -48,10 +47,39 @@ pub use evm_bridge_proxy_runtime_api::EvmBridgeProxyAPI as EvmBridgeProxyRuntime
 
 #[derive(Eq, PartialEq, Encode, Decode, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct AppWithSupportedAssets<AssetId> {
-    kind: AppKind,
-    address: H160,
-    supported_assets: Vec<AssetId>,
+pub struct AppsWithSupportedAssets<AssetId> {
+    apps: Vec<BridgeAppInfo>,
+    assets: Vec<BridgeAssetInfo<AssetId>>,
+}
+
+#[derive(Eq, PartialEq, Encode, Decode, Debug)]
+pub struct NetworkIdWrapper(pub EthNetworkId);
+
+impl<'de> Deserialize<'de> for NetworkIdWrapper {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let network_id = String::deserialize(deserializer)?;
+        if network_id.starts_with("0x") {
+            let network_id =
+                U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
+            Ok(NetworkIdWrapper(network_id))
+        } else {
+            let network_id =
+                U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
+            Ok(NetworkIdWrapper(network_id))
+        }
+    }
+}
+
+impl Serialize for NetworkIdWrapper {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
 }
 
 #[rpc(server, client)]
@@ -63,23 +91,23 @@ where
     #[method(name = "evmBridgeProxy_listApps")]
     fn list_apps(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<BlockHash>,
-    ) -> Result<Vec<(AppKind, H160)>>;
+    ) -> Result<Vec<BridgeAppInfo>>;
 
     #[method(name = "evmBridgeProxy_listAssets")]
     fn list_supported_assets(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<BlockHash>,
-    ) -> Result<Vec<(AppKind, AssetId)>>;
+    ) -> Result<Vec<BridgeAssetInfo<AssetId>>>;
 
     #[method(name = "evmBridgeProxy_listAppsWithSupportedAssets")]
     fn list_apps_with_supported_assets(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<BlockHash>,
-    ) -> Result<Vec<AppWithSupportedAssets<AssetId>>>;
+    ) -> Result<AppsWithSupportedAssets<AssetId>>;
 }
 
 pub struct EvmBridgeProxyClient<C, B> {
@@ -108,53 +136,39 @@ where
 {
     fn list_apps(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<(AppKind, H160)>> {
+    ) -> Result<Vec<BridgeAppInfo>> {
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let api = self.client.runtime_api();
-        api.list_apps(&at, network_id)
+        api.list_apps(&at, network_id.0)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_supported_assets(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<(AppKind, AssetId)>> {
+    ) -> Result<Vec<BridgeAssetInfo<AssetId>>> {
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let api = self.client.runtime_api();
-        api.list_supported_assets(&at, network_id)
+        api.list_supported_assets(&at, network_id.0)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
     fn list_apps_with_supported_assets(
         &self,
-        network_id: EthNetworkId,
+        network_id: NetworkIdWrapper,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Vec<AppWithSupportedAssets<AssetId>>> {
+    ) -> Result<AppsWithSupportedAssets<AssetId>> {
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         let api = self.client.runtime_api();
         let assets = api
-            .list_supported_assets(&at, network_id)
+            .list_supported_assets(&at, network_id.0)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?;
         let apps = api
-            .list_apps(&at, network_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
-            .into_iter()
-            .map(|(kind, address)| {
-                let supported_assets = assets
-                    .iter()
-                    .filter(|(app_kind, _)| *app_kind == kind)
-                    .map(|(_, asset_id)| asset_id.clone())
-                    .collect();
-                AppWithSupportedAssets {
-                    kind,
-                    address,
-                    supported_assets,
-                }
-            })
-            .collect::<Vec<_>>();
-        Ok(apps)
+            .list_apps(&at, network_id.0)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?;
+        Ok(AppsWithSupportedAssets { apps, assets })
     }
 }

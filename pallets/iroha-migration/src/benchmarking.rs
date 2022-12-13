@@ -38,21 +38,20 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::VAL;
+// use common::VAL;
 
 use crate::{
-    Balances, Config, Event, MigratedAccounts, Module, Pallet, PendingMultiSigAccounts, PublicKeys,
-    Quorums,
+    Balances, Config, Event, MigratedAccounts, Pallet, PendingMultiSigAccounts, PublicKeys, Quorums,
 };
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 fn bob<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27f");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Adds `n` of unaccessible accounts and after adds 1 account that will be migrated
@@ -102,7 +101,7 @@ fn add_accounts<T: Config>(n: u32) {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -147,7 +146,7 @@ benchmarks! {
         let multi_account_of_2 = {
             let mut signatories = [alice, bob];
             signatories.sort();
-            pallet_multisig::Module::<T>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<T>::multi_account_id(&signatories, 2)
         };
     }: {
         Pallet::<T>::on_initialize(crate::blocks_till_migration::<T>() + 1u32.into())
@@ -155,7 +154,7 @@ benchmarks! {
     verify {
         assert!(MigratedAccounts::<T>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<T>::contains_key(&iroha_address));
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &multi_account_of_2).unwrap(), 1000);
+        // assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &multi_account_of_2).unwrap(), 1000);
     }
 }
 
@@ -164,12 +163,13 @@ mod tests {
     use frame_support::assert_ok;
 
     use crate::mock::{self, Runtime};
+    use crate::Pallet;
 
     #[test]
     fn migrate() {
         mock::test_ext(false).execute_with(|| {
-            assert_ok!(super::test_benchmark_migrate::<Runtime>());
-            assert_ok!(super::test_benchmark_on_initialize::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_migrate());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
         });
     }
 }

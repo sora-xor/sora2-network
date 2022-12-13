@@ -32,7 +32,7 @@ use crate::mock::*;
 use common::balance;
 
 use frame_support::error::BadOrigin;
-use frame_support::weights::{Weight, WeightToFeePolynomial};
+use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::{FixedPointNumber, FixedU128};
 
@@ -49,10 +49,10 @@ fn weight_to_fee_works() {
     let mut ext = ExtBuilder::build();
     ext.execute_with(|| {
         set_weight_to_fee_multiplier(1);
-        assert_eq!(XorFee::calc(&100_000_000_000), balance!(0.7));
-        assert_eq!(XorFee::calc(&500_000_000), balance!(0.0035));
-        assert_eq!(XorFee::calc(&72_000_000), balance!(0.000504));
-        assert_eq!(XorFee::calc(&210_200_000_000), balance!(1.4714));
+        assert_eq!(XorFee::weight_to_fee(&100_000_000_000), balance!(0.7));
+        assert_eq!(XorFee::weight_to_fee(&500_000_000), balance!(0.0035));
+        assert_eq!(XorFee::weight_to_fee(&72_000_000), balance!(0.000504));
+        assert_eq!(XorFee::weight_to_fee(&210_200_000_000), balance!(1.4714));
     });
 }
 
@@ -60,7 +60,7 @@ fn weight_to_fee_works() {
 fn weight_to_fee_does_not_underflow() {
     let mut ext = ExtBuilder::build();
     ext.execute_with(|| {
-        assert_eq!(XorFee::calc(&0), 0);
+        assert_eq!(XorFee::weight_to_fee(&0), 0);
     });
 }
 
@@ -70,7 +70,7 @@ fn weight_to_fee_does_not_overflow() {
     ext.execute_with(|| {
         set_weight_to_fee_multiplier(1);
         assert_eq!(
-            XorFee::calc(&Weight::max_value()),
+            XorFee::weight_to_fee(&Weight::max_value()),
             129127208515966861305000000
         );
     });

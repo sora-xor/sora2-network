@@ -28,8 +28,7 @@ impl Command {
         let (_, native_asset_id) = sub
             .api()
             .storage()
-            .eth_app()
-            .addresses(false, &network_id, None)
+            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
             .await?
             .expect("network not found");
         let balance = sub
@@ -38,35 +37,47 @@ impl Command {
             .await?;
         info!("Current balance: {:?}", balance);
         let result = if self.asset_id == native_asset_id {
+            info!(
+                "Call eth_app.burn({}, {}, {})",
+                network_id, self.recipient, self.amount
+            );
             sub.api()
                 .tx()
-                .eth_app()
-                .burn(false, network_id, self.recipient, self.amount)?
-                .sign_and_submit_then_watch_default(&sub)
+                .sign_and_submit_then_watch_default(
+                    &runtime::tx()
+                        .eth_app()
+                        .burn(network_id, self.recipient, self.amount),
+                    &sub,
+                )
                 .await?
                 .wait_for_in_block()
                 .await?
                 .wait_for_success()
                 .await?
         } else {
+            info!(
+                "Call erc20_app.burn({}, {}, {}, {})",
+                network_id, self.asset_id, self.recipient, self.amount
+            );
             sub.api()
                 .tx()
-                .erc20_app()
-                .burn(
-                    false,
-                    network_id,
-                    self.asset_id,
-                    self.recipient,
-                    self.amount,
-                )?
-                .sign_and_submit_then_watch_default(&sub)
+                .sign_and_submit_then_watch_default(
+                    &runtime::tx().erc20_app().burn(
+                        network_id,
+                        self.asset_id,
+                        self.recipient,
+                        self.amount,
+                    ),
+                    &sub,
+                )
                 .await?
                 .wait_for_in_block()
                 .await?
                 .wait_for_success()
                 .await?
         };
-        info!("Result: {:?}", result.iter().collect::<Vec<_>>());
+        info!("Extrinsic successful");
+        sub_log_tx_events(result);
         Ok(())
     }
 }
