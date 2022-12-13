@@ -124,6 +124,7 @@ construct_runtime! {
         XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Storage},
+        Band: band::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
     }
@@ -174,9 +175,16 @@ impl Config for Runtime {
     type Event = Event;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
     type LiquidityProxy = MockDEXApi;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
+    type Oracle = band::Pallet<Runtime>; // TODO: Replace with oracle-proxy
+    type Symbol = <Runtime as band::Config>::Symbol;
+    type WeightInfo = ();
+}
+
+impl band::Config for Runtime {
+    type Event = Event;
+    type Symbol = String;
     type WeightInfo = ();
 }
 

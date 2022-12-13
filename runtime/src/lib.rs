@@ -1671,9 +1671,10 @@ impl xst::Config for Runtime {
     type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
-    type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
+    type Oracle = band::Pallet<Runtime>; // TODO: Replace with oracle-proxy
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {

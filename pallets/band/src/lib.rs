@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::DataFeed;
 use frame_support::pallet_prelude::*;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
@@ -315,5 +316,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                 }
             })
             .ok_or_else(|| Error::<T, I>::UnauthorizedRelayer.into())
+    }
+}
+
+impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, u64, u64, DispatchError> for Pallet<T, I> {
+    fn quote(symbol: T::Symbol) -> Result<Option<u64>, DispatchError> {
+        Ok(SymbolRates::<T, I>::get(symbol).map(|rate| rate.value))
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
+        Ok(SymbolRates::<T, I>::iter()
+            .filter_map(|(symbol, option_rate)| option_rate.map(|rate| (symbol, rate.last_updated)))
+            .collect())
     }
 }

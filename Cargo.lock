@@ -13489,6 +13489,7 @@ name = "xst"
 version = "1.0.1"
 dependencies = [
  "assets",
+ "band",
  "blake2 0.10.5",
  "ceres-liquidity-locker",
  "common",
