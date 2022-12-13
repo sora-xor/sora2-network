@@ -13,7 +13,7 @@ pub(crate) struct Command {
     asset_id: AssetId,
     /// Recipient account id
     #[clap(long, short)]
-    recipient: AccountId,
+    recipient: AccountId<MainnetConfig>,
     /// Amount of tokens to transfer
     #[clap(long, short)]
     amount: u128,

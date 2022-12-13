@@ -47,7 +47,7 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
-use crate::impls::{BridgeAssetRegistryImpl, SubstrateBridgeCallFilter};
+use crate::impls::{BridgeAssetRegistryImpl, PreimageWeightInfo, SubstrateBridgeCallFilter};
 use bridge_types::types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
@@ -1906,10 +1906,10 @@ impl dispatch::Config<Instance1> for Runtime {
     type Additional = AdditionalEVMInboundData;
     type OriginOutput =
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
-    type RuntimeOrigin = RuntimeOrigin;
+    type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
-    type RuntimeCall = RuntimeCall;
+    type Call = RuntimeCall;
     type CallFilter = CallFilter;
 }
 
@@ -2029,11 +2029,11 @@ impl beefy_light_client::Config for Runtime {
 }
 
 impl dispatch::Config<Instance2> for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = SubNetworkId;
     type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
-    type Origin = Origin;
+    type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
     type Hashing = Keccak256;
     type Call = DispatchableSubstrateBridgeCall;
@@ -2041,7 +2041,7 @@ impl dispatch::Config<Instance2> for Runtime {
 }
 
 impl substrate_bridge_channel::inbound::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Verifier = BeefyLightClient;
     type ProvedMessage =
         beefy_light_client::ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>;
@@ -2056,7 +2056,7 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
 
 impl substrate_bridge_channel::outbound::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = CHANNEL_INDEXING_PREFIX;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type FeeCurrency = FeeCurrency;
     type FeeAccountId = GetTrustlessBridgeFeesAccountId;
@@ -2069,7 +2069,7 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
 }
 
 impl substrate_bridge_app::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
         SubNetworkId,

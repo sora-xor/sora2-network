@@ -34,10 +34,12 @@ use std::sync::Arc;
 use super::beefy_syncer::BeefySyncer;
 use super::justification::*;
 use crate::prelude::*;
-use crate::relay::client::RuntimeClient;
+use crate::relay::client::*;
+use crate::substrate::EncodedBeefyCommitment;
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_common::bitfield::BitField;
+use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
 use subxt::events::StaticEvent;
 use subxt::rpc_params;
 use subxt::tx::TxPayload;
@@ -111,6 +113,16 @@ impl<S, R> Relay<S, R>
 where
     S: RuntimeClient + Clone,
     R: RuntimeClient + Clone,
+    ConfigOf<R>: Clone,
+    ConfigOf<S>: Clone,
+    BlockNumberOf<S>: AtLeast32Bit + Serialize + From<BlockNumberOf<R>>,
+    BlockNumberOf<R>: AtLeast32Bit + Serialize + From<BlockNumberOf<S>>,
+    // ExtrinsicParamsOf<R>: Default,
+    OtherExtrinsicParamsOf<R>: Default,
+    SignatureOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Signature>,
+    SignerOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Public>
+        + sp_runtime::traits::IdentifyAccount<AccountId = AccountIdOf<R>>,
+    AccountIdOf<R>: Into<AddressOf<R>>,
 {
     async fn create_random_bitfield(
         &self,
@@ -130,7 +142,7 @@ where
 
     async fn submit_signature_commitment(
         &self,
-        justification: &BeefyJustification,
+        justification: &BeefyJustification<S::Config>,
     ) -> AnyResult<impl TxPayload> {
         let initial_bitfield = BitField::create_bitfield(
             justification
@@ -146,7 +158,10 @@ where
             payload_prefix: justification.payload.prefix.clone().into(),
             payload: justification.payload.mmr_root.into(),
             payload_suffix: justification.payload.suffix.clone().into(),
-            block_number: justification.commitment.block_number,
+            block_number: justification
+                .commitment
+                .block_number
+                .unique_saturated_into(),
             validator_set_id: justification.commitment.validator_set_id,
         };
 
@@ -186,32 +201,50 @@ where
         Ok(success_event)
     }
 
-    pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
+    pub async fn send_commitment(
+        self,
+        justification: BeefyJustification<S::Config>,
+    ) -> AnyResult<()> {
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
             .call_with_event::<R::VerificationSuccessful, _>(call)
             .await?;
         self.syncer
-            .update_latest_sent(justification.commitment.block_number as u64);
+            .update_latest_sent(justification.commitment.block_number.into());
         Ok(())
     }
 
-    async fn current_block(&self) -> AnyResult<u64> {
+    async fn current_block(&self) -> AnyResult<BlockNumberOf<S>> {
         let current_block_hash = self.sender.client().api().rpc().finalized_head().await?;
         let current_block = self
             .sender
             .client()
             .block_number(Some(current_block_hash))
-            .await? as u64;
+            .await?;
         Ok(current_block)
     }
 
     async fn process_block(&self, block_num: u64) -> AnyResult<()> {
         let current_validator_set_id = self.receiver.current_validator_set().await?.id;
         let next_validator_set_id = self.receiver.next_validator_set().await?.id;
-        let block = self.sender.client().block(Some(block_num)).await?;
-        debug!("Check block {:?}", block.block.header.number);
+        let block_hash = self
+            .sender
+            .client()
+            .api()
+            .rpc()
+            .block_hash(Some(block_num.into()))
+            .await?
+            .expect("block hash should exist");
+        let block = self
+            .sender
+            .client()
+            .api()
+            .rpc()
+            .block(Some(block_hash))
+            .await?
+            .expect("block should exist");
+        debug!("Check block {:?}", block.block.header.number());
         if let Some(justifications) = block.justifications {
             for (engine, justification) in justifications {
                 if &engine == b"BEEF" {
@@ -257,12 +290,13 @@ where
                 }
             }
         }
-        Err(anyhow::anyhow!("Justification not found"))
+        Ok(())
     }
 
-    pub async fn sync_historical_commitments(&self, end_block: u64) -> AnyResult<()> {
+    pub async fn sync_historical_commitments(&self, end_block: BlockNumberOf<S>) -> AnyResult<()> {
         let epoch_duration = self.sender.epoch_duration()?;
         let latest_beefy_block = self.sender.latest_beefy_block().await? as u64;
+        let end_block = end_block.into();
 
         const SHIFT: u64 = 5;
 
@@ -301,7 +335,7 @@ where
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification = match BeefyJustification::create(
                 self.sender.client().clone().unsigned(),
-                encoded_commitment.decode()?,
+                EncodedBeefyCommitment::decode::<ConfigOf<S>>(&encoded_commitment)?,
             )
             .await
             {
@@ -321,7 +355,7 @@ where
             let latest_sent = self.syncer.latest_sent();
             let should_send = !ignore_unneeded_commitments
                 || is_mandatory
-                || (latest_requested < justification.commitment.block_number as u64
+                || (latest_requested < justification.commitment.block_number.into()
                     && latest_sent < latest_requested);
 
             if should_send {

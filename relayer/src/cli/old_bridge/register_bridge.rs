@@ -12,7 +12,7 @@ pub struct Command {
     network: u32,
     /// Bridge peers
     #[clap(short, long)]
-    peers: Vec<AccountId>,
+    peers: Vec<AccountId<MainnetConfig>>,
     /// Bridge contract address
     #[clap(short, long)]
     contract: H160,

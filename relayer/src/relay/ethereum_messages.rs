@@ -12,7 +12,7 @@ use ethers::prelude::*;
 const BLOCKS_TO_INITIAL_SEARCH: u64 = 49000; // Ethereum light client keep 50000 blocks
 
 pub struct SubstrateMessagesRelay {
-    sub: SubSignedClient,
+    sub: SubSignedClient<MainnetConfig>,
     eth: EthUnsignedClient,
     network_id: EVMChainId,
     inbound_channel: Address,
@@ -23,7 +23,7 @@ pub struct SubstrateMessagesRelay {
 
 impl SubstrateMessagesRelay {
     pub async fn new(
-        sub: SubSignedClient,
+        sub: SubSignedClient<MainnetConfig>,
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {

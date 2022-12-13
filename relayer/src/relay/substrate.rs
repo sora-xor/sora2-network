@@ -5,7 +5,7 @@ use super::justification::*;
 use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
 use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
-use crate::substrate::LeafProof;
+use crate::substrate::{EncodedBeefyCommitment, LeafProof};
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
@@ -18,7 +18,7 @@ use ethers::prelude::*;
 
 #[derive(Default)]
 pub struct RelayBuilder {
-    sub: Option<SubUnsignedClient>,
+    sub: Option<SubUnsignedClient<MainnetConfig>>,
     eth: Option<EthSignedClient>,
     beefy: Option<Address>,
     inbound_channel: Option<Address>,
@@ -29,7 +29,7 @@ impl RelayBuilder {
         Default::default()
     }
 
-    pub fn with_substrate_client(mut self, sub: SubUnsignedClient) -> Self {
+    pub fn with_substrate_client(mut self, sub: SubUnsignedClient<MainnetConfig>) -> Self {
         self.sub = Some(sub);
         self
     }
@@ -76,7 +76,7 @@ impl RelayBuilder {
 
 #[derive(Clone)]
 pub struct Relay {
-    sub: SubUnsignedClient,
+    sub: SubUnsignedClient<MainnetConfig>,
     eth: EthSignedClient,
     beefy: BeefyLightClient<SignedClientInner>,
     inbound_channel: InboundChannel<SignedClientInner>,
@@ -103,7 +103,7 @@ impl Relay {
 
     async fn submit_signature_commitment(
         &self,
-        justification: &BeefyJustification,
+        justification: &BeefyJustification<MainnetConfig>,
     ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
         let initial_bitfield = self
             .beefy
@@ -175,7 +175,10 @@ impl Relay {
         Ok(success_event)
     }
 
-    pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
+    pub async fn send_commitment(
+        self,
+        justification: BeefyJustification<MainnetConfig>,
+    ) -> AnyResult<()> {
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
@@ -384,7 +387,13 @@ impl Relay {
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
-            let latest_beefy_block_hash = self.sub.block_hash(Some(latest_beefy_block)).await?;
+            let latest_beefy_block_hash = self
+                .sub
+                .api()
+                .rpc()
+                .block_hash(Some(latest_beefy_block.into()))
+                .await?
+                .ok_or(anyhow!("block hash not found"))?;
             let latest_era = self
                 .sub
                 .api()
@@ -401,7 +410,13 @@ impl Relay {
             if next_block > current_block as u64 {
                 return Ok(());
             }
-            let next_block_hash = self.sub.block_hash(Some(next_block)).await?;
+            let next_block_hash = self
+                .sub
+                .api()
+                .rpc()
+                .block_hash(Some(next_block.into()))
+                .await?
+                .ok_or(anyhow!("block hash not found"))?;
             let next_eras = self
                 .sub
                 .api()
@@ -428,7 +443,20 @@ impl Relay {
                 self.beefy.current_validator_set().call().await?.0 as u64;
             let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             for next_block in ((latest_beefy_block + 1)..=next_block).rev() {
-                let block = self.sub.block(Some(next_block)).await?;
+                let next_block_hash = self
+                    .sub
+                    .api()
+                    .rpc()
+                    .block_hash(Some(next_block.into()))
+                    .await?
+                    .ok_or(anyhow!("block hash not found"))?;
+                let block = self
+                    .sub
+                    .api()
+                    .rpc()
+                    .block(Some(next_block_hash))
+                    .await?
+                    .ok_or(anyhow!("block not found: {}", next_block))?;
                 debug!("Check block {:?}", block.block.header.number);
                 if let Some(justifications) = block.justifications {
                     for (engine, justification) in justifications {
@@ -495,16 +523,18 @@ impl Relay {
             .context("sync historical commitments")?;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
-            let justification =
-                match BeefyJustification::create(self.sub.clone(), encoded_commitment.decode()?)
-                    .await
-                {
-                    Ok(justification) => justification,
-                    Err(err) => {
-                        warn!("failed to create justification: {}", err);
-                        continue;
-                    }
-                };
+            let justification = match BeefyJustification::<MainnetConfig>::create(
+                self.sub.clone(),
+                EncodedBeefyCommitment::decode::<MainnetConfig>(&encoded_commitment)?,
+            )
+            .await
+            {
+                Ok(justification) => justification,
+                Err(err) => {
+                    warn!("failed to create justification: {}", err);
+                    continue;
+                }
+            };
 
             let latest_block = self.beefy.latest_beefy_block().call().await?;
 

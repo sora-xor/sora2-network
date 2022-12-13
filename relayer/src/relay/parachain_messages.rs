@@ -32,14 +32,15 @@ use std::collections::VecDeque;
 
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
-use crate::relay::client::RuntimeClient;
+use crate::relay::client::*;
 use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::{BlockNumber, LeafProof};
+use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::{GenericNetworkId, H256};
 use common::Balance;
+use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
 use sp_runtime::traits::{Hash, Keccak256};
-use substrate_gen::runtime::runtime_types::beefy_light_client::ProvedSubstrateBridgeMessage;
 
 pub struct RelayBuilder<S, R> {
     sender: Option<S>,
@@ -86,44 +87,52 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
         let network_id = receiver.network_id().await?;
-        let first_mmr_block = receiver.first_beefy_block().await?;
         Ok(Relay {
             sender,
             receiver,
             syncer,
             commitment_queue: Default::default(),
             network_id,
-            first_mmr_block,
         })
     }
 }
 
 #[derive(Clone)]
-pub struct Relay<S, R> {
+pub struct Relay<S: RuntimeClient, R: RuntimeClient> {
     sender: S,
     receiver: R,
     commitment_queue: VecDeque<(
-        BlockNumber,
+        BlockNumber<<S as RuntimeClient>::Config>,
         substrate_bridge_channel_rpc::Commitment<Balance>,
     )>,
     syncer: BeefySyncer,
     network_id: GenericNetworkId,
-    first_mmr_block: u64,
 }
 
 impl<S, R> Relay<S, R>
 where
     S: RuntimeClient + Clone,
     R: RuntimeClient + Clone,
+    ConfigOf<R>: Clone,
+    ConfigOf<S>: Clone,
+    BlockNumberOf<S>: AtLeast32Bit + Serialize + From<BlockNumberOf<R>>,
+    BlockNumberOf<R>: AtLeast32Bit + Serialize + From<BlockNumberOf<S>>,
+    // ExtrinsicParamsOf<R>: Default,
+    OtherExtrinsicParamsOf<R>: Default,
+    SignatureOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Signature>,
+    SignerOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Public>
+        + sp_runtime::traits::IdentifyAccount<AccountId = AccountIdOf<R>>,
+    AccountIdOf<R>: Into<AddressOf<R>>,
 {
     async fn leaf_proof_with_digest(
         &self,
         digest_hash: H256,
-        start_leaf: u64,
-        count: u64,
-        at: Option<H256>,
-    ) -> AnyResult<LeafProof> {
-        for leaf in start_leaf..start_leaf + count {
+        start_leaf: BlockNumber<ConfigOf<S>>,
+        count: u32,
+        at: Option<HashOf<S>>,
+    ) -> AnyResult<LeafProof<ConfigOf<S>>> {
+        for i in 0..count {
+            let leaf = start_leaf + i.into();
             let leaf_proof = self.sender.client().mmr_generate_proof(leaf, at).await?;
             if leaf_proof.leaf.leaf_extra.digest_hash == digest_hash {
                 return Ok(leaf_proof);
@@ -135,21 +144,30 @@ where
     async fn find_commitment_with_nonce(
         &self,
         network_id: GenericNetworkId,
+        count: u32,
         nonce: u64,
-    ) -> AnyResult<Option<(BlockNumber, H256)>> {
+    ) -> AnyResult<Option<(BlockNumberOf<S>, H256)>> {
         let start_block = self.sender.find_message_block(network_id, nonce).await?;
         let start_block = if let Some(start_block) = start_block {
-            start_block + 1
+            start_block + 1u32.into()
         } else {
             return Ok(None);
         };
-        let end_block = self
-            .sender
-            .client()
-            .block_number::<BlockNumber>(None)
-            .await?;
-        for block in start_block..=end_block {
-            let digest = self.sender.client().auxiliary_digest(Some(block)).await?;
+        for i in 0..count {
+            let block = start_block + i.into();
+            let block_hash = self
+                .sender
+                .client()
+                .api()
+                .rpc()
+                .block_hash(Some(block.into().into()))
+                .await?
+                .expect("block hash should exist");
+            let digest = self
+                .sender
+                .client()
+                .auxiliary_digest(Some(block_hash))
+                .await?;
             if digest.logs.is_empty() {
                 continue;
             }
@@ -165,10 +183,10 @@ where
 
     async fn send_commitment(
         &self,
-        block_number: u64,
+        block_number: BlockNumberOf<S>,
         commitment: substrate_bridge_channel_rpc::Commitment<Balance>,
     ) -> AnyResult<()> {
-        info!("Sending channel commitment for block {}", block_number);
+        info!("Sending channel commitment for block {:?}", block_number);
         let inbound_channel_nonce = self.receiver.inbound_channel_nonce(self.network_id).await?;
         if commitment
             .messages
@@ -179,13 +197,20 @@ where
             return Ok(());
         }
         let latest_sent = self.syncer.latest_sent();
-        let latest_sent_hash = self.sender.client().block_hash(Some(latest_sent)).await?;
+        let latest_sent_hash = self
+            .sender
+            .client()
+            .api()
+            .rpc()
+            .block_hash(Some(latest_sent.into()))
+            .await?
+            .expect("should exist");
         let block_hash = self
             .sender
             .client()
             .api()
             .rpc()
-            .block_hash(Some(block_number.into()))
+            .block_hash(Some(block_number.into().into()))
             .await?
             .expect("should exist");
         let digest = self
@@ -218,14 +243,7 @@ where
         let digest_hash = Keccak256::hash_of(&digest);
         trace!("Digest hash: {}", digest_hash);
         let leaf_proof = self
-            .leaf_proof_with_digest(
-                digest_hash,
-                block_number
-                    .saturating_sub(self.first_mmr_block)
-                    .saturating_sub(1),
-                50,
-                Some(latest_sent_hash),
-            )
+            .leaf_proof_with_digest(digest_hash, block_number, 50, Some(latest_sent_hash))
             .await?;
         let leaf = leaf_proof.leaf;
         let proof = leaf_proof.proof;
@@ -235,10 +253,10 @@ where
         };
         let ready_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
             version: leaf_version,
-            parent_number: leaf.parent_number_and_hash.0,
+            parent_number: leaf.parent_number_and_hash.0.unique_saturated_into(),
             next_authority_set_id: leaf.beefy_next_authority_set.id,
             next_authority_set_len: leaf.beefy_next_authority_set.len,
-            parent_hash: leaf.parent_number_and_hash.1 .0,
+            parent_hash: leaf.parent_number_and_hash.1.as_ref().try_into().unwrap(),
             next_authority_set_root: leaf.beefy_next_authority_set.root.0,
             random_seed: leaf.leaf_extra.random_seed.0,
             digest_hash: leaf.leaf_extra.digest_hash.0,
@@ -299,7 +317,7 @@ where
                     outbound_nonce
                 );
                 let Some((block_number, commitment_hash)) = self
-                    .find_commitment_with_nonce(receiver_network, inbound_nonce + 1)
+                    .find_commitment_with_nonce(receiver_network, 100, inbound_nonce + 1)
                     .await?
                 else {
                     debug!("Message not found, waiting for new block");
@@ -318,9 +336,9 @@ where
                 );
             }
             let latest_sent = self.syncer.latest_sent();
-            if let Some((block_number, _)) = self.commitment_queue.back() {
-                if *block_number as u64 > latest_sent {
-                    self.syncer.request(*block_number as u64 + 1);
+            if let Some((block_number, _)) = self.commitment_queue.back().cloned() {
+                if block_number.into() > latest_sent {
+                    self.syncer.request(block_number.into() + 1);
                 }
             }
             loop {
@@ -328,15 +346,12 @@ where
                     Some(commitment) => commitment,
                     None => break,
                 };
-                if block_number as u64 > latest_sent {
-                    debug!("Waiting for BEEFY block {}", block_number);
+                if block_number.into() > latest_sent {
+                    debug!("Waiting for BEEFY block {:?}", block_number);
                     self.commitment_queue.push_front((block_number, commitment));
                     break;
                 }
-                if let Err(err) = self
-                    .send_commitment(block_number as u64, commitment.clone())
-                    .await
-                {
+                if let Err(err) = self.send_commitment(block_number, commitment.clone()).await {
                     error!("Error sending message commitment: {:?}", err);
                     self.commitment_queue.push_front((block_number, commitment));
                     break;

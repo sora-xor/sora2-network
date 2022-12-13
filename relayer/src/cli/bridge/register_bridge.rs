@@ -32,7 +32,7 @@ impl Command {
             .api()
             .storage()
             .fetch(
-                &sub_runtime::storage()
+                &mainnet_runtime::storage()
                     .ethereum_light_client()
                     .network_config(&network_id),
                 None,
@@ -79,7 +79,7 @@ impl Command {
             .api()
             .storage()
             .fetch(
-                &sub_runtime::storage()
+                &mainnet_runtime::storage()
                     .bridge_inbound_channel()
                     .channel_addresses(&network_id),
                 None,

@@ -17,17 +17,16 @@ use subxt::events::EventDetails;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, RpcClientT};
 use subxt::tx::{Signer, TxEvents};
-use subxt::Config;
 pub use types::*;
 
 pub fn event_to_string(ev: EventDetails) -> String {
     let input = &mut ev.bytes();
     let phase = subxt::events::Phase::decode(input);
-    let event = sub_runtime::Event::decode(input);
+    let event = mainnet_runtime::Event::decode(input);
     format!("(Phase: {:?}, Event: {:?})", phase, event)
 }
 
-pub fn log_tx_events(events: TxEvents<DefaultConfig>) {
+pub fn log_tx_events<T: subxt::Config>(events: TxEvents<T>) {
     for ev in events.iter() {
         match ev {
             Ok(ev) => {
@@ -63,12 +62,12 @@ impl RpcClientT for ClonableClient {
 }
 
 #[derive(Debug, Clone)]
-pub struct UnsignedClient {
-    api: ApiInner,
+pub struct UnsignedClient<T: subxt::Config> {
+    api: ApiInner<T>,
     client: ClonableClient,
 }
 
-impl UnsignedClient {
+impl<T: subxt::Config> UnsignedClient<T> {
     pub async fn new(url: impl Into<String>) -> AnyResult<Self> {
         let url: Uri = url.into().parse()?;
         let (sender, receiver) =
@@ -79,7 +78,7 @@ impl UnsignedClient {
             .max_notifs_per_subscription(4096)
             .build_with_tokio(sender, receiver);
         let client = ClonableClient(Arc::new(client));
-        let api = subxt::OnlineClient::<DefaultConfig>::from_rpc_client(client.clone()).await?;
+        let api = subxt::OnlineClient::<T>::from_rpc_client(client.clone()).await?;
         Ok(Self { api, client })
     }
 
@@ -87,21 +86,24 @@ impl UnsignedClient {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash, BlockNumber> {
+    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>>
+    where
+        <T as subxt::Config>::BlockNumber: Serialize,
+    {
         self.rpc()
     }
 
     pub fn beefy(
         &self,
-    ) -> &impl beefy_gadget_rpc::BeefyApiClient<types::EncodedBeefyCommitment, BlockHash> {
+    ) -> &impl beefy_gadget_rpc::BeefyApiClient<types::EncodedBeefyCommitment, BlockHash<T>> {
         self.rpc()
     }
 
     pub fn assets(
         &self,
     ) -> &impl assets_rpc::AssetsAPIClient<
-        BlockHash,
-        AccountId,
+        BlockHash<T>,
+        AccountId<T>,
         AssetId,
         Balance,
         Option<assets_runtime_api::BalanceInfo<Balance>>,
@@ -143,13 +145,8 @@ impl UnsignedClient {
         )
     }
 
-    pub async fn auxiliary_digest<T: Into<NumberOrHash>>(
-        &self,
-        at: Option<T>,
-    ) -> AnyResult<AuxiliaryDigest> {
-        let at = self.block_hash(at).await?;
-        let res =
-            leaf_provider_rpc::LeafProviderAPIClient::latest_digest(self.rpc(), Some(at)).await?;
+    pub async fn auxiliary_digest(&self, at: Option<T::Hash>) -> AnyResult<AuxiliaryDigest> {
+        let res = leaf_provider_rpc::LeafProviderAPIClient::latest_digest(self.rpc(), at).await?;
         Ok(res.unwrap_or_default())
     }
 
@@ -166,14 +163,26 @@ impl UnsignedClient {
         )
     }
 
-    pub async fn sign_with_keypair(self, key: impl Into<KeyPair>) -> AnyResult<SignedClient> {
-        SignedClient::new(self, PairSigner::new(key.into())).await
+    pub async fn sign_with_keypair(self, key: impl Into<KeyPair>) -> AnyResult<SignedClient<T>>
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+        T::AccountId: Into<T::Address>,
+    {
+        SignedClient::<T>::new(self, PairSigner::<T>::new(key.into())).await
     }
 
-    pub async fn try_sign_with(self, key: &str) -> AnyResult<SignedClient> {
-        SignedClient::new(
+    pub async fn try_sign_with(self, key: &str) -> AnyResult<SignedClient<T>>
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+        T::AccountId: Into<T::Address>,
+    {
+        SignedClient::<T>::new(
             self,
-            PairSigner::new(
+            PairSigner::<T>::new(
                 KeyPair::from_string(key, None).map_err(|e| anyhow::anyhow!(format!("{:?}", e)))?,
             ),
         )
@@ -190,13 +199,14 @@ impl UnsignedClient {
             .expect("should exist")
             .block
             .header
-            .number;
+            .number()
+            .clone();
         let mmr_leaves = self
             .api()
             .storage()
             .fetch_or_default(&runtime::storage().mmr().number_of_leaves(), None)
             .await?;
-        let beefy_start_block = (latest_finalized_number as u64).saturating_sub(mmr_leaves);
+        let beefy_start_block = latest_finalized_number.into().saturating_sub(mmr_leaves);
         debug!("Beefy started at: {}", beefy_start_block);
         Ok(beefy_start_block)
     }
@@ -234,11 +244,14 @@ impl UnsignedClient {
 
     pub async fn mmr_generate_proof(
         &self,
-        block_number: BlockNumber,
-        at: Option<BlockHash>,
-    ) -> AnyResult<LeafProof> {
+        block_number: BlockNumber<T>,
+        at: Option<BlockHash<T>>,
+    ) -> AnyResult<LeafProof<T>>
+    where
+        BlockNumber<T>: Serialize,
+    {
         let res = self.mmr().generate_proof(block_number, at).await?;
-        let leaf = MmrLeaf::decode(
+        let leaf = MmrLeaf::<T>::decode(
             &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
                 .into_opaque_leaf()
                 .0,
@@ -251,68 +264,36 @@ impl UnsignedClient {
         })
     }
 
-    pub fn api(&self) -> &ApiInner {
+    pub fn api(&self) -> &ApiInner<T> {
         &self.api
     }
 
-    pub async fn block<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<SignedBlock> {
-        let hash = self.block_hash(block).await?;
-        let block = self
-            .api()
-            .rpc()
-            .block(Some(hash))
-            .await?
-            .ok_or(anyhow::anyhow!("Block not found"))?;
-        Ok(block)
-    }
-
-    pub async fn block_hash<T: Into<NumberOrHash>>(
-        &self,
-        block: Option<T>,
-    ) -> AnyResult<BlockHash> {
-        let number = match block.map(|x| x.into()) {
-            Some(NumberOrHash::Hash(hash)) => return Ok(hash),
-            Some(NumberOrHash::Number(number)) => Some(number),
-            None => None,
-        };
-        let hash = self
-            .api()
-            .rpc()
-            .block_hash(number.map(|x| x.into()))
-            .await?
-            .ok_or(anyhow::anyhow!("Block not found"))?;
-        Ok(hash)
-    }
-
-    pub async fn header<T: Into<NumberOrHash>>(&self, block: Option<T>) -> AnyResult<Header> {
-        let hash = self.block_hash(block).await?;
+    pub async fn block_number(&self, at: Option<T::Hash>) -> AnyResult<BlockNumber<T>> {
         let header = self
             .api()
             .rpc()
-            .header(Some(hash))
+            .header(at)
             .await?
             .ok_or(anyhow::anyhow!("Header not found"))?;
-        Ok(header)
-    }
-
-    pub async fn block_number<T: Into<NumberOrHash>>(
-        &self,
-        block: Option<T>,
-    ) -> AnyResult<BlockNumber> {
-        let header = self.header(block).await?;
-        Ok(header.number)
+        Ok(*header.number())
     }
 }
 
 #[derive(Clone)]
-pub struct SignedClient {
-    inner: UnsignedClient,
-    key: PairSigner,
-    nonce: Arc<RwLock<Option<Index>>>,
+pub struct SignedClient<T: subxt::Config> {
+    inner: UnsignedClient<T>,
+    key: PairSigner<T>,
+    nonce: Arc<RwLock<Option<Index<T>>>>,
 }
 
-impl SignedClient {
-    pub async fn new(client: UnsignedClient, key: impl Into<PairSigner>) -> AnyResult<Self> {
+impl<T: subxt::Config> SignedClient<T> {
+    pub async fn new(client: UnsignedClient<T>, key: impl Into<PairSigner<T>>) -> AnyResult<Self>
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+        T::AccountId: Into<T::Address>,
+    {
         let res = Self {
             inner: client,
             key: key.into(),
@@ -322,24 +303,35 @@ impl SignedClient {
         Ok(res)
     }
 
-    pub fn account_id(&self) -> AccountId {
+    pub fn account_id(&self) -> AccountId<T>
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+    {
         self.key.account_id().clone()
     }
 
-    pub fn unsigned(self) -> UnsignedClient {
+    pub fn unsigned(self) -> UnsignedClient<T> {
         self.inner
     }
 
-    pub fn api(&self) -> &ApiInner {
+    pub fn api(&self) -> &ApiInner<T> {
         &self.inner.api()
     }
 
-    pub fn set_nonce(&self, index: Index) {
+    pub fn set_nonce(&self, index: Index<T>) {
         let mut nonce = self.nonce.write().expect("poisoned");
         *nonce = Some(index);
     }
 
-    pub async fn load_nonce(&self) -> AnyResult<()> {
+    pub async fn load_nonce(&self) -> AnyResult<()>
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+        T::AccountId: Into<T::Address>,
+    {
         let nonce = self
             .inner
             .api()
@@ -350,45 +342,57 @@ impl SignedClient {
         Ok(())
     }
 
-    pub fn public_key(&self) -> MultiSigner {
+    pub fn public_key(&self) -> MultiSigner
+    where
+        T::Signature: From<<KeyPair as Pair>::Signature>,
+        <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+            + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+        T::AccountId: Into<T::Address>,
+    {
         MultiSigner::Sr25519(self.key.signer().public())
     }
 }
 
-impl Deref for SignedClient {
-    type Target = UnsignedClient;
+impl<T: subxt::Config> Deref for SignedClient<T> {
+    type Target = UnsignedClient<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl DerefMut for SignedClient {
+impl<T: subxt::Config> DerefMut for SignedClient<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl Signer<DefaultConfig> for SignedClient {
-    fn account_id(&self) -> &AccountId {
+impl<T: subxt::Config> Signer<T> for SignedClient<T>
+where
+    T::Signature: From<<KeyPair as Pair>::Signature>,
+    <T::Signature as sp_runtime::traits::Verify>::Signer: From<<KeyPair as Pair>::Public>
+        + sp_runtime::traits::IdentifyAccount<AccountId = T::AccountId>,
+    T::AccountId: Into<T::Address>,
+{
+    fn account_id(&self) -> &AccountId<T> {
         self.key.account_id()
     }
 
-    fn nonce(&self) -> Option<Index> {
+    fn nonce(&self) -> Option<Index<T>> {
         let res = *self.nonce.read().expect("poisoned");
         self.nonce
             .write()
             .expect("poisoned")
             .as_mut()
-            .map(|nonce| *nonce += 1);
+            .map(|nonce| *nonce += 1u32.into());
         res
     }
 
-    fn sign(&self, extrinsic: &[u8]) -> <DefaultConfig as Config>::Signature {
+    fn sign(&self, extrinsic: &[u8]) -> Signature<T> {
         self.key.sign(extrinsic)
     }
 
-    fn address(&self) -> <DefaultConfig as subxt::Config>::Address {
-        self.account_id()
+    fn address(&self) -> Address<T> {
+        self.account_id().into()
     }
 }

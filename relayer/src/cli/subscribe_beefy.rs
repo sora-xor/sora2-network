@@ -1,5 +1,6 @@
 use crate::cli::prelude::*;
 use crate::relay::justification::BeefyJustification;
+use crate::substrate::EncodedBeefyCommitment;
 use beefy_gadget_rpc::BeefyApiClient;
 
 #[derive(Args, Clone, Debug)]
@@ -16,8 +17,11 @@ impl Command {
         // info!("Proof: {:#?}", proof);
         let mut beefy_sub = sub_api.beefy().subscribe_justifications().await?;
         while let Some(commitment) = beefy_sub.next().await.transpose()? {
-            let justification =
-                BeefyJustification::create(sub_api.clone(), commitment.decode()?).await?;
+            let justification = BeefyJustification::create(
+                sub_api.clone(),
+                EncodedBeefyCommitment::decode::<MainnetConfig>(&commitment)?,
+            )
+            .await?;
             println!("{:#?}", justification);
         }
         Ok(())

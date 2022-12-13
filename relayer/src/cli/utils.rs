@@ -131,12 +131,12 @@ impl SubstrateClient {
             .ok_or(CliError::SubstrateEndpoint)?)
     }
 
-    pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient> {
+    pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient<MainnetConfig>> {
         let sub = SubUnsignedClient::new(self.get_url()?).await?;
         Ok(sub)
     }
 
-    pub async fn get_signed_substrate(&self) -> AnyResult<SubSignedClient> {
+    pub async fn get_signed_substrate(&self) -> AnyResult<SubSignedClient<MainnetConfig>> {
         let sub = self
             .get_unsigned_substrate()
             .await?
@@ -173,12 +173,12 @@ impl ParachainClient {
             .ok_or(CliError::ParachainEndpoint)?)
     }
 
-    pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient> {
+    pub async fn get_unsigned_substrate(&self) -> AnyResult<SubUnsignedClient<ParachainConfig>> {
         let sub = SubUnsignedClient::new(self.get_url()?).await?;
         Ok(sub)
     }
 
-    pub async fn get_signed_substrate(&self) -> AnyResult<SubSignedClient> {
+    pub async fn get_signed_substrate(&self) -> AnyResult<SubSignedClient<ParachainConfig>> {
         let sub = self
             .get_unsigned_substrate()
             .await?

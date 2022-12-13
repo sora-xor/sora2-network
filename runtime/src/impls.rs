@@ -33,9 +33,10 @@ use core::marker::PhantomData;
 use bridge_types::traits::BridgeAssetRegistry;
 use codec::{Decode, Encode};
 use frame_support::dispatch::Dispatchable;
+use frame_support::dispatch::{DispatchClass, DispatchInfo, PostDispatchInfo};
 use frame_support::traits::{Contains, Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
-use frame_support::weights::{DispatchClass, DispatchInfo, PostDispatchInfo, Weight};
+use frame_support::weights::Weight;
 use frame_support::RuntimeDebug;
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
@@ -261,17 +262,20 @@ pub struct DispatchableSubstrateBridgeCall(
 );
 
 impl Dispatchable for DispatchableSubstrateBridgeCall {
-    type Origin = crate::RuntimeOrigin;
+    type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
     type Info = DispatchInfo;
     type PostInfo = PostDispatchInfo;
 
-    fn dispatch(self, origin: Self::Origin) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+    fn dispatch(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
         frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
-                let call: crate::Call = call.into();
+                let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
             bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {

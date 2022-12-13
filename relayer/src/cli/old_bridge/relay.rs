@@ -45,10 +45,10 @@ impl Command {
     async fn relay_request(
         &self,
         eth: &EthSignedClient,
-        sub: &SubSignedClient,
+        sub: &SubSignedClient<MainnetConfig>,
         hash: H256,
     ) -> AnyResult<()> {
-        use sub_runtime::runtime_types::eth_bridge;
+        use mainnet_runtime::runtime_types::eth_bridge;
         let contract_address = sub
             .api()
             .storage()

@@ -42,6 +42,8 @@ pub mod runtime {
     use crate::BridgeSignatureVersion;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
+    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
+    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
     use ::beefy_primitives::crypto::Public;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]

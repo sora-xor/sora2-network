@@ -146,7 +146,7 @@ impl Command {
 
     async fn check_if_registered(
         &self,
-        sub: &SubSignedClient,
+        sub: &SubSignedClient<MainnetConfig>,
         network_id: U256,
     ) -> AnyResult<bool> {
         let (contract, registered) = match self.apps {
@@ -155,7 +155,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage()
+                        &mainnet_runtime::storage()
                             .erc20_app()
                             .app_addresses(&network_id, &AssetKind::Sidechain),
                         None,
@@ -168,7 +168,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage()
+                        &mainnet_runtime::storage()
                             .erc20_app()
                             .app_addresses(&network_id, &AssetKind::Thischain),
                         None,
@@ -183,7 +183,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage().eth_app().addresses(&network_id),
+                        &mainnet_runtime::storage().eth_app().addresses(&network_id),
                         None,
                     )
                     .await?
@@ -195,7 +195,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage()
+                        &mainnet_runtime::storage()
                             .migration_app()
                             .addresses(&network_id),
                         None,

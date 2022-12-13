@@ -30,8 +30,13 @@ impl Command {
         let beefy_address = inbound_channel.beefy_light_client().call().await?;
         let beefy = ethereum_gen::BeefyLightClient::new(beefy_address, eth.inner());
         if beefy.owner().call().await? == eth.address() {
-            let block_number = sub.block_number::<u32>(None).await?;
-            let block_hash = sub.block_hash(Some(1u32)).await?;
+            let block_number = sub.block_number(None).await?;
+            let block_hash = sub
+                .api()
+                .rpc()
+                .block_hash(Some(block_number.into()))
+                .await?
+                .expect("block hash not found");
             let autorities = sub
                 .api()
                 .storage()

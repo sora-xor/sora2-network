@@ -12,7 +12,7 @@ const MAX_HEADER_IMPORTS_WITHOUT_CHECK: u64 = 20;
 
 #[derive(Clone)]
 pub struct Relay {
-    sub: SubSignedClient,
+    sub: SubSignedClient<MainnetConfig>,
     eth: EthUnsignedClient,
     proof_loader: ProofLoader,
     chain_id: EVMChainId,
@@ -21,7 +21,7 @@ pub struct Relay {
 
 impl Relay {
     pub async fn new(
-        sub: SubSignedClient,
+        sub: SubSignedClient<MainnetConfig>,
         eth: EthUnsignedClient,
         proof_loader: ProofLoader,
     ) -> AnyResult<Self> {

@@ -22,3 +22,5 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 async-trait = "0.1.49"
 serde = { version = "1.0.137", features = ["derive"] }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier" }
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "beefy-verifier", default-features = false }

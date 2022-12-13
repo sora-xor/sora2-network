@@ -103,7 +103,7 @@ impl Command {
 
     pub async fn check_if_registered(
         &self,
-        sub: &SubSignedClient,
+        sub: &SubSignedClient<MainnetConfig>,
         network_id: U256,
     ) -> AnyResult<bool> {
         let is_registered = match &self.asset_kind {
@@ -112,7 +112,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage()
+                        &mainnet_runtime::storage()
                             .erc20_app()
                             .asset_kinds(&network_id, asset_id),
                         None,
@@ -126,7 +126,7 @@ impl Command {
                     .api()
                     .storage()
                     .fetch(
-                        &sub_runtime::storage()
+                        &mainnet_runtime::storage()
                             .erc20_app()
                             .assets_by_addresses(&network_id, address),
                         None,

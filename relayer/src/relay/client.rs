@@ -30,13 +30,13 @@
 
 use crate::prelude::*;
 use crate::substrate::types::*;
+use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_common::beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet};
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::types::ParachainMessage;
 use bridge_types::{GenericNetworkId, SubNetworkId};
 use common::Balance;
 use futures::Future;
-use substrate_gen::runtime::runtime_types::beefy_light_client::ProvedSubstrateBridgeMessage;
 
 const PARACHAIN_EPOCH_DURATION: u64 = 1800;
 
@@ -68,8 +68,24 @@ where
         Ok(None)
     }
 }
+
+pub type ConfigOf<C> = <C as RuntimeClient>::Config;
+pub type BlockNumberOf<C> = <ConfigOf<C> as subxt::Config>::BlockNumber;
+pub type IndexOf<C> = <ConfigOf<C> as subxt::Config>::Index;
+pub type HashOf<C> = <ConfigOf<C> as subxt::Config>::Hash;
+pub type OtherExtrinsicParamsOf<C> =
+    <<ConfigOf<C> as subxt::Config>::ExtrinsicParams as subxt::tx::ExtrinsicParams<
+        IndexOf<C>,
+        HashOf<C>,
+    >>::OtherParams;
+pub type SignatureOf<C> = <ConfigOf<C> as subxt::Config>::Signature;
+pub type SignerOf<C> = <SignatureOf<C> as sp_runtime::traits::Verify>::Signer;
+pub type AccountIdOf<C> = <ConfigOf<C> as subxt::Config>::AccountId;
+pub type AddressOf<C> = <ConfigOf<C> as subxt::Config>::Address;
+
 #[async_trait::async_trait]
 pub trait RuntimeClient {
+    type Config: subxt::Config + std::fmt::Debug + Send + Sync;
     type SubmitSignatureCommitment: Encode;
     type SubmitMessagesCommitment: Encode;
     type VerificationSuccessful: subxt::events::StaticEvent;
@@ -81,7 +97,7 @@ pub trait RuntimeClient {
         latest_mmr_leaf: BeefyMMRLeaf,
         proof: SimplifiedMMRProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment>;
-    fn client(&self) -> &SubSignedClient;
+    fn client(&self) -> &SubSignedClient<Self::Config>;
     fn epoch_duration(&self) -> AnyResult<u64>;
     async fn latest_beefy_block(&self) -> AnyResult<u64>;
     async fn first_beefy_block(&self) -> AnyResult<u64>;
@@ -93,7 +109,7 @@ pub trait RuntimeClient {
         &self,
         network_id: GenericNetworkId,
         nonce: u64,
-    ) -> AnyResult<Option<BlockNumber>>;
+    ) -> AnyResult<Option<BlockNumber<Self::Config>>>;
     async fn network_id(&self) -> AnyResult<GenericNetworkId>;
     async fn submit_messages_commitment(
         &self,
@@ -103,21 +119,22 @@ pub trait RuntimeClient {
 }
 
 #[derive(Clone)]
-pub struct SubstrateRuntimeClient(pub SubSignedClient);
+pub struct SubstrateRuntimeClient(pub SubSignedClient<MainnetConfig>);
 
 impl SubstrateRuntimeClient {
-    pub fn new(client: SubSignedClient) -> Self {
+    pub fn new(client: SubSignedClient<MainnetConfig>) -> Self {
         Self(client)
     }
 }
 
 #[async_trait::async_trait]
 impl RuntimeClient for SubstrateRuntimeClient {
+    type Config = MainnetConfig;
     type SubmitSignatureCommitment = runtime::beefy_light_client::calls::SubmitSignatureCommitment;
     type VerificationSuccessful = runtime::beefy_light_client::events::VerificationSuccessful;
     type SubmitMessagesCommitment = runtime::substrate_bridge_inbound_channel::calls::Submit;
 
-    fn client(&self) -> &SubSignedClient {
+    fn client(&self) -> &SubSignedClient<Self::Config> {
         &self.0
     }
 
@@ -176,7 +193,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
                 Some(finalized_hash),
             )
             .await?
-            .ok_or(anyhow!("Error to get latest beefy block"))?;
+            .ok_or(anyhow!("Error to get first beefy block"))?;
         Ok(latest_beefy_block - finalized_number as u64)
     }
 
@@ -250,7 +267,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
         &self,
         network_id: GenericNetworkId,
         nonce: u64,
-    ) -> AnyResult<Option<BlockNumber>> {
+    ) -> AnyResult<Option<BlockNumber<Self::Config>>> {
         let storage = match network_id {
             GenericNetworkId::EVM(chain_id) => runtime::storage()
                 .bridge_outbound_channel()
@@ -317,23 +334,25 @@ impl RuntimeClient for SubstrateRuntimeClient {
 }
 
 #[derive(Clone)]
-pub struct ParachainRuntimeClient(pub SubSignedClient);
+pub struct ParachainRuntimeClient(pub SubSignedClient<ParachainConfig>);
 
 impl ParachainRuntimeClient {
-    pub fn new(client: SubSignedClient) -> Self {
+    pub fn new(client: SubSignedClient<ParachainConfig>) -> Self {
         Self(client)
     }
 }
 
 #[async_trait::async_trait]
 impl RuntimeClient for ParachainRuntimeClient {
+    type Config = ParachainConfig;
     type SubmitSignatureCommitment =
         parachain_runtime::beefy_light_client::calls::SubmitSignatureCommitment;
     type VerificationSuccessful =
         parachain_runtime::beefy_light_client::events::VerificationSuccessful;
-    type SubmitMessagesCommitment = ();
+    type SubmitMessagesCommitment =
+        parachain_runtime::substrate_bridge_inbound_channel::calls::Submit;
 
-    fn client(&self) -> &SubSignedClient {
+    fn client(&self) -> &SubSignedClient<Self::Config> {
         &self.0
     }
 
@@ -389,7 +408,7 @@ impl RuntimeClient for ParachainRuntimeClient {
                 Some(finalized_hash),
             )
             .await?
-            .ok_or(anyhow!("Error to get latest beefy block"))?;
+            .ok_or(anyhow!("Error to get first beefy block"))?;
         Ok(latest_beefy_block - finalized_number as u64)
     }
 
@@ -425,23 +444,86 @@ impl RuntimeClient for ParachainRuntimeClient {
         Ok(validator_set)
     }
 
-    async fn outbound_channel_nonce(&self, _network_id: GenericNetworkId) -> AnyResult<u64> {
-        // TODO: Implement this
-        unimplemented!("outbound_channel_nonce is not implemented for parachain");
+    async fn outbound_channel_nonce(&self, network_id: GenericNetworkId) -> AnyResult<u64> {
+        let storage = match network_id {
+            GenericNetworkId::EVM(_chain_id) => unimplemented!(),
+            GenericNetworkId::Sub(network_id) => parachain_runtime::storage()
+                .substrate_bridge_outbound_channel()
+                .channel_nonces(network_id),
+        };
+        let nonce = self
+            .0
+            .api()
+            .storage()
+            .fetch_or_default(&storage, None)
+            .await?;
+        Ok(nonce)
     }
 
-    async fn inbound_channel_nonce(&self, _network_id: GenericNetworkId) -> AnyResult<u64> {
-        // TODO: Implement this
-        unimplemented!("inbound_channel_nonce is not implemented for parachain")
+    async fn inbound_channel_nonce(&self, network_id: GenericNetworkId) -> AnyResult<u64> {
+        let storage = match network_id {
+            GenericNetworkId::Sub(network_id) => parachain_runtime::storage()
+                .substrate_bridge_inbound_channel()
+                .channel_nonces(network_id),
+            GenericNetworkId::EVM(_chain_id) => unimplemented!(),
+        };
+        let nonce = self
+            .0
+            .api()
+            .storage()
+            .fetch_or_default(&storage, None)
+            .await?;
+        Ok(nonce)
     }
 
     async fn find_message_block(
         &self,
-        _network_id: GenericNetworkId,
-        _nonce: u64,
-    ) -> AnyResult<Option<BlockNumber>> {
-        // TODO: Implement this
-        unimplemented!("find_message_block is not implemented for parachain")
+        network_id: GenericNetworkId,
+        nonce: u64,
+    ) -> AnyResult<Option<BlockNumber<Self::Config>>> {
+        let storage = match network_id {
+            GenericNetworkId::EVM(_chain_id) => unimplemented!(),
+            GenericNetworkId::Sub(network_id) => parachain_runtime::storage()
+                .substrate_bridge_outbound_channel()
+                .channel_nonces(network_id),
+        };
+        let low = 1u32;
+        let high = self
+            .0
+            .api()
+            .rpc()
+            .header(None)
+            .await?
+            .expect("should exist")
+            .number;
+
+        trace!(
+            "Searching for message with nonce {} in block range {}..={}",
+            nonce,
+            low,
+            high
+        );
+        let start_block = binary_search_first_occurence(low, high, nonce, |block| {
+            let storage = &storage;
+            async move {
+                let hash = self
+                    .0
+                    .api()
+                    .rpc()
+                    .block_hash(Some(block.into()))
+                    .await?
+                    .expect("should exist");
+                let nonce = self.0.api().storage().fetch(storage, Some(hash)).await?;
+                info!("Nonce at block {}: {:?}", block, nonce);
+                Ok(nonce)
+            }
+        })
+        .await?;
+        info!(
+            "Found message with nonce {} at block {:?}",
+            nonce, start_block
+        );
+        Ok(start_block)
     }
 
     async fn network_id(&self) -> AnyResult<GenericNetworkId> {
@@ -450,15 +532,23 @@ impl RuntimeClient for ParachainRuntimeClient {
             "SORA Kusama" => Ok(SubNetworkId::Kusama.into()),
             "SORA Rococo" => Ok(SubNetworkId::Rococo.into()),
             "SORA Polkadot" => Ok(SubNetworkId::Polkadot.into()),
+            "Local Testnet" => Ok(SubNetworkId::Rococo.into()),
             _ => Err(anyhow!("Unknown chain: {}", chain)),
         }
     }
 
     async fn submit_messages_commitment(
         &self,
-        _network_id: GenericNetworkId,
-        _message: ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>,
-    ) -> subxt::tx::StaticTxPayload<()> {
-        unimplemented!("submit_messages_commitment is not implemented for parachain");
+        network_id: GenericNetworkId,
+        message: ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>,
+    ) -> subxt::tx::StaticTxPayload<
+        parachain_runtime::substrate_bridge_inbound_channel::calls::Submit,
+    > {
+        match network_id {
+            GenericNetworkId::EVM(_chain_id) => unimplemented!(),
+            GenericNetworkId::Sub(network_id) => parachain_runtime::tx()
+                .substrate_bridge_inbound_channel()
+                .submit(network_id, message),
+        }
     }
 }

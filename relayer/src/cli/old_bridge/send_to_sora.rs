@@ -23,7 +23,7 @@ pub struct Command {
     mint: bool,
     /// Recipient account id
     #[clap(short, long)]
-    to: AccountId,
+    to: AccountId<MainnetConfig>,
     /// Amount of tokens to transfer
     #[clap(short, long)]
     amount: u128,

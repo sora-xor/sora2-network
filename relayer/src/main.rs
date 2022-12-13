@@ -33,18 +33,21 @@ pub mod prelude {
         SignedClient as EthSignedClient, UnsignedClient as EthUnsignedClient,
     };
     pub use crate::substrate::runtime::runtime_types as sub_types;
+    pub use crate::substrate::types::{
+        mainnet_runtime, parachain_runtime, MainnetConfig, MainnetExtrinsicParams, ParachainConfig,
+        ParachainExtrinsicParams,
+    };
     pub use crate::substrate::{
         event_to_string as sub_event_to_string, log_tx_events as sub_log_tx_events,
-        runtime as sub_runtime, SignedClient as SubSignedClient,
-        UnsignedClient as SubUnsignedClient,
+        SignedClient as SubSignedClient, UnsignedClient as SubUnsignedClient,
     };
     pub use anyhow::{Context, Result as AnyResult};
     pub use codec::{Decode, Encode};
     pub use hex_literal::hex;
     pub use http::Uri;
-    pub use parachain_gen::parachain_runtime;
     pub use serde::{Deserialize, Serialize};
     pub use sp_runtime::traits::Hash;
+    pub use sp_runtime::traits::Header as HeaderT;
     pub use substrate_gen::runtime;
     pub use url::Url;
 }
