@@ -203,6 +203,8 @@ pub mod pallet {
             asset_symbol: AssetSymbol,
             asset_name: AssetName,
             reference_symbol: T::Symbol,
+            buy_fee_percent: Fixed,
+            sell_fee_percent: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -210,6 +212,8 @@ pub mod pallet {
                 asset_symbol,
                 asset_name,
                 reference_symbol,
+                buy_fee_percent,
+                sell_fee_percent,
                 true,
             )?;
             Ok(().into())
@@ -382,7 +386,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
-        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol)>,
+        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol, Fixed, Fixed)>,
     }
 
     #[cfg(feature = "std")]
@@ -395,6 +399,8 @@ pub mod pallet {
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
                     "USD".into(),
+                    Fixed::ZERO,
+                    Fixed::ZERO,
                 )]
                 .into(),
             }
@@ -407,11 +413,19 @@ pub mod pallet {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets.iter().cloned().for_each(
-                |(asset_symbol, asset_name, reference_symbol)| {
+                |(
+                    asset_symbol,
+                    asset_name,
+                    reference_symbol,
+                    buy_fee_percent,
+                    sell_fee_percent,
+                )| {
                     Pallet::<T>::enable_synthetic_asset_unchecked(
                         asset_symbol,
                         asset_name,
                         reference_symbol,
+                        buy_fee_percent,
+                        sell_fee_percent,
                         false,
                     )
                     .expect("Failed to initialize XST synthetics.")
@@ -436,6 +450,8 @@ impl<T: Config> Pallet<T> {
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
         reference_symbol: T::Symbol,
+        buy_fee_percent: Fixed,
+        sell_fee_percent: Fixed,
         transactional: bool,
     ) -> sp_runtime::DispatchResult {
         let code = || {
@@ -452,8 +468,8 @@ impl<T: Config> Pallet<T> {
                 synthetic_asset_id,
                 Some(SyntheticInfo {
                     reference_symbol: reference_symbol.clone(),
-                    buy_fee_percent: Fixed::ZERO,
-                    sell_fee_percent: Fixed::ZERO,
+                    buy_fee_percent,
+                    sell_fee_percent,
                 }),
             );
             EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset_id));
