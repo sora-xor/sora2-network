@@ -46,8 +46,8 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
-    QuoteAmount, SwapAmount, SwapOutcome, DEFAULT_BALANCE_PRECISION,
+    Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
+    SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
@@ -66,7 +66,6 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 pub trait WeightInfo {
-    fn on_initialize(_elems: u32) -> Weight;
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
     fn disable_synthetic_asset() -> Weight;
@@ -149,12 +148,6 @@ pub mod pallet {
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-        // TODO Remove
-        type EnsureTradingPairExists: EnsureTradingPairExists<
-            Self::DEXId,
-            Self::AssetId,
-            DispatchError,
-        >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;
         /// Type of symbol received from oracles
@@ -174,14 +167,6 @@ pub mod pallet {
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    // TODO Remove
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_number: T::BlockNumber) -> Weight {
-            <T as Config>::WeightInfo::on_initialize(0)
-        }
-    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
