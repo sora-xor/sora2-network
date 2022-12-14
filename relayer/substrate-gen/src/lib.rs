@@ -46,6 +46,10 @@ pub mod runtime {
     use ::beefy_light_client::ProvedSubstrateBridgeMessage;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
     use ::beefy_primitives::crypto::Public;
+    #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
+    use ::beefy_primitives::mmr::MmrLeaf;
+    #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
+    use ::beefy_primitives::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -64,6 +68,8 @@ pub mod runtime {
     use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
     use ::bridge_types::types::AuxiliaryDigest;
+    #[subxt(substitute_type = "bridge_types::types::LeafExtraData")]
+    use ::bridge_types::types::LeafExtraData;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
     #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]

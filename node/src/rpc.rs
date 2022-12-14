@@ -209,7 +209,7 @@ where
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
     io.merge(EvmBridgeProxyClient::new(client.clone()).into_rpc())?;
     if let Some(storage) = backend.offchain_storage() {
-        // io.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
+        io.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
         io.merge(
             <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer<Balance>>::into_rpc(
                 SubstrateBridgeChannelClient::new(storage),

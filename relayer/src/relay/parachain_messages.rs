@@ -161,8 +161,10 @@ where
                 .api()
                 .rpc()
                 .block_hash(Some(block.into().into()))
-                .await?
-                .expect("block hash should exist");
+                .await?;
+            let Some(block_hash) = block_hash else {
+                return Ok(None);
+            };
             let digest = self
                 .sender
                 .client()
@@ -247,21 +249,17 @@ where
             .await?;
         let leaf = leaf_proof.leaf;
         let proof = leaf_proof.proof;
-        let leaf_version = {
-            let (major, minor) = leaf.version.split();
-            major << 5 + minor
-        };
+        let parent_hash: [u8; 32] = leaf.parent_number_and_hash.1.as_ref().try_into().unwrap();
         let ready_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
-            version: leaf_version,
-            parent_number: leaf.parent_number_and_hash.0.unique_saturated_into(),
-            next_authority_set_id: leaf.beefy_next_authority_set.id,
-            next_authority_set_len: leaf.beefy_next_authority_set.len,
-            parent_hash: leaf.parent_number_and_hash.1.as_ref().try_into().unwrap(),
-            next_authority_set_root: leaf.beefy_next_authority_set.root.0,
-            random_seed: leaf.leaf_extra.random_seed.0,
-            digest_hash: leaf.leaf_extra.digest_hash.0,
+            version: leaf.version,
+            parent_number_and_hash: (
+                leaf.parent_number_and_hash.0.unique_saturated_into(),
+                parent_hash.into(),
+            ),
+            beefy_next_authority_set: leaf.beefy_next_authority_set,
+            leaf_extra: leaf.leaf_extra,
         };
-        trace!("Leaf: {:?}", leaf);
+        trace!("Leaf: {:?}", ready_leaf);
 
         let proof =
             convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, &proof.items);

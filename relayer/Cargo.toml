@@ -69,3 +69,5 @@ assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
 bridge-channel-rpc = { path = "../pallets/trustless-eth-bridge/channel/rpc" }
 substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "beefy-verifier", default-features = false }
+rand = "0.8.5"
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.3.2", default-features = false }

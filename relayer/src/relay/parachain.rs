@@ -155,9 +155,7 @@ where
         );
 
         let commitment = bridge_common::beefy_types::Commitment {
-            payload_prefix: justification.payload.prefix.clone().into(),
-            payload: justification.payload.mmr_root.into(),
-            payload_suffix: justification.payload.suffix.clone().into(),
+            payload: justification.commitment.payload.clone(),
             block_number: justification
                 .commitment
                 .block_number

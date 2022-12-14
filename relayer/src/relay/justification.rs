@@ -240,10 +240,7 @@ where
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs: public_key_merkle_proofs
-                .into_iter()
-                .map(|x| x.into_iter().map(|x| x.0).collect())
-                .collect(),
+            public_key_merkle_proofs: public_key_merkle_proofs,
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof
@@ -283,17 +280,15 @@ where
         bridge_common::simplified_mmr_proof::SimplifiedMMRProof,
     )> {
         let LeafProof { leaf, .. } = self.leaf_proof.clone();
-        let (major, minor) = leaf.version.split();
-        let leaf_version = (major << 5) + minor;
+        let parent_hash: [u8; 32] = leaf.parent_number_and_hash.1.as_ref().try_into().unwrap();
         let mmr_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
-            version: leaf_version,
-            parent_number: leaf.parent_number_and_hash.0.unique_saturated_into(),
-            parent_hash: leaf.parent_number_and_hash.1.as_ref().try_into().unwrap(),
-            next_authority_set_id: leaf.beefy_next_authority_set.id,
-            next_authority_set_len: leaf.beefy_next_authority_set.len,
-            next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
-            digest_hash: leaf.leaf_extra.digest_hash.0,
-            random_seed: leaf.leaf_extra.random_seed.0,
+            version: leaf.version,
+            parent_number_and_hash: (
+                leaf.parent_number_and_hash.0.unique_saturated_into(),
+                parent_hash.into(),
+            ),
+            beefy_next_authority_set: leaf.beefy_next_authority_set,
+            leaf_extra: leaf.leaf_extra,
         };
 
         let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
