@@ -128,12 +128,6 @@ pub struct SyntheticInfo<Symbol> {
     sell_fee_percent: Fixed,
 }
 
-#[derive(RuntimeDebug, Copy, Clone)]
-enum QuoteType {
-    BaseAssetBuy,
-    BaseAssetSell,
-}
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -319,8 +313,6 @@ pub mod pallet {
         SyntheticIsNotEnabled,
         /// Error quoting price from oracle.
         OracleQuoteError,
-        /// Failure while calculating an amount of synthetic base asset to burn.
-        FailedToCalculateBurnAmount,
     }
 
     // TODO: better by replaced with Get<>
@@ -716,7 +708,7 @@ impl<T: Config> Pallet<T> {
     /// If there's not enough reserves in the pool, `NotEnoughReserves` error will be returned.
     ///
     fn swap_mint_burn_assets(
-        dex_id: &T::DEXId,
+        _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
@@ -728,34 +720,38 @@ impl<T: Config> Pallet<T> {
             let permissioned_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
-            let swap_outcome = Self::quote(
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount.into(),
-                true,
-            )?;
+            let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+            let (input_amount, output_amount, fee_amount) =
+                if input_asset_id == synthetic_base_asset_id {
+                    Self::decide_sell_amounts(
+                        &input_asset_id,
+                        &output_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                } else {
+                    Self::decide_buy_amounts(
+                        &output_asset_id,
+                        &input_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                };
 
-            let (input_amount, output_amount) = match swap_amount {
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in,
-                    min_amount_out,
-                } => {
+            let result = match swap_amount {
+                SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                     ensure!(
-                        swap_outcome.amount >= min_amount_out,
+                        output_amount >= min_amount_out,
                         Error::<T>::SlippageLimitExceeded
                     );
-                    (desired_amount_in, swap_outcome.amount)
+                    SwapOutcome::new(output_amount, fee_amount)
                 }
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out,
-                    max_amount_in,
-                } => {
+                SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                     ensure!(
-                        swap_outcome.amount <= max_amount_in,
+                        input_amount <= max_amount_in,
                         Error::<T>::SlippageLimitExceeded
                     );
-                    (swap_outcome.amount, desired_amount_out)
+                    SwapOutcome::new(input_amount, fee_amount)
                 }
             };
 
@@ -773,7 +769,7 @@ impl<T: Config> Pallet<T> {
                 output_amount,
             )?;
 
-            Ok(swap_outcome)
+            Ok(result)
         })
     }
 
@@ -865,36 +861,6 @@ impl<T: Config> Pallet<T> {
             None,
         )
     }
-
-    /// Decide how much of synthetic base asset should be holded depending on
-    /// set fee percent per every synthetic asset.
-    fn decide_base_asset_fee_amount(
-        synthetic_asset_id: &T::AssetId,
-        synthetic_base_asset_amount: Balance,
-        quote_type: QuoteType,
-    ) -> Result<Balance, DispatchError> {
-        use QuoteType::*;
-
-        let info = EnabledSynthetics::<T>::get(synthetic_asset_id)
-            .ok_or(Error::<T>::SyntheticDoesNotExist)?;
-        let fee_percent = match quote_type {
-            BaseAssetBuy => {
-                // Synthetic base asset buying == synthetic asset selling
-                info.sell_fee_percent
-            }
-            BaseAssetSell => {
-                // Synthetic base asset selling == synthetic asset buying
-                info.buy_fee_percent
-            }
-        };
-
-        let base_fee_amount = FixedWrapper::from(synthetic_base_asset_amount)
-            * FixedWrapper::from(fee_percent)
-            / FixedWrapper::from(100);
-        base_fee_amount
-            .try_into_balance()
-            .map_err(|_| Error::<T>::FailedToCalculateBurnAmount.into())
-    }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
@@ -927,71 +893,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
-
-        let base_selling = input_asset_id == &T::GetSyntheticBaseAssetId::get();
-        match (base_selling, amount) {
-            (true, QuoteAmount::WithDesiredInput { desired_amount_in }) => {
-                let base_fee_amount = Self::decide_base_asset_fee_amount(
-                    &output_asset_id,
-                    desired_amount_in,
-                    QuoteType::BaseAssetSell,
-                )?;
-                let new_amount = amount.copy_direction(desired_amount_in - base_fee_amount);
-                let (_, output_amount, fee_amount) = Self::decide_sell_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    new_amount,
-                    deduce_fee,
-                )?;
-                Ok(SwapOutcome::new(output_amount, fee_amount))
-            }
-            (true, QuoteAmount::WithDesiredOutput { .. }) => {
-                let (input_amount, _, fee_amount) = Self::decide_sell_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    amount,
-                    deduce_fee,
-                )?;
-                let base_fee_amount = Self::decide_base_asset_fee_amount(
-                    &output_asset_id,
-                    input_amount,
-                    QuoteType::BaseAssetSell,
-                )?;
-                Ok(SwapOutcome::new(input_amount + base_fee_amount, fee_amount))
-            }
-
-            (false, QuoteAmount::WithDesiredInput { desired_amount_in }) => {
-                let base_fee_amount = Self::decide_base_asset_fee_amount(
-                    &input_asset_id,
-                    desired_amount_in,
-                    QuoteType::BaseAssetBuy,
-                )?;
-                let (_, output_amount, fee_amount) = Self::decide_buy_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    amount,
-                    deduce_fee,
-                )?;
-                Ok(SwapOutcome::new(
-                    output_amount - base_fee_amount,
-                    fee_amount,
-                ))
-            }
-            (false, QuoteAmount::WithDesiredOutput { desired_amount_out }) => {
-                let base_fee_amount = Self::decide_base_asset_fee_amount(
-                    &input_asset_id,
-                    desired_amount_out,
-                    QuoteType::BaseAssetBuy,
-                )?;
-                let new_amount = amount.copy_direction(desired_amount_out + base_fee_amount);
-                let (input_amount, _, fee_amount) = Self::decide_buy_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    new_amount,
-                    deduce_fee,
-                )?;
-                Ok(SwapOutcome::new(input_amount, fee_amount))
-            }
+        let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
+        {
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
+        } else {
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
+        };
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 
