@@ -1440,6 +1440,8 @@ fn mainnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
+    use common::fixnum::ops::Zero as _;
+
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -2014,7 +2016,13 @@ fn mainnet_genesis(
         xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTUSD],
+            initial_synthetic_assets: vec![(
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                "USD".into(),
+                Fixed::ZERO,
+                Fixed::ZERO,
+            )],
         },
         beefy: BeefyConfig {
             authorities: vec![],

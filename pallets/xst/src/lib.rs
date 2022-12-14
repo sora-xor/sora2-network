@@ -146,6 +146,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
+        // TODO: Remove
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
@@ -397,6 +398,10 @@ pub mod pallet {
         fn build(&self) {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
+
+            technical::Pallet::<T>::register_tech_account_id(self.tech_account_id.clone())
+                .expect("Failed to register technical account");
+
             self.initial_synthetic_assets.iter().cloned().for_each(
                 |(
                     asset_symbol,
@@ -923,9 +928,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fail!(Error::<T>::CantExchange);
         }
 
-        let base_is_input = input_asset_id == &T::GetSyntheticBaseAssetId::get();
-        match (base_is_input, amount) {
-            // Synthetic base selling
+        let base_selling = input_asset_id == &T::GetSyntheticBaseAssetId::get();
+        match (base_selling, amount) {
             (true, QuoteAmount::WithDesiredInput { desired_amount_in }) => {
                 let base_fee_amount = Self::decide_base_asset_fee_amount(
                     &output_asset_id,
@@ -956,7 +960,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 Ok(SwapOutcome::new(input_amount + base_fee_amount, fee_amount))
             }
 
-            // Synthetic base buying
             (false, QuoteAmount::WithDesiredInput { desired_amount_in }) => {
                 let base_fee_amount = Self::decide_base_asset_fee_amount(
                     &input_asset_id,

@@ -31,7 +31,7 @@
 #[rustfmt::skip]
 mod tests {
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -57,8 +57,6 @@ use frame_support::assert_noop;
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // base case for buy
             assert_eq!(
@@ -103,8 +101,6 @@ use frame_support::assert_noop;
             let _ = xst_pool_init().unwrap();
 
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
             XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XST.");
 
@@ -178,19 +174,20 @@ use frame_support::assert_noop;
 
     #[test]
     fn should_set_new_reference_token() {
-        let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
-            (alice(), XSTUSD, balance!(0), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
-        ])
-        .build();
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+                (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(0), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        ).build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             let price_a = XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -218,20 +215,22 @@ use frame_support::assert_noop;
 
     #[test]
     fn similar_returns_should_be_identical() {
-        let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
-            (alice(), XSTUSD, balance!(50000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
-        ])
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(50000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
@@ -346,18 +345,20 @@ use frame_support::assert_noop;
 
     #[test]
     fn test_deducing_fee() {
-        let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
-            (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
-        ])
-            .build();
+        let mut ext = ExtBuilder::new(
+            vec![
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
+        .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             let price_a = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -367,6 +368,8 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
+            // 100 XSTUSD will cost 100 DAI
+            // 100 DAI will cost 0,5467468562
             assert_eq!(price_a.fee, balance!(0.003667003083916557));
             assert_eq!(price_a.amount, balance!(0.546934060567218204));
 
@@ -408,19 +411,20 @@ use frame_support::assert_noop;
     #[test]
     fn fees_for_equivalent_trades_should_match() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
-            (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
-        ])
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             XSTPool::exchange(
                 &alice(),
@@ -477,19 +481,20 @@ use frame_support::assert_noop;
     #[test]
     fn price_without_impact() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-            (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
-            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
-        ])
+                (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+                (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+                (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+                (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+                (alice(), XST, balance!(0), AssetSymbol(b"XST".to_vec()), AssetName(b"SORA Synthetics".to_vec()), 18),
+            ],
+            vec![
+                (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+            ]
+        )
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(200);
@@ -581,8 +586,6 @@ use frame_support::assert_noop;
             let _ = xst_pool_init().unwrap();
 
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
-            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
             assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
         });

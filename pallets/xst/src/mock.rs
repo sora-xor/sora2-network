@@ -35,7 +35,7 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DAI,
     DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -76,9 +76,6 @@ pub fn assets_owner() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
-    "0200060000000000000000000000000000000000000000000000000000000111"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -548,10 +545,11 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    endowed_accounts_with_synthetics:
+        Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    reference_asset_id: AssetId,
 }
 
 impl Default for ExtBuilder {
@@ -598,15 +596,15 @@ impl Default for ExtBuilder {
                     AssetName(b"Sora Synthetics".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
-                (
-                    alice(),
-                    XSTUSD,
-                    balance!(100000),
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
             ],
+            endowed_accounts_with_synthetics: vec![(
+                alice(),
+                XSTUSD,
+                balance!(100000),
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            )],
             dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
@@ -628,7 +626,6 @@ impl Default for ExtBuilder {
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-            reference_asset_id: DAI,
         }
     }
 }
@@ -657,9 +654,18 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
 impl ExtBuilder {
     pub fn new(
         endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+        endowed_accounts_with_synthetics: Vec<(
+            AccountId,
+            AssetId,
+            Balance,
+            AssetSymbol,
+            AssetName,
+            u8,
+        )>,
     ) -> Self {
         Self {
             endowed_accounts,
+            endowed_accounts_with_synthetics,
             ..Default::default()
         }
     }
@@ -683,14 +689,6 @@ impl ExtBuilder {
                 })
                 .chain(vec![(bob(), 0), (assets_owner(), 0)])
                 .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        crate::GenesisConfig::<Runtime> {
-            tech_account_id: Default::default(),
-            reference_asset_id: self.reference_asset_id,
-            initial_synthetic_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -731,10 +729,15 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        crate::GenesisConfig::<Runtime>::default()
+            .assimilate_storage(&mut t)
+            .unwrap();
+
         tokens::GenesisConfig::<Runtime> {
             balances: self
                 .endowed_accounts
                 .into_iter()
+                .chain(self.endowed_accounts_with_synthetics.into_iter())
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
         }
