@@ -2020,8 +2020,7 @@ fn mainnet_genesis(
                 AssetSymbol(b"XSTUSD".to_vec()),
                 AssetName(b"SORA Synthetic USD".to_vec()),
                 "USD".into(),
-                Fixed::ZERO,
-                Fixed::ZERO,
+                fixed!(0.00666),
             )],
         },
         beefy: BeefyConfig {

@@ -69,8 +69,7 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
     fn disable_synthetic_asset() -> Weight;
-    fn set_synthetic_asset_buy_fee() -> Weight;
-    fn set_synthetic_asset_sell_fee() -> Weight;
+    fn set_synthetic_asset_fee() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -124,8 +123,8 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct SyntheticInfo<Symbol> {
     reference_symbol: Symbol,
-    buy_fee_percent: Fixed,
-    sell_fee_percent: Fixed,
+    /// Fee ratio. 1 = 100%
+    fee_ratio: Fixed,
 }
 
 #[frame_support::pallet]
@@ -183,8 +182,7 @@ pub mod pallet {
             asset_symbol: AssetSymbol,
             asset_name: AssetName,
             reference_symbol: T::Symbol,
-            buy_fee_percent: Fixed,
-            sell_fee_percent: Fixed,
+            fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -192,8 +190,7 @@ pub mod pallet {
                 asset_symbol,
                 asset_name,
                 reference_symbol,
-                buy_fee_percent,
-                sell_fee_percent,
+                fee_ratio,
                 true,
             )?;
             Ok(().into())
@@ -222,15 +219,15 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Set synthetic asset buy fee. Default value is `0%`.
+        /// Set synthetic asset fee.
         ///
         /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
         /// burned when user buys synthetic asset.
-        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_buy_fee())]
-        pub fn set_synthetic_asset_buy_fee(
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
+        pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
             synthetic_asset: T::AssetId,
-            fee_percent: Fixed,
+            fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -238,30 +235,7 @@ pub mod pallet {
                 let info = option_info
                     .as_mut()
                     .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
-                info.buy_fee_percent = fee_percent;
-                Ok(())
-            })?;
-
-            Ok(().into())
-        }
-
-        /// Set synthetic asset sell fee. Default value is `0%`.
-        ///
-        /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
-        /// burned when user sells synthetic asset.
-        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_sell_fee())]
-        pub fn set_synthetic_asset_sell_fee(
-            origin: OriginFor<T>,
-            synthetic_asset: T::AssetId,
-            fee_percent: Fixed,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-
-            EnabledSynthetics::<T>::try_mutate(synthetic_asset, |option_info| -> DispatchResult {
-                let info = option_info
-                    .as_mut()
-                    .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
-                info.sell_fee_percent = fee_percent;
+                info.fee_ratio = fee_ratio;
                 Ok(())
             })?;
 
@@ -321,16 +295,6 @@ pub mod pallet {
     #[pallet::getter(fn permissioned_tech_account)]
     pub type PermissionedTechAccount<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
-    #[pallet::type_value]
-    pub(super) fn DefaultForBaseFee() -> Fixed {
-        fixed!(0.00666)
-    }
-
-    /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.3%.
-    #[pallet::storage]
-    #[pallet::getter(fn base_fee)]
-    pub(super) type BaseFee<T: Config> = StorageValue<_, Fixed, ValueQuery, DefaultForBaseFee>;
-
     /// Synthetic assets and their reference symbols.
     ///
     /// It's a programmer responsibility to keep this collection consistent with [`EnabledSymbols`].
@@ -364,7 +328,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
-        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol, Fixed, Fixed)>,
+        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol, Fixed)>,
     }
 
     #[cfg(feature = "std")]
@@ -377,8 +341,7 @@ pub mod pallet {
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
                     "USD".into(),
-                    Fixed::ZERO,
-                    Fixed::ZERO,
+                    fixed!(0.00666),
                 )]
                 .into(),
             }
@@ -395,19 +358,12 @@ pub mod pallet {
                 .expect("Failed to register technical account");
 
             self.initial_synthetic_assets.iter().cloned().for_each(
-                |(
-                    asset_symbol,
-                    asset_name,
-                    reference_symbol,
-                    buy_fee_percent,
-                    sell_fee_percent,
-                )| {
+                |(asset_symbol, asset_name, reference_symbol, fee_ratio)| {
                     Pallet::<T>::enable_synthetic_asset_unchecked(
                         asset_symbol,
                         asset_name,
                         reference_symbol,
-                        buy_fee_percent,
-                        sell_fee_percent,
+                        fee_ratio,
                         false,
                     )
                     .expect("Failed to initialize XST synthetics.")
@@ -432,8 +388,7 @@ impl<T: Config> Pallet<T> {
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
         reference_symbol: T::Symbol,
-        buy_fee_percent: Fixed,
-        sell_fee_percent: Fixed,
+        fee_ratio: Fixed,
         transactional: bool,
     ) -> sp_runtime::DispatchResult {
         let code = || {
@@ -450,8 +405,7 @@ impl<T: Config> Pallet<T> {
                 synthetic_asset_id,
                 Some(SyntheticInfo {
                     reference_symbol: reference_symbol.clone(),
-                    buy_fee_percent,
-                    sell_fee_percent,
+                    fee_ratio,
                 }),
             );
             EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset_id));
@@ -594,6 +548,12 @@ impl<T: Config> Pallet<T> {
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        let fee_ratio = FixedWrapper::from(
+            EnabledSynthetics::<T>::get(synthetic_asset_id)
+                .ok_or(Error::<T>::SyntheticDoesNotExist)?
+                .fee_ratio,
+        );
+
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
@@ -604,7 +564,7 @@ impl<T: Config> Pallet<T> {
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 if deduce_fee {
-                    let fee_amount = (FixedWrapper::from(BaseFee::<T>::get()) * output_amount)
+                    let fee_amount = (fee_ratio * output_amount)
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                     output_amount = output_amount.saturating_sub(fee_amount);
@@ -616,10 +576,9 @@ impl<T: Config> Pallet<T> {
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let desired_amount_out_with_fee = if deduce_fee {
-                    (FixedWrapper::from(desired_amount_out)
-                        / (fixed_wrapper!(1) - BaseFee::<T>::get()))
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?
+                    (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
                 } else {
                     desired_amount_out
                 };
@@ -648,14 +607,19 @@ impl<T: Config> Pallet<T> {
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_sell_amounts(
         main_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        synthetic_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        let fee_ratio = FixedWrapper::from(
+            EnabledSynthetics::<T>::get(synthetic_asset_id)
+                .ok_or(Error::<T>::SyntheticDoesNotExist)?
+                .fee_ratio,
+        );
+
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let fee_amount = if deduce_fee {
-                    let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
                         .try_into_balance()
                         .map_err(|_| Error::<T>::PriceCalculationFailed)?
@@ -664,7 +628,7 @@ impl<T: Config> Pallet<T> {
                 };
                 let output_amount = Self::sell_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_input(
                         desired_amount_in.saturating_sub(fee_amount.clone()),
                     ),
@@ -678,13 +642,12 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out),
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 if deduce_fee {
-                    let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
                     let input_amount_with_fee =
                         FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                     let input_amount_with_fee = input_amount_with_fee
