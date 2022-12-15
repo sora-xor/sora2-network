@@ -579,7 +579,7 @@ use frame_support::assert_noop;
     }
 
     #[test]
-    fn exchange_synthesic_to_any_token_disallowed() {
+    fn exchange_synthetic_to_any_token_disallowed() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
@@ -591,4 +591,101 @@ use frame_support::assert_noop;
         });
     }
 
+    #[test]
+    fn enable_and_disable_synthetic_should_work() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+
+            let euro = "EURO".to_owned();
+            let alice = alice();
+
+            Band::add_relayers(Origin::root(), vec![alice.clone()])
+                .expect("Failed to add relayers");
+            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+                .expect("Failed to relay");
+
+            XSTPool::enable_synthetic_asset(
+                Origin::root(),
+                AssetSymbol(b"XSTEURO".to_vec()),
+                AssetName(b"Sora Synthetic Euro".to_vec()),
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            assert!(opt_xsteuro.is_some());
+
+            let xsteuro = opt_xsteuro.unwrap();
+            assert_eq!(
+                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                euro
+            );
+
+            XSTPool::disable_synthetic_asset(Origin::root(), xsteuro.clone())
+                .expect("Failed to disable synthetic asset");
+
+            assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
+            assert!(XSTPool::enabled_symbols(&euro).is_none());
+        });
+    }
+
+    #[test]
+    fn set_synthetic_fee_should_work() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+
+            let euro = "EURO".to_owned();
+            let alice = alice();
+
+            Band::add_relayers(Origin::root(), vec![alice.clone()])
+                .expect("Failed to add relayers");
+            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+                .expect("Failed to relay");
+
+            XSTPool::enable_synthetic_asset(
+                Origin::root(),
+                AssetSymbol(b"XSTEURO".to_vec()),
+                AssetName(b"Sora Synthetic Euro".to_vec()),
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+            let quote_amount = QuoteAmount::with_desired_input(balance!(100));
+
+            let swap_outcome_before = XSTPool::quote(
+                &DEXId::Polkaswap,
+                &XST.into(),
+                &xsteuro,
+                quote_amount.clone(),
+                true
+            )
+            .expect("Failed to quote XST -> XSTEURO ");
+            assert_eq!(swap_outcome_before.fee, 0);
+
+
+            assert_ok!(XSTPool::set_synthetic_asset_fee(
+                Origin::root(),
+                xsteuro.clone(),
+                fixed!(0.5))
+            );
+
+
+            let swap_outcome_after = XSTPool::quote(
+                &DEXId::Polkaswap,
+                &XST.into(),
+                &xsteuro,
+                quote_amount,
+                true
+            )
+            .expect("Failed to quote XST -> XSTEURO");
+
+            assert_eq!(swap_outcome_after.amount, swap_outcome_before.amount / 2);
+            assert_eq!(swap_outcome_after.fee, quote_amount.amount() / 2);
+        });
+    }
 }
