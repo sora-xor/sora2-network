@@ -780,13 +780,15 @@ impl<T: Config> Pallet<T> {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-                let price =
-                    balance!(T::Oracle::quote(symbol)?.ok_or(Error::<T>::OracleQuoteError)?);
+                let price = FixedWrapper::from(balance!(
+                    T::Oracle::quote(symbol)?.ok_or(Error::<T>::OracleQuoteError)?
+                ));
                 // Just for convenience. Right now will always return 1.
-                let reference_asset_price = Self::reference_price(&reference_asset_id)?;
-                Ok(price
-                    .checked_div(reference_asset_price)
-                    .expect("Reference asset price is never 0."))
+                let reference_asset_price =
+                    FixedWrapper::from(Self::reference_price(&reference_asset_id)?);
+                (price / reference_asset_price)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
         }
     }
