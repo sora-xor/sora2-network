@@ -1674,7 +1674,12 @@ pub mod pallet {
             ) {
                 fail!(Error::<T>::ForbiddenFilter);
             }
-
+            println!("Params:\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}", dex_id,
+                     &who,
+                     &tech_account,
+                     &input_asset_id,
+                     &output_asset_id,
+                     swap_amount);
             let (outcome, _) = Self::inner_exchange(
                 dex_id,
                 &who,
@@ -1684,21 +1689,35 @@ pub mod pallet {
                 swap_amount,
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             )?;
-            let total_out = outcome.amount;
-            let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
-            ensure!(
-                total_out == desired_out,
-                Error::<T>::TotalBatchOutputMismatch
-            );
+            println!("Result: {:?}", outcome);
 
+            let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
+            let total_out = match swap_amount {
+                SwapAmount::WithDesiredInput { .. } => {
+                    ensure!(
+                        outcome.amount >= desired_out,
+                        Error::<T>::TotalBatchOutputLessThanRequired
+                    );
+                    outcome.amount
+                }
+                SwapAmount::WithDesiredOutput { .. } => desired_out,
+            };
+            println!("Tech balance: {:?}", assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account));
             for receiver in receivers {
                 assets::Pallet::<T>::transfer_from(
                     &output_asset_id,
                     &tech_account,
                     &receiver.account_id,
                     receiver.amount,
-                )?;
+                ).expect("Required amount was deposited");
             }
+            let leftovers = desired_out - total_out;
+            assets::Pallet::<T>::transfer_from(
+                &output_asset_id,
+                &tech_account,
+                &who,
+                leftovers,
+            ).expect("Amount calculated");
 
             Ok(().into())
         }
@@ -1809,6 +1828,6 @@ pub mod pallet {
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
         // Total amount of asset in the batch recipient list mismatches actual output
-        TotalBatchOutputMismatch,
+        TotalBatchOutputLessThanRequired,
     }
 }

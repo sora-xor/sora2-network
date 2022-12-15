@@ -3176,7 +3176,7 @@ fn test_disable_enable_liquidity_source() {
 fn test_batch_swap_successful() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
+        MockMCBCPool::init(vec![(VAL, balance!(1100000)), (KSM, balance!(1100000))]).unwrap();
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
@@ -3186,12 +3186,12 @@ fn test_batch_swap_successful() {
                 BatchReceiverInfo::new(dave(), balance!(10))
             ]
             .to_vec(),
-            DEX_A_ID,
-            KSM,
+            DEX_D_ID,
+            VAL,
             GetBaseAssetId::get(),
-            SwapAmount::with_desired_input(balance!(100), 0),
-            [LiquiditySourceType::MulticollateralBondingCurvePool].to_vec(),
-            FilterMode::AllowSelected,
+            SwapAmount::with_desired_output(balance!(30), balance!(100)),
+            [].to_vec(),
+            FilterMode::ForbidSelected,
         ));
     })
 }
