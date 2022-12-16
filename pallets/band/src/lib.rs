@@ -34,6 +34,7 @@ use common::DataFeed;
 use frame_support::pallet_prelude::*;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
+use sp_std::prelude::*;
 
 #[cfg(test)]
 mod mock;
@@ -78,7 +79,6 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use sp_std::collections::btree_set::BTreeSet;
-    use sp_std::prelude::*;
 
     /// `Band` pallet is used to relay data from *BandChain* oracles to Polkaswap.
     /// This data contains information about some symbols rates, like price of some cryptocurrencies,

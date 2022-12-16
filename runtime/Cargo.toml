@@ -273,6 +273,7 @@ runtime-benchmarks = [
     "price-tools/runtime-benchmarks",
     "vested-rewards/runtime-benchmarks",
     "xor-fee/runtime-benchmarks",
+    "xst/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

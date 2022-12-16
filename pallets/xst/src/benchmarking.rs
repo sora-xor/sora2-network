@@ -35,19 +35,18 @@
 use super::*;
 
 use codec::Decode;
+use common::{DAI, XST};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::DAI;
-
-use permissions::Pallet as Permissions;
-
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+    let account = T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID");
+    frame_system::Pallet::<T>::inc_providers(&account);
+    account
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
@@ -58,12 +57,34 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-// TODO: properly implement benchmarks
-// benchmarks! {}
+benchmarks! {
+    set_reference_asset {
+    }: _(
+        RawOrigin::Root,
+        DAI.into()
+    )
+    verify {
+        assert_last_event::<T>(Event::ReferenceAssetChanged(DAI.into()).into())
+    }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::mock::{ExtBuilder, Runtime};
-//     use frame_support::assert_ok;
-// }
+    enable_synthetic_asset{
+    }: _(
+        Origin::root(),
+        AssetSymbol(b"XSTEURO".to_vec()),
+        AssetName(b"Sora Synthetic Euro".to_vec()),
+        "EURO".to_owned(),
+        fixed!(0),
+    )
+    verify {
+        let event = frame_system::Pallet::<T>::events().pop().expect("Expected event");
+        assert!(matches!(event.event, Event::SyntheticAssetEnabled(..)));
+    }
+
+    set_synthetic_base_asset_floor_price {
+    }: _(RawOrigin::Root, balance!(200))
+    verify {
+        assert_last_event::<T>(Event::SyntheticBaseAssetFloorPriceChanged(balance!(200)).into())
+    }
+
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
+}

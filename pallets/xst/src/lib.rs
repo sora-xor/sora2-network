@@ -50,7 +50,7 @@ use common::prelude::{
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
+    balance, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, RewardReason,
     DAI, XSTUSD,
 };
@@ -70,6 +70,7 @@ pub trait WeightInfo {
     fn enable_synthetic_asset() -> Weight;
     fn disable_synthetic_asset() -> Weight;
     fn set_synthetic_asset_fee() -> Weight;
+    fn set_synthetic_base_asset_floor_price() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -241,6 +242,21 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        /// Set floor price for the synthetic base asset
+        ///
+        /// - `origin`: root account
+        /// - `floor_price`: floor price for the synthetic base asset
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
+        pub fn set_synthetic_base_asset_floor_price(
+            origin: OriginFor<T>,
+            floor_price: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            SyntheticBaseAssetFloorPrice::<T>::put(floor_price);
+            Self::deposit_event(Event::SyntheticBaseAssetFloorPriceChanged(floor_price));
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -252,6 +268,8 @@ pub mod pallet {
         SyntheticAssetEnabled(AssetIdOf<T>, T::Symbol),
         /// Synthetic asset has been disabled. [Synthetic Asset Id]
         SyntheticAssetDisabled(AssetIdOf<T>),
+        /// Floor price of the synthetic base asset has been changed. [New Floor Price]
+        SyntheticBaseAssetFloorPriceChanged(Balance),
     }
 
     #[pallet::error]
@@ -321,6 +339,17 @@ pub mod pallet {
     pub(super) type CollateralReserves<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, Balance, ValueQuery>;
 
+    #[pallet::type_value]
+    pub fn SyntheticBaseAssetDefaultFloorPrice() -> Balance {
+        balance!(3)
+    }
+
+    /// Floor price for the synthetic base asset.
+    #[pallet::storage]
+    #[pallet::getter(fn synthetic_base_asset_floor_price)]
+    pub type SyntheticBaseAssetFloorPrice<T: Config> =
+        StorageValue<_, Balance, ValueQuery, SyntheticBaseAssetDefaultFloorPrice>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// Technical account used to perform permissioned actions e.g. mint/burn.
@@ -341,7 +370,7 @@ pub mod pallet {
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
                     "USD".into(),
-                    fixed!(0.00666),
+                    common::fixed!(0.00666),
                 )]
                 .into(),
             }
@@ -770,7 +799,7 @@ impl<T: Config> Pallet<T> {
                 // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
                 T::PriceToolsPallet::get_average_price(id, &reference_asset_id).map(|avg| {
                     if reference_asset_id == DAI.into() {
-                        avg.max(balance!(3))
+                        avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
                     } else {
                         avg
                     }

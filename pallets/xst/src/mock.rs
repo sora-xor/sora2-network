@@ -596,6 +596,14 @@ impl Default for ExtBuilder {
                     AssetName(b"Sora Synthetics".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100000),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
             ],
             endowed_accounts_with_synthetics: vec![(
                 alice(),
