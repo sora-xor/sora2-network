@@ -34,20 +34,11 @@
 
 use super::*;
 
-use codec::Decode;
-use common::{DAI, XST};
+use crate::Pallet as XSTPool;
+use common::{fixed, DAI};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
-use hex_literal::hex;
 use sp_std::prelude::*;
-
-// Support Functions
-fn alice<T: Config>() -> T::AccountId {
-    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    let account = T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID");
-    frame_system::Pallet::<T>::inc_providers(&account);
-    account
-}
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     let events = frame_system::Pallet::<T>::events();
@@ -67,17 +58,57 @@ benchmarks! {
         assert_last_event::<T>(Event::ReferenceAssetChanged(DAI.into()).into())
     }
 
-    enable_synthetic_asset{
+    enable_synthetic_asset {
+        let reference_symbol = "EURO";
     }: _(
-        Origin::root(),
+        RawOrigin::Root,
         AssetSymbol(b"XSTEURO".to_vec()),
-        AssetName(b"Sora Synthetic Euro".to_vec()),
-        "EURO".to_owned(),
-        fixed!(0),
+        AssetName(b"Sora Synthetic EURO".to_vec()),
+        reference_symbol.into(),
+        fixed!(0)
     )
     verify {
-        let event = frame_system::Pallet::<T>::events().pop().expect("Expected event");
-        assert!(matches!(event.event, Event::SyntheticAssetEnabled(..)));
+        assert!(XSTPool::<T>::enabled_symbols(T::Symbol::from(reference_symbol)).is_some());
+    }
+
+    disable_synthetic_asset {
+        let reference_symbol = "EURO";
+        XSTPool::<T>::enable_synthetic_asset(
+            RawOrigin::Root.into(),
+            AssetSymbol(b"XSTEURO".to_vec()),
+            AssetName(b"Sora Synthetic EURO".to_vec()),
+            reference_symbol.into(),
+            fixed!(0),
+        )?;
+        let asset_id = XSTPool::<T>::enabled_symbols(T::Symbol::from(reference_symbol))
+            .expect("Expected enabled synthetic");
+    }: _(
+        RawOrigin::Root,
+        asset_id
+    )
+    verify {
+        assert_last_event::<T>(Event::SyntheticAssetDisabled(asset_id).into())
+    }
+
+    set_synthetic_asset_fee {
+        let reference_symbol = "EURO";
+        XSTPool::<T>::enable_synthetic_asset(
+            RawOrigin::Root.into(),
+            AssetSymbol(b"XSTEURO".to_vec()),
+            AssetName(b"Sora Synthetic EURO".to_vec()),
+            reference_symbol.into(),
+            fixed!(0),
+        )?;
+        let asset_id = XSTPool::<T>::enabled_symbols(T::Symbol::from(reference_symbol))
+            .expect("Expected enabled synthetic");
+        let fee_ratio = fixed!(0.06);
+    }: _(
+        RawOrigin::Root,
+        asset_id.clone(),
+        fee_ratio
+    )
+    verify {
+        assert_last_event::<T>(Event::SyntheticAssetFeeChanged(asset_id, fee_ratio).into())
     }
 
     set_synthetic_base_asset_floor_price {

@@ -232,14 +232,18 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            EnabledSynthetics::<T>::try_mutate(synthetic_asset, |option_info| -> DispatchResult {
-                let info = option_info
-                    .as_mut()
-                    .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
-                info.fee_ratio = fee_ratio;
-                Ok(())
-            })?;
+            EnabledSynthetics::<T>::try_mutate(
+                &synthetic_asset,
+                |option_info| -> DispatchResult {
+                    let info = option_info
+                        .as_mut()
+                        .ok_or(Error::<T>::SyntheticIsNotEnabled)?;
+                    info.fee_ratio = fee_ratio;
+                    Ok(())
+                },
+            )?;
 
+            Self::deposit_event(Event::SyntheticAssetFeeChanged(synthetic_asset, fee_ratio));
             Ok(().into())
         }
 
@@ -268,6 +272,8 @@ pub mod pallet {
         SyntheticAssetEnabled(AssetIdOf<T>, T::Symbol),
         /// Synthetic asset has been disabled. [Synthetic Asset Id]
         SyntheticAssetDisabled(AssetIdOf<T>),
+        /// Synthetic asset fee has been changed. [Synthetic Asset Id, New Fee]
+        SyntheticAssetFeeChanged(AssetIdOf<T>, Fixed),
         /// Floor price of the synthetic base asset has been changed. [New Floor Price]
         SyntheticBaseAssetFloorPriceChanged(Balance),
     }

@@ -923,7 +923,6 @@ fn testnet_genesis(
     };
     let initial_collateral_assets =
         vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
-    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
@@ -1058,17 +1057,6 @@ fn testnet_genesis(
                     None,
                 ),
                 (
-                    XSTUSD.into(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
-                    true,
-                    None,
-                    None,
-                ),
-                (
                     common::AssetId32::from_bytes(hex!(
                         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
                     ))
@@ -1186,12 +1174,6 @@ fn testnet_genesis(
                 .iter()
                 .cloned()
                 .map(|target_asset_id| create_trading_pair(XOR, target_asset_id))
-                .chain(
-                    initial_synthetic_assets
-                        .iter()
-                        .cloned()
-                        .map(|target_asset_id| create_trading_pair(XST, target_asset_id)),
-                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {
@@ -1278,7 +1260,12 @@ fn testnet_genesis(
         xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTUSD],
+            initial_synthetic_assets: vec![(
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                "USD".into(),
+                fixed!(0.00666),
+            )],
         },
         beefy: BeefyConfig {
             authorities: vec![],
@@ -1607,7 +1594,6 @@ fn mainnet_genesis(
         umi_nfts: Vec::new(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
-    let initial_synthetic_assets = vec![XSTUSD.into()];
     let mut bridge_assets = vec![
         AssetConfig::Sidechain {
             id: XOR.into(),
@@ -1678,17 +1664,6 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XST".to_vec()),
             AssetName(b"SORA Synthetics".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ),
-        (
-            XSTUSD.into(),
-            assets_and_permissions_account_id.clone(),
-            AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"SORA Synthetic USD".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -1947,12 +1922,6 @@ fn mainnet_genesis(
                 .iter()
                 .cloned()
                 .map(|target_asset_id| create_trading_pair(XOR.into(), target_asset_id))
-                .chain(
-                    initial_synthetic_assets
-                        .iter()
-                        .cloned()
-                        .map(|target_asset_id| create_trading_pair(XST.into(), target_asset_id)),
-                )
                 .collect(),
         },
         dexapi: DEXAPIConfig {

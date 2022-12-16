@@ -38,6 +38,7 @@ use crate::Pallet as Band;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
+#[cfg(no_std)]
 use sp_std::prelude::*;
 
 fn relayer<T: Config>() -> T::AccountId {
