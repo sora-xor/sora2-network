@@ -68,6 +68,7 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
+    'liquidity-proxy/std',
     'pallet-timestamp/std',
     'trading-pair/std',
     'technical/std',
