@@ -18,7 +18,6 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, optional = true }
 hex-literal = { version = "0.3.1" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
@@ -47,8 +46,6 @@ demeter-farming-platform = { path = "../demeter-farming-platform" }
 hex-literal = "0.3.1"
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
-common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 technical = { path = "../technical" }
@@ -81,9 +78,4 @@ std = [
     'dex-api/std',
     'common/std',
     'blake2/std'
-]
-runtime-benchmarks = [
-    "frame-benchmarking",
-    "frame-system/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
 ]

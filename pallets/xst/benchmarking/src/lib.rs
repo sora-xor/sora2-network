@@ -30,23 +30,24 @@
 
 //! XST pool module benchmarking.
 
-#![cfg(feature = "runtime-benchmarks")]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use super::*;
-
-use crate::Pallet as XSTPool;
-use common::{fixed, DAI};
+use common::{balance, fixed, AssetName, AssetSymbol, DAI};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use sp_std::prelude::*;
+use xst::{Call, Event, Pallet as XSTPool};
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as xst::Config>::Event) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
 }
+
+pub struct Pallet<T: Config>(xst::Pallet<T>);
+pub trait Config: xst::Config {}
 
 benchmarks! {
     set_reference_asset {

@@ -4008,6 +4008,7 @@ dependencies = [
  "vested-rewards-runtime-api",
  "xor-fee",
  "xst",
+ "xst-benchmarking",
 ]
 
 [[package]]
@@ -13496,7 +13497,6 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -13515,11 +13515,32 @@ dependencies = [
  "serde",
  "sp-arithmetic",
  "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "xst-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "band",
+ "common",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "permissions",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+ "xst",
 ]
 
 [[package]]

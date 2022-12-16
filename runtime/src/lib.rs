@@ -2568,6 +2568,7 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -2590,7 +2591,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, band, Band);
-            list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2607,11 +2608,13 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
+            impl xst_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -2655,7 +2658,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, band, Band);
-            add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
