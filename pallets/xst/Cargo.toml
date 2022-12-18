@@ -41,16 +41,20 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch
 blake2 = { version = "0.10.5", default-features = false }
 
 [dev-dependencies]
-ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
-demeter-farming-platform = { path = "../demeter-farming-platform" }
 hex-literal = "0.3.1"
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
+demeter-farming-platform = { path = "../demeter-farming-platform" }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 band = { path = "../band" }
+common = { path = "../../common", default-features = false, features = [
+    "test",
+] }
 
 [features]
 default = ['std']
