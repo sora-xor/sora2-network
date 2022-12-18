@@ -30,13 +30,10 @@
 
 use crate::{self as xstpool, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{
-    Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
-};
+use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -56,8 +53,6 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type ReservesAccount =
-    mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -171,7 +166,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type Event = Event;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
-    type LiquidityProxy = MockDEXApi;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type Oracle = band::Pallet<Runtime>; // TODO: Replace with oracle-proxy
@@ -354,14 +348,6 @@ impl MockDEXApi {
         Ok(())
     }
 
-    fn _can_exchange(
-        _target_id: &DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-    ) -> bool {
-        get_mock_prices().contains_key(&(*input_asset_id, *output_asset_id))
-    }
-
     fn inner_quote(
         _target_id: &DEXId,
         input_asset_id: &AssetId,
@@ -402,73 +388,6 @@ impl MockDEXApi {
             }
         }
     }
-
-    fn inner_exchange(
-        sender: &AccountId,
-        receiver: &AccountId,
-        target_id: &DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        match swap_amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
-                let outcome = Self::inner_quote(
-                    target_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?;
-                let reserves_account_id =
-                    &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(desired_amount_in, 0);
-                let old = Assets::total_balance(input_asset_id, sender)?;
-                Assets::transfer_from(
-                    input_asset_id,
-                    sender,
-                    reserves_account_id,
-                    desired_amount_in,
-                )?;
-                let new = Assets::total_balance(input_asset_id, sender)?;
-                assert_ne!(old, new);
-                Assets::transfer_from(
-                    output_asset_id,
-                    reserves_account_id,
-                    receiver,
-                    outcome.amount,
-                )?;
-                Ok(SwapOutcome::new(outcome.amount, outcome.fee))
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
-                let outcome = Self::inner_quote(
-                    target_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?;
-                let reserves_account_id =
-                    &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(outcome.amount, 0);
-                let old = Assets::total_balance(input_asset_id, sender)?;
-                Assets::transfer_from(input_asset_id, sender, reserves_account_id, outcome.amount)?;
-                let new = Assets::total_balance(input_asset_id, sender)?;
-                assert_ne!(old, new);
-                Assets::transfer_from(
-                    output_asset_id,
-                    reserves_account_id,
-                    receiver,
-                    desired_amount_out,
-                )?;
-                Ok(SwapOutcome::new(outcome.amount, outcome.fee))
-            }
-        }
-    }
 }
 
 pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
@@ -503,44 +422,6 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         )
     });
     direct.into_iter().chain(reverse).collect()
-}
-
-impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
-    fn exchange(
-        _dex_id: DEXId,
-        sender: &AccountId,
-        receiver: &AccountId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_exchange(
-            sender,
-            receiver,
-            &filter.dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-        )
-    }
-
-    fn quote(
-        _dex_id: DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: QuoteAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-        deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_quote(
-            &filter.dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            deduce_fee,
-        )
-    }
 }
 
 pub struct ExtBuilder {

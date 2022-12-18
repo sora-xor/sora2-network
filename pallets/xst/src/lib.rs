@@ -51,8 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, RewardReason,
-    DAI, XSTUSD,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -140,8 +139,6 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
-        // TODO: Remove
-        type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;

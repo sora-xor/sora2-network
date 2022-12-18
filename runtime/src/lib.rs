@@ -1669,7 +1669,6 @@ parameter_types! {
 impl xst::Config for Runtime {
     type Event = Event;
     type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
-    type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
