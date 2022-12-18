@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as xstpool, Config};
+use crate::Config;
 use common::mock::ExistentialDeposits;
 use common::prelude::{
     Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
@@ -118,7 +118,7 @@ construct_runtime! {
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
-        XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
+        XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Storage},
         Band: band::{Pallet, Call, Storage, Event<T>},
@@ -168,7 +168,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = ();
 }
 
-impl Config for Runtime {
+impl xst::Config for Runtime {
     type Event = Event;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
     type LiquidityProxy = MockDEXApi;
@@ -322,6 +322,8 @@ impl pallet_timestamp::Config for Runtime {
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
+
+impl Config for Runtime {}
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
@@ -660,24 +662,6 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
 }
 
 impl ExtBuilder {
-    pub fn new(
-        endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
-        endowed_accounts_with_synthetics: Vec<(
-            AccountId,
-            AssetId,
-            Balance,
-            AssetSymbol,
-            AssetName,
-            u8,
-        )>,
-    ) -> Self {
-        Self {
-            endowed_accounts,
-            endowed_accounts_with_synthetics,
-            ..Default::default()
-        }
-    }
-
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -737,7 +721,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        crate::GenesisConfig::<Runtime>::default()
+        xst::GenesisConfig::<Runtime>::default()
             .assimilate_storage(&mut t)
             .unwrap();
 
