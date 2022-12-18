@@ -163,7 +163,11 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Change reference asset which is used to determine collateral assets value. Intended to be e.g., stablecoin DAI.
+        /// Change reference asset which is used to determine collateral assets value.
+        /// Intended to be e.g., stablecoin DAI.
+        ///
+        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `reference_asset_id`: asset id of the new reference asset.
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -195,10 +199,14 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// TODO
+        /// Disable synthetic asset.
         ///
-        /// Should it unregister asset or just disable exchanging?
-        /// What to do with users?
+        /// Just remove synthetic from exchanging.
+        /// Will not unregister trading pair because `trading_pair` pallet does not provide this
+        /// ability. And will not unregister trading synthetic asset because of that.
+        ///
+        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `synthetic_asset`: synthetic asset id to disable.
         #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
         pub fn disable_synthetic_asset(
             origin: OriginFor<T>,
@@ -222,6 +230,10 @@ pub mod pallet {
         ///
         /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
         /// burned when user buys synthetic asset.
+        ///
+        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `synthetic_asset`: synthetic asset id to set fee for,
+        /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
