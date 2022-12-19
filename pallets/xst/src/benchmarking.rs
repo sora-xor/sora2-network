@@ -35,19 +35,18 @@
 use super::*;
 
 use codec::Decode;
+use common::{DAI, XST};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::DAI;
-
-use permissions::Pallet as Permissions;
-
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+    let account = T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID");
+    frame_system::Pallet::<T>::inc_providers(&account);
+    account
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
@@ -58,12 +57,17 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-// TODO: properly implement benchmarks
 benchmarks! {
     initialize_pool {
         let caller = alice::<T>();
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
-        Permissions::<T>::assign_permission(
+        trading_pair::Pallet::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEXId::Polkaswap.into(),
+            XST.into(),
+            DAI.into(),
+        ).unwrap();
+        permissions::Pallet::<T>::assign_permission(
             caller.clone(),
             &caller,
             permissions::MANAGE_DEX,
@@ -76,19 +80,31 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_initialize_pool());
-        });
+    set_reference_asset {
+    }: _(
+        RawOrigin::Root,
+        DAI.into()
+    )
+    verify {
+        assert_last_event::<T>(Event::ReferenceAssetChanged(DAI.into()).into())
     }
+
+    enable_synthetic_asset{
+        let synthetic = common::AssetId32::from_bytes(hex!("0200012345000000000000000000000000000000000000000000000000000000").into());
+    }: _(
+        RawOrigin::Root,
+        synthetic.into()
+    )
+    verify {
+        assert_last_event::<T>(Event::SyntheticAssetEnabled(synthetic.into()).into())
+    }
+
+    set_synthetic_base_asset_floor_price {
+    }: _(RawOrigin::Root, balance!(200))
+    verify {
+        assert_last_event::<T>(Event::SyntheticBaseAssetFloorPriceChanged(balance!(200)).into())
+    }
+
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
 }

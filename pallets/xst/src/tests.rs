@@ -31,7 +31,7 @@
 #[rustfmt::skip]
 mod tests {
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo };
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -588,4 +588,27 @@ use frame_support::assert_noop;
         });
     }
 
+    #[test]
+    fn set_synthetic_base_asset_floor_price_should_work() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+
+            let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
+            assert_eq!(price_before, fixed!(181.6197));
+
+            XSTPool::set_synthetic_base_asset_floor_price(Origin::root(), balance!(200)).expect("Failed to set floor price.");
+            let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
+            assert_eq!(price_after, fixed!(200));
+        });
+    }
+
+    #[test]
+    fn default_synthetic_base_asset_floor_price_should_be_greater_tha_zero() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert!(XSTPool::synthetic_base_asset_floor_price() > 0);
+        });
+    }
 }

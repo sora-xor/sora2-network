@@ -35,7 +35,7 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DAI,
     DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
@@ -76,9 +76,6 @@ pub fn assets_owner() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
-    "0200060000000000000000000000000000000000000000000000000000000111"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -596,6 +593,14 @@ impl Default for ExtBuilder {
                     balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100000),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
