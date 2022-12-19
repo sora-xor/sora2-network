@@ -175,13 +175,13 @@ impl FakeMMR {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Encode)]
 struct MMRProof {
     order: u64,
     items: Vec<H256>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode)]
 enum MMRNode {
     Leaf(MMRLeaf),
     Hash(H256),
@@ -214,14 +214,14 @@ pub fn threshold(authorities: usize) -> usize {
     authorities - faulty
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Encode)]
 struct FixtureValidatorSet {
     id: u64,
     root: H256,
     len: u32,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Encode)]
 struct Fixture {
     addresses: Vec<H160>,
     validator_set: FixtureValidatorSet,
@@ -243,6 +243,9 @@ pub struct Command {
     #[clap(long)]
     /// leaf block
     tree_size: u32,
+    #[clap(long)]
+    /// binary output
+    binary: bool,
 }
 
 impl Command {
@@ -285,8 +288,13 @@ impl Command {
             leaf_proof,
             leaf: leaf.encode(),
         };
-        let fixture = serde_json::to_string(&fixture)?;
-        std::fs::write(&self.output, &fixture)?;
+        if self.binary {
+            let fixture = fixture.encode();
+            std::fs::write(&self.output, &fixture)?;
+        } else {
+            let fixture = serde_json::to_string(&fixture)?;
+            std::fs::write(&self.output, &fixture)?;
+        }
         Ok(())
     }
 }
