@@ -38,7 +38,7 @@ use common::{
     KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_runtime::{print, DispatchError};
 
 #[inline]
@@ -3176,8 +3176,9 @@ fn test_disable_enable_liquidity_source() {
 fn test_batch_swap_successful() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        MockMCBCPool::init(vec![(VAL, balance!(1100000)), (KSM, balance!(1100000))]).unwrap();
-
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
             [
@@ -3186,12 +3187,94 @@ fn test_batch_swap_successful() {
                 BatchReceiverInfo::new(dave(), balance!(10))
             ]
             .to_vec(),
-            DEX_D_ID,
-            VAL,
-            GetBaseAssetId::get(),
+            DEX_A_ID,
+            XOR,
+            KSM,
             SwapAmount::with_desired_output(balance!(30), balance!(100)),
-            [].to_vec(),
-            FilterMode::ForbidSelected,
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
         ));
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     })
+}
+
+
+#[test]
+fn test_batch_swap_desired_input_successful() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            [
+                BatchReceiverInfo::new(bob(), balance!(10)),
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10))
+            ]
+            .to_vec(),
+            DEX_A_ID,
+            XOR,
+            KSM,
+            SwapAmount::with_desired_input(balance!(30), balance!(30)),
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ));
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
+    });
+}
+
+#[test]
+fn test_batch_swap_desired_input_too_low() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_err!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            [
+                BatchReceiverInfo::new(bob(), balance!(10)),
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10))
+            ]
+            .to_vec(),
+            DEX_A_ID,
+            XOR,
+            KSM,
+            SwapAmount::with_desired_input(balance!(1), balance!(1)),
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ), Error::<Runtime>::SwapTotalOutputTooLow);
+    });
+}
+
+#[test]
+fn test_batch_swap_desired_output_too_low() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_err!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            [
+                BatchReceiverInfo::new(bob(), balance!(10)),
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10))
+            ]
+            .to_vec(),
+            DEX_A_ID,
+            XOR,
+            KSM,
+            SwapAmount::with_desired_output(balance!(29), balance!(100)),
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ), Error::<Runtime>::SwapTotalOutputTooLow);
+    });
 }

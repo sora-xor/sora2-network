@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate core;
+
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
@@ -943,7 +945,6 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
-
         maybe_path.map_or_else(
             || Err(Error::<T>::UnavailableExchangePath.into()),
             |path| {
@@ -1516,7 +1517,7 @@ pub use pallet::*;
 #[scale_info(skip_type_params(T))]
 pub struct BatchReceiverInfo<T: Config> {
     pub account_id: T::AccountId,
-    pub amount: Balance,
+    pub target_amount: Balance,
 }
 
 #[cfg(feature = "std")]
@@ -1524,7 +1525,7 @@ impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "BatchReceiverInfo {{ account_id: {:?}, amount: {:?} }}",
-            self.account_id, self.amount
+            self.account_id, self.target_amount
         ))
     }
 }
@@ -1564,7 +1565,10 @@ pub mod pallet {
 
     impl<T: Config> BatchReceiverInfo<T> {
         pub fn new(account_id: T::AccountId, amount: Balance) -> BatchReceiverInfo<T> {
-            BatchReceiverInfo { account_id, amount }
+            BatchReceiverInfo {
+                account_id,
+                target_amount: amount,
+            }
         }
     }
 
@@ -1674,12 +1678,12 @@ pub mod pallet {
             ) {
                 fail!(Error::<T>::ForbiddenFilter);
             }
-            println!("Params:\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}", dex_id,
-                     &who,
-                     &tech_account,
-                     &input_asset_id,
-                     &output_asset_id,
-                     swap_amount);
+
+            let filter =
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
+
+            let designated_sum = receivers.iter().map(|recv| recv.target_amount).sum();
+
             let (outcome, _) = Self::inner_exchange(
                 dex_id,
                 &who,
@@ -1687,38 +1691,32 @@ pub mod pallet {
                 &input_asset_id,
                 &output_asset_id,
                 swap_amount,
-                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
+                filter,
             )?;
-            println!("Result: {:?}", outcome);
-
-            let desired_out = receivers.iter().map(|receiver| receiver.amount).sum();
-            let total_out = match swap_amount {
-                SwapAmount::WithDesiredInput { .. } => {
-                    ensure!(
-                        outcome.amount >= desired_out,
-                        Error::<T>::TotalBatchOutputLessThanRequired
-                    );
-                    outcome.amount
-                }
-                SwapAmount::WithDesiredOutput { .. } => desired_out,
+            let target_amount = match swap_amount {
+                SwapAmount::WithDesiredInput { .. } => outcome.amount,
+                SwapAmount::WithDesiredOutput { .. } => swap_amount.amount(),
             };
-            println!("Tech balance: {:?}", assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account));
+
+            if target_amount < designated_sum {
+                return Err(Error::<T>::SwapTotalOutputTooLow.into());
+            }
+
             for receiver in receivers {
                 assets::Pallet::<T>::transfer_from(
                     &output_asset_id,
                     &tech_account,
                     &receiver.account_id,
-                    receiver.amount,
-                ).expect("Required amount was deposited");
+                    receiver.target_amount,
+                )
+                .expect("Required amount has just been deposited");
             }
-            let leftovers = desired_out - total_out;
-            assets::Pallet::<T>::transfer_from(
-                &output_asset_id,
-                &tech_account,
-                &who,
-                leftovers,
-            ).expect("Amount calculated");
-
+            let leftovers = assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account)?;
+            assets::Pallet::<T>::transfer_from(&output_asset_id, &tech_account, &who, leftovers)
+                .expect("Transfer amount is calculated to match the free balance");
+            if assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account)? != 0 {
+                return Err(Error::<T>::CalculationError.into());
+            }
             Ok(().into())
         }
 
@@ -1827,7 +1825,7 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Total amount of asset in the batch recipient list mismatches actual output
-        TotalBatchOutputLessThanRequired,
+        // Total output of a batch swap is less than the sum of designated amounts
+        SwapTotalOutputTooLow,
     }
 }

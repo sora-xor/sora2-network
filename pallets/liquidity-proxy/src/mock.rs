@@ -212,7 +212,7 @@ impl Config for Runtime {
     type WeightInfo = ();
     type PrimaryMarketTBC = MockMCBCPool;
     type PrimaryMarketXST = MockXSTPool;
-    type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
+    type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
 }
 
@@ -332,7 +332,7 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type XYKPool = ();
+    type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
     type WeightInfo = ();
@@ -514,6 +514,7 @@ impl Default for ExtBuilder {
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
                 LiquiditySourceType::MockPool4,
+                LiquiditySourceType::XYKPool,
             ],
             endowed_accounts: vec![
                 (
@@ -546,6 +547,22 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    KSM,
+                    balance!(0),
+                    AssetSymbol(b"KSM".to_vec()),
+                    AssetName(b"Kusama".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    DOT,
+                    balance!(0),
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
@@ -941,7 +958,59 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        t.into()
+        let xyk_assets = vec![
+            (DEX_A_ID, DOT, (balance!(600), balance!(10000))),
+            (DEX_A_ID, KSM, (balance!(600), balance!(10000))),
+            (DEX_B_ID, DOT, (balance!(600), balance!(10000))),
+            (DEX_C_ID, DOT, (balance!(520), balance!(550))),
+            (DEX_C_ID, KSM, (balance!(600), balance!(10000))),
+            (DEX_D_ID, DOT, (balance!(1000), balance!(9000))),
+            (DEX_D_ID, KSM, (balance!(1000), balance!(1000))),
+            (DEX_D_ID, VAL, (balance!(1000), balance!(200000))),
+        ];
+
+        let owner = alice();
+        let owner_origin: <Runtime as frame_system::Config>::Origin =
+            frame_system::RawOrigin::Signed(owner.clone()).into();
+
+        let mut ext: sp_io::TestExternalities = t.into();
+        ext.execute_with(|| {
+            for (dex_id, asset, (base_reserve, asset_reserve)) in xyk_assets {
+                let mint_amount: Balance = asset_reserve * 2;
+
+                trading_pair::Pallet::<Runtime>::register(
+                    owner_origin.clone(),
+                    dex_id.into(),
+                    XOR.into(),
+                    asset.into(),
+                )
+                .unwrap();
+                assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
+                    .unwrap();
+                pool_xyk::Pallet::<Runtime>::initialize_pool(
+                    owner_origin.clone(),
+                    dex_id.into(),
+                    XOR.into(),
+                    asset.into(),
+                )
+                .unwrap();
+                if asset_reserve != balance!(0) && base_reserve != balance!(0) {
+                    pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                        owner_origin.clone(),
+                        dex_id.into(),
+                        XOR.into(),
+                        asset.into(),
+                        base_reserve,
+                        asset_reserve,
+                        balance!(1),
+                        balance!(1),
+                    )
+                    .unwrap();
+                }
+            }
+        });
+
+        ext
     }
 }
 
