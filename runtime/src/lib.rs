@@ -2170,7 +2170,7 @@ construct_runtime! {
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
+        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
@@ -2263,7 +2263,7 @@ construct_runtime! {
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>} = 104,
+        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
@@ -2658,7 +2658,7 @@ impl_runtime_apis! {
     }
 
     impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
-        fn get_random_bitfield(prior: beefy_light_client::BitField, num_of_validators: u128) -> beefy_light_client::BitField {
+        fn get_random_bitfield(prior: beefy_light_client::BitField, num_of_validators: u32) -> beefy_light_client::BitField {
             let len = prior.len() as usize;
             BeefyLightClient::create_random_bit_field(prior, num_of_validators).unwrap_or(beefy_light_client::BitField::with_capacity(len))
         }

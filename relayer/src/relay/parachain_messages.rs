@@ -86,13 +86,15 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let network_id = receiver.network_id().await?;
+        let receiver_network_id = receiver.network_id().await?;
+        let sender_network_id = receiver.network_id().await?;
         Ok(Relay {
             sender,
             receiver,
             syncer,
             commitment_queue: Default::default(),
-            network_id,
+            receiver_network_id,
+            sender_network_id,
         })
     }
 }
@@ -106,7 +108,8 @@ pub struct Relay<S: RuntimeClient, R: RuntimeClient> {
         substrate_bridge_channel_rpc::Commitment<Balance>,
     )>,
     syncer: BeefySyncer,
-    network_id: GenericNetworkId,
+    receiver_network_id: GenericNetworkId,
+    sender_network_id: GenericNetworkId,
 }
 
 impl<S, R> Relay<S, R>
@@ -189,7 +192,10 @@ where
         commitment: substrate_bridge_channel_rpc::Commitment<Balance>,
     ) -> AnyResult<()> {
         info!("Sending channel commitment for block {:?}", block_number);
-        let inbound_channel_nonce = self.receiver.inbound_channel_nonce(self.network_id).await?;
+        let inbound_channel_nonce = self
+            .receiver
+            .inbound_channel_nonce(self.sender_network_id)
+            .await?;
         if commitment
             .messages
             .iter()
@@ -229,7 +235,7 @@ where
             .iter()
             .filter(|log| {
                 let AuxiliaryDigestItem::Commitment(network_id, commitment_hash) = log;
-                if *network_id != self.network_id
+                if *network_id != self.receiver_network_id
                     && *commitment_hash != Keccak256::hash_of(&commitment)
                 {
                     false
@@ -264,14 +270,14 @@ where
         let proof =
             convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, &proof.items);
         let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-            merkle_proof_items: proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_items: proof.items,
             merkle_proof_order_bit_field: proof.order,
         };
 
         let payload = self
             .receiver
             .submit_messages_commitment(
-                self.network_id,
+                self.sender_network_id,
                 ProvedSubstrateBridgeMessage {
                     message: commitment.messages,
                     proof,
@@ -294,16 +300,20 @@ where
             .wait_for_success()
             .await?;
         info!("Successfully sent channel commitment");
-        sub_log_tx_events(res);
+        sub_log_tx_events::<<R as RuntimeClient>::Event, ConfigOf<R>>(res);
         Ok(())
     }
 
     pub async fn run(mut self) -> AnyResult<()> {
-        let sender_network = self.sender.network_id().await?;
-        let receiver_network = self.receiver.network_id().await?;
         loop {
-            let mut inbound_nonce = self.receiver.inbound_channel_nonce(sender_network).await?;
-            let outbound_nonce = self.sender.outbound_channel_nonce(receiver_network).await?;
+            let mut inbound_nonce = self
+                .receiver
+                .inbound_channel_nonce(self.sender_network_id)
+                .await?;
+            let outbound_nonce = self
+                .sender
+                .outbound_channel_nonce(self.receiver_network_id)
+                .await?;
             // To add only new commitments to the queue
             if let Some((_, commitment)) = self.commitment_queue.back() {
                 inbound_nonce = inbound_nonce.max(commitment.messages.last().unwrap().nonce);
@@ -315,7 +325,7 @@ where
                     outbound_nonce
                 );
                 let Some((block_number, commitment_hash)) = self
-                    .find_commitment_with_nonce(receiver_network, 100, inbound_nonce + 1)
+                    .find_commitment_with_nonce(self.receiver_network_id, 100, inbound_nonce + 1)
                     .await?
                 else {
                     debug!("Message not found, waiting for new block");

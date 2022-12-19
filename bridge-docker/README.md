@@ -1,21 +1,35 @@
 ## Run bridge in docker-compose
 
-### Run
+### Run EVM bridge
 
 ```
-docker-compose up -d --build
+docker-compose up -f docker-compose.sora.yml -f docker-compose.evm.yml -d --build
+```
+
+### Run substrate bridge
+
+Assume you have cloned [parachain repo](https://github.com/sora-xor/sora2-parachain) in `../sora2-parachain`
+
+```
+docker-compose up -f docker-compose.sora.yml -f docker-compose.parachain.yml -f ../sora2-parachain/bridge-docker/docker-compose.yml -d --build
+```
+
+### Run both bridges
+
+```
+docker-compose up -f docker-compose.sora.yml -f docker-compose.evm.yml -f docker-compose.parachain.yml -f ../sora2-parachain/bridge-docker/docker-compose.yml -d --build
 ```
 
 ### Stop
 
 ```
-docker-compose down
+docker-compose down <-f args>
 ```
 
 ### Stop and remove volumes
 
 ```
-docker-compose down -v
+docker-compose down <-f args> -v 
 ```
 
 ### Update cached dependencies

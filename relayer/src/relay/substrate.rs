@@ -108,8 +108,13 @@ impl Relay {
         let initial_bitfield = self
             .beefy
             .create_initial_bitfield(
-                justification.signed_validators.clone(),
-                justification.num_validators,
+                justification
+                    .signed_validators
+                    .iter()
+                    .cloned()
+                    .map(U256::from)
+                    .collect(),
+                justification.num_validators.into(),
             )
             .legacy()
             .call()
@@ -124,7 +129,10 @@ impl Relay {
         };
 
         let random_bitfield = self
-            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
+            .create_random_bitfield(
+                initial_bitfield.clone(),
+                justification.num_validators.into(),
+            )
             .await?;
         let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;

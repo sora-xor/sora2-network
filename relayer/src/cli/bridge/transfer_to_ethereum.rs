@@ -77,7 +77,7 @@ impl Command {
                 .await?
         };
         info!("Extrinsic successful");
-        sub_log_tx_events(result);
+        sub_log_tx_events::<mainnet_runtime::Event, _>(result);
         Ok(())
     }
 }

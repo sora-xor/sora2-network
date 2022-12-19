@@ -89,6 +89,7 @@ pub trait RuntimeClient {
     type SubmitSignatureCommitment: Encode;
     type SubmitMessagesCommitment: Encode;
     type VerificationSuccessful: subxt::events::StaticEvent;
+    type Event: Decode + core::fmt::Debug;
 
     fn submit_signature_commitment(
         &self,
@@ -133,6 +134,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
     type SubmitSignatureCommitment = runtime::beefy_light_client::calls::SubmitSignatureCommitment;
     type VerificationSuccessful = runtime::beefy_light_client::events::VerificationSuccessful;
     type SubmitMessagesCommitment = runtime::substrate_bridge_inbound_channel::calls::Submit;
+    type Event = runtime::Event;
 
     fn client(&self) -> &SubSignedClient<Self::Config> {
         &self.0
@@ -351,6 +353,7 @@ impl RuntimeClient for ParachainRuntimeClient {
         parachain_runtime::beefy_light_client::events::VerificationSuccessful;
     type SubmitMessagesCommitment =
         parachain_runtime::substrate_bridge_inbound_channel::calls::Submit;
+    type Event = parachain_runtime::Event;
 
     fn client(&self) -> &SubSignedClient<Self::Config> {
         &self.0

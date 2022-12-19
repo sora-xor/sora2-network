@@ -127,7 +127,7 @@ where
     async fn create_random_bitfield(
         &self,
         initial_bitfield: BitField,
-        num_validators: u128,
+        num_validators: u32,
     ) -> AnyResult<BitField> {
         let params = rpc_params![initial_bitfield, num_validators];
         let random_bitfield = self
@@ -145,13 +145,8 @@ where
         justification: &BeefyJustification<S::Config>,
     ) -> AnyResult<impl TxPayload> {
         let initial_bitfield = BitField::create_bitfield(
-            justification
-                .signed_validators
-                .iter()
-                .cloned()
-                .map(|x| x.as_u128())
-                .collect(),
-            justification.num_validators.as_u128(),
+            &justification.signed_validators,
+            justification.num_validators as usize,
         );
 
         let commitment = bridge_common::beefy_types::Commitment {
@@ -164,10 +159,7 @@ where
         };
 
         let random_bitfield = self
-            .create_random_bitfield(
-                initial_bitfield.clone(),
-                justification.num_validators.as_u128(),
-            )
+            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
             .await?;
         let validator_proof = justification.validators_proof_sub(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof_sub()?;
@@ -260,9 +252,8 @@ where
                         }
                     };
                     debug!("Justification: {:?}", justification);
-                    if justification.commitment.validator_set_id as u128 != current_validator_set_id
-                        && justification.commitment.validator_set_id as u128
-                            != next_validator_set_id
+                    if justification.commitment.validator_set_id != current_validator_set_id
+                        && justification.commitment.validator_set_id != next_validator_set_id
                     {
                         warn!(
                             "validator set id mismatch: {} + 1 != {}",
@@ -346,8 +337,8 @@ where
 
             let next_validator_set_id = self.receiver.next_validator_set().await?.id;
 
-            let is_mandatory = next_validator_set_id
-                < justification.leaf_proof.leaf.beefy_next_authority_set.id as u128;
+            let is_mandatory =
+                next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
 
             let latest_requested = self.syncer.latest_requested();
             let latest_sent = self.syncer.latest_sent();

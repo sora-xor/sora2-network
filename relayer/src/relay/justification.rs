@@ -24,8 +24,8 @@ pub struct BeefyJustification<T: subxt::Config> {
     pub commitment: BeefyCommitment<T>,
     pub commitment_hash: H256,
     pub signatures: Vec<Option<Signature>>,
-    pub num_validators: U256,
-    pub signed_validators: Vec<U256>,
+    pub num_validators: u32,
+    pub signed_validators: Vec<u32>,
     pub validators: Vec<H160>,
     pub block_hash: BlockHash<T>,
     pub leaf_proof: LeafProof<T>,
@@ -48,11 +48,11 @@ where
         }) = commitment;
         let commitment_block_number: u64 = commitment.block_number.into();
         let commitment_hash = keccak256(&Encode::encode(&commitment)).into();
-        let num_validators = U256::from(signatures.len());
+        let num_validators = signatures.len() as u32;
         let mut signed_validators = vec![];
-        for (i, signature) in signatures.iter().enumerate() {
+        for (i, signature) in (0u32..).zip(signatures.iter()) {
             if let Some(_) = signature {
-                signed_validators.push(U256::from(i))
+                signed_validators.push(i)
             }
         }
         let block_hash = sub
@@ -292,7 +292,7 @@ where
         };
 
         let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-            merkle_proof_items: self.simplified_proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_items: self.simplified_proof.items.clone(),
             merkle_proof_order_bit_field: self.simplified_proof.order,
         };
         Ok((mmr_leaf, proof))

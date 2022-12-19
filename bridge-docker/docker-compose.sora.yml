@@ -1,0 +1,195 @@
+version: "3.5"
+name: sora2-substrate
+
+services:
+  sora-alice:
+    image: sora2/substrate-local
+    container_name: bridge-sora-alice
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports:
+      - "9944:9944"
+      - "9954:9954"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--alice", 
+        "--port", "10000", 
+        "--ws-port", "9944",
+        "--rpc-port", "9954", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-alice-data:/data
+    networks:
+      - bridgenet
+    
+  sora-bob:
+    image: sora2/substrate-local
+    container_name: bridge-sora-bob
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports:
+      - "9945:9945"
+      - "9955:9955"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--bob", 
+        "--port", "10001", 
+        "--ws-port", "9945",
+        "--rpc-port", "9955", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-bob-data:/data
+    networks:
+      - bridgenet
+    
+  sora-charlie:
+    image: sora2/substrate-local
+    container_name: bridge-sora-charlie
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports: 
+      - "9946:9946"
+      - "9956:9956"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--charlie", 
+        "--port", "10002", 
+        "--ws-port", "9946",
+        "--rpc-port", "9956", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-charlie-data:/data
+    networks:
+      - bridgenet
+    
+  sora-dave:
+    image: sora2/substrate-local
+    container_name: bridge-sora-dave
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports:
+      - "9947:9947"
+      - "9957:9957"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--dave", 
+        "--port", "10003", 
+        "--ws-port", "9947",
+        "--rpc-port", "9957", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-dave-data:/data
+    networks:
+      - bridgenet
+    
+  sora-eve:
+    image: sora2/substrate-local
+    container_name: bridge-sora-eve
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports:
+      - "9948:9948"
+      - "9958:9958"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--eve", 
+        "--port", "10004", 
+        "--ws-port", "9948",
+        "--rpc-port", "9958", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-eve-data:/data
+    networks:
+      - bridgenet
+    
+  sora-ferdie:
+    image: sora2/substrate-local
+    container_name: bridge-sora-ferdie
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    ports:
+      - "9949:9949"
+      - "9959:9959"
+    command: ["framenode", 
+        "--pruning", "archive",
+        "--enable-offchain-indexing", "true",
+        "-d", "/data", 
+        "--ferdie", 
+        "--port", "10005", 
+        "--ws-port", "9949",
+        "--rpc-port", "9959", 
+        "--unsafe-ws-external",
+        "--unsafe-rpc-external",
+        "--rpc-cors", "all",
+        "--chain", "local", 
+        "--execution", "wasm", 
+        "--wasm-execution", "compiled"
+      ]
+    volumes:
+      - sora-ferdie-data:/data
+    networks:
+      - bridgenet
+    
+volumes:
+  sora-alice-data: null
+  sora-bob-data: null
+  sora-charlie-data: null
+  sora-dave-data: null
+  sora-eve-data: null
+  sora-ferdie-data: null
+
+networks:
+  bridgenet:
+    name: bridgenet

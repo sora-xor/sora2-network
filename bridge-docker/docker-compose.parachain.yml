@@ -1,0 +1,69 @@
+version: "3.5"
+name: sora2-substrate
+
+services:
+  register-substrate-bridge:
+    image: sora2/substrate-local
+    container_name: bridge-register-substrate-bridge
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    environment:
+      - RUST_LOG=info,relayer=debug
+    depends_on:
+      sora-alice:
+        condition: service_started
+    entrypoint: sh
+    command: /register-bridge/register-bridge.sh
+    volumes:
+      - ./register-substrate-bridge:/register-bridge
+    networks:
+      - bridgenet
+
+  relay-sora-parachain:
+    image: sora2/substrate-local
+    container_name: bridge-relay-sora-parachain
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    environment:
+      - RUST_LOG=info,relayer=debug
+    depends_on:
+      register-substrate-bridge:
+        condition: service_completed_successfully
+    command: ["relayer",
+        "--substrate-url", "ws://bridge-sora-alice:9944",
+        "--substrate-key", "//Bob",
+        "--parachain-url", "ws://bridge-parachain-alice:9844",
+        "--parachain-key", "//Bob",
+        "bridge", "relay", "sora-to-parachain", "-s"
+      ]
+    networks:
+      - bridgenet
+
+  relay-parachain-sora:
+    image: sora2/substrate-local
+    container_name: bridge-relay-parachain-sora
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    environment:
+      - RUST_LOG=info,relayer=debug
+    depends_on:
+      register-substrate-bridge:
+        condition: service_completed_successfully
+    command: ["relayer",
+        "--substrate-url", "ws://bridge-sora-alice:9944",
+        "--substrate-key", "//Bob",
+        "--parachain-url", "ws://bridge-parachain-alice:9844",
+        "--parachain-key", "//Bob",
+        "bridge", "relay", "parachain-to-sora", "-s"
+      ]
+    networks:
+      - bridgenet
+
+networks:
+  bridgenet:
+    name: bridgenet

@@ -1056,6 +1056,7 @@ fn testnet_genesis(
         vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        beefy_light_client: Default::default(),
         substrate_bridge_app: Default::default(),
         substrate_bridge_inbound_channel: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
@@ -1895,6 +1896,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        beefy_light_client: Default::default(),
         substrate_bridge_app: Default::default(),
         substrate_bridge_inbound_channel: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),

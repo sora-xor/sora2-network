@@ -19,18 +19,18 @@ use subxt::rpc::{rpc_params, RpcClientT};
 use subxt::tx::{Signer, TxEvents};
 pub use types::*;
 
-pub fn event_to_string(ev: EventDetails) -> String {
+pub fn event_to_string<E: Decode + core::fmt::Debug>(ev: EventDetails) -> String {
     let input = &mut ev.bytes();
     let phase = subxt::events::Phase::decode(input);
-    let event = mainnet_runtime::Event::decode(input);
+    let event = E::decode(input);
     format!("(Phase: {:?}, Event: {:?})", phase, event)
 }
 
-pub fn log_tx_events<T: subxt::Config>(events: TxEvents<T>) {
+pub fn log_tx_events<E: Decode + core::fmt::Debug, T: subxt::Config>(events: TxEvents<T>) {
     for ev in events.iter() {
         match ev {
             Ok(ev) => {
-                debug!("{}", event_to_string(ev));
+                debug!("{}", event_to_string::<E>(ev));
             }
             Err(err) => {
                 warn!("Failed to decode event: {:?}", err);

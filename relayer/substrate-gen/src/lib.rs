@@ -46,6 +46,8 @@ pub mod runtime {
     use ::beefy_light_client::ProvedSubstrateBridgeMessage;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
     use ::beefy_primitives::crypto::Public;
+    #[subxt(substitute_type = "beefy_primitives::mmr::BeefyAuthoritySet")]
+    use ::beefy_primitives::mmr::BeefyAuthoritySet;
     #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
     use ::beefy_primitives::mmr::MmrLeaf;
     #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
