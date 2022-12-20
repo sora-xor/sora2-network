@@ -21,6 +21,6 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 anyhow = "1.0"
 
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "substrate_bridge" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" }
 bridge-outbound-channel = { path = "../outbound" }
 common = { path = "../../../../common" }
