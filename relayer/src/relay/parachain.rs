@@ -39,6 +39,7 @@ use crate::substrate::EncodedBeefyCommitment;
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_common::bitfield::BitField;
+use bridge_types::GenericNetworkId;
 use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
 use subxt::events::StaticEvent;
 use subxt::rpc_params;
@@ -88,7 +89,8 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let latest_beefy_block = receiver.latest_beefy_block().await?;
+        let sender_network_id = sender.network_id().await?;
+        let latest_beefy_block = receiver.latest_beefy_block(sender_network_id).await?;
         syncer.update_latest_sent(latest_beefy_block);
         Ok(Relay {
             sender,
@@ -96,6 +98,7 @@ where
             successful_sent: Default::default(),
             failed_to_sent: Default::default(),
             syncer,
+            sender_network_id,
         })
     }
 }
@@ -107,6 +110,7 @@ pub struct Relay<S, R> {
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
     syncer: BeefySyncer,
+    sender_network_id: GenericNetworkId,
 }
 
 impl<S, R> Relay<S, R>
@@ -129,15 +133,19 @@ where
         initial_bitfield: BitField,
         num_validators: u32,
     ) -> AnyResult<BitField> {
-        let params = rpc_params![initial_bitfield, num_validators];
-        let random_bitfield = self
-            .receiver
-            .client()
-            .api()
-            .rpc()
-            .request("beefyLightClient_getRandomBitfield", params)
-            .await?;
-        Ok(random_bitfield)
+        if let GenericNetworkId::Sub(network_id) = self.sender_network_id {
+            let params = rpc_params![network_id, initial_bitfield, num_validators];
+            let random_bitfield = self
+                .receiver
+                .client()
+                .api()
+                .rpc()
+                .request("beefyLightClient_getRandomBitfield", params)
+                .await?;
+            Ok(random_bitfield)
+        } else {
+            unimplemented!("Unsupported network id: {:?}", self.sender_network_id);
+        }
     }
 
     async fn submit_signature_commitment(
@@ -165,6 +173,7 @@ where
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof_sub()?;
 
         let call = self.receiver.submit_signature_commitment(
+            self.sender_network_id,
             commitment,
             validator_proof,
             latest_mmr_leaf,
@@ -216,8 +225,16 @@ where
     }
 
     async fn process_block(&self, block_num: u64) -> AnyResult<()> {
-        let current_validator_set_id = self.receiver.current_validator_set().await?.id;
-        let next_validator_set_id = self.receiver.next_validator_set().await?.id;
+        let current_validator_set_id = self
+            .receiver
+            .current_validator_set(self.sender_network_id)
+            .await?
+            .id;
+        let next_validator_set_id = self
+            .receiver
+            .next_validator_set(self.sender_network_id)
+            .await?
+            .id;
         let block_hash = self
             .sender
             .client()
@@ -284,7 +301,10 @@ where
 
     pub async fn sync_historical_commitments(&self, end_block: BlockNumberOf<S>) -> AnyResult<()> {
         let epoch_duration = self.sender.epoch_duration()?;
-        let latest_beefy_block = self.sender.latest_beefy_block().await? as u64;
+        let latest_beefy_block = self
+            .receiver
+            .latest_beefy_block(self.sender_network_id)
+            .await? as u64;
         let end_block = end_block.into();
 
         const SHIFT: u64 = 5;
@@ -335,7 +355,11 @@ where
                 }
             };
 
-            let next_validator_set_id = self.receiver.next_validator_set().await?.id;
+            let next_validator_set_id = self
+                .receiver
+                .next_validator_set(self.sender_network_id)
+                .await?
+                .id;
 
             let is_mandatory =
                 next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;

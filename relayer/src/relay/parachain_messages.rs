@@ -87,7 +87,7 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
         let receiver_network_id = receiver.network_id().await?;
-        let sender_network_id = receiver.network_id().await?;
+        let sender_network_id = sender.network_id().await?;
         Ok(Relay {
             sender,
             receiver,

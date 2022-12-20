@@ -34,7 +34,7 @@ use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_common::beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet};
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::types::ParachainMessage;
-use bridge_types::{GenericNetworkId, SubNetworkId};
+use bridge_types::GenericNetworkId;
 use common::Balance;
 use futures::Future;
 
@@ -93,6 +93,7 @@ pub trait RuntimeClient {
 
     fn submit_signature_commitment(
         &self,
+        network_id: GenericNetworkId,
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
@@ -100,10 +101,10 @@ pub trait RuntimeClient {
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment>;
     fn client(&self) -> &SubSignedClient<Self::Config>;
     fn epoch_duration(&self) -> AnyResult<u64>;
-    async fn latest_beefy_block(&self) -> AnyResult<u64>;
+    async fn latest_beefy_block(&self, network_id: GenericNetworkId) -> AnyResult<u64>;
     async fn first_beefy_block(&self) -> AnyResult<u64>;
-    async fn current_validator_set(&self) -> AnyResult<ValidatorSet>;
-    async fn next_validator_set(&self) -> AnyResult<ValidatorSet>;
+    async fn current_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet>;
+    async fn next_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet>;
     async fn outbound_channel_nonce(&self, network_id: GenericNetworkId) -> AnyResult<u64>;
     async fn inbound_channel_nonce(&self, network_id: GenericNetworkId) -> AnyResult<u64>;
     async fn find_message_block(
@@ -142,14 +143,24 @@ impl RuntimeClient for SubstrateRuntimeClient {
 
     fn submit_signature_commitment(
         &self,
+        network_id: GenericNetworkId,
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
         proof: SimplifiedMMRProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let call = runtime::tx()
             .beefy_light_client()
-            .submit_signature_commitment(commitment, validator_proof, latest_mmr_leaf, proof);
+            .submit_signature_commitment(
+                network_id,
+                commitment,
+                validator_proof,
+                latest_mmr_leaf,
+                proof,
+            );
         call
     }
 
@@ -162,13 +173,18 @@ impl RuntimeClient for SubstrateRuntimeClient {
         Ok(epoch_duration)
     }
 
-    async fn latest_beefy_block(&self) -> AnyResult<u64> {
+    async fn latest_beefy_block(&self, network_id: GenericNetworkId) -> AnyResult<u64> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let latest_beefy_block = self
             .0
             .api()
             .storage()
             .fetch(
-                &runtime::storage().beefy_light_client().latest_beefy_block(),
+                &runtime::storage()
+                    .beefy_light_client()
+                    .latest_beefy_block(network_id),
                 None,
             )
             .await?
@@ -199,7 +215,10 @@ impl RuntimeClient for SubstrateRuntimeClient {
         Ok(latest_beefy_block - finalized_number as u64)
     }
 
-    async fn current_validator_set(&self) -> AnyResult<ValidatorSet> {
+    async fn current_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let validator_set = self
             .0
             .api()
@@ -207,7 +226,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
             .fetch(
                 &runtime::storage()
                     .beefy_light_client()
-                    .current_validator_set(),
+                    .current_validator_set(network_id),
                 None,
             )
             .await?
@@ -215,13 +234,18 @@ impl RuntimeClient for SubstrateRuntimeClient {
         Ok(validator_set)
     }
 
-    async fn next_validator_set(&self) -> AnyResult<ValidatorSet> {
+    async fn next_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let validator_set = self
             .0
             .api()
             .storage()
             .fetch(
-                &runtime::storage().beefy_light_client().next_validator_set(),
+                &runtime::storage()
+                    .beefy_light_client()
+                    .next_validator_set(network_id),
                 None,
             )
             .await?
@@ -318,7 +342,16 @@ impl RuntimeClient for SubstrateRuntimeClient {
     }
 
     async fn network_id(&self) -> AnyResult<GenericNetworkId> {
-        Ok(SubNetworkId::Mainnet.into())
+        let storage = mainnet_runtime::storage()
+            .beefy_light_client()
+            .this_network_id();
+        let network_id = self
+            .0
+            .api()
+            .storage()
+            .fetch_or_default(&storage, None)
+            .await?;
+        Ok(network_id.into())
     }
 
     async fn submit_messages_commitment(
@@ -361,14 +394,24 @@ impl RuntimeClient for ParachainRuntimeClient {
 
     fn submit_signature_commitment(
         &self,
+        network_id: GenericNetworkId,
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
         proof: SimplifiedMMRProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let call = parachain_runtime::tx()
             .beefy_light_client()
-            .submit_signature_commitment(commitment, validator_proof, latest_mmr_leaf, proof);
+            .submit_signature_commitment(
+                network_id,
+                commitment,
+                validator_proof,
+                latest_mmr_leaf,
+                proof,
+            );
         call
     }
 
@@ -376,7 +419,10 @@ impl RuntimeClient for ParachainRuntimeClient {
         Ok(PARACHAIN_EPOCH_DURATION)
     }
 
-    async fn latest_beefy_block(&self) -> AnyResult<u64> {
+    async fn latest_beefy_block(&self, network_id: GenericNetworkId) -> AnyResult<u64> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let latest_beefy_block = self
             .0
             .api()
@@ -384,7 +430,7 @@ impl RuntimeClient for ParachainRuntimeClient {
             .fetch(
                 &parachain_runtime::storage()
                     .beefy_light_client()
-                    .latest_beefy_block(),
+                    .latest_beefy_block(network_id),
                 None,
             )
             .await?
@@ -415,7 +461,10 @@ impl RuntimeClient for ParachainRuntimeClient {
         Ok(latest_beefy_block - finalized_number as u64)
     }
 
-    async fn current_validator_set(&self) -> AnyResult<ValidatorSet> {
+    async fn current_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let validator_set = self
             .0
             .api()
@@ -423,7 +472,7 @@ impl RuntimeClient for ParachainRuntimeClient {
             .fetch(
                 &parachain_runtime::storage()
                     .beefy_light_client()
-                    .current_validator_set(),
+                    .current_validator_set(network_id),
                 None,
             )
             .await?
@@ -431,7 +480,10 @@ impl RuntimeClient for ParachainRuntimeClient {
         Ok(validator_set)
     }
 
-    async fn next_validator_set(&self) -> AnyResult<ValidatorSet> {
+    async fn next_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            unimplemented!("Only support Substrate networks");
+        };
         let validator_set = self
             .0
             .api()
@@ -439,7 +491,7 @@ impl RuntimeClient for ParachainRuntimeClient {
             .fetch(
                 &parachain_runtime::storage()
                     .beefy_light_client()
-                    .next_validator_set(),
+                    .next_validator_set(network_id),
                 None,
             )
             .await?
@@ -530,14 +582,16 @@ impl RuntimeClient for ParachainRuntimeClient {
     }
 
     async fn network_id(&self) -> AnyResult<GenericNetworkId> {
-        let chain = self.0.api().rpc().system_chain().await?;
-        match chain.as_str() {
-            "SORA Kusama" => Ok(SubNetworkId::Kusama.into()),
-            "SORA Rococo" => Ok(SubNetworkId::Rococo.into()),
-            "SORA Polkadot" => Ok(SubNetworkId::Polkadot.into()),
-            "Local Testnet" => Ok(SubNetworkId::Rococo.into()),
-            _ => Err(anyhow!("Unknown chain: {}", chain)),
-        }
+        let storage = parachain_runtime::storage()
+            .beefy_light_client()
+            .this_network_id();
+        let network_id = self
+            .0
+            .api()
+            .storage()
+            .fetch_or_default(&storage, None)
+            .await?;
+        Ok(network_id.into())
     }
 
     async fn submit_messages_commitment(

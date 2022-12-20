@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -630,7 +630,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "beefy-light-client-runtime-api",
  "jsonrpsee 0.15.1",
@@ -647,8 +647,9 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
+ "bridge-types",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -952,7 +953,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "beefy-primitives",
  "bitvec 1.0.1",
@@ -1033,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "beefy-primitives",
  "enum-iterator",
@@ -2556,7 +2557,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -5616,7 +5617,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -5639,7 +5640,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "jsonrpsee 0.15.1",
  "leaf-provider-runtime-api",
@@ -5657,7 +5658,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -8454,9 +8455,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-hack"
-version = "0.5.19"
+version = "0.5.20+deprecated"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
+checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -12013,7 +12014,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -12036,7 +12037,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "bridge-types",
  "ethabi",
@@ -12060,7 +12061,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#dcb6b0d389be626b3264761a888eb7a057ffbc3f"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=substrate_bridge#33399830852836b383db400920b536479b0c8d70"
 dependencies = [
  "anyhow",
  "bridge-types",
@@ -12868,9 +12869,9 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tt-call"
-version = "1.0.8"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e66dcbec4290c69dd03c57e76c2469ea5c7ce109c6dd4351c13055cf71ea055"
+checksum = "f4f195fd851901624eee5a58c4bb2b4f06399148fcd0ed336e6f1cb60a9881df"
 
 [[package]]
 name = "tungstenite"

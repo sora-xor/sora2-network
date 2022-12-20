@@ -57,8 +57,20 @@ impl Command {
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
+            let network_id = sub
+                .api()
+                .storage()
+                .fetch(
+                    &mainnet_runtime::storage()
+                        .beefy_light_client()
+                        .this_network_id(),
+                    Some(block_hash),
+                )
+                .await?
+                .ok_or(anyhow!("Network id not found"))?;
 
             let call = parachain_runtime::runtime_types::parachain_template_runtime::RuntimeCall::BeefyLightClient(parachain_runtime::runtime_types::beefy_light_client::pallet::Call::initialize {
+                network_id,
                 latest_beefy_block: block_number.into(),
                 validator_set: authorities,
                 next_validator_set: next_authorities });
@@ -110,10 +122,22 @@ impl Command {
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
+            let network_id = para
+                .api()
+                .storage()
+                .fetch(
+                    &parachain_runtime::storage()
+                        .beefy_light_client()
+                        .this_network_id(),
+                    Some(block_hash),
+                )
+                .await?
+                .ok_or(anyhow!("Network id not found"))?;
 
             let call =
                 mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BeefyLightClient(
                     mainnet_runtime::runtime_types::beefy_light_client::pallet::Call::initialize {
+                        network_id,
                         latest_beefy_block: block_number.into(),
                         validator_set: authorities,
                         next_validator_set: next_authorities,
