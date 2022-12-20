@@ -279,8 +279,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 call.dispatch(origin)
             }
             bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {
-                // unimplemented!()
-                Ok(().into())
+                unimplemented!()
             }
         }
     }
@@ -310,7 +309,7 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
             bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(_) => true,
-            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => true,
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => false,
         }
     }
 }
