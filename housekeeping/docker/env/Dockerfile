@@ -26,7 +26,7 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
     apt-get -y update && \
     apt-get install -y --no-install-recommends \
-    clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 && \
+    clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 protobuf-compiler && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
     apt-get autoremove -y && \
     apt-get clean && \
