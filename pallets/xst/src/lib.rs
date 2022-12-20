@@ -65,10 +65,10 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 pub trait WeightInfo {
-    fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
+    fn set_synthetic_base_asset_floor_price() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -150,13 +150,6 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_number: T::BlockNumber) -> Weight {
-            <T as Config>::WeightInfo::on_initialize(0)
-        }
-    }
-
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Enable exchange path on the pool for pair BaseAsset-SyntheticAsset.
@@ -193,6 +186,22 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset));
+            Self::deposit_event(Event::SyntheticAssetEnabled(synthetic_asset));
+            Ok(().into())
+        }
+
+        /// Set floor price for the synthetic base asset
+        ///
+        /// - `origin`: root account
+        /// - `floor_price`: floor price for the synthetic base asset
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
+        pub fn set_synthetic_base_asset_floor_price(
+            origin: OriginFor<T>,
+            floor_price: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            SyntheticBaseAssetFloorPrice::<T>::put(floor_price);
+            Self::deposit_event(Event::SyntheticBaseAssetFloorPriceChanged(floor_price));
             Ok(().into())
         }
     }
@@ -204,6 +213,10 @@ pub mod pallet {
         PoolInitialized(DexIdOf<T>, AssetIdOf<T>),
         /// Reference Asset has been changed for pool. [New Reference Asset Id]
         ReferenceAssetChanged(AssetIdOf<T>),
+        /// Synthetic asset was enabled. [Synthetic Asset Id]
+        SyntheticAssetEnabled(AssetIdOf<T>),
+        /// Floor price of the synthetic base asset has been changed. [New Floor Price]
+        SyntheticBaseAssetFloorPriceChanged(Balance),
     }
 
     #[pallet::error]
@@ -260,6 +273,17 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type CollateralReserves<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, Balance, ValueQuery>;
+
+    #[pallet::type_value]
+    pub fn SyntheticBaseAssetDefaultFloorPrice() -> Balance {
+        balance!(3)
+    }
+
+    /// Floor price for the synthetic base asset.
+    #[pallet::storage]
+    #[pallet::getter(fn synthetic_base_asset_floor_price)]
+    pub type SyntheticBaseAssetFloorPrice<T: Config> =
+        StorageValue<_, Balance, ValueQuery, SyntheticBaseAssetDefaultFloorPrice>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -643,11 +667,11 @@ impl<T: Config> Pallet<T> {
                 &reference_asset_id,
             )
             .map(|avg| {
-                // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
+                // We don't let the price of XST w.r.t. DAI go under set floor price, to prevent manipulation attacks
                 if asset_id == &T::GetSyntheticBaseAssetId::get()
                     && &reference_asset_id == &DAI.into()
                 {
-                    avg.max(balance!(3))
+                    avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
                 } else {
                     avg
                 }
