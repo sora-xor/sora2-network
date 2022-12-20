@@ -3195,11 +3195,13 @@ fn test_batch_swap_successful() {
             FilterMode::AllowSelected,
         ));
         assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(10));
+        assert_eq!(
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
+            balance!(10)
+        );
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     })
 }
-
 
 #[test]
 fn test_batch_swap_desired_input_successful() {
@@ -3224,7 +3226,10 @@ fn test_batch_swap_desired_input_successful() {
             FilterMode::AllowSelected,
         ));
         assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(10));
+        assert_eq!(
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
+            balance!(10)
+        );
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     });
 }
@@ -3236,21 +3241,24 @@ fn test_batch_swap_desired_input_too_low() {
         assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
-        assert_err!(LiquidityProxy::swap_transfer_batch(
-            Origin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
-            DEX_A_ID,
-            XOR,
-            KSM,
-            SwapAmount::with_desired_input(balance!(1), balance!(1)),
-            [LiquiditySourceType::XYKPool].to_vec(),
-            FilterMode::AllowSelected,
-        ), Error::<Runtime>::SwapTotalOutputTooLow);
+        assert_err!(
+            LiquidityProxy::swap_transfer_batch(
+                Origin::signed(alice()),
+                [
+                    BatchReceiverInfo::new(bob(), balance!(10)),
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10))
+                ]
+                .to_vec(),
+                DEX_A_ID,
+                XOR,
+                KSM,
+                SwapAmount::with_desired_input(balance!(1), balance!(1)),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::SwapTotalOutputTooLow
+        );
     });
 }
 
@@ -3261,20 +3269,23 @@ fn test_batch_swap_desired_output_too_low() {
         assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
-        assert_err!(LiquidityProxy::swap_transfer_batch(
-            Origin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
-            DEX_A_ID,
-            XOR,
-            KSM,
-            SwapAmount::with_desired_output(balance!(29), balance!(100)),
-            [LiquiditySourceType::XYKPool].to_vec(),
-            FilterMode::AllowSelected,
-        ), Error::<Runtime>::SwapTotalOutputTooLow);
+        assert_err!(
+            LiquidityProxy::swap_transfer_batch(
+                Origin::signed(alice()),
+                [
+                    BatchReceiverInfo::new(bob(), balance!(10)),
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10))
+                ]
+                .to_vec(),
+                DEX_A_ID,
+                XOR,
+                KSM,
+                SwapAmount::with_desired_output(balance!(29), balance!(100)),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::SwapTotalOutputTooLow
+        );
     });
 }

@@ -66,7 +66,6 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-pub const TECH_ACCOUNT_BATCH_SWAP: &[u8] = b"batch-swap";
 
 /// Possible exchange paths for two assets.
 enum ExchangePath<T: Config> {
@@ -1554,7 +1553,6 @@ pub mod pallet {
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type GetBatchSwapTechnicalAccountId: Get<Self::AccountId>;
         type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
@@ -1668,7 +1666,6 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            let tech_account = T::GetBatchSwapTechnicalAccountId::get();
 
             if Self::is_forbidden_filter(
                 &input_asset_id,
@@ -1687,7 +1684,7 @@ pub mod pallet {
             let (outcome, _) = Self::inner_exchange(
                 dex_id,
                 &who,
-                &tech_account,
+                &who,
                 &input_asset_id,
                 &output_asset_id,
                 swap_amount,
@@ -1705,18 +1702,13 @@ pub mod pallet {
             for receiver in receivers {
                 assets::Pallet::<T>::transfer_from(
                     &output_asset_id,
-                    &tech_account,
+                    &who,
                     &receiver.account_id,
                     receiver.target_amount,
                 )
                 .expect("Required amount has just been deposited");
             }
-            let leftovers = assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account)?;
-            assets::Pallet::<T>::transfer_from(&output_asset_id, &tech_account, &who, leftovers)
-                .expect("Transfer amount is calculated to match the free balance");
-            if assets::Pallet::<T>::free_balance(&output_asset_id, &tech_account)? != 0 {
-                return Err(Error::<T>::CalculationError.into());
-            }
+
             Ok(().into())
         }
 
