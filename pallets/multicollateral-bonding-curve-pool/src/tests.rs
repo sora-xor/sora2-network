@@ -36,7 +36,7 @@ mod tests {
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, DAI, LiquiditySourceFilter,
         DEFAULT_BALANCE_PRECISION,
-        LiquidityProxyTrait,
+        LiquidityProxyTrait, PriceVariant,
     };
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
@@ -1007,8 +1007,16 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
-            let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
+            let val_actual_reserves = MBCPool::actual_reserves_reference_price(
+                    &crate::mock::get_pool_reserves_account_id(),
+                    &VAL,
+                    PriceVariant::Buy,
+                ).unwrap();
+            let dai_actual_reserves = MBCPool::actual_reserves_reference_price(
+                    &crate::mock::get_pool_reserves_account_id(),
+                    &DAI,
+                    PriceVariant::Buy,
+                ).unwrap();
             let val_supposed_price = MockDEXApi::quote(DEXId::Polkaswap, &VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
