@@ -38,15 +38,14 @@ use codec::{Decode, Encode};
 use common::fixed_wrapper;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount};
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
-    XSTUSD,
+    balance, Fixed, LiquidityProxyTrait, OnPswapBurned, PswapRemintInfo, RewardReason,
+    VestedRewardsPallet, PSWAP, VAL, XSTUSD,
 };
 use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use liquidity_proxy::LiquidityProxyTrait;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedInto, Zero};
 use sp_std::collections::btree_map::BTreeMap;
@@ -63,6 +62,8 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub mod migrations;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
@@ -357,14 +358,15 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
         count: u32,
         from_asset_id: &T::AssetId,
         to_asset_id: &T::AssetId,
-        intermediate_asset_id: Option<&T::AssetId>,
+        intermediate_asset_ids: &[T::AssetId],
     ) -> DispatchResult {
-        let allowed = if let Some(intermediate) = intermediate_asset_id {
-            MarketMakingPairs::<T>::contains_key(from_asset_id, intermediate)
-                && MarketMakingPairs::<T>::contains_key(intermediate, to_asset_id)
-        } else {
-            MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
-        };
+        use itertools::Itertools;
+
+        let allowed = sp_std::iter::once(from_asset_id)
+            .chain(intermediate_asset_ids.iter())
+            .chain(sp_std::iter::once(to_asset_id))
+            .tuple_windows()
+            .all(|(from, to)| MarketMakingPairs::<T>::contains_key(from, to));
 
         let xor_price = if base_asset == &common::XOR.into() {
             fixed_wrapper!(1)

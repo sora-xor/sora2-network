@@ -40,6 +40,8 @@ use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
 
+pub mod migrations;
+
 #[cfg(test)]
 mod mock;
 

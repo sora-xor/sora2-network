@@ -33,7 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned, VAL, XOR,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
+    PSWAP, VAL, XOR, XST,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -81,6 +82,8 @@ impl AppCrypto<UintAuthorityId, TestSignature> for TestAppCrypto {
     type GenericSignature = TestSignature;
 }
 
+pub const BUY_BACK_ACCOUNT: AccountId = 23;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const ReferrerWeight: u32 = 10;
@@ -118,7 +121,6 @@ parameter_types! {
         AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id")
     };
     pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
-    pub GetTeamReservesAccountId: AccountId = 3000u64;
     pub const EthNetworkId: <Runtime as eth_bridge::Config>::NetworkId = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
@@ -428,6 +430,14 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
@@ -435,8 +445,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -710,7 +725,7 @@ impl mock_liquidity_proxy::Config for Runtime {
     type Event = Event;
 }
 
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
         _dex_id: DEXId,
         sender: &AccountId,

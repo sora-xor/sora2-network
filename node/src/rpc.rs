@@ -135,6 +135,7 @@ where
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
+    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
     C::Api: beefy_primitives::BeefyApi<Block>,

@@ -40,12 +40,12 @@ pool-xyk = { path = "../pool-xyk", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 [dev-dependencies]
-ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
-demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker" }
+demeter-farming-platform = { path = "../demeter-farming-platform" }
 hex-literal = "0.3.1"
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
@@ -68,6 +68,14 @@ std = [
     'sp-std/std',
     'tokens/std',
     'pool-xyk/std',
+    'liquidity-proxy/std',
+    'pallet-timestamp/std',
+    'trading-pair/std',
+    'technical/std',
+    'permissions/std',
+    'liquidity-proxy/std',
+    'dex-api/std',
+    'common/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
