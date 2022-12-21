@@ -106,11 +106,11 @@ fn distribute_existing_pswap_should_pass() {
         )
         .expect("Error is not expected during distribution");
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -141,15 +141,15 @@ fn distribute_with_zero_balance_should_pass() {
         .expect("Error is not expected during distribution");
 
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
 
@@ -196,7 +196,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -208,7 +208,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -220,7 +220,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -302,7 +302,7 @@ fn claim_until_zero_should_pass() {
         )
         .expect("Error is not expected during distribution");
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -316,7 +316,7 @@ fn claim_until_zero_should_pass() {
 
         // new pswap was derived from exchange, it should be claimable after distribution
         Assets::mint(
-            Origin::signed(tech_account_id.clone()),
+            RuntimeOrigin::signed(tech_account_id.clone()),
             GetIncentiveAssetId::get(),
             fees_account_a(),
             balance!(60),
@@ -329,11 +329,11 @@ fn claim_until_zero_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -353,15 +353,15 @@ fn claim_until_zero_should_pass() {
         )
         .expect("Error is not expected during distribution");
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -375,7 +375,7 @@ fn claim_until_zero_should_pass() {
 
         // new pswap was derived from exchange, it should be claimable after distribution, now only one account claims it
         Assets::mint(
-            Origin::signed(tech_account_id.clone()),
+            RuntimeOrigin::signed(tech_account_id.clone()),
             GetIncentiveAssetId::get(),
             fees_account_a(),
             balance!(600),
@@ -388,7 +388,7 @@ fn claim_until_zero_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -401,7 +401,7 @@ fn claim_until_zero_should_pass() {
 
         // final pswap arrival, should be consistent for previously claimed and unclaimed
         Assets::mint(
-            Origin::signed(tech_account_id.clone()),
+            RuntimeOrigin::signed(tech_account_id.clone()),
             GetIncentiveAssetId::get(),
             fees_account_a(),
             balance!(6000),
@@ -414,11 +414,11 @@ fn claim_until_zero_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -467,18 +467,18 @@ fn external_transfer_to_tech_account_after_distribution() {
 
         // before clre claimable value will be increased
         Assets::mint(
-            Origin::signed(tech_account_id.clone()),
+            RuntimeOrigin::signed(tech_account_id.clone()),
             GetIncentiveAssetId::get(),
             tech_account_id.clone(),
             balance!(11111.111111111111111111),
         )
         .expect("Minting tokens is not expected to fail.");
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -515,7 +515,7 @@ fn jump_start_with_unowned_incentive_should_pass() {
         // initially no liquidity providers have received incentives yet, thus shares are not calculated for them yet,
         // however some incentive is transferred to claimable reserve
         Assets::mint(
-            Origin::signed(tech_account_id.clone()),
+            RuntimeOrigin::signed(tech_account_id.clone()),
             GetIncentiveAssetId::get(),
             tech_account_id.clone(),
             balance!(11111.111111111111111111),
@@ -524,15 +524,15 @@ fn jump_start_with_unowned_incentive_should_pass() {
 
         // no one can claim it as shares are not calculated for this transfer
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
 
@@ -544,11 +544,11 @@ fn jump_start_with_unowned_incentive_should_pass() {
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -585,7 +585,7 @@ fn increasing_volumes_should_pass() {
 
         for _ in 0..=27u32 {
             Assets::mint(
-                Origin::signed(tech_account_id.clone()),
+                RuntimeOrigin::signed(tech_account_id.clone()),
                 GetIncentiveAssetId::get(),
                 fees_account_a(),
                 10 * decimals_factor,
@@ -598,11 +598,11 @@ fn increasing_volumes_should_pass() {
                 &tech_account_id,
             )
             .expect("Error is not expected during distribution");
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
                 .expect("Claiming is not expected to fail.");
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
                 .expect("Claiming is not expected to fail.");
-            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+            PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
                 .expect("Claiming is not expected to fail.");
             decimals_factor *= 10;
         }
@@ -642,11 +642,11 @@ fn multiple_pools_should_pass() {
             PswapDistrPallet::incentive_distribution_routine(i);
         }
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -688,11 +688,11 @@ fn mixed_multiple_pools_should_pass() {
             PswapDistrPallet::incentive_distribution_routine(i);
         }
 
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(RuntimeOrigin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());

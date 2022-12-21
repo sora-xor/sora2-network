@@ -55,7 +55,7 @@ mod tests {
             );
             assert!(Assets::ensure_asset_exists(&next_asset_id).is_err());
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
@@ -588,7 +588,7 @@ mod tests {
         ext.execute_with(|| {
             let next_asset_id = Assets::gen_asset_id(&ALICE);
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 5,

@@ -41,7 +41,7 @@ impl Command {
             .sign_and_submit_then_watch_default(
                 &runtime::tx()
                     .sudo()
-                    .sudo(sub_types::framenode_runtime::Call::EthBridge(
+                    .sudo(sub_types::framenode_runtime::RuntimeCall::EthBridge(
                         sub_types::eth_bridge::pallet::Call::migrate {
                             new_contract_address: self.contract,
                             erc20_native_tokens: addresses,

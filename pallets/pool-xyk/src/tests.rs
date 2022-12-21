@@ -95,14 +95,14 @@ impl<'a> crate::Pallet<Runtime> {
             ));
 
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
-                Origin::signed(BOB()),
+                RuntimeOrigin::signed(BOB()),
                 dex_id.clone(),
                 GoldenTicket.into(),
                 BlackPepper.into()
             ));
 
             assert_ok!(crate::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(BOB()),
+                RuntimeOrigin::signed(BOB()),
                 dex_id.clone(),
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -203,7 +203,7 @@ impl<'a> crate::Pallet<Runtime> {
         let mut new_tests: Vec<PresetFunction<'a>> = vec![Rc::new(
             |dex_id, _, _, _, _tech_acc_id: crate::mock::TechAccountId, _, pool_account, _| {
                 assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -231,7 +231,7 @@ impl<'a> crate::Pallet<Runtime> {
         let prepare: PresetFunction<'a> = Rc::new({
             move |dex_id, _, _, _, _, _, _, _| {
                 assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -299,7 +299,7 @@ macro_rules! simplify_swap_outcome(
 fn can_exchange_all_directions() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -317,7 +317,7 @@ fn can_exchange_all_directions() {
 fn quote_case_exact_input_for_output_base_first() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -346,7 +346,7 @@ fn quote_case_exact_input_for_output_base_first() {
 fn test_deducing_fee() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -414,7 +414,7 @@ fn test_deducing_fee() {
 fn quote_case_exact_input_for_output_base_second() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -446,7 +446,7 @@ fn quote_case_exact_input_for_output_base_second() {
 fn quote_case_exact_output_for_input_base_first() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -475,7 +475,7 @@ fn quote_case_exact_output_for_input_base_first() {
 fn quote_case_exact_output_for_input_base_second() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -506,7 +506,7 @@ fn deposit_less_than_minimum_1() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -527,7 +527,7 @@ fn deposit_less_than_minimum_2() {
         |dex_id, _, _, _, _, _, _, _| {
             assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(CHARLIE()),
+                    RuntimeOrigin::signed(CHARLIE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -548,7 +548,7 @@ fn deposit_less_than_minimum_3() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -567,7 +567,7 @@ fn multiple_providers() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(CHARLIE()),
+                RuntimeOrigin::signed(CHARLIE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -585,7 +585,7 @@ fn depositliq_large_values() {
     crate::Pallet::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -604,7 +604,7 @@ fn depositliq_valid_range_but_desired_is_corrected() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -623,7 +623,7 @@ fn cannot_deposit_zero_values() {
         |dex_id, _, _, _, _, _, _, _| {
             assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -636,7 +636,7 @@ fn cannot_deposit_zero_values() {
             );
             assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -649,7 +649,7 @@ fn cannot_deposit_zero_values() {
             );
             assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -662,7 +662,7 @@ fn cannot_deposit_zero_values() {
             );
             assert_noop!(
                 crate::Pallet::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -682,7 +682,7 @@ fn cannot_withdraw_zero_values() {
     crate::Pallet::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -693,7 +693,7 @@ fn cannot_withdraw_zero_values() {
             ));
             assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -705,7 +705,7 @@ fn cannot_withdraw_zero_values() {
             );
             assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -745,14 +745,14 @@ fn cannot_initialize_with_non_divisible_asset() {
             None,
         ));
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
             GoldenTicket.into(),
             Mango.into()
         ));
         assert_noop!(
             crate::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(BOB()),
+                RuntimeOrigin::signed(BOB()),
                 DEX_A_ID,
                 GoldenTicket.into(),
                 Mango.into(),
@@ -785,7 +785,7 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
 
             assert_noop!(
                 crate::Pallet::<Runtime>::initialize_pool(
-                    Origin::signed(BOB()),
+                    RuntimeOrigin::signed(BOB()),
                     dex_id.clone(),
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -841,7 +841,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
             // First minimum is above boundaries.
             assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -855,7 +855,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
             // Second minimum is above boundaries.
             assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -868,7 +868,7 @@ fn exchange_desired_output_and_withdraw_cascade() {
 
             // Both minimums is below.
             assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -1044,7 +1044,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([33; 32]);
             assets::Pallet::<Runtime>::transfer(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 gt.clone(),
                 new_account.clone(),
                 balance!(100000),
@@ -1104,7 +1104,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 bp.clone(),
                 new_account.clone(),
                 balance!(100000),
@@ -1164,7 +1164,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 gt.clone(),
                 new_account.clone(),
                 balance!(100000),
@@ -1219,7 +1219,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Pallet::<Runtime>::transfer(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 bp.clone(),
                 new_account.clone(),
                 balance!(100000),
@@ -1294,7 +1294,7 @@ fn withdraw_all_liquidity() {
 
             assert_noop!(
                 crate::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(ALICE()),
+                    RuntimeOrigin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
@@ -1306,7 +1306,7 @@ fn withdraw_all_liquidity() {
             );
 
             assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
@@ -1349,7 +1349,7 @@ fn deposit_liquidity_with_different_slippage_behavior() {
                  _repr: AccountId,
                  _fee_repr: AccountId| {
                     assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                        Origin::signed(ALICE()),
+                        RuntimeOrigin::signed(ALICE()),
                         dex_id,
                         GoldenTicket.into(),
                         BlackPepper.into(),
@@ -1380,7 +1380,7 @@ fn withdraw_liquidity_with_different_slippage_behavior() {
                  _repr: AccountId,
                  _fee_repr: AccountId| {
                     assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
-                        Origin::signed(ALICE()),
+                        RuntimeOrigin::signed(ALICE()),
                         dex_id,
                         GoldenTicket.into(),
                         BlackPepper.into(),
@@ -1413,7 +1413,7 @@ fn variants_of_deposit_liquidity_twice() {
                      _repr: AccountId,
                      _fee_repr: AccountId| {
                         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-                            Origin::signed(ALICE()),
+                            RuntimeOrigin::signed(ALICE()),
                             dex_id,
                             GoldenTicket.into(),
                             BlackPepper.into(),
@@ -1450,7 +1450,7 @@ fn swapping_should_not_affect_k_1() {
         let expected_fee = balance!(0.054162487462387161);
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -1510,7 +1510,7 @@ fn swapping_should_not_affect_k_2() {
         let expected_fee = balance!(0.012036108324974924);
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -1571,7 +1571,7 @@ fn swapping_should_not_affect_k_3() {
         let expected_fee = balance!(0.012000000000000000);
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -1632,7 +1632,7 @@ fn swapping_should_not_affect_k_4() {
         let expected_fee = balance!(0.010800000000000000);
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
@@ -1763,7 +1763,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         );
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset_a,
@@ -1779,7 +1779,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         );
 
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset_a,
@@ -1806,13 +1806,13 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             None,
         ));
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id.clone(),
             base_asset,
             target_asset_b
         ));
         assert_ok!(crate::Pallet::<Runtime>::initialize_pool(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id.clone(),
             base_asset,
             target_asset_b
@@ -1824,7 +1824,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             balance!(1000)
         ));
         assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset_b,
@@ -1846,7 +1846,7 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         let user_balance_a = PoolXYK::pool_providers(&pool_account_a, &ALICE()).unwrap();
 
         assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             base_asset,
             target_asset_a,
@@ -1895,7 +1895,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 base_asset,
                 target_asset_a,
@@ -1909,7 +1909,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 target_asset_b,
                 base_asset,
@@ -1923,7 +1923,7 @@ fn deposit_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 target_asset_a,
                 target_asset_b,
@@ -1970,7 +1970,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 base_asset,
                 target_asset_a,
@@ -1983,7 +1983,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 target_asset_b,
                 base_asset,
@@ -1996,7 +1996,7 @@ fn withdraw_liquidity_with_non_divisible_assets() {
 
         assert_noop!(
             crate::Pallet::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 dex_id,
                 target_asset_a,
                 target_asset_b,
@@ -2243,19 +2243,19 @@ fn initialize_pool_with_different_dex() {
             None,
         ));
         assert_ok!(trading_pair::Pallet::<Runtime>::register(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             DEX_B_ID,
             AppleTree.into(),
             GoldenTicket.into()
         ));
         assert_ok!(PoolXYK::initialize_pool(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             DEX_B_ID,
             AppleTree.into(),
             GoldenTicket.into()
         ));
         assert_ok!(PoolXYK::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             DEX_B_ID,
             AppleTree.into(),
             GoldenTicket.into(),

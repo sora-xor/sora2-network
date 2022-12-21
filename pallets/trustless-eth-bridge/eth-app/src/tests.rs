@@ -1,16 +1,17 @@
 use crate::mock::{
-    new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test, BASE_NETWORK_ID,
+    new_tester, AccountId, Assets, EthApp, RuntimeEvent, RuntimeOrigin, System, Test,
+    BASE_NETWORK_ID,
 };
 use crate::{Addresses, Error};
 use bridge_types::types::CallOriginOutput;
+use bridge_types::H160;
 use common::{balance, XOR};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;
-use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
-fn last_event() -> Event {
+fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event
 }
 
@@ -39,7 +40,7 @@ fn mints_after_handling_ethereum_event() {
         );
 
         assert_eq!(
-            Event::EthApp(crate::Event::<Test>::Minted(
+            RuntimeEvent::EthApp(crate::Event::<Test>::Minted(
                 BASE_NETWORK_ID,
                 sender,
                 recipient,
@@ -83,14 +84,14 @@ fn burn_should_emit_bridge_event() {
         assert_ok!(Assets::mint_to(&XOR, &bob, &bob, balance!(500)));
 
         assert_ok!(EthApp::burn(
-            Origin::signed(bob.clone()),
+            RuntimeOrigin::signed(bob.clone()),
             BASE_NETWORK_ID,
             recipient.clone(),
             amount.into()
         ));
 
         assert_eq!(
-            Event::EthApp(crate::Event::<Test>::Burned(
+            RuntimeEvent::EthApp(crate::Event::<Test>::Burned(
                 BASE_NETWORK_ID,
                 bob,
                 recipient,
@@ -117,7 +118,7 @@ fn should_not_burn_on_commitment_failure() {
 
         assert_noop!(
             EthApp::burn(
-                Origin::signed(sender.clone()),
+                RuntimeOrigin::signed(sender.clone()),
                 BASE_NETWORK_ID,
                 recipient.clone(),
                 amount
@@ -136,7 +137,7 @@ fn should_not_burn_zero_amount() {
 
         assert_noop!(
             EthApp::burn(
-                Origin::signed(sender.clone()),
+                RuntimeOrigin::signed(sender.clone()),
                 BASE_NETWORK_ID,
                 recipient.clone(),
                 amount
@@ -151,7 +152,7 @@ fn test_register_network() {
     new_tester().execute_with(|| {
         assert!(!Addresses::<Test>::contains_key(BASE_NETWORK_ID + 1));
         assert_ok!(EthApp::register_network_with_existing_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             BASE_NETWORK_ID + 1,
             XOR,
             H160::repeat_byte(12)
@@ -166,7 +167,7 @@ fn test_existing_register_network() {
         assert!(Addresses::<Test>::contains_key(BASE_NETWORK_ID));
         assert_noop!(
             EthApp::register_network_with_existing_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 BASE_NETWORK_ID,
                 XOR,
                 H160::repeat_byte(12)

@@ -31,11 +31,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use bridge_types::{H160, U256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
-use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -74,12 +74,12 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + permissions::Config + technical::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<
-            Self::Origin,
+            Self::RuntimeOrigin,
             Success = CallOriginOutput<EthNetworkId, H160, H256>,
         >;
 

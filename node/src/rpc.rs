@@ -47,7 +47,9 @@ use std::sync::Arc;
 /// A type representing all RPC extensions.
 pub type RpcExtension = RpcModule<()>;
 
-use beefy_gadget::notification::{BeefyBestBlockStream, BeefyVersionedFinalityProofStream};
+use beefy_gadget::communication::notification::{
+    BeefyBestBlockStream, BeefyVersionedFinalityProofStream,
+};
 /// Dependencies for BEEFY
 pub struct BeefyDeps {
     /// Receives notifications about finality proof events from BEEFY.
@@ -136,7 +138,11 @@ where
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: BlockBuilder<Block>,
-    C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
+    C::Api: pallet_mmr_rpc::MmrRuntimeApi<
+        Block,
+        <Block as sp_runtime::traits::Block>::Hash,
+        <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
+    >,
     C::Api: beefy_primitives::BeefyApi<Block>,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,

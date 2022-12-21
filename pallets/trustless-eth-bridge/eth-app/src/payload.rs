@@ -3,6 +3,7 @@
 use codec::Encode;
 use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 use crate::Config;
 use bridge_types::{H160, U256};

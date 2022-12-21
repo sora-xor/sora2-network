@@ -44,13 +44,13 @@ fn transfer_passes_unsigned() {
     ExtBuilder::build().execute_with(|| {
         // Receive the Limit in two transfers
         assert_ok!(Pallet::transfer(
-            Origin::none(),
+            RuntimeOrigin::none(),
             XOR,
             bob(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
         ));
         assert_ok!(Pallet::transfer(
-            Origin::none(),
+            RuntimeOrigin::none(),
             XOR,
             bob(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
@@ -71,13 +71,13 @@ fn transfer_passes_native_currency() {
     ExtBuilder::build().execute_with(|| {
         // Receive the Limit in two transfers
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
         ));
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
@@ -98,7 +98,7 @@ fn transfer_passes_native_currency() {
 fn transfer_passes_multiple_assets() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             Pallet::transfer_limit()
@@ -114,7 +114,7 @@ fn transfer_passes_multiple_assets() {
         );
 
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             VAL,
             bob(),
             Pallet::transfer_limit()
@@ -135,14 +135,14 @@ fn transfer_passes_multiple_assets() {
 fn transfer_passes_after_limit_is_reset() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             Pallet::transfer_limit()
         ));
         System::set_block_number(14401);
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             (Pallet::transfer_limit() * FixedWrapper::from(0.5)).into_balance()
@@ -164,7 +164,7 @@ fn transfer_fails_with_asset_not_supported() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
             Pallet::transfer(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
                 bob(),
                 Pallet::transfer_limit()
@@ -178,14 +178,14 @@ fn transfer_fails_with_asset_not_supported() {
 fn transfer_fails_with_amount_above_limit() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             Pallet::transfer_limit(),
         ));
         assert_noop!(
             Pallet::transfer(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 XOR,
                 bob(),
                 (Pallet::transfer_limit() * FixedWrapper::from(2.0)).into_balance()
@@ -199,14 +199,14 @@ fn transfer_fails_with_amount_above_limit() {
 fn transfer_fails_with_not_enough_reserves() {
     ExtBuilder::build().execute_with(|| {
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             Pallet::transfer_limit()
         ));
         assert_noop!(
             Pallet::transfer(
-                Origin::signed(bob()),
+                RuntimeOrigin::signed(bob()),
                 XOR,
                 alice(),
                 Pallet::transfer_limit()
@@ -221,12 +221,12 @@ fn limit_increase_works() {
     ExtBuilder::build().execute_with(|| {
         // Set new limit
         let new_limit = (FixedWrapper::from(1.3) * DEFAULT_LIMIT).into_balance();
-        assert_ok!(Pallet::update_limit(Origin::root(), new_limit));
+        assert_ok!(Pallet::update_limit(RuntimeOrigin::root(), new_limit));
         assert_eq!(Pallet::transfer_limit(), new_limit);
 
         // Try to transfer assets
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             new_limit
@@ -239,16 +239,16 @@ fn limit_decrease_works() {
     ExtBuilder::build().execute_with(|| {
         // Set new limit
         let new_limit = (FixedWrapper::from(0.3) * DEFAULT_LIMIT).into_balance();
-        assert_ok!(Pallet::update_limit(Origin::root(), new_limit,));
+        assert_ok!(Pallet::update_limit(RuntimeOrigin::root(), new_limit,));
         assert_eq!(Pallet::transfer_limit(), new_limit);
 
         // Try to transfer assets
         assert_noop!(
-            Pallet::transfer(Origin::signed(alice()), XOR, bob(), DEFAULT_LIMIT),
+            Pallet::transfer(RuntimeOrigin::signed(alice()), XOR, bob(), DEFAULT_LIMIT),
             crate::Error::<Runtime>::AmountAboveLimit
         );
         assert_ok!(Pallet::transfer(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             XOR,
             bob(),
             new_limit,

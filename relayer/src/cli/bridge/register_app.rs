@@ -76,7 +76,7 @@ impl Command {
         }
         let call = match &self.apps {
             Apps::ERC20App { contract } => {
-                runtime::runtime_types::framenode_runtime::Call::ERC20App(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::ERC20App(
                 runtime::runtime_types::erc20_app::pallet::Call::register_erc20_app {
                     network_id,
                     contract: *contract,
@@ -84,7 +84,7 @@ impl Command {
             )
             }
             Apps::NativeApp { contract } => {
-                runtime::runtime_types::framenode_runtime::Call::ERC20App(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::ERC20App(
                 runtime::runtime_types::erc20_app::pallet::Call::register_native_app {
                     network_id,
                     contract: *contract,
@@ -92,7 +92,7 @@ impl Command {
             )
             }
             Apps::EthAppPredefined { contract } => {
-                runtime::runtime_types::framenode_runtime::Call::EthApp(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: *contract,
@@ -101,7 +101,7 @@ impl Command {
             )
             }
             Apps::EthAppNew { contract, name, symbol, decimals } => {
-                runtime::runtime_types::framenode_runtime::Call::EthApp(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network {
                     network_id,
                     contract: *contract,
@@ -112,7 +112,7 @@ impl Command {
             )
             }
             Apps::EthAppExisting { contract, asset_id } => {
-                runtime::runtime_types::framenode_runtime::Call::EthApp(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network_with_existing_asset {
                     network_id,
                     contract: *contract,
@@ -121,7 +121,7 @@ impl Command {
             )
             }
             Apps::MigrationApp { contract } => {
-                runtime::runtime_types::framenode_runtime::Call::MigrationApp(
+                runtime::runtime_types::framenode_runtime::RuntimeCall::MigrationApp(
                 runtime::runtime_types::migration_app::pallet::Call::register_network {
                     network_id,
                     contract: *contract,

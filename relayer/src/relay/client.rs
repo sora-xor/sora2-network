@@ -105,7 +105,7 @@ impl RuntimeClient for SubstrateRuntimeClient {
             )
             .await?
             .ok_or(anyhow!("Error to get latest beefy block"))?;
-        Ok(latest_beefy_block as u64)
+        Ok(latest_beefy_block)
     }
 
     async fn current_validator_set(&self) -> AnyResult<ValidatorSet> {

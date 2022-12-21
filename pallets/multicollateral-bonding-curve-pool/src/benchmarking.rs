@@ -57,9 +57,9 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -68,7 +68,8 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::assign_permission(
@@ -175,7 +176,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::PoolInitialized(common::DEXId::Polkaswap.into(), USDT.into()).into())
     }
 
     set_reference_asset {
@@ -206,7 +207,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::ReferenceAssetChanged(USDT.into()).into())
+        assert_last_event::<T>(Event::<T>::ReferenceAssetChanged(USDT.into()).into())
     }
 
     set_optional_reward_multiplier {
@@ -240,7 +241,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
+        assert_last_event::<T>(Event::<T>::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
     }
 
     on_initialize {
@@ -270,7 +271,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::PriceChangeConfigChanged(balance!(12), balance!(2600)).into());
+        assert_last_event::<T>(Event::<T>::PriceChangeConfigChanged(balance!(12), balance!(2600)).into());
         assert_eq!(PriceChangeRate::<T>::get(), FixedWrapper::from(balance!(12)).get().unwrap());
         assert_eq!(PriceChangeStep::<T>::get(), FixedWrapper::from(balance!(2600)).get().unwrap());
     }
@@ -292,7 +293,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::PriceBiasChanged(balance!(253)).into());
+        assert_last_event::<T>(Event::<T>::PriceBiasChanged(balance!(253)).into());
         assert_eq!(InitialPrice::<T>::get(), FixedWrapper::from(balance!(253)).get().unwrap());
     }
 

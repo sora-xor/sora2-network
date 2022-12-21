@@ -44,6 +44,7 @@ pub mod prelude {
     pub use http::Uri;
     pub use parachain_gen::parachain_runtime;
     pub use serde::{Deserialize, Serialize};
+    pub use sp_runtime::traits::Hash;
     pub use substrate_gen::runtime;
     pub use url::Url;
 }

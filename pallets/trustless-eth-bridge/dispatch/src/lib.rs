@@ -1,16 +1,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
+use frame_support::dispatch::{DispatchResult, Dispatchable, GetDispatchInfo, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
-use frame_support::weights::GetDispatchInfo;
 
 use sp_core::RuntimeDebug;
 
 use sp_std::prelude::*;
 
 use bridge_types::traits;
-
 use bridge_types::H256;
+
 use codec::{Decode, Encode};
 
 #[derive(
@@ -88,7 +87,8 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config<I: 'static = ()>: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self, I>>
+            + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The Id of the network (i.e. Ethereum network id).
         type NetworkId;
@@ -99,7 +99,7 @@ pub mod pallet {
         type OriginOutput: traits::OriginOutput<Self::NetworkId, Self::Source>;
 
         /// The overarching origin type.
-        type Origin: From<RawOrigin<Self::NetworkId, Self::Source, Self::OriginOutput>>;
+        type RuntimeOrigin: From<RawOrigin<Self::NetworkId, Self::Source, Self::OriginOutput>>;
 
         /// Id of the message. Whenever message is passed to the dispatch module, it emits
         /// event with this id + dispatch result.
@@ -108,16 +108,16 @@ pub mod pallet {
         type Hashing: Hash<Output = H256>;
 
         /// The overarching dispatch call type.
-        type Call: Parameter
+        type RuntimeCall: Parameter
             + GetDispatchInfo
             + Dispatchable<
-                Origin = <Self as Config<I>>::Origin,
+                RuntimeOrigin = <Self as Config<I>>::RuntimeOrigin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
             >;
 
         /// The pallet will filter all incoming calls right before they're dispatched. If this filter
         /// rejects the call, special event (`Event::MessageRejected`) is emitted.
-        type CallFilter: Contains<<Self as Config<I>>::Call>;
+        type CallFilter: Contains<<Self as Config<I>>::RuntimeCall>;
     }
 
     #[pallet::hooks]
@@ -153,7 +153,7 @@ pub mod pallet {
             timestamp: u64,
             payload: &[u8],
         ) {
-            let call = match <T as Config>::Call::decode(&mut &payload[..]) {
+            let call = match <T as Config>::RuntimeCall::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(message_id));
@@ -184,8 +184,9 @@ pub mod pallet {
         #[cfg(feature = "runtime-benchmarks")]
         fn successful_dispatch_event(
             id: T::MessageId,
-        ) -> Option<<T as frame_system::Config>::Event> {
-            let event: <T as Config>::Event = Event::<T>::MessageDispatched(id, Ok(())).into();
+        ) -> Option<<T as frame_system::Config>::RuntimeEvent> {
+            let event: <T as Config>::RuntimeEvent =
+                Event::<T>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
     }
@@ -196,12 +197,11 @@ mod tests {
     use super::*;
     use bridge_types::traits::MessageDispatch as _;
     use bridge_types::types;
-    use bridge_types::{EthNetworkId, H160};
+    use bridge_types::{EthNetworkId, H160, H256};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
     use frame_system::{EventRecord, Phase};
-    use sp_core::H256;
     use sp_runtime::testing::Header;
     use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Keccak256};
 
@@ -228,16 +228,16 @@ mod tests {
     }
 
     impl frame_system::Config for Test {
-        type Origin = Origin;
+        type RuntimeOrigin = RuntimeOrigin;
         type Index = u64;
-        type Call = Call;
+        type RuntimeCall = RuntimeCall;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
         type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type BlockHashCount = BlockHashCount;
         type Version = ();
         type PalletInfo = PalletInfo;
@@ -255,24 +255,24 @@ mod tests {
     }
 
     pub struct CallFilter;
-    impl frame_support::traits::Contains<Call> for CallFilter {
-        fn contains(call: &Call) -> bool {
+    impl frame_support::traits::Contains<RuntimeCall> for CallFilter {
+        fn contains(call: &RuntimeCall) -> bool {
             match call {
-                Call::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
                 _ => false,
             }
         }
     }
 
     impl dispatch::Config for Test {
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type NetworkId = EthNetworkId;
         type Source = H160;
         type OriginOutput = types::CallOriginOutput<EthNetworkId, H160, H256>;
-        type Origin = Origin;
+        type RuntimeOrigin = RuntimeOrigin;
         type MessageId = types::MessageId;
         type Hashing = Keccak256;
-        type Call = Call;
+        type RuntimeCall = RuntimeCall;
         type CallFilter = CallFilter;
     }
 
@@ -290,7 +290,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -300,7 +300,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDispatched(
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(
                         id,
                         Err(DispatchError::BadOrigin)
                     )),
@@ -325,7 +325,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
                     topics: vec![],
                 }],
             );
@@ -339,7 +339,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -349,7 +349,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageRejected(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageRejected(id)),
                     topics: vec![],
                 }],
             );

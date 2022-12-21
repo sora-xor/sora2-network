@@ -96,11 +96,17 @@ fn test_share_manage_dex_permission_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Private,
+        );
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
         permissions::Pallet::<Runtime>::grant_permission_with_scope(
             BOB,
@@ -109,11 +115,17 @@ fn test_share_manage_dex_permission_should_pass() {
             permissions::Scope::Limited(hash(&DEX_A_ID)),
         )
         .expect("Failed to transfer permission.");
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
     })
 }
@@ -149,11 +161,17 @@ fn test_own_multiple_dexes_should_pass() {
     }
     .build();
     ext.execute_with(|| {
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_B_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_B_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
     })
 }
@@ -175,27 +193,39 @@ fn test_can_manage_on_private_dex_should_pass() {
     .build();
     ext.execute_with(|| {
         // owner has full access
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Public,
+        );
         assert_ok!(result);
 
         // another account has no access
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Public,
+        );
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
 
         // sudo account is not handled
         let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -217,27 +247,39 @@ fn test_can_manage_on_public_dex_should_pass() {
     .build();
     ext.execute_with(|| {
         // owner has full access
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Private,
+        );
         assert_ok!(result);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(ALICE),
+            ManagementMode::Public,
+        );
         assert_ok!(result);
 
         // another account has only access in public mode
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Private,
+        );
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
-        let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
+        let result = DEXPallet::ensure_can_manage(
+            &DEX_A_ID,
+            RuntimeOrigin::signed(BOB),
+            ManagementMode::Public,
+        );
         assert_ok!(result);
 
         // sudo account is not handled
         let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
+            DEXPallet::ensure_can_manage(&DEX_A_ID, RuntimeOrigin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -317,11 +359,19 @@ fn test_queries_for_nonexistant_dex_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private),
+            DEXPallet::ensure_can_manage(
+                &DEX_A_ID,
+                RuntimeOrigin::signed(ALICE),
+                ManagementMode::Private
+            ),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            DEXPallet::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public),
+            DEXPallet::ensure_can_manage(
+                &DEX_A_ID,
+                RuntimeOrigin::signed(ALICE),
+                ManagementMode::Public
+            ),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(

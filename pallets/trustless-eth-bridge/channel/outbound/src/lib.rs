@@ -2,15 +2,17 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_types::{H160, H256, U256};
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use sp_core::{RuntimeDebug, H160, H256, U256};
+use sp_core::RuntimeDebug;
 use sp_io::offchain_index;
 use sp_runtime::traits::Hash;
 use sp_std::prelude::*;
+use sp_std::vec;
 use traits::MultiCurrency;
 
 use bridge_types::types::MessageNonce;
@@ -75,7 +77,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Prefix for offchain storage keys.
         const INDEXING_PREFIX: &'static [u8];

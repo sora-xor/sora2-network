@@ -407,7 +407,7 @@ pub mod pallet {
         + dex_manager::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>

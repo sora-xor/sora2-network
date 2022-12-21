@@ -32,20 +32,22 @@ use frame_support::parameter_types;
 use frame_support::weights::constants::{
     BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
 };
-use frame_support::weights::{DispatchClass, Pays, Weight};
+use frame_support::weights::Weight;
 use frame_system::limits;
 use sp_arithmetic::Perbill;
 use sp_std::marker::PhantomData;
 
 use crate::primitives::Balance;
-use frame_support::dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo};
+use frame_support::dispatch::{
+    DispatchClass, DispatchErrorWithPostInfo, DispatchResultWithPostInfo, Pays,
+};
 use sp_runtime::DispatchError;
 
 pub mod constants {
     use crate::{balance, Balance};
     use frame_support::weights::Weight;
 
-    pub const EXTRINSIC_FIXED_WEIGHT: Weight = 100_000_000;
+    pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(100_000_000);
     pub const SMALL_FEE: Balance = balance!(0.0007);
     pub const BIG_FEE: Balance = balance!(0.007);
 }
@@ -56,7 +58,7 @@ pub struct PresetWeightInfo<T>(PhantomData<T>);
 /// by  Operational  extrinsics.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
-const MAXIMUM_BLOCK_WEIGHT: Weight = 2 * WEIGHT_PER_SECOND;
+const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_mul(2).set_proof_size(2);
 pub const ON_INITIALIZE_RATIO: Perbill = Perbill::from_perthousand(20);
 
 parameter_types! {

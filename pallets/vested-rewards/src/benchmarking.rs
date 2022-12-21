@@ -158,7 +158,7 @@ benchmarks! {
     }
 
     set_asset_pair {
-        let origin = T::Origin::root();
+        let origin = T::RuntimeOrigin::root();
     }: {
         Pallet::<T>::set_asset_pair(origin, XOR.into(), ETH.into(), true).unwrap();
     }

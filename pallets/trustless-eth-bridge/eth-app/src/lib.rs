@@ -24,12 +24,12 @@ use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
-use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 use bridge_types::traits::OutboundChannel;
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H160, U256};
 
 mod payload;
 use payload::OutboundPayload;
@@ -92,12 +92,12 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + permissions::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 
         type CallOrigin: EnsureOrigin<
-            Self::Origin,
+            Self::RuntimeOrigin,
             Success = CallOriginOutput<EthNetworkId, H160, H256>,
         >;
 

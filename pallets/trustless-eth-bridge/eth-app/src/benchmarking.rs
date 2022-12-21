@@ -2,12 +2,12 @@
 use super::*;
 
 use bridge_types::types::CallOriginOutput;
+use bridge_types::{H160, H256};
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
-use sp_core::{H160, H256};
 use traits::MultiCurrency;
 
 pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
@@ -16,7 +16,7 @@ pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
 use crate::Pallet as ETHApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::Origin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
+    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EthNetworkId, H160, CallOriginOutput<EthNetworkId, H160, H256>>>}
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic

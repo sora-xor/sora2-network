@@ -61,16 +61,11 @@ impl RelayBuilder {
                 .expect("inbound channel address is needed"),
             eth.inner(),
         );
-        let beefy_start_block = sub
-            .beefy_start_block()
-            .await
-            .context("fetch beefy_start_block")?;
         Ok(Relay {
             chain_id: eth.inner().get_chainid().await?,
             sub,
             eth,
             beefy,
-            beefy_start_block,
             inbound_channel,
             lost_gas: Default::default(),
             successful_sent: Default::default(),
@@ -85,7 +80,6 @@ pub struct Relay {
     eth: EthSignedClient,
     beefy: BeefyLightClient<SignedClientInner>,
     inbound_channel: InboundChannel<SignedClientInner>,
-    beefy_start_block: u64,
     chain_id: EthNetworkId,
     lost_gas: Arc<AtomicU64>,
     successful_sent: Arc<AtomicU64>,
@@ -197,7 +191,7 @@ impl Relay {
 
     async fn send_messages_from_block(
         &self,
-        block_number: u64,
+        block_number: u32,
         latest_hash: H256,
     ) -> AnyResult<()> {
         let block_hash = self
@@ -223,7 +217,7 @@ impl Relay {
         debug!("Digest hash: {}", digest_hash);
         let LeafProof { leaf, proof, .. } = self
             .sub
-            .mmr_generate_proof(block_number - self.beefy_start_block, Some(latest_hash))
+            .mmr_generate_proof(block_number, Some(latest_hash))
             .await?;
         let leaf_encoded = hex::encode(&leaf.encode());
         debug!("Leaf: {}", leaf_encoded);
@@ -316,7 +310,7 @@ impl Relay {
 
     pub async fn handle_complete_commitment_success(self) -> AnyResult<()> {
         self.successful_sent.fetch_add(1, Ordering::Relaxed);
-        let latest_block = self.beefy.latest_beefy_block().call().await? as u64;
+        let latest_block = self.beefy.latest_beefy_block().call().await? as u32;
         let latest_hash = self
             .sub
             .api()
@@ -338,7 +332,7 @@ impl Relay {
         messages_total_gas.saturating_add(260000.into())
     }
 
-    pub async fn find_start_block(&self, mut block_number: u64) -> AnyResult<u64> {
+    pub async fn find_start_block(&self, mut block_number: u32) -> AnyResult<u32> {
         let channel_interval = self
             .sub
             .api()
@@ -347,10 +341,10 @@ impl Relay {
                 &runtime::storage().bridge_outbound_channel().interval(),
                 None,
             )
-            .await? as u64;
+            .await?;
         let chain_mod = self.chain_id % channel_interval;
         while block_number > 0 {
-            if block_number % channel_interval == chain_mod.as_u64()
+            if block_number % channel_interval == chain_mod.as_u32()
                 && !self.check_new_messages(block_number - 1).await?
             {
                 break;
@@ -360,7 +354,7 @@ impl Relay {
         Ok(block_number)
     }
 
-    pub async fn check_new_messages(&self, block_number: u64) -> AnyResult<bool> {
+    pub async fn check_new_messages(&self, block_number: u32) -> AnyResult<bool> {
         let channel_nonce = self.inbound_channel.nonce().call().await?;
         let block_hash = self
             .sub
@@ -522,7 +516,7 @@ impl Relay {
             let latest_block = self.beefy.latest_beefy_block().call().await?;
 
             let has_messages = self
-                .check_new_messages((justification.commitment.block_number - 1) as u64)
+                .check_new_messages(justification.commitment.block_number - 1)
                 .await?;
 
             let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;

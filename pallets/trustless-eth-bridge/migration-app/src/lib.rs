@@ -18,11 +18,10 @@
 
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
-use sp_core::H160;
 use sp_std::prelude::*;
 
 use bridge_types::traits::OutboundChannel;
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H160};
 
 mod payload;
 use payload::MigrateErc20Payload;
@@ -45,13 +44,13 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn burn() -> Weight {
-        0
+        Weight::zero()
     }
     fn mint() -> Weight {
-        0
+        Weight::zero()
     }
     fn register_network() -> Weight {
-        0
+        Weight::zero()
     }
 }
 
@@ -76,7 +75,7 @@ pub mod pallet {
         + erc20_app::Config
         + eth_app::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<Self::AccountId>;
 

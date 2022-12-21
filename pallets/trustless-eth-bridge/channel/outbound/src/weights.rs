@@ -9,18 +9,18 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn on_initialize(_: u32, _: u32) -> Weight {
-        0
+        Weight::zero()
     }
     fn on_initialize_non_interval() -> Weight {
-        0
+        Weight::zero()
     }
     fn on_initialize_no_messages() -> Weight {
-        0
+        Weight::zero()
     }
     fn set_fee() -> Weight {
-        0
+        Weight::zero()
     }
     fn register_channel() -> Weight {
-        0
+        Weight::zero()
     }
 }

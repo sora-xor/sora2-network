@@ -39,7 +39,7 @@ use sp_runtime::{FixedPointNumber, FixedU128};
 fn set_weight_to_fee_multiplier(mul: u64) {
     // Set WeightToFee multiplier to one to not affect the test
     assert_ok!(XorFee::update_multiplier(
-        Origin::root(),
+        RuntimeOrigin::root(),
         FixedU128::saturating_from_integer(mul)
     ));
 }
@@ -49,10 +49,22 @@ fn weight_to_fee_works() {
     let mut ext = ExtBuilder::build();
     ext.execute_with(|| {
         set_weight_to_fee_multiplier(1);
-        assert_eq!(XorFee::weight_to_fee(&100_000_000_000), balance!(0.7));
-        assert_eq!(XorFee::weight_to_fee(&500_000_000), balance!(0.0035));
-        assert_eq!(XorFee::weight_to_fee(&72_000_000), balance!(0.000504));
-        assert_eq!(XorFee::weight_to_fee(&210_200_000_000), balance!(1.4714));
+        assert_eq!(
+            XorFee::weight_to_fee(&Weight::from_ref_time(100_000_000_000)),
+            balance!(0.7)
+        );
+        assert_eq!(
+            XorFee::weight_to_fee(&Weight::from_ref_time(500_000_000)),
+            balance!(0.0035)
+        );
+        assert_eq!(
+            XorFee::weight_to_fee(&Weight::from_ref_time(72_000_000)),
+            balance!(0.000504)
+        );
+        assert_eq!(
+            XorFee::weight_to_fee(&Weight::from_ref_time(210_200_000_000)),
+            balance!(1.4714)
+        );
     });
 }
 
@@ -60,7 +72,7 @@ fn weight_to_fee_works() {
 fn weight_to_fee_does_not_underflow() {
     let mut ext = ExtBuilder::build();
     ext.execute_with(|| {
-        assert_eq!(XorFee::weight_to_fee(&0), 0);
+        assert_eq!(XorFee::weight_to_fee(&Weight::zero()), 0);
     });
 }
 
@@ -70,7 +82,7 @@ fn weight_to_fee_does_not_overflow() {
     ext.execute_with(|| {
         set_weight_to_fee_multiplier(1);
         assert_eq!(
-            XorFee::weight_to_fee(&Weight::max_value()),
+            XorFee::weight_to_fee(&Weight::MAX),
             129127208515966861305000000
         );
     });
@@ -93,12 +105,12 @@ fn non_root_update_fails() {
         // We allow only root
 
         assert_noop!(
-            XorFee::update_multiplier(Origin::signed(1), FixedU128::from(3)),
+            XorFee::update_multiplier(RuntimeOrigin::signed(1), FixedU128::from(3)),
             BadOrigin
         );
 
         assert_noop!(
-            XorFee::update_multiplier(Origin::none(), FixedU128::from(3)),
+            XorFee::update_multiplier(RuntimeOrigin::none(), FixedU128::from(3)),
             BadOrigin
         );
     });

@@ -4,11 +4,10 @@
 
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::{Message, MessageId};
-use bridge_types::EthNetworkId;
+use bridge_types::{EthNetworkId, H160, H256, U256};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use sp_core::{H160, H256, U256};
 use sp_runtime::traits::Hash;
 use sp_std::convert::TryFrom;
 
@@ -49,7 +48,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Verifier module for message verification.
         type Verifier: Verifier<Result = (Log, u64)>;

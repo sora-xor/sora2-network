@@ -30,16 +30,13 @@
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use core::marker::PhantomData;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap() -> Weight {
-        (298_129_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+        Weight::zero()
     }
 }
 

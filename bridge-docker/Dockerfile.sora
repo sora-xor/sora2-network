@@ -14,6 +14,7 @@ RUN apt-get update && \
     ca-certificates apt-transport-https gnupg \
     libssl-dev pkg-config \
     curl jq \
+    protobuf-compiler \
     git binaryen \
     make cmake libssl-dev \
     software-properties-common && \

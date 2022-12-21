@@ -46,6 +46,7 @@ use frame_system::ensure_signed;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
@@ -1389,7 +1390,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + trading_pair::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityRegistry: LiquidityRegistry<
             Self::DEXId,
             Self::AccountId,
