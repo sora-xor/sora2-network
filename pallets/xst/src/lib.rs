@@ -51,7 +51,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, RewardReason, DAI, XSTUSD,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, RewardReason, DAI,
+    XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -512,8 +513,10 @@ impl<T: Config> Pallet<T> {
         synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-        let main_asset_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
-        let synthetic_asset_price: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
+        let main_asset_price: FixedWrapper =
+            Self::reference_price(main_asset_id, PriceVariant::Buy)?.into();
+        let synthetic_asset_price: FixedWrapper =
+            Self::reference_price(synthetic_asset_id, PriceVariant::Sell)?.into();
 
         match quantity {
             // Input target amount of synthetic asset (e.g. XSTUSD) to get some synthetic base asset (e.g. XST)
@@ -556,8 +559,10 @@ impl<T: Config> Pallet<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
-        let main_asset_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
-        let synthetic_asset_price: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
+        let main_asset_price: FixedWrapper =
+            Self::reference_price(main_asset_id, PriceVariant::Sell)?.into();
+        let synthetic_asset_price: FixedWrapper =
+            Self::reference_price(synthetic_asset_id, PriceVariant::Buy)?.into();
 
         match quantity {
             // Sell desired amount of synthetic base asset (e.g. XST) for some synthetic asset (e.g. XSTUSD)
@@ -803,7 +808,10 @@ impl<T: Config> Pallet<T> {
     /// The reference token here is expected to be DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
-    fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+    fn reference_price(
+        asset_id: &T::AssetId,
+        price_variant: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         let synthetic_base_asset_id = T::GetSyntheticBaseAssetId::get();
 
@@ -812,13 +820,15 @@ impl<T: Config> Pallet<T> {
             id if id == &XSTUSD.into() || id == &reference_asset_id => Ok(balance!(1)),
             id if id == &synthetic_base_asset_id => {
                 // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
-                T::PriceToolsPallet::get_average_price(id, &reference_asset_id).map(|avg| {
-                    if reference_asset_id == DAI.into() {
-                        avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
-                    } else {
-                        avg
-                    }
-                })
+                T::PriceToolsPallet::get_average_price(id, &reference_asset_id, price_variant).map(
+                    |avg| {
+                        if reference_asset_id == DAI.into() {
+                            avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
+                        } else {
+                            avg
+                        }
+                    },
+                )
             }
             id => {
                 let symbol = EnabledSynthetics::<T>::get(id)
@@ -829,7 +839,7 @@ impl<T: Config> Pallet<T> {
                 ));
                 // Just for convenience. Right now will always return 1.
                 let reference_asset_price =
-                    FixedWrapper::from(Self::reference_price(&reference_asset_id)?);
+                    FixedWrapper::from(Self::reference_price(&reference_asset_id, price_variant)?);
                 (price / reference_asset_price)
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -966,9 +976,10 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(synthetic_base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper =
+            Self::reference_price(synthetic_base_asset, PriceVariant::Buy)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Sell)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -979,9 +990,10 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(synthetic_base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper =
+            Self::reference_price(synthetic_base_asset, PriceVariant::Sell)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Buy)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;

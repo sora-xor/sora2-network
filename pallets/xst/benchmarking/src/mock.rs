@@ -33,7 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, PriceVariant, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -525,6 +526,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Ok(Self::inner_quote(
             &DEXId::Polkaswap.into(),
