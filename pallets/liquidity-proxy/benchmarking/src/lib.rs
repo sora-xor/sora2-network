@@ -35,7 +35,7 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DAI,
+    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, PriceVariant, DAI,
     DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::{benchmarks, Zero};
@@ -263,7 +263,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     for _ in 0..price_tools::AVG_BLOCK_SPAN {
-        price_tools::Pallet::<T>::average_prices_calculation_routine();
+        price_tools::Pallet::<T>::average_prices_calculation_routine(PriceVariant::Buy);
+        price_tools::Pallet::<T>::average_prices_calculation_routine(PriceVariant::Sell);
     }
 
     Ok(())
