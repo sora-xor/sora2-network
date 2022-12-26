@@ -66,6 +66,7 @@ impl SubstrateCli for Cli {
             "staging-coded" => Some(framenode_chain_spec::staging_net_coded(false)),
             "bridge-staging" => Some(framenode_chain_spec::bridge_staging_net()?),
             "bridge-staging-coded" => Some(framenode_chain_spec::bridge_staging_net_coded()),
+            "bridge-dev" => Some(framenode_chain_spec::bridge_dev_net_coded()),
             _ => None,
         };
 
