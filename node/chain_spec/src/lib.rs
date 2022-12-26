@@ -623,7 +623,7 @@ fn bonding_curve_distribution_accounts(
 }
 
 #[cfg(feature = "private-net")]
-pub fn local_testnet_config() -> ChainSpec {
+pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -646,7 +646,10 @@ pub fn local_testnet_config() -> ChainSpec {
                     /*
                     authority_keys_from_seed("Treasury"),
                     */
-                ],
+                ]
+                .into_iter()
+                .take(initial_authorities)
+                .collect(),
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
                     hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
@@ -657,6 +660,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -692,7 +696,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                3,
+                validator_count,
             )
         },
         vec![],

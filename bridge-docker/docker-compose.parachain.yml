@@ -34,9 +34,9 @@ services:
         condition: service_completed_successfully
     command: ["relayer",
         "--substrate-url", "ws://bridge-sora-alice:9944",
-        "--substrate-key", "//Bob",
+        "--substrate-key", "//Relayer",
         "--parachain-url", "ws://bridge-parachain-alice:9844",
-        "--parachain-key", "//Bob",
+        "--parachain-key", "//Relayer",
         "bridge", "relay", "sora-to-parachain", "-s"
       ]
     networks:
@@ -56,9 +56,9 @@ services:
         condition: service_completed_successfully
     command: ["relayer",
         "--substrate-url", "ws://bridge-sora-alice:9944",
-        "--substrate-key", "//Bob",
+        "--substrate-key", "//Relayer",
         "--parachain-url", "ws://bridge-parachain-alice:9844",
-        "--parachain-key", "//Bob",
+        "--parachain-key", "//Relayer",
         "bridge", "relay", "parachain-to-sora", "-s"
       ]
     networks:
