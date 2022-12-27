@@ -1,13 +1,44 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::prelude::*;
-use crate::substrate::{BeefyCommitment, BeefySignedCommitment, LeafProof};
+use crate::substrate::{BeefyCommitment, BeefySignedCommitment, BlockHash, LeafProof};
 use beefy_primitives::crypto::Signature;
 use beefy_primitives::SignedCommitment;
 use bridge_common::bitfield::BitField;
 use codec::Encode;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
-use sp_runtime::traits::Keccak256;
+use sp_runtime::traits::{AtLeast32Bit, Keccak256, UniqueSaturatedInto};
 use sp_runtime::traits::{Convert, Hash as HashTrait};
+use sp_runtime::Saturating;
 
 use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
 
@@ -19,37 +50,47 @@ pub struct MmrPayload {
 }
 
 #[derive(Debug)]
-pub struct BeefyJustification {
-    pub commitment: BeefyCommitment,
+pub struct BeefyJustification<T: subxt::Config> {
+    pub commitment: BeefyCommitment<T>,
     pub commitment_hash: H256,
     pub signatures: Vec<Option<Signature>>,
-    pub num_validators: U256,
-    pub signed_validators: Vec<U256>,
+    pub num_validators: u32,
+    pub signed_validators: Vec<u32>,
     pub validators: Vec<H160>,
-    pub block_hash: H256,
-    pub leaf_proof: LeafProof,
+    pub block_hash: BlockHash<T>,
+    pub leaf_proof: LeafProof<T>,
     pub simplified_proof: Proof<H256>,
     pub payload: MmrPayload,
 }
 
-impl BeefyJustification {
+impl<T: subxt::Config> BeefyJustification<T>
+where
+    T::BlockNumber: AtLeast32Bit + Serialize,
+    T: Clone,
+{
     pub async fn create(
-        sub: SubUnsignedClient,
-        commitment: BeefySignedCommitment,
+        sub: SubUnsignedClient<T>,
+        commitment: BeefySignedCommitment<T>,
     ) -> AnyResult<Self> {
-        let BeefySignedCommitment::V1(SignedCommitment {
+        let BeefySignedCommitment::<T>::V1(SignedCommitment {
             commitment,
             signatures,
         }) = commitment;
+        let commitment_block_number: u64 = commitment.block_number.into();
         let commitment_hash = keccak256(&Encode::encode(&commitment)).into();
-        let num_validators = U256::from(signatures.len());
+        let num_validators = signatures.len() as u32;
         let mut signed_validators = vec![];
-        for (i, signature) in signatures.iter().enumerate() {
+        for (i, signature) in (0u32..).zip(signatures.iter()) {
             if let Some(_) = signature {
-                signed_validators.push(U256::from(i))
+                signed_validators.push(i)
             }
         }
-        let block_hash = sub.block_hash(Some(commitment.block_number - 1)).await?;
+        let block_hash = sub
+            .api()
+            .rpc()
+            .block_hash(Some((commitment_block_number - 1).into()))
+            .await?
+            .expect("Block hash should exist");
         let validators: Vec<H160> = sub
             .api()
             .storage()
@@ -59,7 +100,12 @@ impl BeefyJustification {
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
-        let block_hash = sub.block_hash(Some(commitment.block_number)).await?;
+        let block_hash = sub
+            .api()
+            .rpc()
+            .block_hash(Some(commitment_block_number.into()))
+            .await?
+            .expect("Block hash should exist");
 
         let payload = Self::get_payload(&commitment).ok_or(anyhow!("Payload is not supported"))?;
         let (leaf_proof, simplified_proof) =
@@ -80,19 +126,26 @@ impl BeefyJustification {
     }
 
     pub async fn find_mmr_proof(
-        sub: &SubUnsignedClient,
-        commitment: &BeefyCommitment,
+        sub: &SubUnsignedClient<T>,
+        commitment: &BeefyCommitment<T>,
         root: H256,
-    ) -> AnyResult<(LeafProof, Proof<H256>)> {
-        for block_number in (commitment.block_number.saturating_sub(5)
-            ..=commitment.block_number.saturating_add(1))
-            .rev()
-        {
-            let block_hash = sub.block_hash(Some(block_number)).await?;
+    ) -> AnyResult<(LeafProof<T>, Proof<H256>)> {
+        for block_number in (0u32..=6u32).rev() {
+            let block_number = commitment
+                .block_number
+                .saturating_sub(block_number.into())
+                .saturating_add(1u32.into());
+            let block_hash = sub
+                .api()
+                .rpc()
+                .block_hash(Some(block_number.into().into()))
+                .await?
+                .expect("Block hash should exist");
             let leaf_proof = sub
                 .mmr_generate_proof(block_number, Some(block_hash))
                 .await?;
             let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
+            debug!("Hashed leaf: {:?}", hashed_leaf);
             let proof = convert_to_simplified_mmr_proof(
                 leaf_proof.proof.leaf_index,
                 leaf_proof.proof.leaf_count,
@@ -114,7 +167,7 @@ impl BeefyJustification {
         return Err(anyhow!("Could not find MMR proof"));
     }
 
-    pub fn get_payload(commitment: &BeefyCommitment) -> Option<MmrPayload> {
+    pub fn get_payload(commitment: &BeefyCommitment<T>) -> Option<MmrPayload> {
         commitment
             .payload
             .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
@@ -217,10 +270,7 @@ impl BeefyJustification {
             signatures,
             positions,
             public_keys,
-            public_key_merkle_proofs: public_key_merkle_proofs
-                .into_iter()
-                .map(|x| x.into_iter().map(|x| x.0).collect())
-                .collect(),
+            public_key_merkle_proofs: public_key_merkle_proofs,
             validator_claims_bitfield: initial_bitfield,
         };
         validator_proof
@@ -237,8 +287,8 @@ impl BeefyJustification {
         let leaf_version = (major << 5) + minor;
         let mmr_leaf = ethereum_gen::beefy_light_client::BeefyMMRLeaf {
             version: leaf_version,
-            parent_number: leaf.parent_number_and_hash.0,
-            parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
+            parent_number: leaf.parent_number_and_hash.0.unique_saturated_into(),
+            parent_hash: leaf.parent_number_and_hash.1.as_ref().try_into().unwrap(),
             next_authority_set_id: leaf.beefy_next_authority_set.id,
             next_authority_set_len: leaf.beefy_next_authority_set.len,
             next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
@@ -260,21 +310,19 @@ impl BeefyJustification {
         bridge_common::simplified_mmr_proof::SimplifiedMMRProof,
     )> {
         let LeafProof { leaf, .. } = self.leaf_proof.clone();
-        let (major, minor) = leaf.version.split();
-        let leaf_version = (major << 5) + minor;
+        let parent_hash: [u8; 32] = leaf.parent_number_and_hash.1.as_ref().try_into().unwrap();
         let mmr_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
-            version: leaf_version,
-            parent_number: leaf.parent_number_and_hash.0,
-            parent_hash: leaf.parent_number_and_hash.1.to_fixed_bytes(),
-            next_authority_set_id: leaf.beefy_next_authority_set.id,
-            next_authority_set_len: leaf.beefy_next_authority_set.len,
-            next_authority_set_root: leaf.beefy_next_authority_set.root.to_fixed_bytes(),
-            digest_hash: leaf.leaf_extra.digest_hash.0,
-            random_seed: leaf.leaf_extra.random_seed.0,
+            version: leaf.version,
+            parent_number_and_hash: (
+                leaf.parent_number_and_hash.0.unique_saturated_into(),
+                parent_hash.into(),
+            ),
+            beefy_next_authority_set: leaf.beefy_next_authority_set,
+            leaf_extra: leaf.leaf_extra,
         };
 
         let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-            merkle_proof_items: self.simplified_proof.items.iter().map(|x| x.0).collect(),
+            merkle_proof_items: self.simplified_proof.items.clone(),
             merkle_proof_order_bit_field: self.simplified_proof.order,
         };
         Ok((mmr_leaf, proof))

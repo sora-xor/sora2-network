@@ -31,12 +31,16 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+use super::beefy_syncer::BeefySyncer;
 use super::justification::*;
 use crate::prelude::*;
-use crate::relay::client::RuntimeClient;
+use crate::relay::client::*;
+use crate::substrate::EncodedBeefyCommitment;
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_primitives::VersionedFinalityProof;
 use bridge_common::bitfield::BitField;
+use bridge_types::GenericNetworkId;
+use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
 use subxt::events::StaticEvent;
 use subxt::rpc_params;
 use subxt::tx::TxPayload;
@@ -44,6 +48,7 @@ use subxt::tx::TxPayload;
 pub struct RelayBuilder<S, R> {
     sender: Option<S>,
     receiver: Option<R>,
+    syncer: Option<BeefySyncer>,
 }
 
 impl<S, R> Default for RelayBuilder<S, R> {
@@ -51,6 +56,7 @@ impl<S, R> Default for RelayBuilder<S, R> {
         Self {
             sender: None,
             receiver: None,
+            syncer: None,
         }
     }
 }
@@ -74,14 +80,25 @@ where
         self
     }
 
+    pub fn with_syncer(mut self, syncer: BeefySyncer) -> Self {
+        self.syncer = Some(syncer);
+        self
+    }
+
     pub async fn build(self) -> AnyResult<Relay<S, R>> {
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
+        let syncer = self.syncer.expect("syncer is needed");
+        let sender_network_id = sender.network_id().await?;
+        let latest_beefy_block = receiver.latest_beefy_block(sender_network_id).await?;
+        syncer.update_latest_sent(latest_beefy_block);
         Ok(Relay {
             sender,
             receiver,
             successful_sent: Default::default(),
             failed_to_sent: Default::default(),
+            syncer,
+            sender_network_id,
         })
     }
 }
@@ -92,61 +109,71 @@ pub struct Relay<S, R> {
     receiver: R,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
+    syncer: BeefySyncer,
+    sender_network_id: GenericNetworkId,
 }
 
 impl<S, R> Relay<S, R>
 where
     S: RuntimeClient + Clone,
     R: RuntimeClient + Clone,
+    ConfigOf<R>: Clone,
+    ConfigOf<S>: Clone,
+    BlockNumberOf<S>: AtLeast32Bit + Serialize + From<BlockNumberOf<R>>,
+    BlockNumberOf<R>: AtLeast32Bit + Serialize + From<BlockNumberOf<S>>,
+    // ExtrinsicParamsOf<R>: Default,
+    OtherExtrinsicParamsOf<R>: Default,
+    SignatureOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Signature>,
+    SignerOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Public>
+        + sp_runtime::traits::IdentifyAccount<AccountId = AccountIdOf<R>>,
+    AccountIdOf<R>: Into<AddressOf<R>>,
 {
     async fn create_random_bitfield(
         &self,
         initial_bitfield: BitField,
-        num_validators: u128,
+        num_validators: u32,
     ) -> AnyResult<BitField> {
-        let params = rpc_params![initial_bitfield, num_validators];
-        let random_bitfield = self
-            .receiver
-            .client()
-            .api()
-            .rpc()
-            .request("beefyLightClient_getRandomBitfield", params)
-            .await?;
-        Ok(random_bitfield)
+        if let GenericNetworkId::Sub(network_id) = self.sender_network_id {
+            let params = rpc_params![network_id, initial_bitfield, num_validators];
+            let random_bitfield = self
+                .receiver
+                .client()
+                .api()
+                .rpc()
+                .request("beefyLightClient_getRandomBitfield", params)
+                .await?;
+            Ok(random_bitfield)
+        } else {
+            unimplemented!("Unsupported network id: {:?}", self.sender_network_id);
+        }
     }
 
     async fn submit_signature_commitment(
         &self,
-        justification: &BeefyJustification,
+        justification: &BeefyJustification<S::Config>,
     ) -> AnyResult<impl TxPayload> {
         let initial_bitfield = BitField::create_bitfield(
-            justification
-                .signed_validators
-                .iter()
-                .cloned()
-                .map(|x| x.as_u128())
-                .collect(),
-            justification.num_validators.as_u128(),
+            &justification.signed_validators,
+            justification.num_validators as usize,
         );
 
         let commitment = bridge_common::beefy_types::Commitment {
-            payload_prefix: justification.payload.prefix.clone().into(),
-            payload: justification.payload.mmr_root.into(),
-            payload_suffix: justification.payload.suffix.clone().into(),
-            block_number: justification.commitment.block_number,
+            payload: justification.commitment.payload.clone(),
+            block_number: justification
+                .commitment
+                .block_number
+                .unique_saturated_into(),
             validator_set_id: justification.commitment.validator_set_id,
         };
 
         let random_bitfield = self
-            .create_random_bitfield(
-                initial_bitfield.clone(),
-                justification.num_validators.as_u128(),
-            )
+            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
             .await?;
         let validator_proof = justification.validators_proof_sub(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof_sub()?;
 
         let call = self.receiver.submit_signature_commitment(
+            self.sender_network_id,
             commitment,
             validator_proof,
             latest_mmr_leaf,
@@ -173,30 +200,58 @@ where
         Ok(success_event)
     }
 
-    pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
+    pub async fn send_commitment(
+        self,
+        justification: BeefyJustification<S::Config>,
+    ) -> AnyResult<()> {
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
             .call_with_event::<R::VerificationSuccessful, _>(call)
             .await?;
+        self.syncer
+            .update_latest_sent(justification.commitment.block_number.into());
         Ok(())
     }
 
-    async fn current_block(&self) -> AnyResult<u64> {
+    async fn current_block(&self) -> AnyResult<BlockNumberOf<S>> {
         let current_block_hash = self.sender.client().api().rpc().finalized_head().await?;
         let current_block = self
             .sender
             .client()
             .block_number(Some(current_block_hash))
-            .await? as u64;
+            .await?;
         Ok(current_block)
     }
 
     async fn process_block(&self, block_num: u64) -> AnyResult<()> {
-        let current_validator_set_id = self.receiver.current_validator_set().await?.id;
-        let next_validator_set_id = self.receiver.next_validator_set().await?.id;
-        let block = self.sender.client().block(Some(block_num)).await?;
-        debug!("Check block {:?}", block.block.header.number);
+        let current_validator_set_id = self
+            .receiver
+            .current_validator_set(self.sender_network_id)
+            .await?
+            .id;
+        let next_validator_set_id = self
+            .receiver
+            .next_validator_set(self.sender_network_id)
+            .await?
+            .id;
+        let block_hash = self
+            .sender
+            .client()
+            .api()
+            .rpc()
+            .block_hash(Some(block_num.into()))
+            .await?
+            .expect("block hash should exist");
+        let block = self
+            .sender
+            .client()
+            .api()
+            .rpc()
+            .block(Some(block_hash))
+            .await?
+            .expect("block should exist");
+        debug!("Check block {:?}", block.block.header.number());
         if let Some(justifications) = block.justifications {
             for (engine, justification) in justifications {
                 if &engine == b"BEEF" {
@@ -214,9 +269,8 @@ where
                         }
                     };
                     debug!("Justification: {:?}", justification);
-                    if justification.commitment.validator_set_id as u128 != current_validator_set_id
-                        && justification.commitment.validator_set_id as u128
-                            != next_validator_set_id
+                    if justification.commitment.validator_set_id != current_validator_set_id
+                        && justification.commitment.validator_set_id != next_validator_set_id
                     {
                         warn!(
                             "validator set id mismatch: {} + 1 != {}",
@@ -242,12 +296,16 @@ where
                 }
             }
         }
-        Err(anyhow::anyhow!("Justification not found"))
+        Ok(())
     }
 
-    pub async fn sync_historical_commitments(&self, end_block: u64) -> AnyResult<()> {
+    pub async fn sync_historical_commitments(&self, end_block: BlockNumberOf<S>) -> AnyResult<()> {
         let epoch_duration = self.sender.epoch_duration()?;
-        let latest_beefy_block = self.sender.latest_beefy_block().await? as u64;
+        let latest_beefy_block = self
+            .receiver
+            .latest_beefy_block(self.sender_network_id)
+            .await? as u64;
+        let end_block = end_block.into();
 
         const SHIFT: u64 = 5;
 
@@ -286,7 +344,7 @@ where
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
             let justification = match BeefyJustification::create(
                 self.sender.client().clone().unsigned(),
-                encoded_commitment.decode()?,
+                EncodedBeefyCommitment::decode::<ConfigOf<S>>(&encoded_commitment)?,
             )
             .await
             {
@@ -297,12 +355,21 @@ where
                 }
             };
 
-            let next_validator_set_id = self.receiver.next_validator_set().await?.id;
+            let next_validator_set_id = self
+                .receiver
+                .next_validator_set(self.sender_network_id)
+                .await?
+                .id;
 
-            let is_mandatory = next_validator_set_id
-                < justification.leaf_proof.leaf.beefy_next_authority_set.id as u128;
+            let is_mandatory =
+                next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
 
-            let should_send = !ignore_unneeded_commitments || is_mandatory;
+            let latest_requested = self.syncer.latest_requested();
+            let latest_sent = self.syncer.latest_sent();
+            let should_send = !ignore_unneeded_commitments
+                || is_mandatory
+                || (latest_requested < justification.commitment.block_number.into()
+                    && latest_sent < latest_requested);
 
             if should_send {
                 // TODO: Better async message handler

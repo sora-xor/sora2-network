@@ -61,5 +61,3 @@ COPY node /app/node
 COPY .hooks /app/.hooks
 
 RUN cargo build --release --features private-net && cp target/release/framenode target/release/relayer /usr/local/bin && rm -rf /app
-
-COPY bridge-docker/register-bridge /register-bridge

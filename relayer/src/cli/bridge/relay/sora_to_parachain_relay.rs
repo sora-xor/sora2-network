@@ -47,15 +47,25 @@ impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let sender = SubstrateRuntimeClient::new(self.sub.get_signed_substrate().await?);
         let receiver = ParachainRuntimeClient::new(self.para.get_signed_substrate().await?);
-        RelayBuilder::new()
-            .with_sender_client(sender)
-            .with_receiver_client(receiver)
+        let syncer = crate::relay::beefy_syncer::BeefySyncer::new();
+        let beefy_relay = RelayBuilder::new()
+            .with_sender_client(sender.clone())
+            .with_receiver_client(receiver.clone())
+            .with_syncer(syncer.clone())
             .build()
             .await
-            .context("build sora to parachain relay")?
-            .run(!self.send_unneeded_commitments)
+            .context("build sora to sora relay")?;
+        let messages_relay = crate::relay::parachain_messages::RelayBuilder::new()
+            .with_sender_client(sender)
+            .with_receiver_client(receiver)
+            .with_syncer(syncer)
+            .build()
             .await
-            .context("run sora to parachain relay")?;
+            .context("build sora to sora relay")?;
+        tokio::try_join!(
+            beefy_relay.run(!self.send_unneeded_commitments),
+            messages_relay.run()
+        )?;
         Ok(())
     }
 }

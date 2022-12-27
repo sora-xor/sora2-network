@@ -30,13 +30,14 @@
 
 use super::*;
 
-use bridge_types::H160;
+use bridge_types::types::MessageDirection;
+use bridge_types::GenericAccount;
 use common::{balance, AssetId32, PredefinedAssetId, XOR};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 use traits::MultiCurrency;
 
-pub const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+pub const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::EVM(EVMChainId::zero());
 
 #[allow(unused_imports)]
 use crate::Pallet as ETHApp;
@@ -55,19 +56,20 @@ benchmarks! {
         let amount = balance!(20);
         let asset_id: T::AssetId = XOR.into();
         <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), H160::default(), 1000)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, XOR.into(), GenericAccount::EVM(H160::default()), 1000)
     verify {
         let (message_id, _) = Senders::<T>::iter_prefix(BASE_NETWORK_ID).next().unwrap();
         let req = Transactions::<T>::get(&caller, (BASE_NETWORK_ID, message_id)).unwrap();
         assert!(
-            req == BridgeRequest::OutgoingTransfer {
-                source: caller.clone(),
-                dest: H160::default(),
+            req == BridgeRequest {
+                source: GenericAccount::Sora(caller.clone()),
+                dest: GenericAccount::EVM(H160::default()),
                 asset_id: XOR.into(),
                 amount: 1000,
                 status: MessageStatus::InQueue,
                 start_timestamp: 0u32.into(),
                 end_timestamp: None,
+                direction: MessageDirection::Outbound,
             }
         );
     }

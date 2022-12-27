@@ -57,6 +57,7 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
+#[cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 fn assert_last_event<T: liquidity_proxy::Config>(
     generic_event: <T as liquidity_proxy::Config>::RuntimeEvent,
 ) {

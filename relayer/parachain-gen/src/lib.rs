@@ -33,6 +33,16 @@
     derive_for_all_types = "Clone"
 )]
 pub mod parachain_runtime {
+    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
+    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
+    #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
+    use ::beefy_primitives::crypto::Public;
+    #[subxt(substitute_type = "beefy_primitives::mmr::BeefyAuthoritySet")]
+    use ::beefy_primitives::mmr::BeefyAuthoritySet;
+    #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
+    use ::beefy_primitives::mmr::MmrLeaf;
+    #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
+    use ::beefy_primitives::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -43,6 +53,28 @@ pub mod parachain_runtime {
     use ::bridge_common::beefy_types::ValidatorSet;
     #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
     use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
+    #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
+    use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+    #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
+    use ::bridge_types::network_config::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::types::AssetKind")]
+    use ::bridge_types::types::AssetKind;
+    #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
+    use ::bridge_types::types::AuxiliaryDigest;
+    #[subxt(substitute_type = "bridge_types::types::LeafExtraData")]
+    use ::bridge_types::types::LeafExtraData;
+    #[subxt(substitute_type = "bridge_types::types::Message")]
+    use ::bridge_types::types::Message;
+    #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
+    use ::bridge_types::types::ParachainMessage;
+    #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
+    use ::bridge_types::GenericNetworkId;
+    #[subxt(substitute_type = "bridge_types::header::Header")]
+    use ::bridge_types::Header;
+    #[subxt(substitute_type = "bridge_types::header::HeaderId")]
+    use ::bridge_types::HeaderId;
+    #[subxt(substitute_type = "bridge_types::SubNetworkId")]
+    use ::bridge_types::SubNetworkId;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
     #[subxt(substitute_type = "primitive_types::H160")]

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #[macro_use]
 extern crate codec;
 
@@ -42,8 +72,16 @@ pub mod runtime {
     use crate::BridgeSignatureVersion;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
+    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
+    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
     #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
     use ::beefy_primitives::crypto::Public;
+    #[subxt(substitute_type = "beefy_primitives::mmr::BeefyAuthoritySet")]
+    use ::beefy_primitives::mmr::BeefyAuthoritySet;
+    #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
+    use ::beefy_primitives::mmr::MmrLeaf;
+    #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
+    use ::beefy_primitives::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -60,12 +98,22 @@ pub mod runtime {
     use ::bridge_types::network_config::NetworkConfig;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
+    #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
+    use ::bridge_types::types::AuxiliaryDigest;
+    #[subxt(substitute_type = "bridge_types::types::LeafExtraData")]
+    use ::bridge_types::types::LeafExtraData;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
+    #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
+    use ::bridge_types::types::ParachainMessage;
+    #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
+    use ::bridge_types::GenericNetworkId;
     #[subxt(substitute_type = "bridge_types::header::Header")]
     use ::bridge_types::Header;
     #[subxt(substitute_type = "bridge_types::header::HeaderId")]
     use ::bridge_types::HeaderId;
+    #[subxt(substitute_type = "bridge_types::SubNetworkId")]
+    use ::bridge_types::SubNetworkId;
     #[subxt(substitute_type = "common::primitives::AssetId32")]
     use ::common::AssetId32;
     #[subxt(substitute_type = "common::primitives::AssetName")]

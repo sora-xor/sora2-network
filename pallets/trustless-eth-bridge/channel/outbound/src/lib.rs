@@ -16,7 +16,7 @@ use sp_std::vec;
 use traits::MultiCurrency;
 
 use bridge_types::types::MessageNonce;
-use bridge_types::EthNetworkId;
+use bridge_types::EVMChainId;
 
 pub mod weights;
 pub use weights::WeightInfo;
@@ -31,7 +31,7 @@ mod test;
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Message {
-    pub network_id: EthNetworkId,
+    pub network_id: EVMChainId,
     /// Target application on the Ethereum side.
     pub target: H160,
     /// A nonce for replay protection and ordering.
@@ -66,9 +66,11 @@ pub mod pallet {
     use super::*;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
+    use bridge_types::types::AdditionalEVMOutboundData;
     use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
+    use bridge_types::GenericNetworkId;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -97,7 +99,11 @@ pub mod pallet {
 
         type FeeTechAccountId: Get<Self::TechAccountId>;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            Self::AccountId,
+            BalanceOf<Self>,
+        >;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -119,21 +125,21 @@ pub mod pallet {
     /// (to keep correct value in [QueuesTotalGas]).
     #[pallet::storage]
     pub(crate) type MessageQueues<T: Config> =
-        StorageMap<_, Identity, EthNetworkId, Vec<Message>, ValueQuery>;
+        StorageMap<_, Identity, EVMChainId, Vec<Message>, ValueQuery>;
 
     /// Total gas for each queue. Updated by mutating the queues with methods `append_message_queue` and `take_message_queue`.
     #[pallet::storage]
     pub(crate) type QueuesTotalGas<T: Config> =
-        StorageMap<_, Identity, EthNetworkId, U256, ValueQuery>;
+        StorageMap<_, Identity, EVMChainId, U256, ValueQuery>;
 
     /// Add message to queue and accumulate total maximum gas value    
-    pub(crate) fn append_message_queue<T: Config>(network: EthNetworkId, msg: Message) {
+    pub(crate) fn append_message_queue<T: Config>(network: EVMChainId, msg: Message) {
         QueuesTotalGas::<T>::mutate(network, |sum| *sum = sum.saturating_add(msg.max_gas));
         MessageQueues::<T>::append(network, msg);
     }
 
     /// Take the queue together with accumulated total maximum gas value.
-    pub(crate) fn take_message_queue<T: Config>(network: EthNetworkId) -> (Vec<Message>, U256) {
+    pub(crate) fn take_message_queue<T: Config>(network: EVMChainId) -> (Vec<Message>, U256) {
         (
             MessageQueues::<T>::take(network),
             QueuesTotalGas::<T>::take(network),
@@ -141,7 +147,7 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EthNetworkId, u64, ValueQuery>;
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, EVMChainId, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn fee)]
@@ -193,7 +199,7 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        MessageAccepted(EthNetworkId, MessageNonce),
+        MessageAccepted(EVMChainId, MessageNonce),
     }
 
     #[pallet::error]
@@ -226,7 +232,7 @@ pub mod pallet {
             MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
         }
 
-        fn commit(network_id: EthNetworkId) -> Weight {
+        fn commit(network_id: EVMChainId) -> Weight {
             debug!("Commit messages");
             let (messages, total_max_gas) = take_message_queue::<T>(network_id);
             if messages.is_empty() {
@@ -235,7 +241,7 @@ pub mod pallet {
 
             for message in messages.iter() {
                 T::MessageStatusNotifier::update_status(
-                    network_id,
+                    GenericNetworkId::EVM(network_id),
                     Self::make_message_id(message.nonce),
                     MessageStatus::Committed,
                     None,
@@ -250,8 +256,11 @@ pub mod pallet {
             let average_payload_size = Self::average_payload_size(&commitment.messages);
             let messages_count = commitment.messages.len();
             let commitment_hash = Self::make_commitment_hash(&commitment);
-            let digest_item =
-                AuxiliaryDigestItem::Commitment(network_id, commitment_hash.clone()).into();
+            let digest_item = AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::EVM(network_id),
+                commitment_hash.clone(),
+            )
+            .into();
             <frame_system::Pallet<T>>::deposit_log(digest_item);
 
             let key = Self::make_offchain_key(commitment_hash);
@@ -323,15 +332,15 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> OutboundChannel<T::AccountId> for Pallet<T> {
+    impl<T: Config> OutboundChannel<EVMChainId, T::AccountId, AdditionalEVMOutboundData> for Pallet<T> {
         /// Submit message on the outbound channel
         fn submit(
-            network_id: EthNetworkId,
+            network_id: EVMChainId,
             who: &RawOrigin<T::AccountId>,
-            target: H160,
-            max_gas: U256,
             payload: &[u8],
+            additional: AdditionalEVMOutboundData,
         ) -> Result<H256, DispatchError> {
+            let AdditionalEVMOutboundData { target, max_gas } = additional;
             debug!("Send message from {:?} to {:?}", who, target);
             let current_total_gas = QueuesTotalGas::<T>::get(network_id);
             ensure!(

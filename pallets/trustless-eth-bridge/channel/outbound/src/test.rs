@@ -1,4 +1,5 @@
 use super::*;
+use bridge_types::types::AdditionalEVMOutboundData;
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::OutboundChannel;
@@ -21,7 +22,7 @@ use crate as bridge_outbound_channel;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -252,18 +253,22 @@ fn test_submit() {
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who.clone()),
-            target,
-            100000.into(),
-            &vec![0, 1, 2]
+            &vec![0, 1, 2],
+            AdditionalEVMOutboundData {
+                max_gas: 100000.into(),
+                target
+            }
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
 
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who),
-            target,
-            100000.into(),
-            &vec![0, 1, 2]
+            &vec![0, 1, 2],
+            AdditionalEVMOutboundData {
+                max_gas: 100000.into(),
+                target
+            }
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
     });
@@ -283,9 +288,11 @@ fn test_submit_fees_burned() {
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who.clone()),
-            target,
-            100000.into(),
-            &vec![0, 1, 2]
+            &vec![0, 1, 2],
+            AdditionalEVMOutboundData {
+                max_gas: 100000.into(),
+                target
+            }
         ));
         assert_eq!(
             Assets::total_balance(&XOR, &who).unwrap(),
@@ -307,9 +314,11 @@ fn test_submit_not_enough_funds() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                target,
-                100000.into(),
-                &vec![0, 1, 2]
+                &vec![0, 1, 2],
+                AdditionalEVMOutboundData {
+                    max_gas: 100000.into(),
+                    target
+                }
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
         );
@@ -330,9 +339,11 @@ fn test_submit_exceeds_queue_limit() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who.clone()),
-                target,
-                100000.into(),
                 &vec![0, 1, 2],
+                AdditionalEVMOutboundData {
+                    max_gas: 100000.into(),
+                    target,
+                },
             )
             .unwrap();
         });
@@ -341,9 +352,11 @@ fn test_submit_exceeds_queue_limit() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                target,
-                100000.into(),
-                &vec![0, 1, 2]
+                &vec![0, 1, 2],
+                AdditionalEVMOutboundData {
+                    max_gas: 100000.into(),
+                    target
+                }
             ),
             Error::<Test>::QueueSizeLimitReached,
         );
@@ -374,9 +387,11 @@ fn test_submit_exceeds_payload_limit() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                target,
-                100000.into(),
-                payload.as_slice()
+                payload.as_slice(),
+                AdditionalEVMOutboundData {
+                    max_gas: 100000.into(),
+                    target
+                }
             ),
             Error::<Test>::PayloadTooLarge,
         );
@@ -394,9 +409,11 @@ fn test_submit_fails_on_nonce_overflow() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                target,
-                100000.into(),
-                &vec![0, 1, 2]
+                &vec![0, 1, 2],
+                AdditionalEVMOutboundData {
+                    max_gas: 100000.into(),
+                    target
+                }
             ),
             Error::<Test>::Overflow,
         );

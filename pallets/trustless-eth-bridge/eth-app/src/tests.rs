@@ -3,7 +3,7 @@ use crate::mock::{
     BASE_NETWORK_ID,
 };
 use crate::{Addresses, Error};
-use bridge_types::types::CallOriginOutput;
+use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
 use bridge_types::H160;
 use common::{balance, XOR};
 use frame_support::assert_noop;
@@ -26,7 +26,9 @@ fn mints_after_handling_ethereum_event() {
         assert_ok!(EthApp::mint(
             dispatch::RawOrigin::new(CallOriginOutput {
                 network_id: BASE_NETWORK_ID,
-                contract: peer_contract,
+                additional: AdditionalEVMInboundData {
+                    source: peer_contract,
+                },
                 ..Default::default()
             })
             .into(),
@@ -62,7 +64,9 @@ fn mint_zero_amount_must_fail() {
             EthApp::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
-                    contract: peer_contract,
+                    additional: AdditionalEVMInboundData {
+                        source: peer_contract,
+                    },
                     ..Default::default()
                 })
                 .into(),

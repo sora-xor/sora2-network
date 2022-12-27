@@ -54,7 +54,8 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Some(framenode_chain_spec::local_testnet_config()),
+            "" | "local" => Some(framenode_chain_spec::local_testnet_config(3, 3)),
+            "docker-local" => Some(framenode_chain_spec::local_testnet_config(1, 1)),
             // dev doesn't use json chain spec to make development easier
             // "dev" => framenode_chain_spec::dev_net(),
             // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
@@ -65,6 +66,7 @@ impl SubstrateCli for Cli {
             "staging-coded" => Some(framenode_chain_spec::staging_net_coded(false)),
             "bridge-staging" => Some(framenode_chain_spec::bridge_staging_net()?),
             "bridge-staging-coded" => Some(framenode_chain_spec::bridge_staging_net_coded()),
+            "bridge-dev" => Some(framenode_chain_spec::bridge_dev_net_coded()),
             _ => None,
         };
 

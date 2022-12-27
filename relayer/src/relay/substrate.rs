@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -5,12 +35,12 @@ use super::justification::*;
 use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
 use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
-use crate::substrate::LeafProof;
+use crate::substrate::{EncodedBeefyCommitment, LeafProof};
 use beefy_gadget_rpc::BeefyApiClient;
 use beefy_merkle_tree::Keccak256;
 use beefy_primitives::VersionedFinalityProof;
-use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
-use bridge_types::EthNetworkId;
+use bridge_types::types::AuxiliaryDigestItem;
+use bridge_types::{EVMChainId, GenericNetworkId};
 use ethereum_gen::{beefy_light_client, inbound_channel, BeefyLightClient, InboundChannel};
 use ethers::abi::RawLog;
 use ethers::prelude::builders::ContractCall;
@@ -18,7 +48,7 @@ use ethers::prelude::*;
 
 #[derive(Default)]
 pub struct RelayBuilder {
-    sub: Option<SubUnsignedClient>,
+    sub: Option<SubUnsignedClient<MainnetConfig>>,
     eth: Option<EthSignedClient>,
     beefy: Option<Address>,
     inbound_channel: Option<Address>,
@@ -29,7 +59,7 @@ impl RelayBuilder {
         Default::default()
     }
 
-    pub fn with_substrate_client(mut self, sub: SubUnsignedClient) -> Self {
+    pub fn with_substrate_client(mut self, sub: SubUnsignedClient<MainnetConfig>) -> Self {
         self.sub = Some(sub);
         self
     }
@@ -76,11 +106,11 @@ impl RelayBuilder {
 
 #[derive(Clone)]
 pub struct Relay {
-    sub: SubUnsignedClient,
+    sub: SubUnsignedClient<MainnetConfig>,
     eth: EthSignedClient,
     beefy: BeefyLightClient<SignedClientInner>,
     inbound_channel: InboundChannel<SignedClientInner>,
-    chain_id: EthNetworkId,
+    chain_id: EVMChainId,
     lost_gas: Arc<AtomicU64>,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
@@ -103,13 +133,18 @@ impl Relay {
 
     async fn submit_signature_commitment(
         &self,
-        justification: &BeefyJustification,
+        justification: &BeefyJustification<MainnetConfig>,
     ) -> AnyResult<ContractCall<SignedClientInner, ()>> {
         let initial_bitfield = self
             .beefy
             .create_initial_bitfield(
-                justification.signed_validators.clone(),
-                justification.num_validators,
+                justification
+                    .signed_validators
+                    .iter()
+                    .cloned()
+                    .map(U256::from)
+                    .collect(),
+                justification.num_validators.into(),
             )
             .legacy()
             .call()
@@ -124,7 +159,10 @@ impl Relay {
         };
 
         let random_bitfield = self
-            .create_random_bitfield(initial_bitfield.clone(), justification.num_validators)
+            .create_random_bitfield(
+                initial_bitfield.clone(),
+                justification.num_validators.into(),
+            )
             .await?;
         let validator_proof = justification.validators_proof(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof()?;
@@ -175,7 +213,10 @@ impl Relay {
         Ok(success_event)
     }
 
-    pub async fn send_commitment(self, justification: BeefyJustification) -> AnyResult<()> {
+    pub async fn send_commitment(
+        self,
+        justification: BeefyJustification<MainnetConfig>,
+    ) -> AnyResult<()> {
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
         let _event = self
@@ -201,14 +242,7 @@ impl Relay {
             .block_hash(Some(block_number.into()))
             .await?
             .expect("should exist");
-        let header = self
-            .sub
-            .api()
-            .rpc()
-            .header(Some(block_hash))
-            .await?
-            .expect("should exist");
-        let digest = AuxiliaryDigest::from(header.digest.clone());
+        let digest = self.sub.auxiliary_digest(Some(block_hash)).await?;
         if digest.logs.is_empty() {
             return Ok(());
         }
@@ -236,7 +270,7 @@ impl Relay {
 
         for log in digest.logs {
             let AuxiliaryDigestItem::Commitment(chain_id, commitment_hash) = log;
-            if chain_id != self.chain_id {
+            if chain_id != GenericNetworkId::EVM(self.chain_id) {
                 continue;
             }
             let delimiter = (chain_id, commitment_hash).encode();
@@ -391,7 +425,13 @@ impl Relay {
         let era_duration = epoch_duration * sessions_per_era as u64;
         'main_loop: loop {
             let latest_beefy_block = self.beefy.latest_beefy_block().call().await?;
-            let latest_beefy_block_hash = self.sub.block_hash(Some(latest_beefy_block)).await?;
+            let latest_beefy_block_hash = self
+                .sub
+                .api()
+                .rpc()
+                .block_hash(Some(latest_beefy_block.into()))
+                .await?
+                .ok_or(anyhow!("block hash not found"))?;
             let latest_era = self
                 .sub
                 .api()
@@ -408,7 +448,13 @@ impl Relay {
             if next_block > current_block as u64 {
                 return Ok(());
             }
-            let next_block_hash = self.sub.block_hash(Some(next_block)).await?;
+            let next_block_hash = self
+                .sub
+                .api()
+                .rpc()
+                .block_hash(Some(next_block.into()))
+                .await?
+                .ok_or(anyhow!("block hash not found"))?;
             let next_eras = self
                 .sub
                 .api()
@@ -435,7 +481,20 @@ impl Relay {
                 self.beefy.current_validator_set().call().await?.0 as u64;
             let next_validator_set_id = self.beefy.next_validator_set().call().await?.0 as u64;
             for next_block in ((latest_beefy_block + 1)..=next_block).rev() {
-                let block = self.sub.block(Some(next_block)).await?;
+                let next_block_hash = self
+                    .sub
+                    .api()
+                    .rpc()
+                    .block_hash(Some(next_block.into()))
+                    .await?
+                    .ok_or(anyhow!("block hash not found"))?;
+                let block = self
+                    .sub
+                    .api()
+                    .rpc()
+                    .block(Some(next_block_hash))
+                    .await?
+                    .ok_or(anyhow!("block not found: {}", next_block))?;
                 debug!("Check block {:?}", block.block.header.number);
                 if let Some(justifications) = block.justifications {
                     for (engine, justification) in justifications {
@@ -502,16 +561,18 @@ impl Relay {
             .context("sync historical commitments")?;
         let mut beefy_sub = self.sub.beefy().subscribe_justifications().await?;
         while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
-            let justification =
-                match BeefyJustification::create(self.sub.clone(), encoded_commitment.decode()?)
-                    .await
-                {
-                    Ok(justification) => justification,
-                    Err(err) => {
-                        warn!("failed to create justification: {}", err);
-                        continue;
-                    }
-                };
+            let justification = match BeefyJustification::<MainnetConfig>::create(
+                self.sub.clone(),
+                EncodedBeefyCommitment::decode::<MainnetConfig>(&encoded_commitment)?,
+            )
+            .await
+            {
+                Ok(justification) => justification,
+                Err(err) => {
+                    warn!("failed to create justification: {}", err);
+                    continue;
+                }
+            };
 
             let latest_block = self.beefy.latest_beefy_block().call().await?;
 

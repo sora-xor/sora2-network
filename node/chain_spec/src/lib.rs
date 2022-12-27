@@ -302,6 +302,101 @@ pub fn dev_net_coded() -> ChainSpec {
 }
 
 #[cfg(feature = "private-net")]
+pub fn bridge_dev_net_coded() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
+    ChainSpec::from_genesis(
+        "SORA-dev Testnet",
+        "sora-substrate-dev",
+        ChainType::Live,
+        move || {
+            testnet_genesis(
+                true,
+                hex!("f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143").into(),
+                vec![
+                    authority_keys_from_public_keys(
+                        // scheme: sr25519, seed: <seed>//framenode-1//stash
+                        hex!("38c2970a9988caff722c140726f53ea0b0f654254dbf3f472b1ac5efd3aace35"),
+                        // scheme: sr25519, seed: <seed>//framenode-1
+                        hex!("78ed15d8b96d53576e5e9f50b7263566c3aa8b7c9a22648e06f525411a538c08"),
+                        // scheme: sr25519, seed: <seed>//framenode-1
+                        hex!("78ed15d8b96d53576e5e9f50b7263566c3aa8b7c9a22648e06f525411a538c08"),
+                        // scheme: ed25519, seed: <seed>//framenode-1
+                        hex!("4e84eeed48dd52d45f599a549edecf2a135f8045de32c6a801086b1e1fb251c9"),
+                        // scheme: ecdsa, seed: <seed>//framenode-1
+                        hex!("03c8833ad1ed110cdfee2ef838a0fc2b830a8aa821711aa4ab5b679e2624173cbb"),
+                    ),
+                    authority_keys_from_public_keys(
+                        // scheme: sr25519, seed: <seed>//framenode-2//stash
+                        hex!("36c75c50a04c792f7074453bc3080c4166a60a81361cc2d5e436a0a83f3cf643"),
+                        // scheme: sr25519, seed: <seed>//framenode-2
+                        hex!("849695acc5fc166e8e3327de0d6c75e75d32509d1ad8495e12423e3efc73500b"),
+                        // scheme: sr25519, seed: <seed>//framenode-2
+                        hex!("849695acc5fc166e8e3327de0d6c75e75d32509d1ad8495e12423e3efc73500b"),
+                        // scheme: ed25519, seed: <seed>//framenode-2
+                        hex!("2d67d9d22097d2f6f74a4076bece0b97ee3809916b0a6e234a3e27b5fabaa84f"),
+                        // scheme: ecdsa, seed: <seed>//framenode-2
+                        hex!("03629d2d9aaf8c09637b2cd1696d6d65bb632e1fe2489e45e0f3538176c3c58300"),
+                    ),
+                ],
+                vec![
+                    hex!("f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143").into(),
+                    hex!("38c2970a9988caff722c140726f53ea0b0f654254dbf3f472b1ac5efd3aace35").into(),
+                    hex!("78ed15d8b96d53576e5e9f50b7263566c3aa8b7c9a22648e06f525411a538c08").into(),
+                    hex!("36c75c50a04c792f7074453bc3080c4166a60a81361cc2d5e436a0a83f3cf643").into(),
+                    hex!("849695acc5fc166e8e3327de0d6c75e75d32509d1ad8495e12423e3efc73500b").into(),
+                    hex!("7e80cf961aba2fc702364ed883627f155de665c8f068f45cb8e2c0d3a8c2d563").into(),
+                    hex!("66bcaf2ebff1c730e98cab6f6a72b854a2e81601e704c9bbd9d3e7b3e3cde129").into(),
+                    hex!("5881d9b55a405971694c4f786d0d69aa5bf1137f271a6966fac2bc96019fe948").into(),
+                    hex!("969bd17663505fc6d894c4bb8334ab2bc2b15aa3f872c0bf6548ad3034b1de26").into(),
+                    hex!("9aa376ac092dd58354cf6ee73dd6e7b4b1a61d41faf380c19129a7d14f53a436").into(),
+                    hex!("ec1ca63326a4b361bd329be9ec63d540e50eea4bbd1290b8cb9c3064415fc227").into(),
+                    hex!("acf7c0eae6e351a3d3327a860fed20ef728c214c7fb4fcc854dda31873536d57").into(),
+                    hex!("00ec4ca8906000e55373be6ee67640e0bb06c0cb76d2efda75d048b66e81af58").into(),
+                    hex!("328be9c672c4fff8ae9065ebdf116a47e1121933616a1d1749ff9bb3356fd542").into(),
+                ],
+                vec![
+                    hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
+                    hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
+                ],
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
+                        .into(),
+                },
+                vec![
+                    hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
+                    hex!("62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401").into(),
+                    hex!("c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c").into(),
+                    hex!("8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244").into(),
+                    hex!("a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c").into(),
+                    hex!("5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c").into(),
+                ],
+                vec![
+                    hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
+                    hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
+                    hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                ],
+                2,
+            )
+        },
+        vec![],
+        None,
+        Some("sora-substrate-dev"),
+        None,
+        Some(properties),
+        None,
+    )
+}
+
+#[cfg(feature = "private-net")]
 pub fn bridge_staging_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
@@ -623,7 +718,7 @@ fn bonding_curve_distribution_accounts(
 }
 
 #[cfg(feature = "private-net")]
-pub fn local_testnet_config() -> ChainSpec {
+pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -646,7 +741,10 @@ pub fn local_testnet_config() -> ChainSpec {
                     /*
                     authority_keys_from_seed("Treasury"),
                     */
-                ],
+                ]
+                .into_iter()
+                .take(initial_authorities)
+                .collect(),
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
                     hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
@@ -657,6 +755,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -692,7 +791,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                3,
+                validator_count,
             )
         },
         vec![],
@@ -1056,6 +1155,10 @@ fn testnet_genesis(
         vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        beefy_light_client: Default::default(),
+        substrate_bridge_app: Default::default(),
+        substrate_bridge_inbound_channel: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
         migration_app: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
@@ -1892,6 +1995,10 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        beefy_light_client: Default::default(),
+        substrate_bridge_app: Default::default(),
+        substrate_bridge_inbound_channel: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
         migration_app: Default::default(),
         vested_rewards: Default::default(),
         erc20_app: Default::default(),

@@ -12,4 +12,4 @@ debug = false
 weak-dep-features = true
 
 [env]
-PARACHAIN_METADATA_BRANCH = "add_xcm"
+PARACHAIN_METADATA_BRANCH = "develop"

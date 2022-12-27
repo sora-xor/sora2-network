@@ -7,7 +7,7 @@ use crate::mock::{
 };
 use bridge_types::network_config::NetworkConfig as EthNetworkConfig;
 use bridge_types::traits::Verifier as VerifierConfig;
-use bridge_types::{import_digest, EthNetworkId, U256};
+use bridge_types::{import_digest, EVMChainId, U256};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::unsigned::TransactionValidityError;
 use sp_core::sr25519::Pair as PairSr25519;
@@ -29,7 +29,7 @@ use sp_runtime::{MultiSignature, MultiSigner};
 
 fn digest_signature<T: crate::Config>(
     signer: &PairSr25519,
-    network_id: &EthNetworkId,
+    network_id: &EVMChainId,
     header: &EthereumHeader,
 ) -> MultiSignature {
     sp_runtime::MultiSignature::Sr25519(signer.clone().sign(&import_digest(network_id, header)[..]))
@@ -863,7 +863,7 @@ fn it_validates_last_headers_difficulty_multi() {
 }
 
 fn add_header_for_diffiulty_check(
-    network_id: EthNetworkId,
+    network_id: EVMChainId,
     header_number: u64,
     mut header: EthereumHeader,
     difficulty: U256,

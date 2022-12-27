@@ -3,7 +3,7 @@ use crate::mock::{
 };
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
-use bridge_types::types::{AssetKind, CallOriginOutput};
+use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput};
 use bridge_types::H160;
 use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, ETH, XOR};
 use frame_support::assert_noop;
@@ -38,7 +38,9 @@ fn mints_after_handling_ethereum_event() {
         assert_ok!(Erc20App::mint(
             dispatch::RawOrigin::new(CallOriginOutput {
                 network_id: BASE_NETWORK_ID,
-                contract: peer_contract,
+                additional: AdditionalEVMInboundData {
+                    source: peer_contract,
+                },
                 ..Default::default()
             })
             .into(),
@@ -79,7 +81,9 @@ fn mint_zero_amount_must_fail() {
             Erc20App::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
                     network_id: BASE_NETWORK_ID,
-                    contract: peer_contract,
+                    additional: AdditionalEVMInboundData {
+                        source: peer_contract,
+                    },
                     ..Default::default()
                 })
                 .into(),
@@ -198,7 +202,7 @@ fn test_register_asset_internal() {
         let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {
             network_id: BASE_NETWORK_ID,
-            contract: who,
+            additional: AdditionalEVMInboundData { source: who },
             ..Default::default()
         });
         let address = H160::repeat_byte(98);

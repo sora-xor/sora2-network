@@ -28,61 +28,56 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::Codec;
-
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
 };
-use leaf_provider_runtime_api::AuxiliaryDigest;
-use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
-use sp_runtime::traits::Block as BlockT;
 
-use std::sync::Arc;
-
-pub use leaf_provider_runtime_api::LeafProviderAPI as LeafProviderRuntimeAPI;
-
-#[rpc(server, client)]
-pub trait LeafProviderAPI<BlockHash>
-where
-    BlockHash: Codec,
-{
-    #[method(name = "leafProvider_latestDigest")]
-    fn latest_digest(&self, at: Option<BlockHash>) -> Result<AuxiliaryDigest>;
+#[derive(Clone)]
+pub struct BeefySyncer {
+    latest_requested: Arc<AtomicU64>,
+    latest_sent: Arc<AtomicU64>,
 }
 
-pub struct LeafProviderClient<C, B> {
-    client: Arc<C>,
-    _marker: std::marker::PhantomData<B>,
-}
-
-impl<C, B> LeafProviderClient<C, B> {
-    /// Construct default `Template`.
-    pub fn new(client: Arc<C>) -> Self {
+impl BeefySyncer {
+    pub fn new() -> Self {
         Self {
-            client,
-            _marker: Default::default(),
+            latest_requested: Default::default(),
+            latest_sent: Default::default(),
         }
     }
-}
 
-impl<C, Block> LeafProviderAPIServer<<Block as BlockT>::Hash> for LeafProviderClient<C, Block>
-where
-    Block: BlockT,
-    C: Send + Sync + 'static,
-    C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: LeafProviderRuntimeAPI<Block>,
-{
-    fn latest_digest(&self, at: Option<<Block as BlockT>::Hash>) -> Result<AuxiliaryDigest> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
-            // If the block hash is not supplied assume the best block.
-            self.client.info().best_hash,
-        ));
-        api.latest_digest(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+    pub fn request(&self, block: u64) {
+        self.latest_requested
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                if v < block {
+                    debug!("Requesting new BEEFY block {}", block);
+                    Some(block)
+                } else {
+                    None
+                }
+            })
+            .ok();
+    }
+
+    pub fn latest_requested(&self) -> u64 {
+        self.latest_requested.load(Ordering::Relaxed)
+    }
+
+    pub fn latest_sent(&self) -> u64 {
+        self.latest_sent.load(Ordering::Relaxed)
+    }
+
+    pub fn update_latest_sent(&self, block: u64) {
+        self.latest_sent
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |v| {
+                if v < block {
+                    debug!("Updating latest sent BEEFY block to {}", block);
+                    Some(block)
+                } else {
+                    None
+                }
+            })
+            .ok();
     }
 }
