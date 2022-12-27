@@ -118,6 +118,7 @@ pipeline {
                         } else {
                             docker.image(envImageName).inside() {
                                 sh '''
+                                    rm -rf ~/.cargo
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features private-net
