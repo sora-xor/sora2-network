@@ -1654,14 +1654,14 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        #[pallet::weight(<T as Config>::WeightInfo::swap(SwapVariant::WithDesiredOutput))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             receivers: Vec<BatchReceiverInfo<T>>,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
             output_asset_id: T::AssetId,
-            swap_amount: SwapAmount<Balance>,
+            max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
@@ -1679,25 +1679,20 @@ pub mod pallet {
             let filter =
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
 
-            let designated_sum = receivers.iter().map(|recv| recv.target_amount).sum();
+            let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
 
-            let (outcome, _) = Self::inner_exchange(
+            Self::inner_exchange(
                 dex_id,
                 &who,
                 &who,
                 &input_asset_id,
                 &output_asset_id,
-                swap_amount,
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: out_amount,
+                    max_amount_in: max_input_amount,
+                },
                 filter,
             )?;
-            let target_amount = match swap_amount {
-                SwapAmount::WithDesiredInput { .. } => outcome.amount,
-                SwapAmount::WithDesiredOutput { .. } => swap_amount.amount(),
-            };
-
-            if target_amount < designated_sum {
-                return Err(Error::<T>::SwapTotalOutputTooLow.into());
-            }
 
             for receiver in receivers {
                 assets::Pallet::<T>::transfer_from(
@@ -1817,7 +1812,5 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
-        // Total output of a batch swap is less than the sum of designated amounts
-        SwapTotalOutputTooLow,
     }
 }
