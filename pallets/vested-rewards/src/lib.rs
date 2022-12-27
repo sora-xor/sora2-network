@@ -345,13 +345,6 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_: T::BlockNumber) -> Weight {
-            <T as Config>::WeightInfo::on_initialize(0)
-        }
-    }
-
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.

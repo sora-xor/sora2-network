@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::{Assets, Config, CrowdloanReward, Rewards, LEASE_TOTAL_DAYS};
+use crate::{Assets, Config, CrowdloanReward, RewardInfo, Rewards, LEASE_TOTAL_DAYS};
 use codec::Decode;
 use common::{Balance, Fixed, RewardReason, PSWAP, VAL, XSTUSD};
 use frame_support::dispatch::GetStorageVersion;
@@ -213,26 +213,25 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
 
     weight += T::DbWeight::get().reads_writes(2, 2);
 
-    for id in Rewards::<T>::iter_keys() {
-        Rewards::<T>::mutate(id, |reward_info| {
-            let market_maker_rewards = *reward_info
-                .rewards
-                .get(&RewardReason::DeprecatedMarketMakerVolume)
-                .unwrap_or(&Balance::zero());
-            weight += T::DbWeight::get().reads(1);
-            if let Some(balance) = reward_info
-                .rewards
-                .get_mut(&RewardReason::BuyOnBondingCurve)
-            {
-                *balance += market_maker_rewards;
-                weight += T::DbWeight::get().writes(1);
-            }
-            reward_info
-                .rewards
-                .remove(&RewardReason::DeprecatedMarketMakerVolume);
+    Rewards::<T>::translate_values(|mut reward_info: RewardInfo| {
+        let market_maker_rewards = *reward_info
+            .rewards
+            .get(&RewardReason::DeprecatedMarketMakerVolume)
+            .unwrap_or(&Balance::zero());
+        weight += T::DbWeight::get().reads(1);
+        if let Some(balance) = reward_info
+            .rewards
+            .get_mut(&RewardReason::BuyOnBondingCurve)
+        {
+            *balance += market_maker_rewards;
             weight += T::DbWeight::get().writes(1);
-        });
-    }
+        }
+        reward_info
+            .rewards
+            .remove(&RewardReason::DeprecatedMarketMakerVolume);
+        weight += T::DbWeight::get().writes(1);
+        Some(reward_info)
+    });
 
     weight
 }
