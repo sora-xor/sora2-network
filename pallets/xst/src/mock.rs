@@ -35,8 +35,8 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -76,9 +76,6 @@ pub fn assets_owner() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
-    "0200060000000000000000000000000000000000000000000000000000000111"
-));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -598,6 +595,14 @@ impl Default for ExtBuilder {
                     AssetName(b"SORA Synthetic USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100000),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
             ],
             dex_list: vec![(
                 DEX_A_ID,
@@ -629,6 +634,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Ok(Self::inner_quote(
             &DEXId::Polkaswap.into(),

@@ -64,32 +64,32 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 /// Weight functions for `band`.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-	// Storage: Band TrustedRelayers (r:1 w:0)
-	// Storage: Band SymbolRates (r:1 w:1)
-	fn relay() -> Weight {
-		(19_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: Band TrustedRelayers (r:1 w:0)
-	// Storage: Band SymbolRates (r:1 w:1)
-	fn force_relay() -> Weight {
-		(19_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: Band TrustedRelayers (r:1 w:1)
-	fn add_relayers() -> Weight {
-		(15_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// Storage: Band TrustedRelayers (r:1 w:1)
-	fn remove_relayers() -> Weight {
-		(16_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
+    // Storage: Band TrustedRelayers (r:1 w:0)
+    // Storage: Band SymbolRates (r:1 w:1)
+    fn relay() -> Weight {
+        (18_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    // Storage: Band TrustedRelayers (r:1 w:0)
+    // Storage: Band SymbolRates (r:1 w:1)
+    fn force_relay() -> Weight {
+        (18_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    // Storage: Band TrustedRelayers (r:1 w:1)
+    fn add_relayers() -> Weight {
+        (15_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    // Storage: Band TrustedRelayers (r:1 w:1)
+    fn remove_relayers() -> Weight {
+        (17_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }
 impl crate::WeightInfo for () {
     fn relay() -> Weight {

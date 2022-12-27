@@ -34,7 +34,8 @@ use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
 use common::{
-    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR,
+    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, PriceVariant, DOT, ETH, PSWAP,
+    VAL, XOR,
 };
 use frame_support::assert_noop;
 
@@ -57,18 +58,19 @@ fn initial_setup_without_history() {
         let avg_calc = balance!(1 + AVG_BLOCK_SPAN) / 2;
         for i in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&ETH, balance!(i)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(i), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             avg_calc
         );
-        PriceTools::incoming_spot_price(&ETH, balance!(AVG_BLOCK_SPAN + 1)).unwrap();
+        PriceTools::incoming_spot_price(&ETH, balance!(AVG_BLOCK_SPAN + 1), PriceVariant::Buy)
+            .unwrap();
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             (avg_calc + avg_calc * fixed_wrapper!(0.00197)).into_balance()
         );
     });
@@ -83,18 +85,18 @@ fn average_price_same_values() {
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&ETH, balance!(10)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(10)
         );
-        PriceTools::incoming_spot_price(&ETH, balance!(10)).unwrap();
+        PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Buy).unwrap();
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(10)
         );
     });
@@ -108,32 +110,47 @@ fn average_price_smoothed_change_without_cap() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(1000), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             to_avg(
-                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN,
+                PriceTools::price_infos(&ETH)
+                    .unwrap()
+                    .price_of(PriceVariant::Buy)
+                    .clone()
+                    .spot_prices
+                    .iter(),
+                AVG_BLOCK_SPAN
             )
         );
         for &new_price in [999u32, 1000, 1003, 1006, 1009, 1015, 1018, 1021, 1024, 1030].iter() {
-            PriceTools::incoming_spot_price(&ETH, balance!(new_price)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(new_price), PriceVariant::Buy).unwrap();
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&ETH)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
         }
         for &new_price in [1033u32, 1024, 1030, 1039, 1003, 1039, 1000, 1030].iter() {
-            PriceTools::incoming_spot_price(&ETH, balance!(new_price)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(new_price), PriceVariant::Buy).unwrap();
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&ETH)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
         }
@@ -148,56 +165,77 @@ fn different_average_for_different_assets() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(0.5)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Buy).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&DAI, balance!(700)).unwrap();
+            PriceTools::incoming_spot_price(&DAI, balance!(700), PriceVariant::Buy).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&VAL, balance!(2)).unwrap();
+            PriceTools::incoming_spot_price(&VAL, balance!(2), PriceVariant::Buy).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&PSWAP, balance!(1200)).unwrap();
+            PriceTools::incoming_spot_price(&PSWAP, balance!(1200), PriceVariant::Buy).unwrap();
         }
         for &new_price in [balance!(0.5), balance!(0.5001), balance!(0.5002)].iter() {
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&ETH)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
-            PriceTools::incoming_spot_price(&ETH, new_price).unwrap();
+            PriceTools::incoming_spot_price(&ETH, new_price, PriceVariant::Buy).unwrap();
         }
         for &new_price in [balance!(700), balance!(700.5), balance!(700.3)].iter() {
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy).unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&DAI).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&DAI)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
-            PriceTools::incoming_spot_price(&DAI, new_price).unwrap();
+            PriceTools::incoming_spot_price(&DAI, new_price, PriceVariant::Buy).unwrap();
         }
         for &new_price in [balance!(2), balance!(2.001), balance!(2.005)].iter() {
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &VAL.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &VAL.into(), PriceVariant::Buy).unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&VAL).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&VAL)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
-            PriceTools::incoming_spot_price(&VAL, new_price).unwrap();
+            PriceTools::incoming_spot_price(&VAL, new_price, PriceVariant::Buy).unwrap();
         }
         for &new_price in [balance!(1200), balance!(1201.1), balance!(1202.2)].iter() {
             assert_eq!(
-                PriceTools::get_average_price(&XOR.into(), &PSWAP.into()).unwrap(),
+                PriceTools::get_average_price(&XOR.into(), &PSWAP.into(), PriceVariant::Buy)
+                    .unwrap(),
                 to_avg(
-                    PriceTools::price_infos(&PSWAP).unwrap().spot_prices.iter(),
-                    AVG_BLOCK_SPAN,
+                    PriceTools::price_infos(&PSWAP)
+                        .unwrap()
+                        .price_of(PriceVariant::Buy)
+                        .clone()
+                        .spot_prices
+                        .iter(),
+                    AVG_BLOCK_SPAN
                 )
             );
-            PriceTools::incoming_spot_price(&PSWAP, new_price).unwrap();
+            PriceTools::incoming_spot_price(&PSWAP, new_price, PriceVariant::Buy).unwrap();
         }
     });
 }
@@ -210,39 +248,39 @@ fn all_exchange_paths_work() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(0.5)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Buy).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&DAI, balance!(800)).unwrap();
+            PriceTools::incoming_spot_price(&DAI, balance!(800), PriceVariant::Buy).unwrap();
         }
         // XOR(1)->ETH(0.5)
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(0.5)
         );
         // ETH(1)->XOR(2)
         assert_eq!(
-            PriceTools::get_average_price(&ETH.into(), &XOR.into()).unwrap(),
+            PriceTools::get_average_price(&ETH.into(), &XOR.into(), PriceVariant::Buy).unwrap(),
             balance!(2)
         );
         // XOR(1)->DAI(800)
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy).unwrap(),
             balance!(800)
         );
         // DAI(1)->XOR(0.00125)
         assert_eq!(
-            PriceTools::get_average_price(&DAI.into(), &XOR.into()).unwrap(),
+            PriceTools::get_average_price(&DAI.into(), &XOR.into(), PriceVariant::Buy).unwrap(),
             balance!(0.00125)
         );
         // ETH(1)->XOR(2)->DAI(1600)
         assert_eq!(
-            PriceTools::get_average_price(&ETH.into(), &DAI.into()).unwrap(),
+            PriceTools::get_average_price(&ETH.into(), &DAI.into(), PriceVariant::Buy).unwrap(),
             balance!(1600)
         );
         // DAI(1)->XOR(0.00125)->ETH(0.000625)
         assert_eq!(
-            PriceTools::get_average_price(&DAI.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&DAI.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(0.000625)
         );
     });
@@ -258,36 +296,38 @@ fn price_quote_continuous_failure() {
         // initialization period
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&ETH, balance!(10)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(10)
         );
         PriceTools::reserves_changed(&ETH);
         // failure period
         for _ in 1..AVG_BLOCK_SPAN {
-            PriceTools::average_prices_calculation_routine();
+            PriceTools::average_prices_calculation_routine(PriceVariant::Buy);
+            PriceTools::average_prices_calculation_routine(PriceVariant::Sell);
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(10)
         );
-        PriceTools::average_prices_calculation_routine();
+        PriceTools::average_prices_calculation_routine(PriceVariant::Buy);
+        PriceTools::average_prices_calculation_routine(PriceVariant::Sell);
 
         // recovery period
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&ETH, balance!(20)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(20), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(20)
         );
     });
@@ -302,29 +342,29 @@ fn failure_for_unsupported_assets() {
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &ETH.into()),
+                PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&ETH, balance!(10)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(10)
         );
         assert_noop!(
-            PriceTools::get_average_price(&XOR.into(), &DOT.into()),
+            PriceTools::get_average_price(&XOR.into(), &DOT.into(), PriceVariant::Buy),
             Error::<Runtime>::UnsupportedQuotePath
         );
         assert_noop!(
-            PriceTools::get_average_price(&DOT.into(), &XOR.into()),
+            PriceTools::get_average_price(&DOT.into(), &XOR.into(), PriceVariant::Buy),
             Error::<Runtime>::UnsupportedQuotePath
         );
         assert_noop!(
-            PriceTools::get_average_price(&DOT.into(), &ETH.into()),
+            PriceTools::get_average_price(&DOT.into(), &ETH.into(), PriceVariant::Buy),
             Error::<Runtime>::UnsupportedQuotePath
         );
         assert_noop!(
-            PriceTools::get_average_price(&ETH.into(), &DOT.into()),
+            PriceTools::get_average_price(&ETH.into(), &DOT.into(), PriceVariant::Buy),
             Error::<Runtime>::UnsupportedQuotePath
         );
     });
@@ -338,37 +378,50 @@ fn average_price_large_change_before_no_update_streak_positive() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(1000), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            PriceTools::price_infos(&ETH)
+                .unwrap()
+                .price_of(PriceVariant::Buy)
+                .clone()
+                .last_spot_price,
             balance!(1000)
         );
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             to_avg(
-                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN,
+                PriceTools::price_infos(&ETH)
+                    .unwrap()
+                    .price_of(PriceVariant::Buy)
+                    .clone()
+                    .spot_prices
+                    .iter(),
+                AVG_BLOCK_SPAN
             )
         );
         // change of 300% occurs, price smoothing kicks in
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(4000)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(4000), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(1060.819648734858925676) // not 300% exactly because of compunding effect
         );
         assert_eq!(
-            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            PriceTools::price_infos(&ETH)
+                .unwrap()
+                .price_of(PriceVariant::Buy)
+                .clone()
+                .last_spot_price,
             balance!(4000)
         );
         // same price, continues to repeat, average price is still updated
         for _ in 1..=AVG_BLOCK_SPAN * 23 {
-            PriceTools::incoming_spot_price(&ETH, balance!(4000)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(4000), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(4000) // reaches target price eventually
         );
     });
@@ -382,37 +435,50 @@ fn average_price_large_change_before_no_update_streak_negative() {
             PriceTools::register_asset(&asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(4000)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(4000), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            PriceTools::price_infos(&ETH)
+                .unwrap()
+                .price_of(PriceVariant::Buy)
+                .clone()
+                .last_spot_price,
             balance!(4000)
         );
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             to_avg(
-                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
-                AVG_BLOCK_SPAN,
+                PriceTools::price_infos(&ETH)
+                    .unwrap()
+                    .price_of(PriceVariant::Buy)
+                    .clone()
+                    .spot_prices
+                    .iter(),
+                AVG_BLOCK_SPAN
             )
         );
         // change over 15% occurs, price smoothing kicks in
         for _ in 1..=AVG_BLOCK_SPAN {
-            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(700), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(3997.600695870097537361) // not 15% exactly because of compunding effect
         );
         assert_eq!(
-            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            PriceTools::price_infos(&ETH)
+                .unwrap()
+                .price_of(PriceVariant::Buy)
+                .clone()
+                .last_spot_price,
             balance!(700)
         );
         // same price, continues to repeat, average price is still updated
         for _ in 1..=AVG_BLOCK_SPAN * 8000 {
-            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(700), PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),
             balance!(700) // reaches target price eventually
         );
     });
@@ -429,20 +495,21 @@ fn price_should_go_up_faster_than_going_down() {
         let price_b = balance!(100);
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
-                PriceTools::get_average_price(&XOR.into(), &DAI.into()),
+                PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy),
                 Error::<Runtime>::InsufficientSpotPriceData
             );
-            PriceTools::incoming_spot_price(&DAI, price_a).unwrap();
+            PriceTools::incoming_spot_price(&DAI, price_a, PriceVariant::Buy).unwrap();
         }
         assert_eq!(
-            PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap(),
+            PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy).unwrap(),
             price_a
         );
         let mut n = 0;
         // Increasing price from `price_a` to `price_b`
         loop {
-            PriceTools::incoming_spot_price(&DAI, price_b).unwrap();
-            let actual_price = PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap();
+            PriceTools::incoming_spot_price(&DAI, price_b, PriceVariant::Buy).unwrap();
+            let actual_price =
+                PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy).unwrap();
 
             n += 1;
             if actual_price == price_b {
@@ -453,8 +520,9 @@ fn price_should_go_up_faster_than_going_down() {
         let mut m = 0;
         // Decreasing price from `price_b` to `price_a`
         loop {
-            PriceTools::incoming_spot_price(&DAI, price_a).unwrap();
-            let actual_price = PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap();
+            PriceTools::incoming_spot_price(&DAI, price_a, PriceVariant::Buy).unwrap();
+            let actual_price =
+                PriceTools::get_average_price(&XOR.into(), &DAI.into(), PriceVariant::Buy).unwrap();
 
             m += 1;
             if actual_price == price_a {

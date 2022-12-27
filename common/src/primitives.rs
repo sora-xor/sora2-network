@@ -1039,3 +1039,9 @@ mod tests {
         serde_json::to_value(&BalanceWrapper(balance)).unwrap();
     }
 }
+
+#[derive(Copy, Clone)]
+pub enum PriceVariant {
+    Buy,
+    Sell,
+}
