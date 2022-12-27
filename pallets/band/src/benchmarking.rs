@@ -38,7 +38,6 @@ use crate::Pallet as Band;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use sp_std::prelude::*;
 
 fn relayer<T: Config>() -> T::AccountId {
     let bytes = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48");
@@ -58,7 +57,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(Rate {
-            value: 2,
+            value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
         }));
@@ -71,7 +70,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(relayer), vec![(euro.clone(), 2)], 100, 1)
     verify {
         assert_eq!(Band::<T>::rates(euro), Some(Rate {
-            value: 2,
+            value: Band::<T>::raw_rate_into_balance(2).expect("failed to convert value to Balance"),
             last_updated: 100,
             request_id: 1,
         }));
