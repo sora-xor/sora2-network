@@ -51,8 +51,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI,
-    XOR, XSTUSD,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
+    RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -65,10 +65,10 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 pub trait WeightInfo {
-    fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
+    fn set_synthetic_base_asset_floor_price() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -125,16 +125,10 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + technical::Config
-        + trading_pair::Config
-        + pool_xyk::Config
-        + dex_api::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + dex_api::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// AssetId which is convertible to/from XSTUSD
+        type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
@@ -155,13 +149,6 @@ pub mod pallet {
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_number: T::BlockNumber) -> Weight {
-            <T as Config>::WeightInfo::on_initialize(0)
-        }
-    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -199,6 +186,22 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset));
+            Self::deposit_event(Event::SyntheticAssetEnabled(synthetic_asset));
+            Ok(().into())
+        }
+
+        /// Set floor price for the synthetic base asset
+        ///
+        /// - `origin`: root account
+        /// - `floor_price`: floor price for the synthetic base asset
+        #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
+        pub fn set_synthetic_base_asset_floor_price(
+            origin: OriginFor<T>,
+            floor_price: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            SyntheticBaseAssetFloorPrice::<T>::put(floor_price);
+            Self::deposit_event(Event::SyntheticBaseAssetFloorPriceChanged(floor_price));
             Ok(().into())
         }
     }
@@ -210,6 +213,10 @@ pub mod pallet {
         PoolInitialized(DexIdOf<T>, AssetIdOf<T>),
         /// Reference Asset has been changed for pool. [New Reference Asset Id]
         ReferenceAssetChanged(AssetIdOf<T>),
+        /// Synthetic asset was enabled. [Synthetic Asset Id]
+        SyntheticAssetEnabled(AssetIdOf<T>),
+        /// Floor price of the synthetic base asset has been changed. [New Floor Price]
+        SyntheticBaseAssetFloorPriceChanged(Balance),
     }
 
     #[pallet::error]
@@ -266,6 +273,17 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type CollateralReserves<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, Balance, ValueQuery>;
+
+    #[pallet::type_value]
+    pub fn SyntheticBaseAssetDefaultFloorPrice() -> Balance {
+        balance!(3)
+    }
+
+    /// Floor price for the synthetic base asset.
+    #[pallet::storage]
+    #[pallet::getter(fn synthetic_base_asset_floor_price)]
+    pub type SyntheticBaseAssetFloorPrice<T: Config> =
+        StorageValue<_, Balance, ValueQuery, SyntheticBaseAssetDefaultFloorPrice>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -326,12 +344,12 @@ impl<T: Config> Pallet<T> {
             );
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
-                &T::GetBaseAssetId::get(),
+                &T::GetSyntheticBaseAssetId::get(),
                 &synthetic_asset_id,
             )?;
             trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
-                &T::GetBaseAssetId::get(),
+                &T::GetSyntheticBaseAssetId::get(),
                 &synthetic_asset_id,
                 LiquiditySourceType::XSTPool,
             )?;
@@ -350,7 +368,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Buys the main asset (e.g., XOR).
+    /// Buys the main asset (e.g., XST).
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -358,10 +376,10 @@ impl<T: Config> Pallet<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         let main_asset_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(main_asset_id)?.into();
+            Self::reference_price(main_asset_id, PriceVariant::Buy)?.into();
 
         match quantity {
-            // Input target amount of XST(USD) to get some XOR
+            // Input target amount of XST(USD) to get some XST
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: synthetic_quantity,
             } => {
@@ -372,7 +390,7 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
                     .map(|value| value.max(Fixed::ZERO))
             }
-            // Input some XST(USD) to get a target amount of XOR
+            // Input some XST(USD) to get a target amount of XST
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: main_quantity,
             } => {
@@ -404,10 +422,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
         let main_asset_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(main_asset_id)?.into();
+            Self::reference_price(main_asset_id, PriceVariant::Sell)?.into();
 
         match quantity {
-            // Sell desired amount of XOR for some XST(USD)
+            // Sell desired amount of XST for some XST(USD)
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
@@ -417,7 +435,7 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 Ok(output_synthetic_unwrapped)
             }
-            // Sell some amount of XOR for desired amount of XST(USD)
+            // Sell some amount of XST for desired amount of XST(USD)
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
@@ -562,22 +580,23 @@ impl<T: Config> Pallet<T> {
             let permissioned_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
-            let base_asset_id = &T::GetBaseAssetId::get();
-            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(
-                    &input_asset_id,
-                    &output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?
-            } else {
-                Self::decide_buy_amounts(
-                    &output_asset_id,
-                    &input_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?
-            };
+            let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+            let (input_amount, output_amount, fee_amount) =
+                if input_asset_id == synthetic_base_asset_id {
+                    Self::decide_sell_amounts(
+                        &input_asset_id,
+                        &output_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                } else {
+                    Self::decide_buy_amounts(
+                        &output_asset_id,
+                        &input_asset_id,
+                        swap_amount.into(),
+                        true,
+                    )?
+                };
 
             let result = match swap_amount {
                 SwapAmount::WithDesiredInput { min_amount_out, .. } => {
@@ -633,30 +652,35 @@ impl<T: Config> Pallet<T> {
     }
 
     /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// XST quotes (there can be only single token chosen as reference for all comparisons).
+    /// XOR quotes (there can be only single token chosen as reference for all comparisons).
     /// The reference token here is expected to be DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
-    fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+    fn reference_price(
+        asset_id: &T::AssetId,
+        price_variant: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         // XSTUSD is a special case because it is equal to the reference asset, DAI
-        let price = if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
-            balance!(1)
+        if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
+            Ok(balance!(1))
         } else {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
+                price_variant,
             )
             .map(|avg| {
-                // We don't let the price of XOR w.r.t. DAI go under $3, to prevent manipulation attacks
-                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
-                    avg.max(balance!(3))
+                // We don't let the price of XST w.r.t. DAI go under set floor price, to prevent manipulation attacks
+                if asset_id == &T::GetSyntheticBaseAssetId::get()
+                    && &reference_asset_id == &DAI.into()
+                {
+                    avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
                 } else {
                     avg
                 }
-            })?
-        };
-        Ok(price)
+            })
+        }
     }
 }
 
@@ -671,9 +695,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if *dex_id != DEXId::Polkaswap.into() {
             return false;
         }
-        if input_asset_id == &T::GetBaseAssetId::get() {
+        if input_asset_id == &T::GetSyntheticBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&output_asset_id)
-        } else if output_asset_id == &T::GetBaseAssetId::get() {
+        } else if output_asset_id == &T::GetSyntheticBaseAssetId::get() {
             EnabledSynthetics::<T>::get().contains(&input_asset_id)
         } else {
             false
@@ -690,8 +714,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+        let synthetic_base_asset_id = &T::GetSyntheticBaseAssetId::get();
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == synthetic_base_asset_id
+        {
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
@@ -750,12 +775,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
 impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     fn buy_price(
-        base_asset: &T::AssetId,
+        synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper =
+            Self::reference_price(synthetic_base_asset, PriceVariant::Buy)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Sell)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -763,12 +789,13 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     }
 
     fn sell_price(
-        base_asset: &T::AssetId,
+        synthetic_base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper =
+            Self::reference_price(synthetic_base_asset, PriceVariant::Sell)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Buy)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;

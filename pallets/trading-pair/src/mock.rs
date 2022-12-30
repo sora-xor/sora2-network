@@ -319,6 +319,7 @@ impl Default for ExtBuilder {
                     DEX_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
@@ -326,6 +327,7 @@ impl Default for ExtBuilder {
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),

@@ -298,6 +298,7 @@ impl Default for ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: XOR.into(),
+                        synthetic_base_asset_id: XST.into(),
                         is_public: true,
                     },
                 ),
@@ -305,6 +306,7 @@ impl Default for ExtBuilder {
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: XSTUSD.into(),
+                        synthetic_base_asset_id: XST.into(),
                         is_public: true,
                     },
                 ),

@@ -85,6 +85,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
@@ -461,6 +462,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
             0,
@@ -542,6 +544,7 @@ impl Default for ExtBuilder {
                 0_u32,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

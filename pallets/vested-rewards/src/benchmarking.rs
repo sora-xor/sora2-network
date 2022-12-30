@@ -81,7 +81,7 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
             500,
             &PSWAP.into(),
             &ETH.into(),
-            Some(&XOR.into()),
+            &[XOR.into()],
         )
         .unwrap();
     }
@@ -95,7 +95,7 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
             100,
             &PSWAP.into(),
             &ETH.into(),
-            Some(&XOR.into()),
+            &[XOR.into()],
         )
         .unwrap();
     }

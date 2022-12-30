@@ -477,6 +477,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "band"
+version = "1.0.1"
+dependencies = [
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3901,6 +3919,7 @@ version = "1.5.2"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "band",
  "beefy-primitives",
  "ceres-governance-platform",
  "ceres-launchpad",
@@ -6059,9 +6078,11 @@ dependencies = [
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
+ "fallible-iterator",
  "frame-support",
  "frame-system",
  "hex-literal",
+ "itertools",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
@@ -7245,7 +7266,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "3.2.3"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25#666d9ff1a15cb8d8e45e997c3ea9929dcf976664"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25-lock-fix#8c3bdfd5f6e2cb56a0acdb5d8e58f811a4c32048"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7343,7 +7364,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "4.0.0-dev"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25#666d9ff1a15cb8d8e45e997c3ea9929dcf976664"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25-lock-fix#8c3bdfd5f6e2cb56a0acdb5d8e58f811a4c32048"
 dependencies = [
  "frame-election-provider-support",
  "frame-support",
@@ -12722,6 +12743,7 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
+ "itertools",
  "liquidity-proxy",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",

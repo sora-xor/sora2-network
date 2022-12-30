@@ -30,8 +30,8 @@
 
 use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{
-    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, PswapRemintInfo,
-    RewardReason,
+    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, PriceVariant,
+    PswapRemintInfo, RewardReason,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
@@ -520,7 +520,7 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
         count: u32,
         from_asset_id: &AssetId,
         to_asset_id: &AssetId,
-        intermediate_asset_id: Option<&AssetId>,
+        intermediate_asset_ids: &[AssetId],
     ) -> DispatchResult;
 
     /// Report that account has received pswap reward for buying from tbc.
@@ -593,9 +593,11 @@ pub trait OnPoolCreated {
 
 pub trait PriceToolsPallet<AssetId> {
     /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
+    /// `price_variant` specifies the correction for price, either for buy or sell.
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError>;
 
     /// Add asset to be tracked for average price.
@@ -603,7 +605,11 @@ pub trait PriceToolsPallet<AssetId> {
 }
 
 impl<AssetId> PriceToolsPallet<AssetId> for () {
-    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+    fn get_average_price(
+        _: &AssetId,
+        _: &AssetId,
+        _: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 

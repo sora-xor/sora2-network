@@ -223,10 +223,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 43,
+    spec_version: 44,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 43,
+    transaction_version: 44,
     state_version: 0,
 };
 
@@ -1662,8 +1662,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
+}
+
 impl xst::Config for Runtime {
     type Event = Event;
+    type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
@@ -1772,6 +1777,12 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
+impl band::Config for Runtime {
+    type Event = Event;
+    type Symbol = String;
+    type WeightInfo = band::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1852,6 +1863,7 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -1929,6 +1941,7 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
 
 
         // Trustless ethereum bridge
@@ -2575,6 +2588,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, band, Band);
+            list_benchmark!(list, extra, xst, XSTPool);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2638,6 +2653,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
+            add_benchmark!(params, batches, band, Band);
+            add_benchmark!(params, batches, xst, XSTPool);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

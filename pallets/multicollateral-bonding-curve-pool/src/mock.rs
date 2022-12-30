@@ -35,8 +35,9 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, TechPurpose,
-    VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
+    TechPurpose, VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -101,6 +102,7 @@ parameter_types! {
     pub const GetDefaultFee: u16 = 30;
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
@@ -204,7 +206,7 @@ impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
         _: u32,
         _: &AssetId,
         _: &AssetId,
-        _: Option<&AssetId>,
+        _: &[AssetId],
     ) -> DispatchResult {
         // do nothing
         Ok(())
@@ -597,6 +599,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Ok(Self::inner_quote(
             &DEXId::Polkaswap.into(),
@@ -679,6 +682,7 @@ impl Default for ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],
@@ -764,6 +768,7 @@ impl ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

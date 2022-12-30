@@ -99,6 +99,7 @@ parameter_types! {
     };
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub GetFee0: Fixed = fixed_from_basis_points(0u16);
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
@@ -414,6 +415,7 @@ impl Default for ExtBuilder {
                 (DEX_D_ID, VAL, (fixed!(1000), fixed!(200000))),
                 (DEX_D_ID, KSM, (fixed!(1000), fixed!(1000))),
                 (DEX_D_ID, DOT, (fixed!(1000), fixed!(9000))),
+                (DEX_D_ID, XST, (fixed!(1000), fixed!(9000))),
             ],
             reserves_2: vec![
                 (DEX_A_ID, DOT, (fixed!(6000), fixed!(6000))),
@@ -438,6 +440,7 @@ impl Default for ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -445,6 +448,7 @@ impl Default for ExtBuilder {
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -452,6 +456,7 @@ impl Default for ExtBuilder {
                     DEX_C_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -459,6 +464,7 @@ impl Default for ExtBuilder {
                     DEX_D_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
+                        synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                         is_public: true,
                     },
                 ),
@@ -475,6 +481,7 @@ impl Default for ExtBuilder {
             ],
             source_types: vec![
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
@@ -750,11 +757,13 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
 
 pub fn get_reference_prices() -> HashMap<AssetId, Balance> {
     let prices = vec![
+        (XOR, balance!(5.0)),
         (VAL, balance!(2.0)),
         (PSWAP, balance!(0.098)),
         (USDT, balance!(1.01)),
         (KSM, balance!(450.0)),
         (DOT, balance!(50.0)),
+        (XST, balance!(182.9)),
         (XSTUSD, balance!(1.02)),
     ];
     prices.into_iter().collect()
@@ -813,6 +822,7 @@ impl ExtBuilder {
                 0,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],
@@ -924,9 +934,9 @@ impl MockXSTPool {
 
 impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockXSTPool {
     fn can_exchange(_dex_id: &DEXId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
-        if output_asset_id == &XOR.into() && input_asset_id == &XSTUSD.into() {
+        if output_asset_id == &XST.into() && input_asset_id == &XSTUSD.into() {
             return true;
-        } else if input_asset_id == &XOR.into() && output_asset_id == &XSTUSD.into() {
+        } else if input_asset_id == &XST.into() && output_asset_id == &XSTUSD.into() {
             return true;
         } else {
             return false;
@@ -943,56 +953,29 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
-        let base_asset_id = &GetBaseAssetId::get();
         let reserves_tech_account_id =
             TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
         let _reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
 
-        let base_asset_price: Balance = get_reference_prices()[base_asset_id].into();
+        let input_asset_price: FixedWrapper = get_reference_prices()[input_asset_id].into();
+        let output_asset_price: FixedWrapper = get_reference_prices()[output_asset_id].into();
 
-        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-            // Selling XOR
-
-            match amount {
-                QuoteAmount::WithDesiredInput {
-                    desired_amount_in, ..
-                } => {
-                    let output_amount: Balance = desired_amount_in * base_asset_price;
-                    (desired_amount_in, output_amount, 0)
-                }
-                QuoteAmount::WithDesiredOutput {
-                    desired_amount_out, ..
-                } => {
-                    let input_amount = desired_amount_out / base_asset_price;
-                    (input_amount, desired_amount_out, 0)
-                }
-            }
-        } else {
-            // Buying XOR
-            match amount {
-                QuoteAmount::WithDesiredInput {
-                    desired_amount_in: synthetics_quantity,
-                    ..
-                } => {
-                    //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
-                    let output_amount = synthetics_quantity / base_asset_price;
-                    (synthetics_quantity, output_amount, 0)
-                }
-                QuoteAmount::WithDesiredOutput {
-                    desired_amount_out: base_quantity,
-                    ..
-                } => {
-                    //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
-                    let input_amount = base_quantity * base_asset_price;
-
-                    (input_amount, base_quantity, 0)
-                }
-            }
-        };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let output_amount = desired_amount_in * input_asset_price / output_asset_price;
+                Ok(SwapOutcome::new(
+                    output_amount.try_into_balance().unwrap(),
+                    0,
+                ))
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let input_amount = desired_amount_out * output_asset_price / input_asset_price;
+                Ok(SwapOutcome::new(
+                    input_amount.try_into_balance().unwrap(),
+                    0,
+                ))
+            }
         }
     }
 

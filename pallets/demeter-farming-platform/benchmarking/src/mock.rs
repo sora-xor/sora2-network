@@ -299,7 +299,8 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
-                    base_asset_id: XOR.into(),
+                    base_asset_id: XOR,
+                    synthetic_base_asset_id: XST,
                     is_public: true,
                 },
             )],

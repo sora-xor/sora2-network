@@ -244,6 +244,7 @@ impl ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
@@ -251,6 +252,7 @@ impl ExtBuilder {
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
