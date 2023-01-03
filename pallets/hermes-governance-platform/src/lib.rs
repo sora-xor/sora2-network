@@ -130,8 +130,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
         Voted(AccountIdOf<T>, String, u32),
-        /// Create poll [who, start_timestamp, end_timestamp]
-        Created(AccountIdOf<T>, T::Moment, T::Moment),
+        /// Create poll [who, title, start_timestamp, end_timestamp]
+        Created(AccountIdOf<T>, String, T::Moment, T::Moment),
         /// Voter Funds Withdrawn [who, balance]
         VoterFundsWithdrawn(AccountIdOf<T>, Balance),
         /// Creator Funds Withdrawn [who, balance]
@@ -144,16 +144,12 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Invalid Number Of Hermes
-        InvalidAmountOfHermes,
         /// Poll Is Not Started
         PollIsNotStarted,
         ///Poll Is Finished
         PollIsFinished,
         /// Invalid Number Of Option
         InvalidNumberOfOption,
-        /// Not Enough Funds
-        NotEnoughFunds,
         /// Invalid Start Timestamp
         InvalidStartTimestamp,
         ///Invalid End Timestamp,
@@ -162,22 +158,18 @@ pub mod pallet {
         NotEnoughHermesForCreatingPoll,
         /// Funds Already Withdrawn
         FundsAlreadyWithdrawn,
-        /// Invalid Voting Option
-        InvalidVotingOption,
-        /// Not Enough Funds For CreatingPoll
-        NotEnoughFundsForCreatingPoll,
         /// Poll Is Not Finished
         PollIsNotFinished,
-        /// Poll Is Not Ended
-        PollIsNotEnded,
-        /// Creator Funds Already Withdrawn
-        CreatorFundsAlreadyWithdrawn,
         /// You Are Not Creator
         YouAreNotCreator,
         /// Unauthorized
         Unauthorized,
         /// Poll Does Not Exist,
         PollDoesNotExist,
+        /// Not Enough Hermes For Voting
+        NotEnoughHermesForVoting,
+        /// AlreadyVoted,
+        AlreadyVoted,
     }
 
     #[pallet::call]
@@ -211,16 +203,18 @@ pub mod pallet {
                 Error::<T>::PollIsFinished
             );
 
+            ensure!(
+                MinimumHermesVotingAmount::<T>::get()
+                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
+                        .unwrap_or(0),
+                Error::<T>::NotEnoughHermesForVoting
+            );
+
             let mut hermes_voting_info = <HermesVotings<T>>::get(&poll_id, &user);
 
             ensure!(
-                hermes_voting_info.number_of_hermes >= MinimumHermesVotingAmount::<T>::get(),
-                Error::<T>::InvalidAmountOfHermes
-            );
-
-            ensure!(
                 hermes_voting_info.voting_option != 0,
-                Error::<T>::InvalidVotingOption
+                Error::<T>::AlreadyVoted
             );
 
             hermes_voting_info.voting_option = voting_option;
@@ -234,7 +228,7 @@ pub mod pallet {
                 &Self::account_id(),
                 hermes_voting_info.number_of_hermes,
             )
-            .map_err(|_assets_err| Error::<T>::NotEnoughFunds)?;
+            .map_err(|_assets_err| Error::<T>::NotEnoughHermesForVoting)?;
 
             // Update storage
             <HermesVotings<T>>::insert(&poll_id, &user, hermes_voting_info);
@@ -283,7 +277,7 @@ pub mod pallet {
                 hermes_locked: MinimumHermesAmountForCreatingPoll::<T>::get(),
                 poll_start_timestamp,
                 poll_end_timestamp,
-                title,
+                title: title.clone(),
                 description,
                 creator_hermes_withdrawn: false,
             };
@@ -295,13 +289,14 @@ pub mod pallet {
                 &Self::account_id(),
                 hermes_poll_info.hermes_locked,
             )
-            .map_err(|_assets_err| Error::<T>::NotEnoughFundsForCreatingPoll)?;
+            .map_err(|_assets_err| Error::<T>::NotEnoughHermesForCreatingPoll)?;
 
             <HermesPollData<T>>::insert(&poll_id, hermes_poll_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Created(
                 user.clone(),
+                title,
                 poll_start_timestamp,
                 poll_end_timestamp,
             ));
@@ -374,12 +369,12 @@ pub mod pallet {
 
             ensure!(
                 current_timestamp >= hermes_poll_info.poll_end_timestamp,
-                Error::<T>::PollIsNotEnded
+                Error::<T>::PollIsNotFinished
             );
 
             ensure!(
                 hermes_poll_info.creator_hermes_withdrawn == false,
-                Error::<T>::CreatorFundsAlreadyWithdrawn
+                Error::<T>::FundsAlreadyWithdrawn
             );
 
             // Withdraw Creator Hermes
