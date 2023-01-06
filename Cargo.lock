@@ -4456,6 +4456,7 @@ name = "hermes-governance-platform"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-governance-platform",
  "ceres-liquidity-locker",
  "common",
  "demeter-farming-platform",

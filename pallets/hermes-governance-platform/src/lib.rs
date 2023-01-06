@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 extern crate alloc;
 
 use alloc::string::String;
@@ -63,7 +69,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Hermes asset id
-        type HermesAssetId: Get<Self::AssetId>;
+        type CeresAssetId: Get<Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -170,6 +176,10 @@ pub mod pallet {
         NotEnoughHermesForVoting,
         /// AlreadyVoted,
         AlreadyVoted,
+        /// Invalid Minimum Duration Of Poll
+        InvalidMinimumDurationOfPoll,
+        /// Invalid Maximum Duration Of Poll
+        InvalidMaximumDurationOfPoll,
     }
 
     #[pallet::call]
@@ -205,7 +215,7 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
@@ -213,7 +223,7 @@ pub mod pallet {
             let mut hermes_voting_info = <HermesVotings<T>>::get(&poll_id, &user);
 
             ensure!(
-                hermes_voting_info.voting_option != 0,
+                hermes_voting_info.voting_option == 0,
                 Error::<T>::AlreadyVoted
             );
 
@@ -223,7 +233,7 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::CeresAssetId::get().into(),
                 &user,
                 &Self::account_id(),
                 hermes_voting_info.number_of_hermes,
@@ -265,9 +275,22 @@ pub mod pallet {
                 Error::<T>::InvalidEndTimestamp
             );
 
+            let min_duration_of_poll = current_timestamp + (172800 * 1000u32).into();
+            let max_duration_of_poll = current_timestamp + (604800 * 1000u32).into();
+
+            ensure!(
+                (poll_end_timestamp - poll_start_timestamp) >= min_duration_of_poll,
+                Error::<T>::InvalidMinimumDurationOfPoll
+            );
+
+            ensure!(
+                (poll_end_timestamp - poll_start_timestamp) <= max_duration_of_poll,
+                Error::<T>::InvalidMaximumDurationOfPoll
+            );
+
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
@@ -284,7 +307,7 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::CeresAssetId::get().into(),
                 &user.clone(),
                 &Self::account_id(),
                 hermes_poll_info.hermes_locked,
@@ -331,7 +354,7 @@ pub mod pallet {
 
             // Withdraw Hermes
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::CeresAssetId::get().into(),
                 &Self::account_id(),
                 &user,
                 hermes_voting_info.number_of_hermes,
@@ -379,7 +402,7 @@ pub mod pallet {
 
             // Withdraw Creator Hermes
             Assets::<T>::transfer_from(
-                &T::HermesAssetId::get().into(),
+                &T::CeresAssetId::get().into(),
                 &Self::account_id(),
                 &user,
                 hermes_poll_info.hermes_locked,

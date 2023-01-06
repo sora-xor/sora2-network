@@ -33,6 +33,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
+ceres-governance-platform = { path = "../ceres-governance-platform", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 hermes-governance-platform = { path = ".", default-features = false }
