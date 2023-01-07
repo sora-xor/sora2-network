@@ -6,7 +6,7 @@ use common::{
     Description, Fixed, CERES_ASSET_ID, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -334,13 +334,5 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
-    }
-}
-
-pub fn run_to_block(n: u64) {
-    while System::block_number() < n {
-        System::on_finalize(System::block_number());
-        System::set_block_number(System::block_number() + 1);
-        System::on_initialize(System::block_number());
     }
 }

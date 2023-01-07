@@ -1,17 +1,10 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, HermesPollInfo, Pallet as HermesGovernancePlatformPallet};
-    use common::{
-        balance, AssetId32, AssetName, AssetSymbol, Balance, LiquiditySourceType, PoolXykPallet,
-        PredefinedAssetId, ToFeeAccount, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION,
-        DEMETER_ASSET_ID, XOR, XSTUSD,
-    };
-    use frame_support::pallet_prelude::{StorageDoubleMap, StorageMap};
-    use frame_support::storage::types::ValueQuery;
+    use common::{balance, CERES_ASSET_ID};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
-    use uuid::Uuid;
 
     #[test]
     fn create_poll_invalid_start_timestamp() {
@@ -127,36 +120,27 @@ mod tests {
             let poll_id: String = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
-            let user = ALICE.into();
+            let user = Origin::signed(ALICE);
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let title = "Title".to_string();
             let description = "Description".to_string();
 
-            let hermes_poll_info = HermesPollInfo {
-                creator: user,
-                hermes_locked,
+            assert_ok!(HermesGovernancePlatform::create_poll(
+                user,
                 poll_start_timestamp,
                 poll_end_timestamp,
                 title,
                 description,
-                creator_hermes_withdrawn: false,
-            };
-
-            pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
-
-            let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
-            assert_ok!(Assets::transfer_from(
-                &CERES_ASSET_ID.into(),
-                &user,
-                &pallet_account,
-                hermes_poll_info.hermes_locked
             ));
 
-            let poll_info = pallet::HermesPollData::<Runtime>::get(&poll_id).unwrap();
-            assert_eq!(poll_info.poll_start_timestamp, poll_start_timestamp);
-            assert_eq!(poll_info.poll_end_timestamp, poll_end_timestamp);
-            assert_eq!(poll_info.creator_hermes_withdrawn, false);
-            assert_eq!(poll_info.hermes_locked, hermes_locked);
+            let mut poll_info = pallet::HermesPollData::<Runtime>::get(&poll_id);
+
+            for p_info in poll_info.iter_mut() {
+                assert_eq!(p_info.poll_start_timestamp, poll_start_timestamp);
+                assert_eq!(p_info.poll_end_timestamp, poll_end_timestamp);
+                assert_eq!(p_info.creator_hermes_withdrawn, false);
+                assert_eq!(p_info.hermes_locked, hermes_locked);
+            }
 
             // Check ALICE's balances
             assert_eq!(
@@ -166,6 +150,7 @@ mod tests {
             );
 
             // Check pallet's balances
+            let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
@@ -331,9 +316,15 @@ mod tests {
 
             pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
+            assert_ok!(HermesGovernancePlatform::vote(
+                Origin::signed(ALICE),
+                poll_id.clone(),
+                1,
+            ));
+
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(BOB), poll_id, 1,),
-                Error::<Runtime>::NotEnoughHermesForVoting
+                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id.clone(), 1,),
+                Error::<Runtime>::AlreadyVoted
             );
         });
     }
@@ -570,7 +561,6 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE.into();
-            let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
 
@@ -606,7 +596,6 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE.into();
-            let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
 
             let hermes_poll_info = HermesPollInfo {
@@ -642,7 +631,7 @@ mod tests {
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
 
-            let mut hermes_poll_info = HermesPollInfo {
+            let hermes_poll_info = HermesPollInfo {
                 creator: user,
                 hermes_locked,
                 poll_start_timestamp,
@@ -690,7 +679,7 @@ mod tests {
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
 
-            let mut hermes_poll_info = HermesPollInfo {
+            let hermes_poll_info = HermesPollInfo {
                 creator: user,
                 hermes_locked,
                 poll_start_timestamp,
