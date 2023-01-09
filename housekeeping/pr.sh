@@ -45,14 +45,11 @@ then
 gh pr edit $(echo $BRANCH_NAME | grep -Po "\\d+") \
 --add-reviewer $(echo $devopsteam)
 echo $devopsteam are assigned to reviewers!
+fi
 if [[ "$RESULT" =~ 'liquidity-proxy' ]] || [[ "$RESULT" =~ 'common' ]] || [[ "$RESULT" =~ 'pallets' ]]
 then
 gh pr edit $(echo $BRANCH_NAME | grep -Po "\\d+") \
 --add-reviewer $(echo $polkaswapteam)
 echo $polkaswapteam are assigned to reviewers!
-else
-echo 'Nobody is assigned to reviewers (no mathes in list), notify the DevOPS Team'
-break
-fi
 fi
 done
