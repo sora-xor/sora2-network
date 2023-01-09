@@ -6,6 +6,7 @@ pub type Migrations = (
     EthBridgeMigration,
     MoveMarketMakerRewardPoolToLiquidityProviderPool<Runtime>,
     PriceToolsMigration,
+    pallet_staking::migrations::lock_fix::LockFix<Runtime>,
 );
 
 pub struct EthBridgeMigration;
