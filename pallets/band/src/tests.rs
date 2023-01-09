@@ -28,10 +28,19 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::{prelude::FixedWrapper, Balance, Fixed};
 use frame_support::{assert_noop, error::BadOrigin};
 use sp_std::collections::btree_set::BTreeSet;
 
 use crate::{mock::*, Error, Rate};
+
+pub fn band_rate_into_balance(rate: u64) -> Balance {
+    let fixed = Fixed::from_bits(rate as i128 * super::RATE_MULTIPLIER);
+    let fixed_wrapper = FixedWrapper::from(fixed);
+    fixed_wrapper
+        .try_into_balance()
+        .expect("Failed to convert fixed wrapper to balance")
+}
 
 #[test]
 fn add_and_remove_relayers_should_work() {
@@ -158,7 +167,7 @@ fn relay_should_work() {
             assert_eq!(
                 Band::rates(symbol),
                 Some(Rate {
-                    value: rate,
+                    value: band_rate_into_balance(rate),
                     last_updated: initial_resolve_time,
                     request_id,
                 })
@@ -199,7 +208,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
         assert_eq!(
             Band::rates("RUB"),
             Some(Rate {
-                value: 2,
+                value: band_rate_into_balance(2),
                 last_updated: initial_resolve_time,
                 request_id,
             })
@@ -241,7 +250,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
         assert_eq!(
             Band::rates("RUB"),
             Some(Rate {
-                value: new_rub_rate,
+                value: band_rate_into_balance(new_rub_rate),
                 last_updated: new_resolve_time,
                 request_id: new_request_id,
             })
@@ -318,7 +327,7 @@ fn relay_should_store_last_duplicated_rate() {
         assert_eq!(
             Band::rates("USD"),
             Some(Rate {
-                value: 4,
+                value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
             })
@@ -349,7 +358,7 @@ fn force_relay_should_store_last_duplicated_rate() {
         assert_eq!(
             Band::rates("USD"),
             Some(Rate {
-                value: 4,
+                value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
             })

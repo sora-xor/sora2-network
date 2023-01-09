@@ -1,7 +1,11 @@
 use crate::*;
 use frame_support::traits::OnRuntimeUpgrade;
 
-pub type Migrations = (EthBridgeMigration, PriceToolsMigration);
+pub type Migrations = (
+    EthBridgeMigration,
+    PriceToolsMigration,
+    pallet_staking::migrations::lock_fix::LockFix<Runtime>,
+);
 
 pub struct EthBridgeMigration;
 
