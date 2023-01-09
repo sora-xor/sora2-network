@@ -142,7 +142,7 @@ pub mod pallet {
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type Oracle: DataFeed<Self::Symbol, u64, u64, DispatchError>;
+        type Oracle: DataFeed<Self::Symbol, Balance, u64, DispatchError>;
         /// Type of symbol received from oracles
         type Symbol: Parameter
             + From<&'static str>

@@ -7230,7 +7230,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "3.2.3"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25#666d9ff1a15cb8d8e45e997c3ea9929dcf976664"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25-lock-fix#8c3bdfd5f6e2cb56a0acdb5d8e58f811a4c32048"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7328,7 +7328,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "4.0.0-dev"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25#666d9ff1a15cb8d8e45e997c3ea9929dcf976664"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.25-lock-fix#8c3bdfd5f6e2cb56a0acdb5d8e58f811a4c32048"
 dependencies = [
  "frame-election-provider-support",
  "frame-support",
