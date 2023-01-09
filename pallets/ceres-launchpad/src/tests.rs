@@ -1,6 +1,6 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, Pallet as CeresLaunchpadPallet};
+    use crate::{pallet, Error, FeePercentForRaisedFunds, Pallet as CeresLaunchpadPallet};
     use common::fixnum::ops::CheckedAdd;
     use common::prelude::FixedWrapper;
     use common::{
@@ -1980,11 +1980,22 @@ mod tests {
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
+            let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
+                * FixedWrapper::from(FeePercentForRaisedFunds::<Runtime>::get()))
+            .try_into_balance()
+            .unwrap_or(0);
+            let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
+            let funds_for_liquidity = (FixedWrapper::from(raised_funds_without_fee)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
             .try_into_balance()
             .unwrap_or(0);
-            let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
+            let funds_for_team = raised_funds_without_fee - funds_for_liquidity;
+
+            assert_eq!(
+                Assets::free_balance(&XOR, &pallet::AuthorityAccount::<Runtime>::get())
+                    .expect("Failed to query free balance."),
+                funds_raised_fee
+            );
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
                 funds_for_team + balance!(900000)
@@ -2121,11 +2132,22 @@ mod tests {
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
-            let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
+            let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
+                * FixedWrapper::from(FeePercentForRaisedFunds::<Runtime>::get()))
+            .try_into_balance()
+            .unwrap_or(0);
+            let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
+            let funds_for_liquidity = (FixedWrapper::from(raised_funds_without_fee)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
             .try_into_balance()
             .unwrap_or(0);
-            let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
+            let funds_for_team = raised_funds_without_fee - funds_for_liquidity;
+
+            assert_eq!(
+                Assets::free_balance(&XOR, &pallet::AuthorityAccount::<Runtime>::get())
+                    .expect("Failed to query free balance."),
+                funds_raised_fee
+            );
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
                 funds_for_team + balance!(900000)
@@ -2587,6 +2609,49 @@ mod tests {
                 balance!(5000) + first_release + tokens_per_claim * 5
             );
             assert_eq!(contribution_info.claiming_finished, true);
+        });
+    }
+
+    #[test]
+    fn change_fee_percent_for_raised_funds_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
+                    Origin::signed(ALICE),
+                    balance!(0.02)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_fee_percent_for_raised_funds_invalid_fee_percent() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    balance!(1.2)
+                ),
+                Error::<Runtime>::InvalidFeePercent
+            );
+        });
+    }
+
+    #[test]
+    fn change_fee_percent_for_raised_funds_ok() {
+        preset_initial(|| {
+            assert_ok!(
+                CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
+                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    balance!(0.02)
+                )
+            );
+
+            assert_eq!(
+                pallet::FeePercentForRaisedFunds::<Runtime>::get(),
+                balance!(0.02)
+            );
         });
     }
 

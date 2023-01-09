@@ -182,6 +182,17 @@ pub mod pallet {
         StorageValue<_, Balance, ValueQuery, DefaultCeresForContributionInILO<T>>;
 
     #[pallet::type_value]
+    pub fn DefaultFeePercentForRaisedFunds<T: Config>() -> Balance {
+        balance!(0.01)
+    }
+
+    /// Fee percent for raised funds in successful ILO
+    #[pallet::storage]
+    #[pallet::getter(fn fee_percent_for_raised_funds)]
+    pub type FeePercentForRaisedFunds<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultFeePercentForRaisedFunds<T>>;
+
+    #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
@@ -334,6 +345,8 @@ pub mod pallet {
         InvalidTeamVestingPeriod,
         /// Not enough team tokens to lock
         NotEnoughTeamTokensToLock,
+        /// Invalid fee percent for raised funds
+        InvalidFeePercent,
     }
 
     #[pallet::call]
@@ -627,7 +640,6 @@ pub mod pallet {
         }
 
         /// Finish ILO
-
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
@@ -678,12 +690,25 @@ pub mod pallet {
                 return Ok(().into());
             }
 
+            // Transfer fee to authority account
+            let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
+                * FixedWrapper::from(FeePercentForRaisedFunds::<T>::get()))
+            .try_into_balance()
+            .unwrap_or(0);
+            Assets::<T>::transfer_from(
+                &XOR.into(),
+                &pallet_account,
+                &AuthorityAccount::<T>::get(),
+                funds_raised_fee,
+            )?;
+
             // Transfer raised funds to team
-            let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
+            let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
+            let funds_for_liquidity = (FixedWrapper::from(raised_funds_without_fee)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
             .try_into_balance()
             .unwrap_or(0);
-            let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
+            let funds_for_team = raised_funds_without_fee - funds_for_liquidity;
             Assets::<T>::transfer_from(
                 &XOR.into(),
                 &pallet_account,
@@ -977,6 +1002,30 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Change fee percent for raised funds in successful ILO
+        #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
+        pub fn change_fee_percent_for_raised_funds(
+            origin: OriginFor<T>,
+            fee_percent: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            if fee_percent > balance!(1) {
+                return Err(Error::<T>::InvalidFeePercent.into());
+            }
+
+            FeePercentForRaisedFunds::<T>::put(fee_percent);
+
+            // Emit an event
+            Self::deposit_event(Event::FeeChanged(fee_percent));
+
+            Ok(().into())
+        }
+
         /// Change CERES burn fee
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_ceres_burn_fee(
@@ -1018,7 +1067,6 @@ pub mod pallet {
         }
 
         /// Claim PSWAP rewards
-
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
