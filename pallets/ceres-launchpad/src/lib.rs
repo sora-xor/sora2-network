@@ -182,15 +182,15 @@ pub mod pallet {
         StorageValue<_, Balance, ValueQuery, DefaultCeresForContributionInILO<T>>;
 
     #[pallet::type_value]
-    pub fn DefaultFeePercentForRaisedFunds<T: Config>() -> Balance {
+    pub fn DefaultFeePercentOnRaisedFunds<T: Config>() -> Balance {
         balance!(0.01)
     }
 
-    /// Fee percent for raised funds in successful ILO
+    /// Fee percent on raised funds in successful ILO
     #[pallet::storage]
-    #[pallet::getter(fn fee_percent_for_raised_funds)]
-    pub type FeePercentForRaisedFunds<T: Config> =
-        StorageValue<_, Balance, ValueQuery, DefaultFeePercentForRaisedFunds<T>>;
+    #[pallet::getter(fn fee_percent_on_raised_funds)]
+    pub type FeePercentOnRaisedFunds<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultFeePercentOnRaisedFunds<T>>;
 
     #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
@@ -345,7 +345,7 @@ pub mod pallet {
         InvalidTeamVestingPeriod,
         /// Not enough team tokens to lock
         NotEnoughTeamTokensToLock,
-        /// Invalid fee percent for raised funds
+        /// Invalid fee percent on raised funds
         InvalidFeePercent,
     }
 
@@ -692,7 +692,7 @@ pub mod pallet {
 
             // Transfer fee to authority account
             let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
-                * FixedWrapper::from(FeePercentForRaisedFunds::<T>::get()))
+                * FixedWrapper::from(FeePercentOnRaisedFunds::<T>::get()))
             .try_into_balance()
             .unwrap_or(0);
             Assets::<T>::transfer_from(
@@ -1002,7 +1002,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change fee percent for raised funds in successful ILO
+        /// Change fee percent on raised funds in successful ILO
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_fee_percent_for_raised_funds(
             origin: OriginFor<T>,
@@ -1018,7 +1018,7 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidFeePercent.into());
             }
 
-            FeePercentForRaisedFunds::<T>::put(fee_percent);
+            FeePercentOnRaisedFunds::<T>::put(fee_percent);
 
             // Emit an event
             Self::deposit_event(Event::FeeChanged(fee_percent));

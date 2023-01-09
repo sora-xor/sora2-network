@@ -1,6 +1,6 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, FeePercentForRaisedFunds, Pallet as CeresLaunchpadPallet};
+    use crate::{pallet, Error, FeePercentOnRaisedFunds, Pallet as CeresLaunchpadPallet};
     use common::fixnum::ops::CheckedAdd;
     use common::prelude::FixedWrapper;
     use common::{
@@ -1981,7 +1981,7 @@ mod tests {
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
-                * FixedWrapper::from(FeePercentForRaisedFunds::<Runtime>::get()))
+                * FixedWrapper::from(FeePercentOnRaisedFunds::<Runtime>::get()))
             .try_into_balance()
             .unwrap_or(0);
             let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
@@ -2133,7 +2133,7 @@ mod tests {
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID).unwrap();
 
             let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
-                * FixedWrapper::from(FeePercentForRaisedFunds::<Runtime>::get()))
+                * FixedWrapper::from(FeePercentOnRaisedFunds::<Runtime>::get()))
             .try_into_balance()
             .unwrap_or(0);
             let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
@@ -2649,7 +2649,7 @@ mod tests {
             );
 
             assert_eq!(
-                pallet::FeePercentForRaisedFunds::<Runtime>::get(),
+                pallet::FeePercentOnRaisedFunds::<Runtime>::get(),
                 balance!(0.02)
             );
         });
