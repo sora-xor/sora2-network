@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::Decode;
-use common::{balance, FromGenericPair, CERES_ASSET_ID};
+use common::{balance, FromGenericPair, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::PalletId;
@@ -58,11 +58,11 @@ benchmarks! {
                 &assets_and_permissions_tech_account_id,
             ).unwrap();
 
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
-            CERES_ASSET_ID.into(),
+            HERMES_ASSET_ID.into(),
             caller.clone(),
             hermes_amount
         ).unwrap();
@@ -96,11 +96,11 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
         let hermes_amount = balance!(1000);
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
-            CERES_ASSET_ID.into(),
+            HERMES_ASSET_ID.into(),
             caller.clone(),
             hermes_amount
         ).unwrap();
@@ -129,11 +129,11 @@ benchmarks! {
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
         let current_timestamp = Timestamp::<T>::get();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner.clone()).into(),
-            CERES_ASSET_ID.into(),
+            HERMES_ASSET_ID.into(),
             caller.clone(),
             number_of_hermes
         );
@@ -175,11 +175,11 @@ benchmarks! {
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
-        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         let _ = Assets::<T>::mint(
             RawOrigin::Signed(owner).into(),
-            CERES_ASSET_ID.into(),
+            HERMES_ASSET_ID.into(),
             caller.clone(),
             number_of_hermes
         );
@@ -198,7 +198,7 @@ benchmarks! {
 
         let pallet_account: AccountIdOf<T> = PalletId(*b"hermsgov").into_account_truncating();
         assert_ok!(Assets::<T>::transfer_from(
-            &CERES_ASSET_ID.into(),
+            &HERMES_ASSET_ID.into(),
             &caller,
             &pallet_account,
             hermes_locked,

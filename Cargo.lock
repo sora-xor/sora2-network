@@ -3933,6 +3933,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "framenode-chain-spec",
+ "hermes-governance-platform",
  "hex-literal",
  "iroha-migration",
  "iroha-migration-runtime-api",

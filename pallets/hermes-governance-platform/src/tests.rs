@@ -1,7 +1,7 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, HermesPollInfo};
-    use common::{balance, CERES_ASSET_ID};
+    use common::{balance, HERMES_ASSET_ID};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
@@ -141,7 +141,7 @@ mod tests {
 
             // Check ALICE's balances
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
                 balance!(2800)
             );
@@ -149,7 +149,7 @@ mod tests {
             // Check pallet's balances
             let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
+                Assets::free_balance(&HERMES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
                 hermes_locked
             );
@@ -363,7 +363,7 @@ mod tests {
 
             // Check ALICE's balances
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
                 balance!(2900)
             );
@@ -371,7 +371,7 @@ mod tests {
             // Check pallet's balances
             let hermes_governance = PalletId(*b"hermsgov").into_account_truncating();
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &hermes_governance)
+                Assets::free_balance(&HERMES_ASSET_ID, &hermes_governance)
                     .expect("Failed to query free balance."),
                 number_of_hermes
             );
@@ -522,7 +522,7 @@ mod tests {
 
             // Check ALICE's balances
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
                 balance!(3000)
             );
@@ -530,7 +530,7 @@ mod tests {
             // Check pallet's balances
             let hermes_governance = PalletId(*b"hermsgov").into_account_truncating();
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &hermes_governance)
+                Assets::free_balance(&HERMES_ASSET_ID, &hermes_governance)
                     .expect("Failed to query free balance."),
                 balance!(0)
             );
@@ -642,7 +642,7 @@ mod tests {
 
             let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
             assert_ok!(Assets::transfer_from(
-                &CERES_ASSET_ID.into(),
+                &HERMES_ASSET_ID.into(),
                 &user,
                 &pallet_account,
                 hermes_poll_info.hermes_locked
@@ -690,7 +690,7 @@ mod tests {
 
             let pallet_account = PalletId(*b"hermsgov").into_account_truncating();
             assert_ok!(Assets::transfer_from(
-                &CERES_ASSET_ID.into(),
+                &HERMES_ASSET_ID.into(),
                 &user,
                 &pallet_account,
                 hermes_poll_info.hermes_locked
@@ -709,14 +709,14 @@ mod tests {
 
             // Check ALICE's balances
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
                 balance!(3000)
             );
 
             // Check pallet's balances
             assert_eq!(
-                Assets::free_balance(&CERES_ASSET_ID, &pallet_account)
+                Assets::free_balance(&HERMES_ASSET_ID, &pallet_account)
                     .expect("Failed to query free balance."),
                 balance!(0)
             );

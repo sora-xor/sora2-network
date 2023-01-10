@@ -1783,9 +1783,13 @@ impl band::Config for Runtime {
     type WeightInfo = band::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
+}
+
 impl hermes_governance_platform::Config for Runtime {
     type Event = Event;
-    type CeresAssetId = CeresAssetId;
+    type HermesAssetId = HermesAssetId;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

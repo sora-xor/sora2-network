@@ -3,7 +3,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, CERES_ASSET_ID, PSWAP, VAL, XST,
+        Description, Fixed, HERMES_ASSET_ID, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -98,17 +98,17 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresAssetId: AssetId = CERES_ASSET_ID;
+    pub const HermesAssetId: AssetId = HERMES_ASSET_ID;
 }
 
 impl crate::Config for Runtime {
     type Event = Event;
-    type CeresAssetId = CeresAssetId;
+    type HermesAssetId = HermesAssetId;
     // WeightInfo()
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = CERES_ASSET_ID;
+    pub const GetBaseAssetId: AssetId = HERMES_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = XST;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
@@ -282,10 +282,10 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_assets: vec![(
-                CERES_ASSET_ID,
+                HERMES_ASSET_ID,
                 ALICE,
-                AssetSymbol(b"CERES".to_vec()),
-                AssetName(b"Ceres".to_vec()),
+                AssetSymbol(b"HMX".to_vec()),
+                AssetName(b"Hermes".to_vec()),
                 18,
                 Balance::zero(),
                 true,
@@ -293,8 +293,8 @@ impl Default for ExtBuilder {
                 None,
             )],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID, balance!(3000)),
-                (BOB, CERES_ASSET_ID, balance!(50)),
+                (ALICE, HERMES_ASSET_ID, balance!(3000)),
+                (BOB, HERMES_ASSET_ID, balance!(50)),
             ],
         }
     }

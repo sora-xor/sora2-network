@@ -71,7 +71,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Hermes asset id
-        type CeresAssetId: Get<Self::AssetId>;
+        type HermesAssetId: Get<Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -217,7 +217,7 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesVotingAmount::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForVoting
             );
@@ -235,7 +235,7 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::HermesAssetId::get().into(),
                 &user,
                 &Self::account_id(),
                 hermes_voting_info.number_of_hermes,
@@ -292,7 +292,7 @@ pub mod pallet {
 
             ensure!(
                 MinimumHermesAmountForCreatingPoll::<T>::get()
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
+                    <= Assets::<T>::free_balance(&T::HermesAssetId::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
@@ -309,7 +309,7 @@ pub mod pallet {
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::HermesAssetId::get().into(),
                 &user.clone(),
                 &Self::account_id(),
                 hermes_poll_info.hermes_locked,
@@ -356,7 +356,7 @@ pub mod pallet {
 
             // Withdraw Hermes
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::HermesAssetId::get().into(),
                 &Self::account_id(),
                 &user,
                 hermes_voting_info.number_of_hermes,
@@ -404,7 +404,7 @@ pub mod pallet {
 
             // Withdraw Creator Hermes
             Assets::<T>::transfer_from(
-                &T::CeresAssetId::get().into(),
+                &T::HermesAssetId::get().into(),
                 &Self::account_id(),
                 &user,
                 hermes_poll_info.hermes_locked,
