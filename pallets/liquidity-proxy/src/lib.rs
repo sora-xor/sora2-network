@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate core;
+
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
@@ -513,7 +515,7 @@ impl<T: Config> Pallet<T> {
         Ok(amount)
     }
 
-    /// Performs a swap given a number of liquidity sources and a distribuition of the swap amount across the sources.
+    /// Performs a swap given a number of liquidity sources and a distribution of the swap amount across the sources.
     fn exchange_single(
         sender: &T::AccountId,
         receiver: &T::AccountId,
@@ -957,7 +959,6 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let maybe_path = ExchangePath::<T>::new_trivial(&dex_info, input_asset_id, output_asset_id);
-
         maybe_path.map_or_else(
             || Err(Error::<T>::UnavailableExchangePath.into()),
             |paths| {
@@ -1496,6 +1497,23 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
 
 pub use pallet::*;
 
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct BatchReceiverInfo<T: Config> {
+    pub account_id: T::AccountId,
+    pub target_amount: Balance,
+}
+
+#[cfg(feature = "std")]
+impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "BatchReceiverInfo {{ account_id: {:?}, amount: {:?} }}",
+            self.account_id, self.target_amount
+        ))
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -1526,6 +1544,15 @@ pub mod pallet {
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
+    }
+
+    impl<T: Config> BatchReceiverInfo<T> {
+        pub fn new(account_id: T::AccountId, amount: Balance) -> BatchReceiverInfo<T> {
+            BatchReceiverInfo {
+                account_id,
+                target_amount: amount,
+            }
+        }
     }
 
     /// The current storage version.
@@ -1608,6 +1635,63 @@ pub mod pallet {
                 selected_source_types,
                 filter_mode,
             )?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer()
+                .saturating_mul(receivers.len() as u64)
+                .saturating_add(<T as Config>::WeightInfo::swap(
+                    SwapVariant::WithDesiredOutput,
+                )))]
+        pub fn swap_transfer_batch(
+            origin: OriginFor<T>,
+            receivers: Vec<BatchReceiverInfo<T>>,
+            dex_id: T::DEXId,
+            input_asset_id: T::AssetId,
+            output_asset_id: T::AssetId,
+            max_input_amount: Balance,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+
+            if Self::is_forbidden_filter(
+                &input_asset_id,
+                &output_asset_id,
+                &selected_source_types,
+                &filter_mode,
+            ) {
+                fail!(Error::<T>::ForbiddenFilter);
+            }
+
+            let filter =
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
+
+            let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
+
+            Self::inner_exchange(
+                dex_id,
+                &who,
+                &who,
+                &input_asset_id,
+                &output_asset_id,
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: out_amount,
+                    max_amount_in: max_input_amount,
+                },
+                filter,
+            )?;
+
+            for receiver in receivers {
+                assets::Pallet::<T>::transfer_from(
+                    &output_asset_id,
+                    &who,
+                    &receiver.account_id,
+                    receiver.target_amount,
+                )
+                .expect("Required amount has just been deposited");
+            }
+
             Ok(().into())
         }
 

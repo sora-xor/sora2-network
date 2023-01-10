@@ -68,6 +68,15 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
+pub fn bob() -> AccountId {
+    AccountId32::from([2u8; 32])
+}
+pub fn charlie() -> AccountId {
+    AccountId32::from([3u8; 32])
+}
+pub fn dave() -> AccountId {
+    AccountId32::from([4u8; 32])
+}
 
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
@@ -304,7 +313,7 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
-    type XYKPool = ();
+    type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
     type WeightInfo = ();
@@ -392,6 +401,7 @@ impl vested_rewards::Config for Runtime {
 
 pub struct ExtBuilder {
     pub total_supply: Balance,
+    pub xyk_reserves: Vec<(DEXId, AssetId, (Balance, Balance))>,
     pub reserves: ReservesInit,
     pub reserves_2: ReservesInit,
     pub reserves_3: ReservesInit,
@@ -407,6 +417,7 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             total_supply: balance!(360000),
+            xyk_reserves: Default::default(),
             reserves: vec![
                 (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
                 (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
@@ -830,6 +841,16 @@ impl ExtBuilder {
         }
     }
 
+    pub fn with_xyk_pool(mut self) -> Self {
+        self.xyk_reserves = vec![
+            (DEX_A_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
+        ];
+        self.source_types.push(LiquiditySourceType::XYKPool);
+        self
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -913,7 +934,48 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        t.into()
+        let owner = alice();
+        let owner_origin: <Runtime as frame_system::Config>::Origin =
+            frame_system::RawOrigin::Signed(owner.clone()).into();
+
+        let mut ext: sp_io::TestExternalities = t.into();
+        ext.execute_with(|| {
+            for (dex_id, asset, (base_reserve, asset_reserve)) in self.xyk_reserves {
+                let mint_amount: Balance = asset_reserve * 2;
+
+                trading_pair::Pallet::<Runtime>::register(
+                    owner_origin.clone(),
+                    dex_id.into(),
+                    XOR.into(),
+                    asset.into(),
+                )
+                .unwrap();
+                assets::Pallet::<Runtime>::mint_to(&asset.into(), &owner, &owner, mint_amount)
+                    .unwrap();
+                pool_xyk::Pallet::<Runtime>::initialize_pool(
+                    owner_origin.clone(),
+                    dex_id.into(),
+                    XOR.into(),
+                    asset.into(),
+                )
+                .unwrap();
+                if asset_reserve != balance!(0) && base_reserve != balance!(0) {
+                    pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                        owner_origin.clone(),
+                        dex_id.into(),
+                        XOR.into(),
+                        asset.into(),
+                        base_reserve,
+                        asset_reserve,
+                        balance!(1),
+                        balance!(1),
+                    )
+                    .unwrap();
+                }
+            }
+        });
+
+        ext
     }
 }
 
