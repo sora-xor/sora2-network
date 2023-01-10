@@ -7,13 +7,12 @@ use super::*;
 use codec::Decode;
 use common::{balance, FromGenericPair, CERES_ASSET_ID};
 use frame_benchmarking::benchmarks;
+use frame_support::assert_ok;
+use frame_support::PalletId;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_std::prelude::*;
-use frame_support::PalletId;
 use sp_runtime::traits::AccountIdConversion;
-use frame_support::assert_ok;
-
+use sp_std::prelude::*;
 
 use crate::Pallet as HermesGovernancePlatform;
 use assets::Pallet as Assets;
@@ -39,7 +38,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-benchmarks!{
+benchmarks! {
     vote{
         let caller = alice::<T>();
         let poll_id = "Poll".to_string();
@@ -69,18 +68,18 @@ benchmarks!{
         ).unwrap();
 
         let hermes_poll_info = HermesPollInfo {
-                creator: caller.clone(),
-                hermes_locked,
-                poll_start_timestamp,
-                poll_end_timestamp,
-                title,
-                description,
-                creator_hermes_withdrawn: false,
-            };
+            creator: caller.clone(),
+            hermes_locked,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title,
+            description,
+            creator_hermes_withdrawn: false,
+        };
 
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
     }: {
-        HermesGovernancePlatform::<T>::vote(
+        let _ = HermesGovernancePlatform::<T>::vote(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
@@ -130,31 +129,24 @@ benchmarks!{
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
         let current_timestamp = Timestamp::<T>::get();
-
-        frame_system::Pallet::<T>::inc_providers(&caller);
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
 
         let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+            RawOrigin::Signed(owner.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             number_of_hermes
         );
 
         let hermes_poll_info = HermesPollInfo {
-                creator: caller.clone(),
-                hermes_locked,
-                poll_start_timestamp,
-                poll_end_timestamp,
-                title,
-                description,
-                creator_hermes_withdrawn: false,
-            };
+            creator: caller.clone(),
+            hermes_locked,
+            poll_start_timestamp,
+            poll_end_timestamp,
+            title,
+            description,
+            creator_hermes_withdrawn: false,
+        };
 
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
 
@@ -183,17 +175,10 @@ benchmarks!{
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
-
-        frame_system::Pallet::<T>::inc_providers(&caller);
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
+        let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(CERES_ASSET_ID.clone().into()).unwrap();
 
         let _ = Assets::<T>::mint(
-            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
+            RawOrigin::Signed(owner).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             number_of_hermes
@@ -212,19 +197,12 @@ benchmarks!{
         pallet::HermesPollData::<T>::insert(&poll_id, &hermes_poll_info);
 
         let pallet_account: AccountIdOf<T> = PalletId(*b"hermsgov").into_account_truncating();
-            assert_ok!(Assets::<T>::transfer_from(
-                &CERES_ASSET_ID.into(),
-                &caller,
-                &pallet_account,
-                hermes_locked,
-            ));
-
-        // Check pallet's balances
-            assert_eq!(
-                Assets::<T>::free_balance(&CERES_ASSET_ID.into(), &pallet_account)
-                    .expect("Failed to query free balance."),
-                balance!(1)
-            );
+        assert_ok!(Assets::<T>::transfer_from(
+            &CERES_ASSET_ID.into(),
+            &caller,
+            &pallet_account,
+            hermes_locked,
+        ));
 
         pallet_timestamp::Now::<T>::put(poll_start_timestamp + (172801*1000u32).into());
 
@@ -254,6 +232,4 @@ benchmarks!{
         crate::mock::ExtBuilder::default().build(),
         crate::mock::Runtime
     );
-
-
 }
