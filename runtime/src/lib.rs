@@ -1783,6 +1783,11 @@ impl band::Config for Runtime {
     type WeightInfo = band::weights::WeightInfo<Runtime>;
 }
 
+impl hermes_governance_platform::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1864,6 +1869,7 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 54,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -1942,6 +1948,7 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 54,
 
 
         // Trustless ethereum bridge
@@ -2655,6 +2662,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

@@ -68,6 +68,13 @@ std = [
     "pallet-timestamp/std",
 ]
 
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]
+
 [dependencies.uuid]
 version = "1.2.2"
 features = ["v4", "fast-rng", "macro-diagnostics"]

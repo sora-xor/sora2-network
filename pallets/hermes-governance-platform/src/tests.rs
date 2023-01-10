@@ -1,6 +1,6 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, HermesPollInfo, Pallet as HermesGovernancePlatformPallet};
+    use crate::{pallet, Error, HermesPollInfo};
     use common::{balance, CERES_ASSET_ID};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
@@ -117,7 +117,6 @@ mod tests {
     fn create_poll_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id: String = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
             let user = Origin::signed(ALICE);
@@ -133,9 +132,7 @@ mod tests {
                 description,
             ));
 
-            let mut poll_info = pallet::HermesPollData::<Runtime>::get(&poll_id);
-
-            for p_info in poll_info.iter_mut() {
+            for (_, p_info) in pallet::HermesPollData::<Runtime>::iter() {
                 assert_eq!(p_info.poll_start_timestamp, poll_start_timestamp);
                 assert_eq!(p_info.poll_end_timestamp, poll_end_timestamp);
                 assert_eq!(p_info.creator_hermes_withdrawn, false);
