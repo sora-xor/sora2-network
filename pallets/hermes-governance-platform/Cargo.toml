@@ -28,6 +28,7 @@ permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
+uuid = { version = "1.2.2", features = ["v4"]}
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -65,7 +66,7 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
-    "pallet-timestamp/std",
+    "pallet-timestamp/std"
 ]
 
 
@@ -74,7 +75,3 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
-
-[dependencies.uuid]
-version = "1.2.2"
-features = ["v4", "fast-rng", "macro-diagnostics"]
