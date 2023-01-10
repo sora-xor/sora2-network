@@ -223,10 +223,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 43,
+    spec_version: 44,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 43,
+    transaction_version: 44,
     state_version: 0,
 };
 
@@ -904,6 +904,7 @@ impl pool_xyk::Config for Runtime {
 
 parameter_types! {
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        // TODO(Harrm): why pswap_distribution?
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
             pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),

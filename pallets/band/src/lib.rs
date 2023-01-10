@@ -30,9 +30,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::prelude::FixedWrapper;
+use common::{Balance, Fixed};
 use frame_support::pallet_prelude::*;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
+use sp_std::prelude::*;
 
 #[cfg(test)]
 mod mock;
@@ -43,6 +46,10 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
+
+/// Multiplier to convert rates from precision = 9 (which band team use)
+/// to precision = 18 (which we use)
+pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
 
 pub trait WeightInfo {
     fn relay() -> Weight;
@@ -55,7 +62,7 @@ pub trait WeightInfo {
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
 pub struct Rate {
     /// Rate value in USD.
-    pub value: u64,
+    pub value: Balance,
     /// Last updated timestamp.
     pub last_updated: u64,
     /// Request identifier in the *Band* protocol.
@@ -77,7 +84,6 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use sp_std::collections::btree_set::BTreeSet;
-    use sp_std::prelude::*;
 
     /// `Band` pallet is used to relay data from *BandChain* oracles to Polkaswap.
     /// This data contains information about some symbols rates, like price of some cryptocurrencies,
@@ -132,6 +138,8 @@ pub mod pallet {
         AlreadyATrustedRelayer,
         /// A request to remove an account, which is not a trusted relayer, was supplied.
         NoSuchRelayer,
+        /// Relayed rate is too big to be stored in the pallet.
+        RateConversionOverflow,
     }
 
     #[pallet::call]
@@ -145,7 +153,7 @@ pub mod pallet {
         /// If `rates` contains duplicated symbols, then the last rate will be stored.
         ///
         /// - `origin`: the relayer account on whose behalf the transaction is being executed,
-        /// - `rates`: symbols with rates in USD,
+        /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
@@ -157,22 +165,15 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols: Vec<_> = rates
-                .into_iter()
-                .map(|(symbol, rate_value)| {
-                    let new_rate = Rate {
-                        value: rate_value,
-                        last_updated: resolve_time,
-                        request_id,
-                    };
-
-                    SymbolRates::<T, I>::mutate(&symbol, |option_rate| match option_rate {
-                        Some(rate) => rate.update_if_outdated(new_rate),
-                        None => _ = option_rate.insert(new_rate),
-                    });
-                    symbol
-                })
-                .collect();
+            let symbols = Self::update_rates(
+                rates,
+                resolve_time,
+                request_id,
+                |option_old_rate, new_rate| match option_old_rate {
+                    Some(rate) => rate.update_if_outdated(new_rate),
+                    None => _ = option_old_rate.insert(new_rate),
+                },
+            )?;
 
             Self::deposit_event(Event::SymbolsRelayed(symbols));
             Ok(().into())
@@ -184,7 +185,7 @@ pub mod pallet {
         /// relayed by a faulty/malicious actor.
         ///
         /// - `origin`: the relayer account on whose behalf the transaction is being executed,
-        /// - `rates`: symbols with rates in USD,
+        /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
@@ -196,21 +197,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             Self::ensure_relayer(origin)?;
 
-            let symbols: Vec<_> = rates
-                .into_iter()
-                .map(|(symbol, rate_value)| {
-                    let new_rate = Rate {
-                        value: rate_value,
-                        last_updated: resolve_time,
-                        request_id,
-                    };
-
-                    SymbolRates::<T, I>::mutate(&symbol, |rate| {
-                        _ = rate.insert(new_rate);
-                    });
-                    symbol
-                })
-                .collect();
+            let symbols: Vec<_> = Self::update_rates(
+                rates,
+                resolve_time,
+                request_id,
+                |option_old_rate, new_rate| {
+                    let _ = option_old_rate.insert(new_rate);
+                },
+            )?;
 
             Self::deposit_event(Event::SymbolsRelayed(symbols));
             Ok(().into())
@@ -315,5 +309,39 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
                 }
             })
             .ok_or_else(|| Error::<T, I>::UnauthorizedRelayer.into())
+    }
+
+    /// Update rates in the storage with the new ones.
+    ///
+    /// `f` - mutation function which defines the way values should be updated.
+    fn update_rates(
+        rates: Vec<(T::Symbol, u64)>,
+        resolve_time: u64,
+        request_id: u64,
+        f: impl Fn(&mut Option<Rate>, Rate),
+    ) -> Result<Vec<T::Symbol>, DispatchError> {
+        let mut symbols = Vec::with_capacity(rates.len());
+        for (symbol, rate_value) in rates {
+            let new_rate = Rate {
+                value: Self::raw_rate_into_balance(rate_value)?,
+                last_updated: resolve_time,
+                request_id,
+            };
+
+            SymbolRates::<T, I>::mutate(&symbol, |option_old_rate| f(option_old_rate, new_rate));
+            symbols.push(symbol);
+        }
+
+        Ok(symbols)
+    }
+
+    fn raw_rate_into_balance(raw_rate: u64) -> Result<Balance, DispatchError> {
+        i128::from(raw_rate)
+            .checked_mul(RATE_MULTIPLIER)
+            .and_then(|value| {
+                let fixed = Fixed::from_bits(value);
+                FixedWrapper::from(fixed).try_into_balance().ok()
+            })
+            .ok_or_else(|| Error::<T, I>::RateConversionOverflow.into())
     }
 }
