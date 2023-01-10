@@ -404,6 +404,7 @@ impl vested_rewards::Config for Runtime {
 
 pub struct ExtBuilder {
     pub total_supply: Balance,
+    pub xyk_reserves: Vec<(DEXId, AssetId, (Balance, Balance))>,
     pub reserves: ReservesInit,
     pub reserves_2: ReservesInit,
     pub reserves_3: ReservesInit,
@@ -419,6 +420,7 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             total_supply: balance!(360000),
+            xyk_reserves: Default::default(),
             reserves: vec![
                 (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
                 (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
@@ -531,22 +533,6 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
-                (
-                    alice(),
-                    KSM,
-                    balance!(0),
-                    AssetSymbol(b"KSM".to_vec()),
-                    AssetName(b"Kusama".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
-                (
-                    alice(),
-                    DOT,
-                    balance!(0),
-                    AssetSymbol(b"DOT".to_vec()),
-                    AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
@@ -859,6 +845,15 @@ impl ExtBuilder {
         }
     }
 
+    pub fn with_xyk_pool(mut self) -> Self {
+        self.xyk_reserves = vec![
+            (DEX_A_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
+        ];
+        self
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -942,24 +937,13 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        let xyk_assets = vec![
-            (DEX_A_ID, DOT, (balance!(600), balance!(10000))),
-            (DEX_A_ID, KSM, (balance!(600), balance!(10000))),
-            (DEX_B_ID, DOT, (balance!(600), balance!(10000))),
-            (DEX_C_ID, DOT, (balance!(520), balance!(550))),
-            (DEX_C_ID, KSM, (balance!(600), balance!(10000))),
-            (DEX_D_ID, DOT, (balance!(1000), balance!(9000))),
-            (DEX_D_ID, KSM, (balance!(1000), balance!(1000))),
-            (DEX_D_ID, VAL, (balance!(1000), balance!(200000))),
-        ];
-
         let owner = alice();
         let owner_origin: <Runtime as frame_system::Config>::Origin =
             frame_system::RawOrigin::Signed(owner.clone()).into();
 
         let mut ext: sp_io::TestExternalities = t.into();
         ext.execute_with(|| {
-            for (dex_id, asset, (base_reserve, asset_reserve)) in xyk_assets {
+            for (dex_id, asset, (base_reserve, asset_reserve)) in self.xyk_reserves {
                 let mint_amount: Balance = asset_reserve * 2;
 
                 trading_pair::Pallet::<Runtime>::register(

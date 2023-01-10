@@ -3174,11 +3174,14 @@ fn test_disable_enable_liquidity_source() {
 
 #[test]
 fn test_batch_swap_successful() {
-    let mut ext = ExtBuilder::default().build();
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
             [
@@ -3189,27 +3192,30 @@ fn test_batch_swap_successful() {
             .to_vec(),
             DEX_A_ID,
             XOR,
-            KSM,
+            USDT,
             balance!(100),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
-        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&KSM, &charlie()).unwrap(),
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
     })
 }
 
 #[test]
 fn test_batch_swap_desired_input_successful() {
-    let mut ext = ExtBuilder::default().build();
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
             [
@@ -3220,27 +3226,30 @@ fn test_batch_swap_desired_input_successful() {
             .to_vec(),
             DEX_A_ID,
             XOR,
-            KSM,
+            USDT,
             balance!(30),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
-        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&KSM, &charlie()).unwrap(),
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
     });
 }
 
 #[test]
 fn test_batch_swap_desired_input_too_low() {
-    let mut ext = ExtBuilder::default().build();
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&KSM, &bob()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 Origin::signed(alice()),
@@ -3252,12 +3261,12 @@ fn test_batch_swap_desired_input_too_low() {
                 .to_vec(),
                 DEX_A_ID,
                 XOR,
-                KSM,
+                USDT,
                 balance!(1),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
             ),
-            pool_xyk::Error::<Runtime>::CalculatedValueIsOutOfDesiredBounds
+            Error::<Runtime>::SlippageNotTolerated
         );
     });
 }
