@@ -77,9 +77,6 @@ pub fn charlie() -> AccountId {
 pub fn dave() -> AccountId {
     AccountId32::from([4u8; 32])
 }
-pub fn eve() -> AccountId {
-    AccountId32::from([5u8; 32])
-}
 
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
@@ -196,7 +193,7 @@ impl Config for Runtime {
     type WeightInfo = ();
     type PrimaryMarketTBC = MockMCBCPool;
     type PrimaryMarketXST = MockXSTPool;
-    type SecondaryMarket = pool_xyk::Pallet<Runtime>;
+    type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
 }
 
@@ -500,7 +497,6 @@ impl Default for ExtBuilder {
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
                 LiquiditySourceType::MockPool4,
-                LiquiditySourceType::XYKPool,
             ],
             endowed_accounts: vec![
                 (
@@ -851,6 +847,7 @@ impl ExtBuilder {
             (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
             (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
         ];
+        self.source_types.push(LiquiditySourceType::XYKPool);
         self
     }
 

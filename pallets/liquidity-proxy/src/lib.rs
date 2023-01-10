@@ -1706,7 +1706,11 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::swap(SwapVariant::WithDesiredOutput))]
+        #[pallet::weight(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer()
+                .saturating_mul(receivers.len() as u64)
+                .saturating_add(<T as Config>::WeightInfo::swap(
+                    SwapVariant::WithDesiredOutput,
+                )))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             receivers: Vec<BatchReceiverInfo<T>>,

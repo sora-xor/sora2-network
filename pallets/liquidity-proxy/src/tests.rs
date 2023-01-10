@@ -38,8 +38,8 @@ use common::{
     KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
-use frame_support::{assert_err, assert_noop, assert_ok};
-use sp_runtime::{print, DispatchError};
+use frame_support::{assert_noop, assert_ok};
+use sp_runtime::DispatchError;
 
 #[inline]
 fn mcbc_excluding_filter(dex: DEXId) -> LiquiditySourceFilter<DEXId, LiquiditySourceType> {
