@@ -904,6 +904,7 @@ impl pool_xyk::Config for Runtime {
 
 parameter_types! {
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        // TODO(Harrm): why pswap_distribution?
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
             pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
