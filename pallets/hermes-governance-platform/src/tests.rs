@@ -1,9 +1,12 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, HermesPollInfo};
+    use codec::Encode;
     use common::{balance, HERMES_ASSET_ID};
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
+    use sp_core::H256;
+    use sp_io::hashing::blake2_256;
     use sp_runtime::traits::AccountIdConversion;
 
     #[test]
@@ -160,11 +163,14 @@ mod tests {
     fn vote_invalid_number_of_option() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let user = ALICE.into();
+
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -189,7 +195,11 @@ mod tests {
     fn vote_poll_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
+            let user = ALICE;
+
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             assert_err!(
                 HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2,),
@@ -202,12 +212,14 @@ mod tests {
     fn vote_poll_is_not_started() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp);
 
@@ -234,12 +246,14 @@ mod tests {
     fn vote_poll_is_finished() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604800001);
 
@@ -266,11 +280,13 @@ mod tests {
     fn vote_not_enough_hermes_for_voting() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
-            let user = ALICE.into();
+            let user = ALICE;
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -295,11 +311,13 @@ mod tests {
     fn vote_already_voted() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -330,13 +348,15 @@ mod tests {
     fn vote_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let voting_option = 1;
             let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -382,7 +402,10 @@ mod tests {
     fn withdraw_funds_voter_poll_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
+            let user = ALICE;
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             assert_err!(
                 HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id,),
@@ -395,13 +418,15 @@ mod tests {
     fn withdraw_funds_voter_poll_is_not_finished() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp);
 
@@ -434,13 +459,15 @@ mod tests {
     fn withdraw_funds_voter_funds_already_withdrawn() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -481,14 +508,16 @@ mod tests {
     fn withdraw_funds_voter_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -541,7 +570,10 @@ mod tests {
     fn withdraw_funds_creator_poll_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
+            let user = ALICE;
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             assert_err!(
                 HermesGovernancePlatform::withdraw_funds_creator(Origin::signed(ALICE), poll_id,),
@@ -554,12 +586,14 @@ mod tests {
     fn withdraw_funds_creator_you_are_not_creator() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -589,11 +623,13 @@ mod tests {
     fn withdraw_funds_creator_poll_is_not_finished() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -621,12 +657,14 @@ mod tests {
     fn withdraw_funds_creator_funds_already_withdrawn() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
-            let user = ALICE.into();
+            let user = ALICE;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -669,12 +707,14 @@ mod tests {
     fn withdraw_funds_creator_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let poll_id = "Poll".to_string();
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE.into();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,

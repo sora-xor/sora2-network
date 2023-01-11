@@ -49,6 +49,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{HermesPollInfo, HermesVotingInfo};
+    use alloc::string::String;
     use common::balance;
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
@@ -59,7 +60,8 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use pallet_timestamp as timestamp;
-    use uuid::Uuid;
+    use sp_core::H256;
+    use sp_io::hashing::blake2_256;
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
@@ -86,20 +88,13 @@ pub mod pallet {
     /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn hermes_votings)]
-    pub type HermesVotings<T: Config> = StorageDoubleMap<
-        _,
-        Identity,
-        String,
-        Identity,
-        AccountIdOf<T>,
-        HermesVotingInfo,
-        ValueQuery,
-    >;
+    pub type HermesVotings<T: Config> =
+        StorageDoubleMap<_, Identity, H256, Identity, AccountIdOf<T>, HermesVotingInfo, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn hermes_poll_data)]
     pub type HermesPollData<T: Config> =
-        StorageMap<_, Identity, String, HermesPollInfo<AccountIdOf<T>, T::Moment>, OptionQuery>;
+        StorageMap<_, Identity, H256, HermesPollInfo<AccountIdOf<T>, T::Moment>, OptionQuery>;
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesVotingAmount<T: Config>() -> Balance {
@@ -137,7 +132,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
-        Voted(AccountIdOf<T>, String, u32),
+        Voted(AccountIdOf<T>, H256, u32),
         /// Create poll [who, title, start_timestamp, end_timestamp]
         Created(AccountIdOf<T>, String, T::Moment, T::Moment),
         /// Voter Funds Withdrawn [who, balance]
@@ -191,7 +186,7 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn vote(
             origin: OriginFor<T>,
-            poll_id: String,
+            poll_id: H256,
             voting_option: u32,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -263,8 +258,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let id = Uuid::new_v4();
-            let poll_id = id.to_string();
+            let nonce = frame_system::Pallet::<T>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
             let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
@@ -334,7 +330,7 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn withdraw_funds_voter(
             origin: OriginFor<T>,
-            poll_id: String,
+            poll_id: H256,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -379,7 +375,7 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn withdraw_funds_creator(
             origin: OriginFor<T>,
-            poll_id: String,
+            poll_id: H256,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
