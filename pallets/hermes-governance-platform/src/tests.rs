@@ -215,13 +215,10 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
             let user = ALICE;
-            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
-
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -255,8 +252,6 @@ mod tests {
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604800001);
-
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
                 hermes_locked,
@@ -268,6 +263,7 @@ mod tests {
             };
 
             pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604800001);
 
             assert_err!(
                 HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2,),
@@ -423,12 +419,9 @@ mod tests {
             let user = ALICE;
             let voting_option = 1;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
-            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
-
-            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -744,7 +737,6 @@ mod tests {
             ));
 
             let hermes_info = pallet::HermesPollData::<Runtime>::get(&poll_id).unwrap();
-
             assert_eq!(hermes_info.creator_hermes_withdrawn, true);
 
             // Check ALICE's balances
@@ -783,12 +775,12 @@ mod tests {
         ext.execute_with(|| {
             assert_ok!(HermesGovernancePlatform::change_min_hermes_for_voting(
                 Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
-                balance!(100)
+                balance!(300)
             ));
 
             assert_eq!(
                 pallet::MinimumHermesVotingAmount::<Runtime>::get(),
-                balance!(100),
+                balance!(300),
             );
         });
     }

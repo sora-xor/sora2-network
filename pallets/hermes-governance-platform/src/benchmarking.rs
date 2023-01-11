@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::{Decode, Encode};
-use common::{balance, FromGenericPair, HERMES_ASSET_ID};
+use common::{balance, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::PalletId;
@@ -18,7 +18,6 @@ use sp_std::prelude::*;
 
 use crate::Pallet as HermesGovernancePlatform;
 use assets::Pallet as Assets;
-use technical::Pallet as Technical;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -41,7 +40,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-    vote{
+    vote {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
@@ -53,15 +52,6 @@ benchmarks! {
         let nonce = frame_system::Pallet::<T>::account_nonce(&caller);
         let encoded: [u8; 32] = (&caller, nonce).using_encoded(blake2_256);
         let poll_id = H256::from(encoded);
-
-        frame_system::Pallet::<T>::inc_providers(&caller);
-        let assets_and_permissions_tech_account_id =
-            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
-        let assets_and_permissions_account_id =
-            Technical::<T>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            ).unwrap();
-
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         Assets::<T>::mint(
@@ -163,10 +153,13 @@ benchmarks! {
         );
 
         let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller);
-
         pallet_timestamp::Now::<T>::put(current_timestamp + (172801*1000u32).into());
-
-    }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
+    }: {
+        let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(
+            RawOrigin::Signed(caller.clone()).into(),
+            poll_id.clone()
+        );
+    }
     verify {
         assert_last_event::<T>(Event::VoterFundsWithdrawn(caller, hermes_voting_info.number_of_hermes).into())
     }
@@ -214,7 +207,12 @@ benchmarks! {
 
         pallet_timestamp::Now::<T>::put(poll_start_timestamp + (172801*1000u32).into());
 
-    }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
+    }: {
+        let _ = HermesGovernancePlatform::<T>::withdraw_funds_creator(
+            RawOrigin::Signed(caller.clone()).into(),
+            poll_id.clone()
+        );
+    }
     verify {
         assert_last_event::<T>(Event::CreatorFundsWithdrawn(caller, hermes_locked).into())
     }
@@ -222,7 +220,12 @@ benchmarks! {
     change_min_hermes_for_voting {
         let caller = AUTHORITY::<T>();
         let hermes_amount = balance!(20);
-    }: _(RawOrigin::Signed(caller.clone()), hermes_amount.clone())
+    }: {
+        let _ = HermesGovernancePlatform::<T>::change_min_hermes_for_voting(
+            RawOrigin::Signed(caller.clone()).into(),
+            hermes_amount
+        );
+    }
     verify {
         assert_last_event::<T>(Event::MinimumHermesForVotingChanged(hermes_amount).into())
     }
@@ -230,7 +233,12 @@ benchmarks! {
     change_min_hermes_for_creating_poll {
         let caller = AUTHORITY::<T>();
         let hermes_amount = balance!(20);
-    }: _(RawOrigin::Signed(caller.clone()), hermes_amount.clone())
+    }: {
+        let _ = HermesGovernancePlatform::<T>::change_min_hermes_for_creating_poll(
+            RawOrigin::Signed(caller.clone()).into(),
+            hermes_amount
+        );
+    }
     verify {
         assert_last_event::<T>(Event::MinimumHermesForCreatingPollChanged(hermes_amount).into())
     }

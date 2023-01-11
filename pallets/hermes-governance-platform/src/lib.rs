@@ -181,7 +181,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // Voting for option
+        /// Vote for some option
         #[transactional]
         #[pallet::weight(10_000)]
         pub fn vote(
@@ -240,14 +240,14 @@ pub mod pallet {
             // Update storage
             <HermesVotings<T>>::insert(&poll_id, &user, hermes_voting_info);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::<T>::Voted(user, poll_id, voting_option));
 
             // Return a successful DispatchResult
             Ok(().into())
         }
 
-        //Create poll
+        /// Create poll
         #[pallet::weight(10_000)]
         pub fn create_poll(
             origin: OriginFor<T>,
@@ -257,10 +257,6 @@ pub mod pallet {
             description: String,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
-            let nonce = frame_system::Pallet::<T>::account_nonce(&user);
-            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
-            let poll_id = H256::from(encoded);
             let current_timestamp = Timestamp::<T>::get();
 
             ensure!(
@@ -273,8 +269,8 @@ pub mod pallet {
                 Error::<T>::InvalidEndTimestamp
             );
 
-            let min_duration_of_poll = current_timestamp + (172800 * 1000u32).into();
-            let max_duration_of_poll = current_timestamp + (604800 * 1000u32).into();
+            let min_duration_of_poll: T::Moment = (172800 * 1000u32).into();
+            let max_duration_of_poll: T::Moment = (604800 * 1000u32).into();
 
             ensure!(
                 (poll_end_timestamp - poll_start_timestamp) >= min_duration_of_poll,
@@ -292,6 +288,10 @@ pub mod pallet {
                         .unwrap_or(0),
                 Error::<T>::NotEnoughHermesForCreatingPoll
             );
+
+            let nonce = frame_system::Pallet::<T>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user.clone(),
@@ -314,7 +314,7 @@ pub mod pallet {
 
             <HermesPollData<T>>::insert(&poll_id, hermes_poll_info);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::<T>::Created(
                 user.clone(),
                 title,
@@ -326,14 +326,13 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // Withdraw funds voter
+        /// Withdraw funds voter
         #[pallet::weight(10_000)]
         pub fn withdraw_funds_voter(
             origin: OriginFor<T>,
             poll_id: H256,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
             let current_timestamp = Timestamp::<T>::get();
             let hermes_poll_info =
                 <HermesPollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
@@ -361,7 +360,7 @@ pub mod pallet {
             hermes_voting_info.hermes_withdrawn = true;
             <HermesVotings<T>>::insert(&poll_id, &user, &hermes_voting_info);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::<T>::VoterFundsWithdrawn(
                 user,
                 hermes_voting_info.number_of_hermes,
@@ -371,14 +370,13 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // Withdraw funds creator
+        /// Withdraw funds creator
         #[pallet::weight(10_000)]
         pub fn withdraw_funds_creator(
             origin: OriginFor<T>,
             poll_id: H256,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
             let current_timestamp = Timestamp::<T>::get();
             let mut hermes_poll_info =
                 <HermesPollData<T>>::get(&poll_id).ok_or(Error::<T>::PollDoesNotExist)?;
@@ -389,7 +387,7 @@ pub mod pallet {
             );
 
             ensure!(
-                current_timestamp >= hermes_poll_info.poll_end_timestamp,
+                current_timestamp > hermes_poll_info.poll_end_timestamp,
                 Error::<T>::PollIsNotFinished
             );
 
@@ -409,7 +407,7 @@ pub mod pallet {
             hermes_poll_info.creator_hermes_withdrawn = true;
             <HermesPollData<T>>::insert(&poll_id, &hermes_poll_info);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::<T>::CreatorFundsWithdrawn(
                 user,
                 hermes_poll_info.hermes_locked,
@@ -419,7 +417,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // Change minimum Hermes for voting
+        /// Change minimum Hermes for voting
         #[pallet::weight(10_000)]
         pub fn change_min_hermes_for_voting(
             origin: OriginFor<T>,
@@ -433,14 +431,14 @@ pub mod pallet {
 
             MinimumHermesVotingAmount::<T>::put(hermes_amount);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::MinimumHermesForVotingChanged(hermes_amount));
 
             // Return a successful DispatchResult
             Ok(().into())
         }
 
-        // Change minimum Hermes for creating a poll
+        /// Change minimum Hermes for creating a poll
         #[pallet::weight(10_000)]
         pub fn change_min_hermes_for_creating_poll(
             origin: OriginFor<T>,
@@ -454,7 +452,7 @@ pub mod pallet {
 
             MinimumHermesAmountForCreatingPoll::<T>::put(hermes_amount);
 
-            //Emit event
+            // Emit event
             Self::deposit_event(Event::MinimumHermesForCreatingPollChanged(hermes_amount));
 
             // Return a successful DispatchResult
