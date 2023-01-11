@@ -1082,6 +1082,17 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                (
+                    common::HERMES_ASSET_ID,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"HMX".to_vec()),
+                    AssetName(b"Hermes".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {

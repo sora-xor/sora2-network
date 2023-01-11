@@ -4,6 +4,7 @@
 
 use super::*;
 
+use alloc::string::ToString;
 use codec::{Decode, Encode};
 use common::{balance, HERMES_ASSET_ID};
 use frame_benchmarking::benchmarks;
