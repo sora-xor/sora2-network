@@ -36,10 +36,7 @@
 #![allow(unused_imports, unused_macros, dead_code)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
-use common::{
-    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
-};
+use common::{balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD, HERMES_ASSET_ID};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
 use framenode_runtime::multicollateral_bonding_curve_pool::{
@@ -907,7 +904,8 @@ fn testnet_genesis(
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, HERMES_ASSET_ID, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }

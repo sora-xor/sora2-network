@@ -30,10 +30,11 @@
 
 use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 
 /// Weight functions for `hermes_governance_platform`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> hermes_governance_platform::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: HermesGovernancePlatform HermesPollData (r:1 w:0)
 	// Storage: HermesGovernancePlatform MinimumHermesVotingAmount (r:1 w:0)
@@ -88,4 +89,17 @@ impl<T: frame_system::Config> hermes_governance_platform::WeightInfo for WeightI
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+}
+
+impl crate::WeightInfo for () {
+	fn vote() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
+	fn create_poll() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
+	fn withdraw_funds_voter() -> Weight { EXTRINSIC_FIXED_WEIGHT}
+	fn withdraw_funds_creator() -> Weight { EXTRINSIC_FIXED_WEIGHT}
+	fn change_min_hermes_for_voting() -> Weight { EXTRINSIC_FIXED_WEIGHT}
+	fn change_min_hermes_for_creating_poll() -> Weight { EXTRINSIC_FIXED_WEIGHT}
 }
