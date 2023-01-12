@@ -305,6 +305,24 @@ impl<AssetId> AssetId32<AssetId> {
         bytes[2] = asset_id as u8;
         Self::from_bytes(bytes)
     }
+
+    /// Construct asset id for synthetic asset using its `reference_symbol`
+    pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
+    where
+        Symbol: PartialEq<&'static str> + Encode,
+    {
+        if *reference_symbol == "USD" {
+            return Self::from_asset_id(PredefinedAssetId::XSTUSD);
+        }
+
+        let mut bytes = [0u8; 32];
+        let symbol_bytes = reference_symbol.encode();
+        let symbol_hash = fastmurmur3::hash(&symbol_bytes);
+        bytes[0] = 3;
+        bytes[2..18].copy_from_slice(&symbol_hash.to_le_bytes());
+
+        Self::from_bytes(bytes)
+    }
 }
 
 impl<AssetId> From<H256> for AssetId32<AssetId> {

@@ -50,7 +50,7 @@ use common::prelude::{
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed_wrapper, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
+    balance, fixed_wrapper, AssetId32, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, RewardReason, DAI,
     XSTUSD,
 };
@@ -60,7 +60,6 @@ use frame_support::{ensure, fail, RuntimeDebug};
 use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::H256;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -78,7 +77,6 @@ type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
-pub const SYNTHETIC_ASSET_ID_PREFIX: [u8; 5] = hex_literal::hex!("0200077700");
 
 pub use pallet::*;
 
@@ -442,7 +440,11 @@ impl<T: Config> Pallet<T> {
             }
             Self::ensure_symbol_exists(&reference_symbol)?;
 
-            let synthetic_asset_id = Self::generate_synthetic_asset_id(&reference_symbol);
+            let synthetic_asset_id: T::AssetId =
+                AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
+                    &reference_symbol,
+                )
+                .into();
             Self::register_synthetic_asset(synthetic_asset_id, asset_symbol, asset_name)?;
             Self::enable_synthetic_pair(synthetic_asset_id)?;
 
@@ -467,26 +469,6 @@ impl<T: Config> Pallet<T> {
         } else {
             code()
         }
-    }
-
-    fn generate_synthetic_asset_id(reference_symbol: &T::Symbol) -> T::AssetId {
-        // TODO: Maybe we don't need cryptographic hash here, but just a simple hash function.
-        use blake2::{Blake2s256, Digest};
-
-        if *reference_symbol == "USD" {
-            return XSTUSD.into();
-        }
-
-        let bytes = reference_symbol.encode();
-        let mut hasher = Blake2s256::new();
-        hasher.update(bytes);
-        let mut hashed_bytes = hasher.finalize();
-
-        hashed_bytes[0..SYNTHETIC_ASSET_ID_PREFIX.len()]
-            .copy_from_slice(&SYNTHETIC_ASSET_ID_PREFIX);
-
-        let h256 = H256::from_slice(&hashed_bytes);
-        h256.into()
     }
 
     fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {

@@ -38,7 +38,6 @@ technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-blake2 = { version = "0.10.5", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.3.1"
@@ -81,5 +80,4 @@ std = [
     'liquidity-proxy/std',
     'dex-api/std',
     'common/std',
-    'blake2/std'
 ]
