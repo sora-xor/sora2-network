@@ -28,14 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, pallet::Pallet, EnabledSynthetics};
-use common::{fixed, XSTUSD};
+use crate::{migrations::OldBaseFee, mock::*, pallet::Pallet, EnabledSynthetics};
+use common::{fixed, Fixed, XSTUSD};
 use frame_support::traits::{GetStorageVersion as _, StorageVersion};
 
 #[test]
 fn test() {
     ExtBuilder::default().build().execute_with(|| {
         StorageVersion::new(1).put::<Pallet<Runtime>>();
+        OldBaseFee::put::<Fixed>(fixed!(0.00666));
 
         super::migrate::<Runtime>();
 
@@ -44,6 +45,7 @@ fn test() {
 
         assert_eq!(info.reference_symbol, "USD");
         assert_eq!(info.fee_ratio, fixed!(0.00666));
+        assert!(!OldBaseFee::exists());
 
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });
