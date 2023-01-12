@@ -45,18 +45,20 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migration;
+
 use codec::{Decode, Encode};
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, XOR,
+    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
+    OnPoolReservesChanged, PriceVariant, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
-use liquidity_proxy::LiquidityProxyTrait;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
 
@@ -64,10 +66,16 @@ pub use pallet::*;
 
 /// Count of blocks to participate in avg value calculation.
 pub const AVG_BLOCK_SPAN: u32 = 30;
-/// Max percentage difference for average value between blocks when price goes down.
-const MAX_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00002); // 0.002%
-/// Max percentage difference for average value between blocks when price goes up.
-const MAX_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197%
+
+/// Max percentage difference for average value between blocks when price goes down for buy price.
+const MAX_BUY_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00002); // 0.002%
+/// Max percentage difference for average value between blocks when price goes up for buy price.
+const MAX_BUY_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197%
+
+/// Max percentage difference for average value between blocks when price goes down for sell price.
+const MAX_SELL_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197%
+/// Max percentage difference for average value between blocks when price goes up for sell price.
+const MAX_SELL_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00002); // 0.002%
 
 pub trait WeightInfo {
     fn on_initialize(elems_active: u32, elems_updated: u32) -> Weight;
@@ -100,13 +108,37 @@ impl Default for PriceInfo {
     }
 }
 
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo, Default,
+)]
+pub struct AggregatedPriceInfo {
+    buy: PriceInfo,
+    sell: PriceInfo,
+}
+
+impl AggregatedPriceInfo {
+    pub fn price_mut_of(&mut self, price_variant: PriceVariant) -> &mut PriceInfo {
+        match price_variant {
+            PriceVariant::Buy => &mut self.buy,
+            PriceVariant::Sell => &mut self.sell,
+        }
+    }
+
+    pub fn price_of(self, price_variant: PriceVariant) -> PriceInfo {
+        match price_variant {
+            PriceVariant::Buy => self.buy,
+            PriceVariant::Sell => self.sell,
+        }
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::LiquidityProxyTrait;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use liquidity_proxy::LiquidityProxyTrait;
 
     #[pallet::config]
     pub trait Config:
@@ -123,7 +155,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -134,8 +166,9 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_num: T::BlockNumber) -> Weight {
-            let (n, m) = Pallet::<T>::average_prices_calculation_routine();
-            <T as Config>::WeightInfo::on_initialize(n, m)
+            let (n_b, m_b) = Pallet::<T>::average_prices_calculation_routine(PriceVariant::Buy);
+            let (n_s, m_s) = Pallet::<T>::average_prices_calculation_routine(PriceVariant::Sell);
+            <T as Config>::WeightInfo::on_initialize(n_b + n_s, m_b + m_s)
         }
     }
 
@@ -171,7 +204,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn price_infos)]
-    pub type PriceInfos<T: Config> = StorageMap<_, Identity, T::AssetId, PriceInfo>;
+    pub type PriceInfos<T: Config> = StorageMap<_, Identity, T::AssetId, AggregatedPriceInfo>;
 }
 
 impl<T: Config> Pallet<T> {
@@ -179,50 +212,69 @@ impl<T: Config> Pallet<T> {
     pub fn get_average_price(
         input_asset: &T::AssetId,
         output_asset: &T::AssetId,
+        price_variant: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
+        match (input_asset, output_asset) {
+            (xor, output) if xor == &XOR.into() => {
+                Self::get_asset_average_price(output, price_variant)
+            }
+            (input, xor) if xor == &XOR.into() => {
+                Self::get_asset_average_price(input, price_variant).and_then(|average_price| {
+                    (fixed_wrapper!(1) / average_price)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToQuoteAveragePrice.into())
+                })
+            }
+            (input, output) => {
+                let quote_a =
+                    FixedWrapper::from(Self::get_average_price(input, &XOR.into(), price_variant)?);
+                let quote_b = FixedWrapper::from(Self::get_average_price(
+                    &XOR.into(),
+                    output,
+                    price_variant,
+                )?);
+                (quote_a * quote_b)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToQuoteAveragePrice.into())
+            }
+        }
+    }
+
+    fn get_asset_average_price(
+        asset_id: &T::AssetId,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let avg_count: usize = AVG_BLOCK_SPAN
             .try_into()
             .map_err(|_| Error::<T>::FailedToQuoteAveragePrice)?;
-        if input_asset == &XOR.into() {
-            if let Some(price_info) = PriceInfos::<T>::get(output_asset) {
-                ensure!(
-                    price_info.spot_prices.len() == avg_count,
-                    Error::<T>::InsufficientSpotPriceData
-                );
-                Ok(price_info.average_price)
-            } else {
-                fail!(Error::<T>::UnsupportedQuotePath);
-            }
-        } else if output_asset == &XOR.into() {
-            if let Some(price_info) = PriceInfos::<T>::get(input_asset) {
-                ensure!(
-                    price_info.spot_prices.len() == avg_count,
-                    Error::<T>::InsufficientSpotPriceData
-                );
-                Ok((fixed_wrapper!(1) / price_info.average_price)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::FailedToQuoteAveragePrice)?)
-            } else {
-                fail!(Error::<T>::UnsupportedQuotePath);
-            }
-        } else {
-            let quote_a = FixedWrapper::from(Self::get_average_price(input_asset, &XOR.into())?);
-            let quote_b = FixedWrapper::from(Self::get_average_price(&XOR.into(), output_asset)?);
-            (quote_a * quote_b)
-                .try_into_balance()
-                .map_err(|_| Error::<T>::FailedToQuoteAveragePrice.into())
-        }
+
+        PriceInfos::<T>::get(asset_id)
+            .map(|aggregated_price_info| aggregated_price_info.price_of(price_variant))
+            .map_or_else(
+                || Err(Error::<T>::UnsupportedQuotePath.into()),
+                |price_info| {
+                    ensure!(
+                        price_info.spot_prices.len() == avg_count,
+                        Error::<T>::InsufficientSpotPriceData
+                    );
+                    Ok(price_info.average_price)
+                },
+            )
     }
 
     /// Add new price to queue and recalculate average.
-    pub fn incoming_spot_price(asset_id: &T::AssetId, price: Balance) -> DispatchResult {
+    pub fn incoming_spot_price(
+        asset_id: &T::AssetId,
+        price: Balance,
+        price_variant: PriceVariant,
+    ) -> DispatchResult {
         // reset failure streak for spot prices if needed
         if PriceInfos::<T>::get(asset_id).is_some() {
             let avg_count: usize = AVG_BLOCK_SPAN
                 .try_into()
                 .map_err(|_| Error::<T>::UpdateAverageWithSpotPriceFailed)?;
             PriceInfos::<T>::mutate(asset_id, |opt| {
-                let val = opt.as_mut().unwrap();
+                let val = opt.as_mut().unwrap().price_mut_of(price_variant);
                 // reset failure streak
                 val.price_failures = 0;
                 val.needs_update = false;
@@ -236,7 +288,8 @@ impl<T: Config> Pallet<T> {
                         price,
                         AVG_BLOCK_SPAN,
                     )?;
-                    new_avg = Self::adjust_to_difference(val.average_price, new_avg)?;
+                    new_avg =
+                        Self::adjust_to_difference(val.average_price, new_avg, price_variant)?;
                     let adjusted_incoming_price = Self::adjusted_spot_price(
                         val.average_price,
                         new_avg,
@@ -269,9 +322,10 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Register spot price quote failure, continuous failure has to block average price quotation.
-    pub fn incoming_spot_price_failure(asset_id: &T::AssetId) {
+    pub fn incoming_spot_price_failure(asset_id: &T::AssetId, price_variant: PriceVariant) {
         PriceInfos::<T>::mutate(asset_id, |opt| {
-            if let Some(val) = opt.as_mut() {
+            if let Some(agg_price_info) = opt.as_mut() {
+                let val = agg_price_info.price_mut_of(price_variant);
                 if val.price_failures < AVG_BLOCK_SPAN {
                     val.price_failures += 1;
                     if val.price_failures == AVG_BLOCK_SPAN {
@@ -283,21 +337,32 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Bound `new_avg` value by percentage difference with respect to `old_avg` value. Result will be capped
-    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or nagative difference.
+    /// by `MAX_BLOCK_AVG_DIFFERENCE` either in positive or negative difference.
     pub fn adjust_to_difference(
         old_avg: Balance,
         new_avg: Balance,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let mut adjusted_avg = FixedWrapper::from(new_avg);
         let old_avg = FixedWrapper::from(old_avg);
         let diff: Fixed = ((adjusted_avg.clone() - old_avg.clone()) / old_avg.clone())
             .get()
             .map_err(|_| Error::<T>::UpdateAverageWithSpotPriceFailed)?;
+        let (max_inc, max_dec) = match price_variant {
+            PriceVariant::Buy => (
+                MAX_BUY_BLOCK_INC_AVG_DIFFERENCE,
+                MAX_BUY_BLOCK_DEC_AVG_DIFFERENCE,
+            ),
+            PriceVariant::Sell => (
+                MAX_SELL_BLOCK_INC_AVG_DIFFERENCE,
+                MAX_SELL_BLOCK_DEC_AVG_DIFFERENCE,
+            ),
+        };
 
-        if diff > MAX_BLOCK_INC_AVG_DIFFERENCE {
-            adjusted_avg = old_avg * (fixed_wrapper!(1) + MAX_BLOCK_INC_AVG_DIFFERENCE);
-        } else if diff < MAX_BLOCK_DEC_AVG_DIFFERENCE.cneg().unwrap() {
-            adjusted_avg = old_avg * (fixed_wrapper!(1) - MAX_BLOCK_DEC_AVG_DIFFERENCE);
+        if diff > max_inc {
+            adjusted_avg = old_avg * (fixed_wrapper!(1) + max_inc);
+        } else if diff < max_dec.cneg().unwrap() {
+            adjusted_avg = old_avg * (fixed_wrapper!(1) - max_dec);
         }
         let adjusted_avg = adjusted_avg
             .try_into_balance()
@@ -359,10 +424,12 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns (number of active pairs, number of pairs with needed update)
-    pub fn average_prices_calculation_routine() -> (u32, u32) {
+    pub fn average_prices_calculation_routine(price_variant: PriceVariant) -> (u32, u32) {
         let mut count_active = 0;
         let mut count_updated = 0;
-        for (asset_id, price_info) in PriceInfos::<T>::iter() {
+        let price_infos_iter = PriceInfos::<T>::iter()
+            .map(|(a, mut agg_price_info)| (a, agg_price_info.price_mut_of(price_variant).clone()));
+        for (asset_id, price_info) in price_infos_iter {
             let price = if price_info.needs_update {
                 count_updated += 1;
                 Self::spot_price(&asset_id)
@@ -371,9 +438,9 @@ impl<T: Config> Pallet<T> {
                 Ok(price_info.last_spot_price)
             };
             if let Ok(val) = price {
-                let _ = Self::incoming_spot_price(&asset_id, val);
+                let _ = Self::incoming_spot_price(&asset_id, val, price_variant);
             } else {
-                Self::incoming_spot_price_failure(&asset_id);
+                Self::incoming_spot_price_failure(&asset_id, price_variant);
             }
             count_active += 1;
         }
@@ -385,13 +452,14 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
     fn get_average_price(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
-        Pallet::<T>::get_average_price(input_asset_id, output_asset_id)
+        Pallet::<T>::get_average_price(input_asset_id, output_asset_id, price_variant)
     }
 
     fn register_asset(asset_id: &T::AssetId) -> DispatchResult {
         if PriceInfos::<T>::get(asset_id).is_none() {
-            PriceInfos::<T>::insert(asset_id.clone(), PriceInfo::default());
+            PriceInfos::<T>::insert(asset_id.clone(), AggregatedPriceInfo::default());
             Ok(())
         } else {
             fail!(Error::<T>::AssetAlreadyRegistered);
@@ -401,11 +469,12 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
 
 impl<T: Config> OnPoolReservesChanged<T::AssetId> for Pallet<T> {
     fn reserves_changed(target_asset_id: &T::AssetId) {
-        if let Some(price_info) = PriceInfos::<T>::get(target_asset_id) {
-            if !price_info.needs_update {
+        if let Some(agg_price_info) = PriceInfos::<T>::get(target_asset_id) {
+            if !agg_price_info.buy.needs_update || !agg_price_info.sell.needs_update {
                 PriceInfos::<T>::mutate(target_asset_id, |opt| {
-                    let val = opt.as_mut().unwrap();
-                    val.needs_update = true;
+                    let agg_price_info = opt.as_mut().unwrap();
+                    agg_price_info.buy.needs_update = true;
+                    agg_price_info.sell.needs_update = true;
                 })
             }
         }

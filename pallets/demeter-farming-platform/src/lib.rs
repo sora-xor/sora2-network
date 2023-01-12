@@ -419,6 +419,7 @@ pub mod pallet {
         }
 
         /// Deposit to pool
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(
@@ -592,6 +593,7 @@ pub mod pallet {
         }
 
         /// Get rewards
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
@@ -670,6 +672,7 @@ pub mod pallet {
         }
 
         /// Withdraw
+
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(

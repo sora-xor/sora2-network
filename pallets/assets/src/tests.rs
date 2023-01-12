@@ -32,7 +32,10 @@ mod tests {
 
     use crate::mock::*;
     use crate::Error;
+    use common::balance;
     use common::prelude::{AssetName, AssetSymbol, Balance};
+    use common::PSWAP;
+    use common::XST;
     use common::{
         AssetId32, ContentSource, Description, ASSET_CONTENT_SOURCE_MAX_LENGTH,
         ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
@@ -685,6 +688,63 @@ mod tests {
                 ),
                 Error::<Runtime>::InvalidDescription
             );
+        })
+    }
+
+    #[test]
+    fn buy_back_and_burn_should_be_performed() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let xst_balance = balance!(1000);
+            Assets::register_asset_id(
+                MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
+                XST,
+                AssetSymbol(b"XST".to_vec()),
+                AssetName(b"Sora Synthetics".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                xst_balance,
+                true,
+                None,
+                None,
+            )
+            .expect("Failed to register XST asset");
+
+            let xst_total = Tokens::total_issuance(XST);
+            // Just a sanity check, not a real test
+            assert_eq!(xst_total, xst_balance);
+
+            let pswap_balance = balance!(10);
+            Assets::register_asset_id(
+                ALICE,
+                PSWAP,
+                AssetSymbol(b"PSWAP".to_vec()),
+                AssetName(b"Polkaswap".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                pswap_balance,
+                true,
+                None,
+                None,
+            )
+            .expect("Failed to register PSWAP asset");
+
+            let amount_to_mint = balance!(100);
+            Assets::force_mint(Origin::root(), PSWAP, ALICE, amount_to_mint)
+                .expect("Failed to mint PSWAP");
+
+            let pswap_balance_after = Assets::free_balance(&PSWAP, &ALICE)
+                .expect("Failed to query PSWAP free balance after mint.");
+            assert_eq!(
+                pswap_balance_after,
+                pswap_balance + (amount_to_mint * 9 / 10)
+            );
+
+            // Same as `Assets::free_balance(&XST, &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT)`,
+            // but it better represents the meaning of buy-back and burning
+            let xst_total_after = Tokens::total_issuance(XST);
+
+            // Since `MockLiquidityProxy` exchanges 1 to 1
+            // there is no need to calculate PSWAP-XST swap-rate
+            assert_eq!(xst_total_after, xst_total - (amount_to_mint / 10));
         })
     }
 }

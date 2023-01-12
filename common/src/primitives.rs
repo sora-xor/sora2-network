@@ -101,6 +101,8 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
+    /// AssetId of synthetic base Asset in DEX.
+    pub synthetic_base_asset_id: AssetId,
     /// Determines if DEX can be managed by regular users.
     pub is_public: bool,
 }
@@ -975,8 +977,8 @@ pub enum RewardReason {
     BuyOnBondingCurve,
     /// Providing liquidity on secondary market is rewarded.
     LiquidityProvisionFarming,
-    /// High volume trading is rewarded.
-    MarketMakerVolume,
+    /// DEPRECATED: High volume trading is rewarded.
+    DeprecatedMarketMakerVolume,
     /// Crowdloan reward.
     Crowdloan,
 }
@@ -1036,4 +1038,10 @@ mod tests {
         // should not panic
         serde_json::to_value(&BalanceWrapper(balance)).unwrap();
     }
+}
+
+#[derive(Copy, Clone)]
+pub enum PriceVariant {
+    Buy,
+    Sell,
 }

@@ -770,7 +770,7 @@ fn calculating_distribution_should_pass() {
         assert_eq!(distribution.parliament, balance!(10));
 
         // large value, balance is limited to i128 max because of Fixed type calculation
-        // We use `i128::MAX - 100` otherwise assert_approx_eq! internaly overflow when adding tolerance to the left and right members
+        // We use `i128::MAX - 100` otherwise assert_approx_eq! internally overflow when adding tolerance to the left and right members
         let balance_max = 170141183460469231731687303715884105727u128 - 100;
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance_max).unwrap();
         assert_eq!(

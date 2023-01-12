@@ -30,7 +30,7 @@
 
 use crate::{self as pool_xyk, Config};
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo};
+use common::{balance, fixed, hash, DEXInfo, PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -74,7 +74,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -187,6 +186,16 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetBuyBackAssetId: AssetId = XST.into();
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = 0;
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
@@ -194,8 +203,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -296,6 +310,7 @@ impl Default for ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: GoldenTicket.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
                     },
                 ),
@@ -303,6 +318,7 @@ impl Default for ExtBuilder {
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: AppleTree.into(),
+                        synthetic_base_asset_id: BatteryForMusicPlayer.into(),
                         is_public: true,
                     },
                 ),

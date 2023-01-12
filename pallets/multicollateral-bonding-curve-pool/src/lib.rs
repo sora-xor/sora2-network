@@ -50,14 +50,13 @@ use common::prelude::{
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
-    PSWAP, VAL, XSTUSD,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
+    RewardReason, VestedRewardsPallet, PSWAP, VAL, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
-use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
@@ -912,7 +911,8 @@ impl<T: Config> Pallet<T> {
     ///
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
         let xstusd_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
-        let xor_dai_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let xor_dai_price: FixedWrapper =
+            Self::reference_price(main_asset_id, PriceVariant::Buy)?.into();
         let xst_xor_liability: FixedWrapper = xstusd_issuance_amt / xor_dai_price;
 
         let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
@@ -983,7 +983,7 @@ impl<T: Config> Pallet<T> {
 
         let current_state: FixedWrapper = Self::buy_function(main_asset_id, Fixed::ZERO)?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset_id)?.into();
+            Self::reference_price(collateral_asset_id, PriceVariant::Sell)?.into();
 
         match quantity {
             QuoteAmount::WithDesiredInput {
@@ -1050,7 +1050,7 @@ impl<T: Config> Pallet<T> {
         let main_price_per_reference_unit: FixedWrapper =
             Self::sell_function(main_asset_id, Fixed::ZERO)?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset_id)?.into();
+            Self::reference_price(collateral_asset_id, PriceVariant::Buy)?.into();
         // Assume main token reserve is equal by reference value to collateral token reserve.
         let main_supply = collateral_supply.clone() * collateral_price_per_reference_unit
             / main_price_per_reference_unit;
@@ -1199,8 +1199,11 @@ impl<T: Config> Pallet<T> {
         let ideal_reserves_price: FixedWrapper =
             Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
         // USD price for amount of indicated collateral asset stored in reserves
-        let collateral_reserves_price =
-            Self::actual_reserves_reference_price(&reserves_account_id, collateral_asset_id)?;
+        let collateral_reserves_price = Self::actual_reserves_reference_price(
+            &reserves_account_id,
+            collateral_asset_id,
+            PriceVariant::Buy,
+        )?;
         ensure!(
             !collateral_reserves_price.is_zero(),
             Error::<T>::NotEnoughReserves
@@ -1365,7 +1368,10 @@ impl<T: Config> Pallet<T> {
     /// reference token is expected to be a USD-bound stablecoin, e.g. DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
-    fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+    fn reference_price(
+        asset_id: &T::AssetId,
+        price_variant: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         let price = if asset_id == &reference_asset_id {
             balance!(1)
@@ -1373,6 +1379,7 @@ impl<T: Config> Pallet<T> {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
+                price_variant,
             )?
         };
         Ok(price)
@@ -1383,9 +1390,10 @@ impl<T: Config> Pallet<T> {
     fn actual_reserves_reference_price(
         reserves_account_id: &T::AccountId,
         collateral_asset_id: &T::AssetId,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         let reserve = Assets::<T>::free_balance(&collateral_asset_id, &reserves_account_id)?;
-        let price = Self::reference_price(&collateral_asset_id)?;
+        let price = Self::reference_price(&collateral_asset_id, price_variant)?;
         (FixedWrapper::from(reserve) * price)
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -1439,8 +1447,12 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?,
         )?
         .into();
-        let actual_before: FixedWrapper =
-            Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
+        let actual_before: FixedWrapper = Self::actual_reserves_reference_price(
+            reserves_account_id,
+            collateral_asset_id,
+            PriceVariant::Sell,
+        )?
+        .into();
         let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
         let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
         let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::<T>::get());
@@ -1476,8 +1488,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         if input_asset_id == &T::GetBaseAssetId::get() {
             EnabledTargets::<T>::get().contains(&output_asset_id)
-        } else {
+        } else if output_asset_id == &T::GetBaseAssetId::get() {
             EnabledTargets::<T>::get().contains(&input_asset_id)
+        } else {
+            false
         }
     }
 
@@ -1683,7 +1697,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::buy_function(base_asset, fixed!(0))?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset)?.into();
+            Self::reference_price(collateral_asset, PriceVariant::Sell)?.into();
         let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -1696,7 +1710,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::sell_function(base_asset, fixed!(0))?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset)?.into();
+            Self::reference_price(collateral_asset, PriceVariant::Buy)?.into();
         let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
