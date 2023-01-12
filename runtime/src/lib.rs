@@ -1790,6 +1790,7 @@ parameter_types! {
 impl hermes_governance_platform::Config for Runtime {
     type Event = Event;
     type HermesAssetId = HermesAssetId;
+    type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

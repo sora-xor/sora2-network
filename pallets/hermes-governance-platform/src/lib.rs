@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmarking;
+mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -13,6 +14,16 @@ extern crate alloc;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn vote() -> Weight;
+    fn create_poll() -> Weight;
+    fn withdraw_funds_voter() -> Weight;
+    fn withdraw_funds_creator() -> Weight;
+    fn change_min_hermes_for_voting() -> Weight;
+    fn change_min_hermes_for_creating_poll() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -48,7 +59,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo};
+    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo};
     use alloc::string::String;
     use common::balance;
     use common::prelude::Balance;
@@ -74,6 +85,9 @@ pub mod pallet {
 
         /// Hermes asset id
         type HermesAssetId: Get<Self::AssetId>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -183,7 +197,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Vote for some option
         #[transactional]
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
@@ -248,7 +262,7 @@ pub mod pallet {
         }
 
         /// Create poll
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
             poll_start_timestamp: T::Moment,
@@ -327,7 +341,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds voter
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_voter())]
         pub fn withdraw_funds_voter(
             origin: OriginFor<T>,
             poll_id: H256,
@@ -371,7 +385,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds creator
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_creator())]
         pub fn withdraw_funds_creator(
             origin: OriginFor<T>,
             poll_id: H256,
@@ -418,7 +432,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for voting
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_voting())]
         pub fn change_min_hermes_for_voting(
             origin: OriginFor<T>,
             hermes_amount: Balance,
@@ -439,7 +453,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for creating a poll
-        #[pallet::weight(10_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_creating_poll())]
         pub fn change_min_hermes_for_creating_poll(
             origin: OriginFor<T>,
             hermes_amount: Balance,
