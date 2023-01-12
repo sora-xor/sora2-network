@@ -464,15 +464,6 @@ impl<T: Config> Pallet<T> {
                             filter.clone(),
                         )?;
 
-                        Self::update_market_maker_records_if_needed(
-                            &dex_info,
-                            cur_sender,
-                            from,
-                            to,
-                            swap_amount,
-                            swap_outcome.clone(),
-                        )?;
-
                         current_amount = swap_outcome.amount;
                         Ok((swap_outcome, sources))
                     },
@@ -491,36 +482,6 @@ impl<T: Config> Pallet<T> {
                 Ok((outcome, sources))
             },
         )
-    }
-
-    /// Update market maker records if transaction was performed with base asset as input or output.
-    fn update_market_maker_records_if_needed(
-        dex_info: &DEXInfo<T::AssetId>,
-        sender: &T::AccountId,
-        from_asset_id: &T::AssetId,
-        to_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
-        swap_outcome: SwapOutcome<Balance>,
-    ) -> Result<(), DispatchError> {
-        if from_asset_id == &dex_info.base_asset_id || to_asset_id == &dex_info.base_asset_id {
-            let base_volume = Self::get_base_asset_amount(
-                &dex_info.base_asset_id,
-                *from_asset_id,
-                swap_amount,
-                swap_outcome,
-            );
-            T::VestedRewardsPallet::update_market_maker_records(
-                &sender,
-                &dex_info.base_asset_id,
-                base_volume,
-                1,
-                from_asset_id,
-                to_asset_id,
-                &[],
-            )?;
-        }
-
-        Ok(())
     }
 
     /// Calculate the input amount for a given `output_amount` for a sequence of direct swaps.
@@ -1076,35 +1037,6 @@ impl<T: Config> Pallet<T> {
                 base_asset_id: asset_a,
                 target_asset_id: asset_b,
             },
-        }
-    }
-
-    /// For direct path (when input token or output token are xor), extract xor portions of exchange result.
-    fn get_base_asset_amount(
-        base_asset_id: &T::AssetId,
-        input_asset_id: T::AssetId,
-        amount: SwapAmount<Balance>,
-        outcome: SwapOutcome<Balance>,
-    ) -> Balance {
-        match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
-                if input_asset_id == *base_asset_id {
-                    desired_amount_in
-                } else {
-                    outcome.amount
-                }
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
-                if input_asset_id == *base_asset_id {
-                    outcome.amount
-                } else {
-                    desired_amount_out
-                }
-            }
         }
     }
 
