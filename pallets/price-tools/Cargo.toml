@@ -69,6 +69,7 @@ std = [
     'sp-io/std',
     'tokens/std',
     'pool-xyk/std',
+    'liquidity-proxy/std',
     'technical/std',
 ]
 runtime-benchmarks = [

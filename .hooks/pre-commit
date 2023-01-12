@@ -4,6 +4,7 @@ echo "Running 'cargo fmt'..."
 cargo fmt -- --check > /dev/null
 
 if [ $? = 1 ]; then
+  cargo fmt -- --check -l
   echo "Reformat your code before committing"
   exit 1
 fi

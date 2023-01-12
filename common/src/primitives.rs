@@ -995,8 +995,8 @@ pub enum RewardReason {
     BuyOnBondingCurve,
     /// Providing liquidity on secondary market is rewarded.
     LiquidityProvisionFarming,
-    /// High volume trading is rewarded.
-    MarketMakerVolume,
+    /// DEPRECATED: High volume trading is rewarded.
+    DeprecatedMarketMakerVolume,
     /// Crowdloan reward.
     Crowdloan,
 }

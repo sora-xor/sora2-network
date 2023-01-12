@@ -509,28 +509,11 @@ impl OnPswapBurned for () {
 
 /// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
 pub trait VestedRewardsPallet<AccountId, AssetId> {
-    /// Report that swaps with xor were performed.
-    /// - `account_id`: account performing transaction.
-    /// - `xor_volume`: amount of xor passed in transaction.
-    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
-    fn update_market_maker_records(
-        account_id: &AccountId,
-        base_asset: &AssetId,
-        base_asset_volume: Balance,
-        count: u32,
-        from_asset_id: &AssetId,
-        to_asset_id: &AssetId,
-        intermediate_asset_ids: &[AssetId],
-    ) -> DispatchResult;
-
     /// Report that account has received pswap reward for buying from tbc.
     fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 
     /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
     fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
-
-    /// Report that account has received pswap reward for performing large volume trade over month.
-    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
 
 pub trait PoolXykPallet<AccountId, AssetId> {
