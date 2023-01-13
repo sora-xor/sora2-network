@@ -38,7 +38,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, USDT, VAL, XOR, XST,
+    XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -907,7 +908,8 @@ fn testnet_genesis(
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, HERMES_ASSET_ID, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }
@@ -1077,6 +1079,17 @@ fn testnet_genesis(
                     AssetSymbol(b"CERES".to_vec()),
                     AssetName(b"Ceres".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    common::HERMES_ASSET_ID,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"HMX".to_vec()),
+                    AssetName(b"Hermes".to_vec()),
+                    18,
                     Balance::zero(),
                     true,
                     None,
