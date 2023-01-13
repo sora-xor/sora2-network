@@ -449,6 +449,40 @@ mod tests {
     }
 
     #[test]
+    fn withdraw_funds_voter_not_voted() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
+            let user = ALICE;
+            let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+            let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
+            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
+            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
+            let poll_id = H256::from(encoded);
+
+            let hermes_poll_info = HermesPollInfo {
+                creator: user,
+                hermes_locked,
+                poll_start_timestamp,
+                poll_end_timestamp,
+                title: "Title".to_string(),
+                description: "Description".to_string(),
+                creator_hermes_withdrawn: false,
+            };
+
+            pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
+
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
+
+            assert_err!(
+                HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id,),
+                Error::<Runtime>::NotVoted
+            );
+        });
+    }
+
+    #[test]
     fn withdraw_funds_voter_funds_already_withdrawn() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

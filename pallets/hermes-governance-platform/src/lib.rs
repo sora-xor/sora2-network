@@ -191,6 +191,8 @@ pub mod pallet {
         InvalidMinimumDurationOfPoll,
         /// Invalid Maximum Duration Of Poll
         InvalidMaximumDurationOfPoll,
+        /// NotVoted
+        NotVoted,
     }
 
     #[pallet::call]
@@ -361,6 +363,11 @@ pub mod pallet {
             ensure!(
                 hermes_voting_info.hermes_withdrawn == false,
                 Error::<T>::FundsAlreadyWithdrawn
+            );
+
+            ensure!(
+                hermes_voting_info.number_of_hermes != 0,
+                Error::<T>::NotVoted
             );
 
             // Withdraw Hermes

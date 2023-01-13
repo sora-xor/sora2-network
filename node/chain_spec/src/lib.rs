@@ -36,7 +36,11 @@
 #![allow(unused_imports, unused_macros, dead_code)]
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
-use common::{balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD, HERMES_ASSET_ID};
+use common::{
+    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, USDT, VAL, XOR, XST,
+    XSTUSD,
+};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
 use framenode_runtime::multicollateral_bonding_curve_pool::{
