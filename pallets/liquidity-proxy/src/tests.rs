@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::Error;
+use crate::{BatchReceiverInfo, Error};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -1009,7 +1009,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_input(balance!(105.149780332243106453)),
                 ),
@@ -1043,7 +1043,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_input(balance!(105.149780332243106818)),
                 ),
@@ -1120,7 +1120,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_output(balance!(113.366944661581080036)),
                 ),
@@ -1203,7 +1203,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_output(balance!(23.258770902877438466)),
                 ),
@@ -1237,7 +1237,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_output(balance!(179.263806543072651075)),
                 ),
@@ -1271,7 +1271,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_output(balance!(79.263806543072650867)),
                 ),
@@ -1329,7 +1329,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_input(balance!(3376.008652032533006925)),
                 ),
@@ -1363,7 +1363,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_input(balance!(178.824711667708029000)),
                 ),
@@ -1397,7 +1397,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                 (
                     LiquiditySourceId::new(
                         DEX_D_ID,
-                        LiquiditySourceType::MulticollateralBondingCurvePool
+                        LiquiditySourceType::MulticollateralBondingCurvePool,
                     ),
                     QuoteAmount::with_desired_input(balance!(309.422405009372255000)),
                 ),
@@ -1583,7 +1583,7 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
                 (balance!(101), PSWAP.into(), RewardReason::Unspecified),
                 (balance!(201), VAL.into(), RewardReason::Unspecified),
                 (balance!(202), XOR.into(), RewardReason::Unspecified),
-                (balance!(301), DOT.into(), RewardReason::Unspecified)
+                (balance!(301), DOT.into(), RewardReason::Unspecified),
             ]
         );
     });
@@ -1807,26 +1807,26 @@ fn test_is_path_available_should_pass_5() {
     ext.execute_with(|| {
         use LiquiditySourceType::*;
         assets::Pallet::<Runtime>::register_asset_id(
-                alice(),
-                XST.into(),
-                AssetSymbol(b"XST".to_vec()),
-                AssetName(b"SORA Synthetics".to_vec()),
-                0,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
+            alice(),
+            XST.into(),
+            AssetSymbol(b"XST".to_vec()),
+            AssetName(b"SORA Synthetics".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
         ).expect("failed to register XST asset");
         assets::Pallet::<Runtime>::register_asset_id(
-                alice(),
-                XSTUSD.into(),
-                AssetSymbol(b"XSTUSD".to_vec()),
-                AssetName(b"SORA Synthetic USD".to_vec()),
-                0,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
+            alice(),
+            XSTUSD.into(),
+            AssetSymbol(b"XSTUSD".to_vec()),
+            AssetName(b"SORA Synthetic USD".to_vec()),
+            0,
+            Balance::from(0u32),
+            true,
+            None,
+            None,
         ).expect("failed to register XSTUSD asset");
         TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
@@ -3169,5 +3169,104 @@ fn test_disable_enable_liquidity_source() {
             false,
             true,
         ));
+    });
+}
+
+#[test]
+fn test_batch_swap_successful() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            [
+                BatchReceiverInfo::new(bob(), balance!(10)),
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10))
+            ]
+            .to_vec(),
+            DEX_A_ID,
+            XOR,
+            USDT,
+            balance!(100),
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(10)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+    })
+}
+
+#[test]
+fn test_batch_swap_desired_input_successful() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            [
+                BatchReceiverInfo::new(bob(), balance!(10)),
+                BatchReceiverInfo::new(charlie(), balance!(10)),
+                BatchReceiverInfo::new(dave(), balance!(10))
+            ]
+            .to_vec(),
+            DEX_A_ID,
+            XOR,
+            USDT,
+            balance!(30),
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ));
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(10)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+    });
+}
+
+#[test]
+fn test_batch_swap_desired_input_too_low() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(
+            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            balance!(0)
+        );
+        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                Origin::signed(alice()),
+                [
+                    BatchReceiverInfo::new(bob(), balance!(10)),
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10))
+                ]
+                .to_vec(),
+                DEX_A_ID,
+                XOR,
+                USDT,
+                balance!(1),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::SlippageNotTolerated
+        );
     });
 }

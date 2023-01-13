@@ -1,7 +1,13 @@
 use crate::*;
 use frame_support::traits::OnRuntimeUpgrade;
+use vested_rewards::migrations::MoveMarketMakerRewardPoolToLiquidityProviderPool;
 
-pub type Migrations = (EthBridgeMigration, PriceToolsMigration);
+pub type Migrations = (
+    EthBridgeMigration,
+    MoveMarketMakerRewardPoolToLiquidityProviderPool<Runtime>,
+    PriceToolsMigration,
+    pallet_staking::migrations::lock_fix::LockFix<Runtime>,
+);
 
 pub struct EthBridgeMigration;
 
