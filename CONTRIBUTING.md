@@ -3,8 +3,8 @@
 ## Requirements
 * Nightly Rust of same version as defined in [housekeeping/docker/develop/Dockerfile](housekeeping/docker/develop/Dockerfile)
  ```
- rustup default set nightly-2021-03-11
- rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
+ rustup default set nightly
+ rustup target add wasm32-unknown-unknown --toolchain nightly
  ```
 
 ## Steps to take before opening a PR
