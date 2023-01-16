@@ -1590,7 +1590,6 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
- "fastmurmur3",
  "fixnum",
  "frame-support",
  "frame-system",
@@ -3383,12 +3382,6 @@ dependencies = [
  "sp-api",
  "sp-std",
 ]
-
-[[package]]
-name = "fastmurmur3"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d922f481ae01f2a3f1fff7b9e0e789f18f0c755a38ec983a3e6f37762cdcc2a2"
 
 [[package]]
 name = "fastrand"

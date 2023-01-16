@@ -317,9 +317,9 @@ impl<AssetId> AssetId32<AssetId> {
 
         let mut bytes = [0u8; 32];
         let symbol_bytes = reference_symbol.encode();
-        let symbol_hash = fastmurmur3::hash(&symbol_bytes);
+        let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
         bytes[0] = 3;
-        bytes[2..18].copy_from_slice(&symbol_hash.to_le_bytes());
+        bytes[2..18].copy_from_slice(&symbol_hash);
 
         Self::from_bytes(bytes)
     }

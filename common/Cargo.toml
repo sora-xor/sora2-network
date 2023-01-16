@@ -44,7 +44,6 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 static_assertions = "1.1.0"
 hex = { version = "*", default-features = false }
 hex-literal = "0.3.1"
-fastmurmur3 = "0.1.2"
 
 [dev-dependencies]
 serde_json = "1.0.41"
