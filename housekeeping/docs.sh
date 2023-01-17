@@ -1,6 +1,6 @@
 #!/bin/bash
 set +e
-apt-get update && apt-get --no-install-recommends install git -y && apt-get install clang -y
+apt-get update && apt-get --no-install-recommends install git clang make -y
 rustup default nightly-2022-05-12
 rustup target add wasm32-unknown-unknown --toolchain nightly-2022-05-12
 rustup component add rustfmt
