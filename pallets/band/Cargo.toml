@@ -27,6 +27,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch 
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-runtime = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false}
+oracle-proxy = { path = "../oracle-proxy", default-features = false }
 
 [features]
 default = ['std']
@@ -35,6 +36,7 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "oracle-proxy/std",
     "sp-std/std",
     "common/std",
 ]
