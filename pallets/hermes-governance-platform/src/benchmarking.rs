@@ -90,7 +90,7 @@ benchmarks! {
         let descripton = "Description".to_string();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
-        let hermes_amount = balance!(1000);
+        let hermes_amount = balance!(100000);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         Assets::<T>::mint(
@@ -170,7 +170,7 @@ benchmarks! {
         let title = "Title".to_string();
         let description = "Description".to_string();
         let voting_option = 2;
-        let number_of_hermes = balance!(2000);
+        let number_of_hermes = balance!(200000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();

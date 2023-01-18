@@ -112,7 +112,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesVotingAmount<T: Config>() -> Balance {
-        balance!(100)
+        balance!(1000)
     }
 
     #[pallet::storage]
@@ -122,7 +122,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesAmountForCreatingPoll<T: Config>() -> Balance {
-        balance!(200)
+        balance!(100000)
     }
 
     #[pallet::storage]

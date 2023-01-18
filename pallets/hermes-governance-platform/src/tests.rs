@@ -146,7 +146,7 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
-                balance!(2800)
+                balance!(200000)
             );
 
             // Check pallet's balances
@@ -381,7 +381,7 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
-                balance!(2900)
+                balance!(299000)
             );
 
             // Check pallet's balances
@@ -580,7 +580,7 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
-                balance!(3000)
+                balance!(300000)
             );
 
             // Check pallet's balances
@@ -777,7 +777,7 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&HERMES_ASSET_ID, &ALICE)
                     .expect("Failed to query free balance."),
-                balance!(3000)
+                balance!(300000)
             );
 
             // Check pallet's balances
