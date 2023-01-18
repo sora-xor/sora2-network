@@ -3702,7 +3702,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "1.5.2"
+version = "1.5.3"
 dependencies = [
  "ansi_term",
  "assert_cmd",
@@ -3788,7 +3788,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "1.5.2"
+version = "1.5.3"
 dependencies = [
  "common",
  "faucet",
@@ -3816,7 +3816,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "1.5.2"
+version = "1.5.3"
 dependencies = [
  "assets",
  "assets-runtime-api",
