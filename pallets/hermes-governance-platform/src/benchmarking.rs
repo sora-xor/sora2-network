@@ -153,7 +153,7 @@ benchmarks! {
             voting_option,
         );
 
-        let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller);
+        let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller).unwrap();
         pallet_timestamp::Now::<T>::put(current_timestamp + (172801*1000u32).into());
     }: {
         let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(

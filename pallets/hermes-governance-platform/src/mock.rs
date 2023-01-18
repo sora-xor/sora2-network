@@ -102,6 +102,8 @@ parameter_types! {
 }
 
 impl crate::Config for Runtime {
+    const MIN_DURATION_OF_POLL: Self::Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
     type Event = Event;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();

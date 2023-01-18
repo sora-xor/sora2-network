@@ -372,7 +372,9 @@ mod tests {
                 voting_option,
             ));
 
-            let hermes_voting_info = pallet::HermesVotings::<Runtime>::get(&poll_id, &ALICE);
+            let hermes_voting_info =
+                pallet::HermesVotings::<Runtime>::get(&poll_id, &ALICE).unwrap();
+
             assert_eq!(hermes_voting_info.voting_option, voting_option);
             assert_eq!(hermes_voting_info.hermes_withdrawn, false);
             assert_eq!(hermes_voting_info.number_of_hermes, number_of_hermes);
@@ -571,7 +573,9 @@ mod tests {
                 poll_id.clone()
             ));
 
-            let hermes_voting_info = pallet::HermesVotings::<Runtime>::get(&poll_id, &ALICE);
+            let hermes_voting_info =
+                pallet::HermesVotings::<Runtime>::get(&poll_id, &ALICE).unwrap();
+
             assert_eq!(hermes_voting_info.voting_option, voting_option);
             assert_eq!(hermes_voting_info.number_of_hermes, number_of_hermes);
             assert_eq!(hermes_voting_info.hermes_withdrawn, true);
