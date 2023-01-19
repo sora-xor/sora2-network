@@ -485,6 +485,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "oracle-proxy",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -3850,6 +3851,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix 0.20.0",
+ "oracle-proxy-rpc",
  "pallet-mmr-rpc",
  "pallet-multisig 3.2.3",
  "pallet-sudo",
@@ -3978,6 +3980,8 @@ dependencies = [
  "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
+ "oracle-proxy",
+ "oracle-proxy-runtime-api",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -6917,6 +6921,52 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+
+[[package]]
+name = "oracle-proxy"
+version = "1.0.0"
+dependencies = [
+ "band",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "oracle-proxy-rpc"
+version = "1.0.0"
+dependencies = [
+ "jsonrpsee",
+ "oracle-proxy-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "oracle-proxy-runtime-api"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "orml-currencies"

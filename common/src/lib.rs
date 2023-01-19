@@ -47,6 +47,7 @@ mod fixed_wrapper;
 pub mod macros;
 pub mod migrations;
 mod primitives;
+pub mod serialization;
 mod swap_amount;
 mod traits;
 pub mod utils;
@@ -61,6 +62,7 @@ pub use traits::Config;
 pub mod prelude {
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
+    pub use super::serialization::*;
     pub use super::swap_amount::*;
     pub use super::traits::*;
     pub use super::weights::*;
