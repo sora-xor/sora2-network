@@ -307,7 +307,11 @@ mod tests {
             ));
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id.clone(), voting_option),
+                HermesGovernancePlatform::vote(
+                    Origin::signed(ALICE),
+                    poll_id.clone(),
+                    voting_option
+                ),
                 Error::<Runtime>::AlreadyVoted
             );
         });
