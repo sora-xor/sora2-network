@@ -9043,6 +9043,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "remote-ext"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "common",
+ "dex-manager",
+ "env_logger 0.9.3",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "framenode-runtime",
+ "hex",
+ "jsonrpsee",
+ "liquidity-proxy",
+ "log",
+ "parity-scale-codec",
+ "remote-externalities",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
+ "thiserror",
+ "tokio",
+ "xst",
+]
+
+[[package]]
+name = "remote-externalities"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.25#3348e144f0a2b39ce08bd8e3b976c42fe0c990b9"
+dependencies = [
+ "env_logger 0.9.3",
+ "jsonrpsee",
+ "log",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
+]
+
+[[package]]
 name = "remove_dir_all"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

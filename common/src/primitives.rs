@@ -201,17 +201,7 @@ pub type AssetId32Code = [u8; 32];
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
 #[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
+    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32<AssetId> {
@@ -219,6 +209,18 @@ pub struct AssetId32<AssetId> {
     pub code: AssetId32Code,
     /// Additional typing information.
     pub phantom: PhantomData<AssetId>,
+}
+
+// More readable representation of AssetId
+impl<AssetId> core::fmt::Debug for AssetId32<AssetId>
+where
+    AssetId: core::fmt::Debug,
+{
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        fmt.debug_tuple("AssetId")
+            .field(&H256::from(self.code))
+            .finish()
+    }
 }
 
 // LstId is Liquidity Source Type Id.
@@ -1044,4 +1046,13 @@ mod tests {
 pub enum PriceVariant {
     Buy,
     Sell,
+}
+
+impl PriceVariant {
+    pub fn switch(&self) -> Self {
+        match self {
+            PriceVariant::Buy => PriceVariant::Sell,
+            PriceVariant::Sell => PriceVariant::Buy,
+        }
+    }
 }
