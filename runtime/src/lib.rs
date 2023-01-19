@@ -40,7 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
+pub mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -217,6 +217,16 @@ pub mod opaque {
         }
     }
 }
+
+/// Types used by oracle related pallets
+pub mod oracle_types {
+    use common::SymbolName;
+
+    pub type Symbol = SymbolName;
+
+    pub type ResolveTime = u64;
+}
+pub use oracle_types::*;
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -1778,10 +1788,18 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
+impl oracle_proxy::Config for Runtime {
+    type Symbol = Symbol;
+    type Event = Event;
+    type WeightInfo = oracle_proxy::weights::WeightInfo<Runtime>;
+    type BandChainOracle = band::Pallet<Runtime>;
+}
+
 impl band::Config for Runtime {
     type Event = Event;
-    type Symbol = String;
+    type Symbol = Symbol;
     type WeightInfo = band::weights::WeightInfo<Runtime>;
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1848,7 +1866,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -1877,7 +1895,8 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
-        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 54,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -1927,7 +1946,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -1956,7 +1975,8 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
-        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 54,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
 
         // Trustless ethereum bridge
@@ -2404,6 +2424,31 @@ impl_runtime_apis! {
         }
     }
 
+    impl oracle_proxy_runtime_api::OracleProxyAPI<
+        Block,
+        Symbol,
+        ResolveTime
+    > for Runtime {
+        fn quote(symbol: Symbol) -> Result<Option<oracle_proxy_runtime_api::RateInfo>, DispatchError>  {
+            let rate_wrapped = <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::quote(&symbol);
+            match rate_wrapped {
+                Ok(rate) => Ok(rate.map(|rate| oracle_proxy_runtime_api::RateInfo{
+                    value: rate.value,
+                    last_updated: rate.last_updated
+                })),
+                Err(e) => Err(e)
+            }
+        }
+
+        fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
+            <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::list_enabled_symbols()
+        }
+    }
+
     impl pswap_distribution_runtime_api::PswapDistributionAPI<
         Block,
         AccountId,
@@ -2606,6 +2651,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2664,7 +2710,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
-            add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
@@ -2673,6 +2718,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
+            add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

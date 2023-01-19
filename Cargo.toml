@@ -238,6 +238,7 @@ members = [
     "pallets/vested-rewards",
     "pallets/xst",
     "pallets/price-tools",
+    "pallets/oracle-proxy",
     "pallets/trustless-eth-bridge/ethereum-light-client",
     "pallets/trustless-eth-bridge/basic-channel",
     "pallets/trustless-eth-bridge/basic-channel/rpc",
@@ -258,6 +259,7 @@ members = [
     "node/",
     "utils/parse",
     "utils/generate-bags",
+    "utils/remote-ext",
 ]
 
 resolver = "2"

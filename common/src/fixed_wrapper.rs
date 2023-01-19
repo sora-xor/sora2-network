@@ -35,6 +35,7 @@ use core::result::Result;
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul, RoundingSqrt};
 use fixnum::ArithmeticError;
+use frame_support::RuntimeDebug;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
@@ -42,8 +43,7 @@ use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
 /// Supported operations: `+`, '-', '/', '*', 'sqrt'.
-#[cfg_attr(feature = "std", derive(Debug))]
-#[derive(Clone)]
+#[derive(Clone, RuntimeDebug)]
 pub struct FixedWrapper {
     inner: Result<Fixed, ArithmeticError>,
 }

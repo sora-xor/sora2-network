@@ -37,7 +37,7 @@ mod tests {
     use common::PSWAP;
     use common::XST;
     use common::{
-        AssetId32, ContentSource, Description, ASSET_CONTENT_SOURCE_MAX_LENGTH,
+        AssetId32, ContentSource, Description, IsValid, ASSET_CONTENT_SOURCE_MAX_LENGTH,
         ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
     };
     use frame_support::assert_noop;
