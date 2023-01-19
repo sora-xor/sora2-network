@@ -40,7 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
+pub mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -1854,7 +1854,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -1933,7 +1933,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,

@@ -258,6 +258,7 @@ members = [
     "node/",
     "utils/parse",
     "utils/generate-bags",
+    "utils/remote-ext",
 ]
 
 resolver = "2"

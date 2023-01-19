@@ -854,8 +854,11 @@ impl<T: Config> Pallet<T> {
 
             for src in &sources {
                 match src.liquidity_source_index {
-                    LiquiditySourceType::MulticollateralBondingCurvePool
-                    | LiquiditySourceType::XSTPool => primary_market = Some(src.clone()),
+                    // We can't use XST as primary market for smart split, because it use XST asset as base
+                    // and does not support DEXes except Polkaswap
+                    LiquiditySourceType::MulticollateralBondingCurvePool => {
+                        primary_market = Some(src.clone())
+                    }
                     LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool => {
                         secondary_market = Some(src.clone())
                     }

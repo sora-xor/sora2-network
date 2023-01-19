@@ -1,8 +1,8 @@
 #!/bin/bash
 set +e
 apt-get update && apt-get --no-install-recommends install git -y && apt-get install clang -y
-rustup default nightly-2021-03-11
-rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
+rustup default nightly-2022-05-12
+rustup target add wasm32-unknown-unknown --toolchain nightly-2022-05-12
 rustup component add rustfmt
 git config --global user.email ${GH_EMAIL}
 git config --global user.name ${GH_USER}
