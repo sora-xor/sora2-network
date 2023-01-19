@@ -320,7 +320,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE;
-            let voting_option = VotingOption::Yes;
+            let voting_option = VotingOption::No;
             let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);

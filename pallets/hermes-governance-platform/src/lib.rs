@@ -16,8 +16,6 @@ use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::weights::Weight;
 use frame_support::RuntimeDebug;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 
 pub trait WeightInfo {
     fn vote() -> Weight;
@@ -28,8 +26,7 @@ pub trait WeightInfo {
     fn change_min_hermes_for_creating_poll() -> Weight;
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Copy)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
     Yes,
     No,
@@ -255,7 +252,7 @@ pub mod pallet {
             );
 
             let hermes_voting_info = HermesVotingInfo {
-                voting_option: VotingOption::Yes,
+                voting_option,
                 number_of_hermes: MinimumHermesVotingAmount::<T>::get(),
                 hermes_withdrawn: false,
             };
