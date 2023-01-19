@@ -1,6 +1,6 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, Error, HermesPollInfo};
+    use crate::{pallet, Error, HermesPollInfo, VotingOption};
     use codec::Encode;
     use common::{balance, HERMES_ASSET_ID};
     use frame_support::PalletId;
@@ -160,49 +160,18 @@ mod tests {
     }
 
     #[test]
-    fn vote_invalid_number_of_option() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
-            let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
-            let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
-            let user = ALICE.into();
-
-            let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
-            let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
-            let poll_id = H256::from(encoded);
-
-            let hermes_poll_info = HermesPollInfo {
-                creator: user,
-                hermes_locked,
-                poll_start_timestamp,
-                poll_end_timestamp,
-                title: "Title".to_string(),
-                description: "Description".to_string(),
-                creator_hermes_withdrawn: false,
-            };
-
-            pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
-
-            assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 3,),
-                Error::<Runtime>::InvalidNumberOfOption
-            );
-        });
-    }
-
-    #[test]
     fn vote_poll_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let user = ALICE;
+            let voting_option = VotingOption::Yes;
 
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2,),
+                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option,),
                 Error::<Runtime>::PollDoesNotExist
             );
         });
@@ -219,6 +188,7 @@ mod tests {
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
+            let voting_option = VotingOption::Yes;
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -233,7 +203,7 @@ mod tests {
             pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2,),
+                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option),
                 Error::<Runtime>::PollIsNotStarted
             );
         });
@@ -251,6 +221,7 @@ mod tests {
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
+            let voting_option = VotingOption::Yes;
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -266,7 +237,7 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604800001);
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2,),
+                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option,),
                 Error::<Runtime>::PollIsFinished
             );
         });
@@ -283,6 +254,7 @@ mod tests {
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
+            let voting_option = VotingOption::Yes;
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -297,7 +269,7 @@ mod tests {
             pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(BOB), poll_id, 2,),
+                HermesGovernancePlatform::vote(Origin::signed(BOB), poll_id, voting_option),
                 Error::<Runtime>::NotEnoughHermesForVoting
             );
         });
@@ -314,6 +286,7 @@ mod tests {
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
             let poll_id = H256::from(encoded);
+            let voting_option = VotingOption::Yes;
 
             let hermes_poll_info = HermesPollInfo {
                 creator: user,
@@ -330,11 +303,11 @@ mod tests {
             assert_ok!(HermesGovernancePlatform::vote(
                 Origin::signed(ALICE),
                 poll_id.clone(),
-                1,
+                voting_option,
             ));
 
             assert_err!(
-                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id.clone(), 1,),
+                HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id.clone(), voting_option),
                 Error::<Runtime>::AlreadyVoted
             );
         });
@@ -347,7 +320,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE;
-            let voting_option = 1;
+            let voting_option = VotingOption::Yes;
             let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
@@ -419,7 +392,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE;
-            let voting_option = 1;
+            let voting_option = VotingOption::Yes;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
             let encoded: [u8; 32] = (&user, nonce).using_encoded(blake2_256);
@@ -491,7 +464,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE;
-            let voting_option = 1;
+            let voting_option = VotingOption::Yes;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let nonce = frame_system::Pallet::<Runtime>::account_nonce(&user);
@@ -540,7 +513,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 604800000;
             let user = ALICE;
-            let voting_option = 1;
+            let voting_option = VotingOption::Yes;
             let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
             let number_of_hermes = pallet::MinimumHermesVotingAmount::<Runtime>::get();
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();

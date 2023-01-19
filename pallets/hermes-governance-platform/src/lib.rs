@@ -15,6 +15,9 @@ use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::weights::Weight;
+use frame_support::RuntimeDebug;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
 pub trait WeightInfo {
     fn vote() -> Weight;
@@ -25,11 +28,18 @@ pub trait WeightInfo {
     fn change_min_hermes_for_creating_poll() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Copy)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum VotingOption {
+    Yes,
+    No,
+}
+
+#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct HermesVotingInfo {
     /// Voting option
-    voting_option: u32,
+    voting_option: VotingOption,
     /// Number of hermes
     number_of_hermes: Balance,
     /// Hermes withdrawn
@@ -59,7 +69,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo};
+    use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
     use alloc::string::String;
     use common::balance;
     use common::prelude::Balance;
@@ -159,7 +169,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
-        Voted(AccountIdOf<T>, H256, u32),
+        Voted(AccountIdOf<T>, H256, VotingOption),
         /// Create poll [who, title, start_timestamp, end_timestamp]
         Created(AccountIdOf<T>, String, T::Moment, T::Moment),
         /// Voter Funds Withdrawn [who, balance]
@@ -178,8 +188,6 @@ pub mod pallet {
         PollIsNotStarted,
         ///Poll Is Finished
         PollIsFinished,
-        /// Invalid Number Of Option
-        InvalidNumberOfOption,
         /// Invalid Start Timestamp
         InvalidStartTimestamp,
         ///Invalid End Timestamp,
@@ -216,14 +224,9 @@ pub mod pallet {
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
-            voting_option: u32,
+            voting_option: VotingOption,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
-            ensure!(
-                voting_option == 1 || voting_option == 2,
-                Error::<T>::InvalidNumberOfOption,
-            );
 
             let current_timestamp = Timestamp::<T>::get();
             let hermes_poll_info =
@@ -252,7 +255,7 @@ pub mod pallet {
             );
 
             let hermes_voting_info = HermesVotingInfo {
-                voting_option,
+                voting_option: VotingOption::Yes,
                 number_of_hermes: MinimumHermesVotingAmount::<T>::get(),
                 hermes_withdrawn: false,
             };

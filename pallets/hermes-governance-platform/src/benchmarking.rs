@@ -45,7 +45,7 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
+        let voting_option = VotingOption::Yes;
         let hermes_amount = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -117,7 +117,7 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
+        let voting_option = VotingOption::Yes;
         let number_of_hermes = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -169,7 +169,7 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
+        let voting_option = VotingOption::Yes;
         let number_of_hermes = balance!(200000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
