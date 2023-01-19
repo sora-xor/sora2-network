@@ -40,7 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
+pub mod migrations;
 
 #[cfg(test)]
 pub mod mock;

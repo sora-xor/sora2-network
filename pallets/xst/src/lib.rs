@@ -781,7 +781,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         let base_price_wrt_ref: FixedWrapper =
             Self::reference_price(synthetic_base_asset, PriceVariant::Buy)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset, PriceVariant::Buy)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Sell)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -795,7 +795,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
         let base_price_wrt_ref: FixedWrapper =
             Self::reference_price(synthetic_base_asset, PriceVariant::Sell)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset, PriceVariant::Sell)?.into();
+            Self::reference_price(synthetic_asset, PriceVariant::Buy)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;

@@ -2,8 +2,8 @@
 extern crate log;
 
 use clap::Parser;
-use common::balance;
-use common::{prelude::QuoteAmount, GetMarketInfo, PriceVariant};
+use common::prelude::QuoteAmount;
+use common::{balance, DEXId, LiquiditySourceFilter};
 use frame_support::traits::OnRuntimeUpgrade;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig};
@@ -54,7 +54,7 @@ async fn main() -> AnyResult<()> {
         framenode_runtime::migrations::Migrations::on_runtime_upgrade();
         let input = QuoteAmount::with_desired_input(balance!(1000.0));
         let res = liquidity_proxy::Pallet::<Runtime>::inner_quote(
-            common::DEXId::Polkaswap.into(),
+            DEXId::Polkaswap.into(),
             &common::DAI.into(),
             &common::XSTUSD.into(),
             input.clone(),
