@@ -15,6 +15,7 @@ use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
 use frame_support::weights::Weight;
+use frame_support::RuntimeDebug;
 
 pub trait WeightInfo {
     fn vote() -> Weight;
@@ -25,11 +26,17 @@ pub trait WeightInfo {
     fn change_min_hermes_for_creating_poll() -> Weight;
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
+pub enum VotingOption {
+    Yes,
+    No,
+}
+
+#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct HermesVotingInfo {
     /// Voting option
-    voting_option: u32,
+    voting_option: VotingOption,
     /// Number of hermes
     number_of_hermes: Balance,
     /// Hermes withdrawn
@@ -59,7 +66,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{HermesPollInfo, HermesVotingInfo, WeightInfo};
+    use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
     use alloc::string::String;
     use common::balance;
     use common::prelude::Balance;
@@ -80,6 +87,12 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
     {
+        /// Minimum duration of poll represented in milliseconds
+        const MIN_DURATION_OF_POLL: Self::Moment;
+
+        /// Maximum duration of poll represented in milliseconds
+        const MAX_DURATION_OF_POLL: Self::Moment;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -102,8 +115,15 @@ pub mod pallet {
     /// A vote of a particular user for a particular poll
     #[pallet::storage]
     #[pallet::getter(fn hermes_votings)]
-    pub type HermesVotings<T: Config> =
-        StorageDoubleMap<_, Identity, H256, Identity, AccountIdOf<T>, HermesVotingInfo, ValueQuery>;
+    pub type HermesVotings<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        H256,
+        Identity,
+        AccountIdOf<T>,
+        HermesVotingInfo,
+        OptionQuery,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn hermes_poll_data)]
@@ -112,7 +132,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesVotingAmount<T: Config>() -> Balance {
-        balance!(100)
+        balance!(1000)
     }
 
     #[pallet::storage]
@@ -122,7 +142,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultMinimumHermesAmountForCreatingPoll<T: Config>() -> Balance {
-        balance!(200)
+        balance!(100000)
     }
 
     #[pallet::storage]
@@ -146,7 +166,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, poll, option]
-        Voted(AccountIdOf<T>, H256, u32),
+        Voted(AccountIdOf<T>, H256, VotingOption),
         /// Create poll [who, title, start_timestamp, end_timestamp]
         Created(AccountIdOf<T>, String, T::Moment, T::Moment),
         /// Voter Funds Withdrawn [who, balance]
@@ -165,8 +185,6 @@ pub mod pallet {
         PollIsNotStarted,
         ///Poll Is Finished
         PollIsFinished,
-        /// Invalid Number Of Option
-        InvalidNumberOfOption,
         /// Invalid Start Timestamp
         InvalidStartTimestamp,
         ///Invalid End Timestamp,
@@ -203,14 +221,9 @@ pub mod pallet {
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: H256,
-            voting_option: u32,
+            voting_option: VotingOption,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
-            ensure!(
-                voting_option == 1 || voting_option == 2,
-                Error::<T>::InvalidNumberOfOption,
-            );
 
             let current_timestamp = Timestamp::<T>::get();
             let hermes_poll_info =
@@ -233,16 +246,16 @@ pub mod pallet {
                 Error::<T>::NotEnoughHermesForVoting
             );
 
-            let mut hermes_voting_info = <HermesVotings<T>>::get(&poll_id, &user);
-
             ensure!(
-                hermes_voting_info.voting_option == 0,
+                !<HermesVotings<T>>::contains_key(&poll_id, &user),
                 Error::<T>::AlreadyVoted
             );
 
-            hermes_voting_info.voting_option = voting_option;
-            hermes_voting_info.number_of_hermes = MinimumHermesVotingAmount::<T>::get();
-            hermes_voting_info.hermes_withdrawn = false;
+            let hermes_voting_info = HermesVotingInfo {
+                voting_option,
+                number_of_hermes: MinimumHermesVotingAmount::<T>::get(),
+                hermes_withdrawn: false,
+            };
 
             // Transfer Hermes to pallet
             Assets::<T>::transfer_from(
@@ -285,16 +298,13 @@ pub mod pallet {
                 Error::<T>::InvalidEndTimestamp
             );
 
-            let min_duration_of_poll: T::Moment = (172800 * 1000u32).into();
-            let max_duration_of_poll: T::Moment = (604800 * 1000u32).into();
-
             ensure!(
-                (poll_end_timestamp - poll_start_timestamp) >= min_duration_of_poll,
+                (poll_end_timestamp - poll_start_timestamp) >= T::MIN_DURATION_OF_POLL,
                 Error::<T>::InvalidMinimumDurationOfPoll
             );
 
             ensure!(
-                (poll_end_timestamp - poll_start_timestamp) <= max_duration_of_poll,
+                (poll_end_timestamp - poll_start_timestamp) <= T::MAX_DURATION_OF_POLL,
                 Error::<T>::InvalidMaximumDurationOfPoll
             );
 
@@ -358,16 +368,12 @@ pub mod pallet {
                 Error::<T>::PollIsNotFinished
             );
 
-            let mut hermes_voting_info = <HermesVotings<T>>::get(&poll_id, &user);
+            let mut hermes_voting_info =
+                <HermesVotings<T>>::get(&poll_id, &user).ok_or(Error::<T>::NotVoted)?;
 
             ensure!(
                 hermes_voting_info.hermes_withdrawn == false,
                 Error::<T>::FundsAlreadyWithdrawn
-            );
-
-            ensure!(
-                hermes_voting_info.number_of_hermes != 0,
-                Error::<T>::NotVoted
             );
 
             // Withdraw Hermes
@@ -446,9 +452,10 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            if user != AuthorityAccount::<T>::get() {
-                return Err(Error::<T>::Unauthorized.into());
-            }
+            ensure!(
+                user == AuthorityAccount::<T>::get(),
+                Error::<T>::Unauthorized
+            );
 
             MinimumHermesVotingAmount::<T>::put(hermes_amount);
 
@@ -467,9 +474,10 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            if user != AuthorityAccount::<T>::get() {
-                return Err(Error::<T>::Unauthorized.into());
-            }
+            ensure!(
+                user == AuthorityAccount::<T>::get(),
+                Error::<T>::Unauthorized
+            );
 
             MinimumHermesAmountForCreatingPoll::<T>::put(hermes_amount);
 

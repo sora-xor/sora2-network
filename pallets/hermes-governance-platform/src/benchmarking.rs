@@ -45,7 +45,7 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
+        let voting_option = VotingOption::Yes;
         let hermes_amount = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -90,7 +90,7 @@ benchmarks! {
         let descripton = "Description".to_string();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();
-        let hermes_amount = balance!(1000);
+        let hermes_amount = balance!(100000);
         let owner: T::AccountId = assets::AssetOwners::<T>::get::<T::AssetId>(HERMES_ASSET_ID.clone().into()).unwrap();
 
         Assets::<T>::mint(
@@ -117,7 +117,7 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
+        let voting_option = VotingOption::Yes;
         let number_of_hermes = balance!(1000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
@@ -153,7 +153,7 @@ benchmarks! {
             voting_option,
         );
 
-        let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller);
+        let hermes_voting_info = pallet::HermesVotings::<T>::get(&poll_id, &caller).unwrap();
         pallet_timestamp::Now::<T>::put(current_timestamp + (172801*1000u32).into());
     }: {
         let _ = HermesGovernancePlatform::<T>::withdraw_funds_voter(
@@ -169,8 +169,8 @@ benchmarks! {
         let caller = alice::<T>();
         let title = "Title".to_string();
         let description = "Description".to_string();
-        let voting_option = 2;
-        let number_of_hermes = balance!(2000);
+        let voting_option = VotingOption::Yes;
+        let number_of_hermes = balance!(200000);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<T>::get();
         let poll_start_timestamp = Timestamp::<T>::get();
         let poll_end_timestamp = Timestamp::<T>::get() + (172800*1000u32).into();

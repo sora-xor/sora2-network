@@ -102,6 +102,8 @@ parameter_types! {
 }
 
 impl crate::Config for Runtime {
+    const MIN_DURATION_OF_POLL: Self::Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
     type Event = Event;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
@@ -293,8 +295,8 @@ impl Default for ExtBuilder {
                 None,
             )],
             endowed_accounts: vec![
-                (ALICE, HERMES_ASSET_ID, balance!(3000)),
-                (BOB, HERMES_ASSET_ID, balance!(50)),
+                (ALICE, HERMES_ASSET_ID, balance!(300000)),
+                (BOB, HERMES_ASSET_ID, balance!(500)),
             ],
         }
     }
