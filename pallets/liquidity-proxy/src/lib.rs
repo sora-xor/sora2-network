@@ -116,11 +116,17 @@ impl<T: Config> ExchangePath<T> {
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
 
         match (input_type, output_type) {
-            forward_or_backward!(Base, Basic)
-            | forward_or_backward!(Base, SyntheticBase)
-            | forward_or_backward!(SyntheticBase, Synthetic) => {
+            forward_or_backward!(Base, Basic) | forward_or_backward!(Base, SyntheticBase) => {
                 Some(vec![Self(vec![input_asset_id, output_asset_id])])
             }
+            forward_or_backward!(SyntheticBase, Synthetic) => Some(vec![
+                Self(vec![input_asset_id, output_asset_id]),
+                Self(vec![
+                    input_asset_id,
+                    dex_info.base_asset_id,
+                    output_asset_id,
+                ]),
+            ]),
             (Basic, Basic) | forward_or_backward!(SyntheticBase, Basic) => Some(vec![Self(vec![
                 input_asset_id,
                 dex_info.base_asset_id,
