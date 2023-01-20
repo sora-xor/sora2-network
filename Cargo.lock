@@ -485,6 +485,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "oracle-proxy",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -3850,6 +3851,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix 0.20.0",
+ "oracle-proxy-rpc",
  "pallet-mmr-rpc",
  "pallet-multisig 3.2.3",
  "pallet-sudo",
@@ -3978,6 +3980,8 @@ dependencies = [
  "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
+ "oracle-proxy",
+ "oracle-proxy-runtime-api",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -6919,6 +6923,52 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
+name = "oracle-proxy"
+version = "1.0.0"
+dependencies = [
+ "band",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "oracle-proxy-rpc"
+version = "1.0.0"
+dependencies = [
+ "jsonrpsee",
+ "oracle-proxy-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "oracle-proxy-runtime-api"
+version = "1.0.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack//open-runtime-module-library.git?branch=polkadot-v0.9.25#b00fa8a4e2c8c9b7617898947670e2371e2f98fe"
@@ -9040,6 +9090,53 @@ dependencies = [
  "tokio",
  "triehash",
  "url",
+]
+
+[[package]]
+name = "remote-ext"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "common",
+ "dex-manager",
+ "env_logger 0.9.3",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "framenode-runtime",
+ "hex",
+ "jsonrpsee",
+ "liquidity-proxy",
+ "log",
+ "parity-scale-codec",
+ "remote-externalities",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
+ "thiserror",
+ "tokio",
+ "xst",
+]
+
+[[package]]
+name = "remote-externalities"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.25#3348e144f0a2b39ce08bd8e3b976c42fe0c990b9"
+dependencies = [
+ "env_logger 0.9.3",
+ "jsonrpsee",
+ "log",
+ "parity-scale-codec",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
 ]
 
 [[package]]

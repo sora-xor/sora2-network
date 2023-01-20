@@ -59,7 +59,7 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, IsValid,
     LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
