@@ -1,13 +1,19 @@
 use crate::*;
 use frame_support::traits::OnRuntimeUpgrade;
+#[cfg(not(feature = "private-net"))]
 use vested_rewards::migrations::MoveMarketMakerRewardPoolToLiquidityProviderPool;
 
+#[cfg(not(feature = "private-net"))]
 pub type Migrations = (
     MoveMarketMakerRewardPoolToLiquidityProviderPool<Runtime>,
     PriceToolsMigration,
     pallet_staking::migrations::lock_fix::LockFix<Runtime>,
     DexManagerMigration,
 );
+
+// Test and Stage already have this migration applied
+#[cfg(feature = "private-net")]
+pub type Migrations = ();
 
 pub struct PriceToolsMigration;
 
