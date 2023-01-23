@@ -219,11 +219,14 @@ impl<T: Config> Pallet<T> {
                 Self::get_asset_average_price(output, price_variant)
             }
             (input, xor) if xor == &XOR.into() => {
-                Self::get_asset_average_price(input, price_variant).and_then(|average_price| {
-                    (fixed_wrapper!(1) / average_price)
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToQuoteAveragePrice.into())
-                })
+                // Buy price should always be greater or equal to sell price, so we need to invert price_variant here
+                Self::get_asset_average_price(input, price_variant.switch()).and_then(
+                    |average_price| {
+                        (fixed_wrapper!(1) / average_price)
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::FailedToQuoteAveragePrice.into())
+                    },
+                )
             }
             (input, output) => {
                 let quote_a =

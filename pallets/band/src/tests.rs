@@ -28,11 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use codec::alloc::collections::HashSet;
 use common::{prelude::FixedWrapper, Balance, Fixed};
+use common::{DataFeed, Rate};
 use frame_support::{assert_noop, error::BadOrigin};
 use sp_std::collections::btree_set::BTreeSet;
 
-use crate::{mock::*, Error, Rate};
+use crate::{mock::*, BandRate, Error};
 
 pub fn band_rate_into_balance(rate: u64) -> Balance {
     let fixed = Fixed::from_bits(rate as i128 * super::RATE_MULTIPLIER);
@@ -166,7 +168,7 @@ fn relay_should_work() {
         for (symbol, rate) in rates {
             assert_eq!(
                 Band::rates(symbol),
-                Some(Rate {
+                Some(BandRate {
                     value: band_rate_into_balance(rate),
                     last_updated: initial_resolve_time,
                     request_id,
@@ -207,7 +209,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
 
         assert_eq!(
             Band::rates("RUB"),
-            Some(Rate {
+            Some(BandRate {
                 value: band_rate_into_balance(2),
                 last_updated: initial_resolve_time,
                 request_id,
@@ -249,7 +251,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
 
         assert_eq!(
             Band::rates("RUB"),
-            Some(Rate {
+            Some(BandRate {
                 value: band_rate_into_balance(new_rub_rate),
                 last_updated: new_resolve_time,
                 request_id: new_request_id,
@@ -326,7 +328,7 @@ fn relay_should_store_last_duplicated_rate() {
 
         assert_eq!(
             Band::rates("USD"),
-            Some(Rate {
+            Some(BandRate {
                 value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
@@ -357,11 +359,71 @@ fn force_relay_should_store_last_duplicated_rate() {
 
         assert_eq!(
             Band::rates("USD"),
-            Some(Rate {
+            Some(BandRate {
                 value: band_rate_into_balance(4),
                 last_updated: initial_resolve_time,
                 request_id: 0,
             })
         );
+    });
+}
+
+#[test]
+fn quote_and_list_enabled_symbols_should_work() {
+    new_test_ext().execute_with(|| {
+        let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
+        let rates = vec![1, 2, 3];
+        let relayer = 1;
+        let initial_resolve_time = 100;
+
+        for symbol in &symbols {
+            assert_eq!(Band::rates(symbol), None);
+        }
+
+        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::relay(
+            Origin::signed(relayer),
+            symbols.iter().cloned().zip(rates.iter().cloned()).collect(),
+            initial_resolve_time,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        for (symbol, rate) in symbols.iter().zip(rates) {
+            assert_eq!(
+                Band::rates(symbol),
+                Some(BandRate {
+                    value: band_rate_into_balance(rate),
+                    last_updated: initial_resolve_time,
+                    request_id: 0,
+                })
+            );
+        }
+
+        let usd_rate = BandRate {
+            value: band_rate_into_balance(1),
+            last_updated: initial_resolve_time,
+            request_id: 0,
+        };
+
+        assert_eq!(
+            <Band as DataFeed<String, Rate, u64>>::quote(&"USD".to_owned()),
+            Ok(Some(usd_rate.into()))
+        );
+
+        let enabled_symbols: HashSet<(String, u64)> = symbols
+            .iter()
+            .cloned()
+            .map(|sym| (sym, initial_resolve_time))
+            .collect();
+
+        let enabled_symbols_res: HashSet<(String, u64)> =
+            <Band as DataFeed<String, Rate, u64>>::list_enabled_symbols()
+                .expect("Failed to resolve symbols")
+                .iter()
+                .cloned()
+                .collect();
+
+        assert_eq!(enabled_symbols_res, enabled_symbols)
     });
 }

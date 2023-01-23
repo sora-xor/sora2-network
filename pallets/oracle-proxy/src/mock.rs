@@ -28,7 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as band, Config};
+use crate::{self as oracle_proxy, Config};
+use band;
 use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
 use sp_core::H256;
@@ -84,14 +85,14 @@ impl Config for Runtime {
     type Symbol = String;
     type Event = Event;
     type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type BandChainOracle = band::Pallet<Runtime>;
 }
 
-impl oracle_proxy::Config for Runtime {
-    type Symbol = String;
+impl band::Config for Runtime {
+    type Symbol = <Runtime as Config>::Symbol;
     type Event = Event;
     type WeightInfo = ();
-    type BandChainOracle = crate::Pallet<Runtime>;
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
 // Build genesis storage according to the mock runtime.
