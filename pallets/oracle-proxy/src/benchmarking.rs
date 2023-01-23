@@ -28,48 +28,31 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::pallet::{Config, Pallet};
-use common::generate_storage_instance;
-use common::{fixed, Fixed, XSTUSD};
-use core::fmt::Debug;
-use core::str::FromStr;
-use frame_support::pallet_prelude::{Get, StorageVersion};
-use frame_support::pallet_prelude::{StorageValue, ValueQuery};
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+#![cfg(feature = "runtime-benchmarks")]
 
-use crate::{EnabledSymbols, EnabledSynthetics, SyntheticInfo};
+use super::*;
+use crate::Oracle;
+use crate::Pallet as OracleProxy;
+use codec::alloc::collections::BTreeSet;
+use frame_benchmarking::benchmarks;
+use frame_system::RawOrigin;
+use sp_std::prelude::*;
 
-generate_storage_instance!(PoolXST, BaseFee);
-type OldBaseFee = StorageValue<BaseFeeOldInstance, Fixed, ValueQuery>;
-
-/// Migration which migrates `XSTUSD` synthetic to the new format.
-pub fn migrate<T: Config>() -> Weight
-where
-    <T::Symbol as FromStr>::Err: Debug,
-{
-    if Pallet::<T>::on_chain_storage_version() >= 2 {
-        info!("Migration to version 2 has already been applied");
-        return 0;
+benchmarks! {
+    enable_oracle {
+        let oracle = Oracle::BandChainFeed;
+    }: _(RawOrigin::Root, oracle.clone())
+    verify {
+        assert_eq!(OracleProxy::<T>::enabled_oracles(), BTreeSet::from([oracle.clone()]));
     }
 
-    if OldBaseFee::exists() {
-        OldBaseFee::kill();
+    disable_oracle {
+        let oracle = Oracle::BandChainFeed;
+        OracleProxy::<T>::enable_oracle(RawOrigin::Root.into(), oracle.clone())?;
+    }: _(RawOrigin::Root, oracle.clone())
+    verify {
+        assert_eq!(OracleProxy::<T>::enabled_oracles(), BTreeSet::new());
     }
 
-    let xstusd_symbol = T::Symbol::from_str("USD").expect("`USD` should be a valid symbol name");
-
-    EnabledSynthetics::<T>::insert(
-        T::AssetId::from(XSTUSD),
-        Some(SyntheticInfo {
-            reference_symbol: xstusd_symbol.clone(),
-            fee_ratio: fixed!(0.00666),
-        }),
-    );
-    EnabledSymbols::<T>::insert(xstusd_symbol, Some(T::AssetId::from(XSTUSD)));
-
-    StorageVersion::new(2).put::<Pallet<T>>();
-    T::DbWeight::get().reads_writes(0, 2)
+    impl_benchmark_test_suite!(OracleProxy, crate::mock::new_test_ext(), crate::mock::Runtime);
 }
-
-#[cfg(test)]
-mod tests;

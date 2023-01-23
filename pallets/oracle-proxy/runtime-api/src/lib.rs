@@ -28,48 +28,53 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::pallet::{Config, Pallet};
-use common::generate_storage_instance;
-use common::{fixed, Fixed, XSTUSD};
-use core::fmt::Debug;
-use core::str::FromStr;
-use frame_support::pallet_prelude::{Get, StorageVersion};
-use frame_support::pallet_prelude::{StorageValue, ValueQuery};
-use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnecessary_mut_passed)]
 
-use crate::{EnabledSymbols, EnabledSynthetics, SyntheticInfo};
+use codec::{Codec, Decode, Encode};
+use common::{utils::string_serialization, Balance};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::DispatchError;
+use sp_std::prelude::*;
 
-generate_storage_instance!(PoolXST, BaseFee);
-type OldBaseFee = StorageValue<BaseFeeOldInstance, Fixed, ValueQuery>;
-
-/// Migration which migrates `XSTUSD` synthetic to the new format.
-pub fn migrate<T: Config>() -> Weight
-where
-    <T::Symbol as FromStr>::Err: Debug,
-{
-    if Pallet::<T>::on_chain_storage_version() >= 2 {
-        info!("Migration to version 2 has already been applied");
-        return 0;
-    }
-
-    if OldBaseFee::exists() {
-        OldBaseFee::kill();
-    }
-
-    let xstusd_symbol = T::Symbol::from_str("USD").expect("`USD` should be a valid symbol name");
-
-    EnabledSynthetics::<T>::insert(
-        T::AssetId::from(XSTUSD),
-        Some(SyntheticInfo {
-            reference_symbol: xstusd_symbol.clone(),
-            fee_ratio: fixed!(0.00666),
-        }),
-    );
-    EnabledSymbols::<T>::insert(xstusd_symbol, Some(T::AssetId::from(XSTUSD)));
-
-    StorageVersion::new(2).put::<Pallet<T>>();
-    T::DbWeight::get().reads_writes(0, 2)
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct RateInfo {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub value: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "u64: std::fmt::Display",
+                deserialize = "u64: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub last_updated: u64,
 }
 
-#[cfg(test)]
-mod tests;
+sp_api::decl_runtime_apis! {
+    pub trait OracleProxyAPI<Symbol, ResolveTime> where
+        Symbol: Codec,
+        ResolveTime: Codec
+    {
+        fn quote(
+            symbol: Symbol,
+        ) -> Result<Option<RateInfo>, DispatchError>;
+
+        fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+    }
+}

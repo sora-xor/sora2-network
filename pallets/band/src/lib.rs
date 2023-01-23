@@ -31,10 +31,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::FixedWrapper;
-use common::{Balance, DataFeed, Fixed};
+use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 
 #[cfg(test)]
@@ -60,7 +61,7 @@ pub trait WeightInfo {
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
-pub struct Rate {
+pub struct BandRate {
     /// Rate value in USD.
     pub value: Balance,
     /// Last updated timestamp.
@@ -70,15 +71,39 @@ pub struct Rate {
     pub request_id: u64,
 }
 
-impl Rate {
-    pub fn update_if_outdated(&mut self, new: Rate) {
+impl BandRate {
+    pub fn update_if_outdated(&mut self, new: BandRate) {
         if self.last_updated <= new.last_updated {
             *self = new;
         }
     }
 }
 
+impl From<BandRate> for Rate {
+    fn from(value: BandRate) -> Rate {
+        Rate {
+            value: value.value,
+            last_updated: value.last_updated,
+        }
+    }
+}
+
 pub use pallet::*;
+
+impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
+    fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
+        Ok(Self::rates(symbol).map(|rate| rate.into()))
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
+        Ok(Vec::from_iter(SymbolRates::<T, I>::iter().filter_map(
+            |item| match item {
+                (symbol, Some(rate)) => Some((symbol, rate.last_updated)),
+                _ => None,
+            },
+        )))
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -102,11 +127,13 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config<I: 'static = ()>: frame_system::Config {
         /// Type of the symbol to be relayed.
-        type Symbol: Parameter;
+        type Symbol: Parameter + Ord;
         /// Event type of this pallet.
         type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        /// Hook which is being executed when some new symbols were relayed
+        type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
     }
 
     #[pallet::storage]
@@ -117,7 +144,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn rates)]
     pub type SymbolRates<T: Config<I>, I: 'static = ()> =
-        StorageMap<_, Blake2_128Concat, T::Symbol, Option<Rate>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::Symbol, Option<BandRate>, ValueQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -318,24 +345,31 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         rates: Vec<(T::Symbol, u64)>,
         resolve_time: u64,
         request_id: u64,
-        f: impl Fn(&mut Option<Rate>, Rate),
+        f: impl Fn(&mut Option<BandRate>, BandRate),
     ) -> Result<Vec<T::Symbol>, DispatchError> {
         let mut symbols = Vec::with_capacity(rates.len());
+        let mut new_symbols = BTreeSet::new();
         for (symbol, rate_value) in rates {
-            let new_rate = Rate {
+            let new_rate = BandRate {
                 value: Self::raw_rate_into_balance(rate_value)?,
                 last_updated: resolve_time,
                 request_id,
             };
 
-            SymbolRates::<T, I>::mutate(&symbol, |option_old_rate| f(option_old_rate, new_rate));
+            SymbolRates::<T, I>::mutate(&symbol, |option_old_rate| {
+                if option_old_rate.is_none() {
+                    new_symbols.insert(symbol.clone());
+                }
+                f(option_old_rate, new_rate);
+            });
             symbols.push(symbol);
         }
+        T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(Oracle::BandChainFeed, new_symbols)?;
 
         Ok(symbols)
     }
 
-    fn raw_rate_into_balance(raw_rate: u64) -> Result<Balance, DispatchError> {
+    pub fn raw_rate_into_balance(raw_rate: u64) -> Result<Balance, DispatchError> {
         i128::from(raw_rate)
             .checked_mul(RATE_MULTIPLIER)
             .and_then(|value| {
@@ -346,8 +380,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     }
 }
 
-impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Balance, u64, DispatchError> for Pallet<T, I> {
-    fn quote(symbol: T::Symbol) -> Result<Option<Balance>, DispatchError> {
+impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Balance, u64> for Pallet<T, I> {
+    fn quote(symbol: &T::Symbol) -> Result<Option<Balance>, DispatchError> {
         Ok(SymbolRates::<T, I>::get(symbol).map(|rate| rate.value))
     }
 

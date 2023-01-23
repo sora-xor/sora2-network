@@ -116,13 +116,13 @@ benchmarks! {
         RawOrigin::Root,
         AssetSymbol(b"XSTEURO".to_vec()),
         AssetName(b"Sora Synthetic EURO".to_vec()),
-        utils::REFERENCE_SYMBOL.into(),
+        utils::symbol(),
         fixed!(0)
     )
     verify {
         assert!(
             XSTPool::<T>::enabled_symbols(
-                <T as xst::Config>::Symbol::from(utils::REFERENCE_SYMBOL)
+                utils::symbol::<<T as xst::Config>::Symbol>()
             )
             .is_some()
         );

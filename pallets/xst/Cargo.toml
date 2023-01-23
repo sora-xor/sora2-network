@@ -51,6 +51,7 @@ mock-liquidity-source = { path = "../mock-liquidity-source" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 band = { path = "../band" }
+oracle-proxy = {path = "../oracle-proxy"}
 common = { path = "../../common", default-features = false, features = [
     "test",
 ] }

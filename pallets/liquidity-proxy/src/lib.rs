@@ -116,11 +116,17 @@ impl<T: Config> ExchangePath<T> {
         let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
 
         match (input_type, output_type) {
-            forward_or_backward!(Base, Basic)
-            | forward_or_backward!(Base, SyntheticBase)
-            | forward_or_backward!(SyntheticBase, Synthetic) => {
+            forward_or_backward!(Base, Basic) | forward_or_backward!(Base, SyntheticBase) => {
                 Some(vec![Self(vec![input_asset_id, output_asset_id])])
             }
+            forward_or_backward!(SyntheticBase, Synthetic) => Some(vec![
+                Self(vec![input_asset_id, output_asset_id]),
+                Self(vec![
+                    input_asset_id,
+                    dex_info.base_asset_id,
+                    output_asset_id,
+                ]),
+            ]),
             (Basic, Basic) | forward_or_backward!(SyntheticBase, Basic) => Some(vec![Self(vec![
                 input_asset_id,
                 dex_info.base_asset_id,
@@ -854,8 +860,11 @@ impl<T: Config> Pallet<T> {
 
             for src in &sources {
                 match src.liquidity_source_index {
-                    LiquiditySourceType::MulticollateralBondingCurvePool
-                    | LiquiditySourceType::XSTPool => primary_market = Some(src.clone()),
+                    // We can't use XST as primary market for smart split, because it use XST asset as base
+                    // and does not support DEXes except Polkaswap
+                    LiquiditySourceType::MulticollateralBondingCurvePool => {
+                        primary_market = Some(src.clone())
+                    }
                     LiquiditySourceType::XYKPool | LiquiditySourceType::MockPool => {
                         secondary_market = Some(src.clone())
                     }

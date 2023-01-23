@@ -31,7 +31,7 @@
 #[rustfmt::skip]
 mod tests {
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo };
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo, Oracle };
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -625,6 +625,7 @@ use frame_support::assert_noop;
             let euro = "EURO".to_owned();
             let alice = alice();
 
+            OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
             Band::add_relayers(Origin::root(), vec![alice.clone()])
                 .expect("Failed to add relayers");
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
@@ -665,6 +666,7 @@ use frame_support::assert_noop;
             let euro = "EURO".to_owned();
             let alice = alice();
 
+            OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
             Band::add_relayers(Origin::root(), vec![alice.clone()])
                 .expect("Failed to add relayers");
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)

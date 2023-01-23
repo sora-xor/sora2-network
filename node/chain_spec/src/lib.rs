@@ -1248,7 +1248,9 @@ fn testnet_genesis(
             initial_synthetic_assets: vec![(
                 AssetSymbol(b"XSTUSD".to_vec()),
                 AssetName(b"SORA Synthetic USD".to_vec()),
-                "USD".into(),
+                "USD"
+                    .parse()
+                    .expect("`USD` should be a valid reference symbol"),
                 fixed!(0.00666),
             )],
         },
@@ -1973,7 +1975,9 @@ fn mainnet_genesis(
             initial_synthetic_assets: vec![(
                 AssetSymbol(b"XSTUSD".to_vec()),
                 AssetName(b"SORA Synthetic USD".to_vec()),
-                "USD".into(),
+                "USD"
+                    .parse()
+                    .expect("`USD` should be a valid reference symbol"),
                 fixed!(0.00666),
             )],
         },

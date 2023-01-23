@@ -51,8 +51,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed_wrapper, AssetId32, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, RewardReason, DAI,
-    XSTUSD,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, Rate, RewardReason,
+    DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -128,6 +128,8 @@ pub struct SyntheticInfo<Symbol> {
 
 #[frame_support::pallet]
 pub mod pallet {
+    use core::str::FromStr;
+
     use super::*;
     use frame_support::traits::StorageVersion;
     use frame_support::{pallet_prelude::*, Parameter};
@@ -140,12 +142,9 @@ pub mod pallet {
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type Oracle: DataFeed<Self::Symbol, Balance, u64, DispatchError>;
+        type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
-        type Symbol: Parameter
-            + From<&'static str>
-            + PartialEq<&'static str>
-            + MaybeSerializeDeserialize;
+        type Symbol: Parameter + FromStr + PartialEq<&'static str> + MaybeSerializeDeserialize;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -375,7 +374,10 @@ pub mod pallet {
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
+    impl<T: Config> Default for GenesisConfig<T>
+    where
+        <T::Symbol as FromStr>::Err: core::fmt::Debug,
+    {
         fn default() -> Self {
             Self {
                 tech_account_id: Default::default(),
@@ -383,7 +385,7 @@ pub mod pallet {
                 initial_synthetic_assets: [(
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    "USD".into(),
+                    T::Symbol::from_str("USD").expect("`USD` should be a valid symbol name"),
                     common::fixed!(0.00666),
                 )]
                 .into(),
@@ -392,7 +394,10 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
+    where
+        <T::Symbol as FromStr>::Err: core::fmt::Debug,
+    {
         fn build(&self) {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
@@ -816,9 +821,9 @@ impl<T: Config> Pallet<T> {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-                let price = FixedWrapper::from(balance!(
-                    T::Oracle::quote(symbol)?.ok_or(Error::<T>::OracleQuoteError)?
-                ));
+                let price = FixedWrapper::from(balance!(T::Oracle::quote(&symbol)?
+                    .map(|rate| rate.value)
+                    .ok_or(Error::<T>::OracleQuoteError)?));
                 // Just for convenience. Right now will always return 1.
                 let reference_asset_price =
                     FixedWrapper::from(Self::reference_price(&reference_asset_id, price_variant)?);

@@ -178,6 +178,7 @@ impl band::Config for Runtime {
     type Event = Event;
     type Symbol = String;
     type WeightInfo = ();
+    type OnNewSymbolsRelayedHook = ();
 }
 
 impl tokens::Config for Runtime {
