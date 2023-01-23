@@ -26,12 +26,6 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
-#[allow(non_snake_case)]
-pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
-    let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
-    AccountIdOf::<T>::decode(&mut &bytes[..]).expect("Failed to decode account ID")
-}
-
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
@@ -219,7 +213,7 @@ benchmarks! {
     }
 
     change_min_hermes_for_voting {
-        let caller = AUTHORITY::<T>();
+        let caller = pallet::AuthorityAccount::<T>::get();
         let hermes_amount = balance!(20);
     }: {
         let _ = HermesGovernancePlatform::<T>::change_min_hermes_for_voting(
@@ -232,7 +226,7 @@ benchmarks! {
     }
 
     change_min_hermes_for_creating_poll {
-        let caller = AUTHORITY::<T>();
+        let caller = pallet::AuthorityAccount::<T>::get();
         let hermes_amount = balance!(20);
     }: {
         let _ = HermesGovernancePlatform::<T>::change_min_hermes_for_creating_poll(
