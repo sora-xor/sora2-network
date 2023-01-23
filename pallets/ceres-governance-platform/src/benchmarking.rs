@@ -137,7 +137,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(poll_start_timestamp + 14440u32.into());
     }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
     verify {
-        assert_last_event::<T>(Event::<T>::Withdrawn(caller, 0).into());
+        assert_last_event::<T>(Event::<T>::Withdrawn(caller, number_of_votes).into());
     }
 
     impl_benchmark_test_suite!(

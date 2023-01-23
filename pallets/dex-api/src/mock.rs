@@ -159,7 +159,6 @@ impl Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
-    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {

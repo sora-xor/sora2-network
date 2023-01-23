@@ -1024,7 +1024,6 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
-    type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -3016,6 +3015,7 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -3038,6 +3038,10 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, ceres_token_locker, CeresTokenLocker);
+            list_benchmark!(list, extra, ceres_governance_platform, CeresGovernancePlatform);
+            list_benchmark!(list, extra, ceres_launchpad, CeresLaunchpad);
+            list_benchmark!(list, extra, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPool);

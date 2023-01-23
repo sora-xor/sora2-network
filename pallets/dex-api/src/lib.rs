@@ -36,20 +36,13 @@ use common::{
     LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
-use frame_support::weights::Weight;
 use sp_std::vec::Vec;
-
-pub mod weights;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
-
-pub trait WeightInfo {
-    fn swap() -> Weight;
-}
 
 type DEXManager<T> = dex_manager::Pallet<T>;
 
@@ -326,8 +319,6 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.

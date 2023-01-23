@@ -110,7 +110,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     migrate {
-        let n in 1 .. 1000 => add_accounts::<T>(n);
+        add_accounts::<T>(100);
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {
@@ -125,7 +125,7 @@ benchmarks! {
     }
 
     on_initialize {
-        let n in 1 .. 1000 => add_accounts::<T>(n);
+        add_accounts::<T>(100);
         let alice = alice::<T>();
         let alice_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(alice.clone()).into();
         let iroha_address = "did_sora_multi_sig@sora".to_string();
