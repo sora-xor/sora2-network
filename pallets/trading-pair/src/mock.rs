@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
     hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
-    DEFAULT_BALANCE_PRECISION, DOT, KSM, XOR, XSTUSD,
+    DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -71,6 +71,7 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
+pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
@@ -79,7 +80,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub GetTeamReservesAccountId: AccountId = 3000u128;
 }
 
 impl frame_system::Config for Runtime {
@@ -152,6 +152,14 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = BUY_BACK_ACCOUNT;
+    pub const GetBuyBackDexId: DEXId = 0;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
@@ -159,8 +167,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -309,6 +322,7 @@ impl Default for ExtBuilder {
                     DEX_ID,
                     DEXInfo {
                         base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),
@@ -316,6 +330,7 @@ impl Default for ExtBuilder {
                     1,
                     DEXInfo {
                         base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
                         is_public: true,
                     },
                 ),

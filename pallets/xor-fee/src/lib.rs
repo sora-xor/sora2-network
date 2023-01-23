@@ -31,7 +31,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
+use common::{
+    Balance, FilterMode, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned,
+};
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
@@ -40,7 +43,6 @@ use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
     Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
-use liquidity_proxy::LiquidityProxyTrait;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };

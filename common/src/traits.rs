@@ -29,7 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
+use crate::{
+    Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle, PriceVariant,
+    PswapRemintInfo, RewardReason,
+};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -136,6 +139,48 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+}
+
+/// *Hook*-like trait for oracles to capture newly relayed symbols.
+///
+/// A struct implementing this trait can be specified in oracle pallet *Config*
+/// so that it will be called every time new symbols were relayed.
+pub trait OnNewSymbolsRelayed<Symbol> {
+    /// Upload newly relayed symbols to oracle proxy
+    /// - `symbols`: which symbols to upload
+    fn on_new_symbols_relayed(
+        oracle_variant: Oracle,
+        symbols: BTreeSet<Symbol>,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<Symbol> OnNewSymbolsRelayed<Symbol> for () {
+    fn on_new_symbols_relayed(
+        _oracle_variant: Oracle,
+        _symbols: BTreeSet<Symbol>,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
+/// `DataFeed` trait indicates that particular object could be used for querying oracle data.
+pub trait DataFeed<Symbol, Rate, ResolveTime> {
+    /// Get rate for the specified symbol
+    /// - `symbol`: which symbol to query
+    fn quote(symbol: &Symbol) -> Result<Option<Rate>, DispatchError>;
+
+    /// Get all supported symbols and their last update time
+    fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+}
+
+impl<Symbol, Rate, ResolveTime> DataFeed<Symbol, Rate, ResolveTime> for () {
+    fn quote(_symbol: &Symbol) -> Result<Option<Rate>, DispatchError> {
+        Ok(None)
+    }
+
+    fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
+        Ok(Vec::new())
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -506,28 +551,11 @@ impl OnPswapBurned for () {
 
 /// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
 pub trait VestedRewardsPallet<AccountId, AssetId> {
-    /// Report that swaps with xor were performed.
-    /// - `account_id`: account performing transaction.
-    /// - `xor_volume`: amount of xor passed in transaction.
-    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
-    fn update_market_maker_records(
-        account_id: &AccountId,
-        base_asset: &AssetId,
-        base_asset_volume: Balance,
-        count: u32,
-        from_asset_id: &AssetId,
-        to_asset_id: &AssetId,
-        intermediate_asset_id: Option<&AssetId>,
-    ) -> DispatchResult;
-
     /// Report that account has received pswap reward for buying from tbc.
     fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 
     /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
     fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
-
-    /// Report that account has received pswap reward for performing large volume trade over month.
-    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
 
 pub trait PoolXykPallet<AccountId, AssetId> {
@@ -570,6 +598,7 @@ pub trait DemeterFarmingPallet<AccountId, AssetId> {
     fn update_pool_tokens(
         _user: AccountId,
         _pool_tokens: Balance,
+        _base_asset: AssetId,
         _pool_asset: AssetId,
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
@@ -589,9 +618,11 @@ pub trait OnPoolCreated {
 
 pub trait PriceToolsPallet<AssetId> {
     /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
+    /// `price_variant` specifies the correction for price, either for buy or sell.
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError>;
 
     /// Add asset to be tracked for average price.
@@ -599,7 +630,11 @@ pub trait PriceToolsPallet<AssetId> {
 }
 
 impl<AssetId> PriceToolsPallet<AssetId> for () {
-    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+    fn get_average_price(
+        _: &AssetId,
+        _: &AssetId,
+        _: PriceVariant,
+    ) -> Result<Balance, DispatchError> {
         unimplemented!()
     }
 
@@ -649,4 +684,60 @@ impl OnValBurned for () {
     fn on_val_burned(_: Balance) {
         // do nothing
     }
+}
+
+/// Indicates that particular object can be used to perform exchanges with aggregation capability.
+pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
+    /// Get spot price of tokens based on desired amount, None returned if liquidity source
+    /// does not have available exchange methods for indicated path.
+    fn quote(
+        dex_id: DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+
+    /// Perform exchange based on desired amount.
+    fn exchange(
+        dex_id: DEXId,
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError>;
+}
+
+impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, AccountId, AssetId>
+    for ()
+{
+    fn quote(
+        _dex_id: DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+
+    fn exchange(
+        _dex_id: DEXId,
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: SwapAmount<Balance>,
+        _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+}
+
+pub trait IsValid {
+    fn is_valid(&self) -> bool;
 }

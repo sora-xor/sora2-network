@@ -36,13 +36,12 @@ use super::*;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
-use frame_support::traits::OriginTrait;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use common::{assert_approx_eq, FromGenericPair, ETH, PSWAP, XOR};
+use common::{FromGenericPair, PSWAP, XOR};
 
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -68,39 +67,6 @@ fn prepare_pending_accounts<T: Config>(n: u128) {
     }
 }
 
-fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
-    MarketMakingPairs::<T>::insert(&T::AssetId::from(XOR), &T::AssetId::from(ETH), ());
-    MarketMakingPairs::<T>::insert(&T::AssetId::from(PSWAP), &T::AssetId::from(XOR), ());
-    for i in 0..n {
-        let user_account = create_account::<T>(b"eligible mm reward".to_vec(), i);
-        T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::update_market_maker_records(
-            &user_account,
-            &XOR.into(),
-            balance!(100),
-            500,
-            &PSWAP.into(),
-            &ETH.into(),
-            Some(&XOR.into()),
-        )
-        .unwrap();
-    }
-    for i in 0..m {
-        let user_account = create_account::<T>(b"non eligible mm reward".to_vec(), i);
-        T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::update_market_maker_records(
-            &user_account,
-            &XOR.into(),
-            balance!(100),
-            100,
-            &PSWAP.into(),
-            &ETH.into(),
-            Some(&XOR.into()),
-        )
-        .unwrap();
-    }
-}
-
 benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
@@ -110,15 +76,14 @@ benchmarks! {
         T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap(); // to prevent inc ref error
 
         VestedRewards::<T>::add_tbc_reward(&caller, balance!(100)).expect("Failed to add reward.");
-        VestedRewards::<T>::add_market_maker_reward(&caller, balance!(200)).expect("Failed to add reward.");
-        VestedRewards::<T>::distribute_limits(balance!(300));
+        VestedRewards::<T>::distribute_limits(balance!(100));
     }: _(
         RawOrigin::Signed(caller.clone())
     )
     verify {
         assert_eq!(
             T::Currency::free_balance(PSWAP.into(), &caller),
-            balance!(300)
+            balance!(100)
         );
     }
 
@@ -133,39 +98,6 @@ benchmarks! {
             balance!(n)
         );
     }
-
-    distribute_market_maker_rewards {
-        let n in 0 .. 10000; // users eligible for mm rewards distribution
-        let m in 0 .. 10000; // users non-eligible for mm rewards distribution
-        prepare_pending_market_makers::<T>(n.into(), m.into());
-    }: {
-        let p = Pallet::<T>::market_maker_rewards_distribution_routine();
-        assert_eq!(p, n);
-    }
-    verify {
-        if n == 0 {
-            assert_eq!(
-                TotalRewards::<T>::get(),
-                balance!(0)
-            );
-        } else {
-            assert_approx_eq!(
-                TotalRewards::<T>::get(),
-                crate::SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
-                1000000
-            );
-        }
-    }
-
-    set_asset_pair {
-        let origin = T::RuntimeOrigin::root();
-    }: {
-        Pallet::<T>::set_asset_pair(origin, XOR.into(), ETH.into(), true).unwrap();
-    }
-    verify {
-        assert!(
-            MarketMakingPairs::<T>::contains_key(&T::AssetId::from(XOR), &T::AssetId::from(ETH)));
-    }
 }
 
 #[cfg(test)]
@@ -179,8 +111,6 @@ mod tests {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(Pallet::<Runtime>::test_benchmark_claim_rewards());
             assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_limits());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_market_maker_rewards());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_set_asset_pair());
         });
     }
 }

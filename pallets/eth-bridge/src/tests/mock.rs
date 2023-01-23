@@ -44,8 +44,8 @@ use codec::{Codec, Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
-    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
-    XOR,
+    Amount, AssetId32, AssetName, AssetSymbol, DEXId, LiquiditySourceType, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL, XOR, XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -381,22 +381,37 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: common::AssetId32<PredefinedAssetId> = XST;
+    pub GetBuyBackSupplyAssets: Vec<common::AssetId32<PredefinedAssetId>> = vec![VAL, PSWAP.into()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
 impl common::Config for Runtime {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
+    type DEXId = DEXId;
+    type LstId = LiquiditySourceType;
 }
 
 impl permissions::Config for Runtime {

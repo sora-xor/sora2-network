@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -124,7 +124,6 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
 }
@@ -226,6 +225,16 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -233,8 +242,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }

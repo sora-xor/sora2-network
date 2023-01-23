@@ -40,6 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
+pub mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -227,15 +228,25 @@ pub mod opaque {
     }
 }
 
+/// Types used by oracle related pallets
+pub mod oracle_types {
+    use common::SymbolName;
+
+    pub type Symbol = SymbolName;
+
+    pub type ResolveTime = u64;
+}
+pub use oracle_types::*;
+
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 41,
+    spec_version: 44,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 41,
+    transaction_version: 44,
     state_version: 0,
 };
 
@@ -839,7 +850,12 @@ parameter_types! {
     pub const GetXstAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200090000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
-    pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
+    pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![GetValAssetId::get(), GetPswapAssetId::get()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
+    pub const GetBuyBackDexId: DEXId = 0;
+    pub const GetSyntheticBaseAssetId: AssetId = GetXstAssetId::get();
 }
 
 impl currencies::Config for Runtime {
@@ -873,8 +889,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
@@ -922,6 +943,7 @@ impl pool_xyk::Config for Runtime {
 
 parameter_types! {
     pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        // TODO(Harrm): why pswap_distribution?
         let tech_account_id = TechAccountId::from_generic_pair(
             pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
             pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
@@ -1728,8 +1750,13 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const GetXstPoolConversionAssetId: AssetId = GetXstAssetId::get();
+}
+
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
@@ -1878,6 +1905,20 @@ impl demeter_farming_platform::Config for Runtime {
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
+}
+
+impl oracle_proxy::Config for Runtime {
+    type Symbol = Symbol;
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = oracle_proxy::weights::WeightInfo<Runtime>;
+    type BandChainOracle = band::Pallet<Runtime>;
+}
+
+impl band::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Symbol = Symbol;
+    type WeightInfo = band::weights::WeightInfo<Runtime>;
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -2124,7 +2165,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -2152,6 +2193,8 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -2219,7 +2262,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -2247,6 +2290,8 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
+        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
 
 
         // Trustless ethereum bridge
@@ -2727,6 +2772,31 @@ impl_runtime_apis! {
         }
     }
 
+    impl oracle_proxy_runtime_api::OracleProxyAPI<
+        Block,
+        Symbol,
+        ResolveTime
+    > for Runtime {
+        fn quote(symbol: Symbol) -> Result<Option<oracle_proxy_runtime_api::RateInfo>, DispatchError>  {
+            let rate_wrapped = <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::quote(&symbol);
+            match rate_wrapped {
+                Ok(rate) => Ok(rate.map(|rate| oracle_proxy_runtime_api::RateInfo{
+                    value: rate.value,
+                    last_updated: rate.last_updated
+                })),
+                Err(e) => Err(e)
+            }
+        }
+
+        fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
+            <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::list_enabled_symbols()
+        }
+    }
+
     impl pswap_distribution_runtime_api::PswapDistributionAPI<
         Block,
         AccountId,
@@ -2969,6 +3039,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
+            list_benchmark!(list, extra, band, Band);
+            list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3033,6 +3106,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
+            add_benchmark!(params, batches, band, Band);
+            add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

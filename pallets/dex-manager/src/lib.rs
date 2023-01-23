@@ -40,6 +40,8 @@ use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
 
+pub mod migrations;
+
 #[cfg(test)]
 mod mock;
 
@@ -110,7 +112,7 @@ pub mod pallet {
     pub trait Config: frame_system::Config + common::Config + assets::Config {}
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]

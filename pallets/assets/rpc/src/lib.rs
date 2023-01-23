@@ -45,6 +45,7 @@ use std::sync::Arc;
 // Runtime API imports.
 pub use assets_runtime_api::AssetsAPI as AssetsRuntimeAPI;
 use assets_runtime_api::{AssetInfo, BalanceInfo};
+use common::IsValid;
 
 #[rpc(client, server)]
 pub trait AssetsAPI<
@@ -150,11 +151,11 @@ where
     AccountId: Codec,
     AssetId: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
-    AssetSymbol: Codec + MaybeFromStr + MaybeDisplay,
-    AssetName: Codec + MaybeFromStr + MaybeDisplay,
+    AssetSymbol: Codec + MaybeFromStr + MaybeDisplay + IsValid,
+    AssetName: Codec + MaybeFromStr + MaybeDisplay + IsValid,
     Precision: Codec + MaybeFromStr + MaybeDisplay,
-    ContentSource: Codec + MaybeFromStr + MaybeDisplay,
-    Description: Codec + MaybeFromStr + MaybeDisplay,
+    ContentSource: Codec + MaybeFromStr + MaybeDisplay + IsValid,
+    Description: Codec + MaybeFromStr + MaybeDisplay + IsValid,
 {
     fn free_balance(
         &self,

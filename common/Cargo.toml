@@ -35,6 +35,7 @@ serde = { version = "1.0", features = [
     "derive",
 ], optional = true, default-features = false }
 smallvec = "1.7.0"
+sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
@@ -53,14 +54,19 @@ std = [
     'codec/std',
     "scale-info/std",
     'serde',
+    'secp256k1/std',
     'rustc-hex/std',
     'blake2-rfc/std',
     'num-traits/std',
     'frame-support/std',
     'frame-system/std',
     'fixnum/std',
+    'pallet-timestamp/std',
+    'sp-arithmetic/std',
     'sp-core/std',
+    'sp-io/std',
     'sp-runtime/std',
+    'sp-api/std',
     'sp-std/std',
     'currencies/std',
     'orml-traits/std',

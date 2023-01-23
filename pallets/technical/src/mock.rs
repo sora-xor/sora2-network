@@ -31,12 +31,14 @@
 use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
+use common::{PSWAP, VAL, XST};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
+use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -71,7 +73,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
     pub const ExistentialDeposit: u128 = 0;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -165,6 +166,16 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetBuyBackAssetId: AssetId = XST.into();
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = 0;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -172,8 +183,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }

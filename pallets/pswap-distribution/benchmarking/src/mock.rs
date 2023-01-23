@@ -32,7 +32,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -83,7 +83,7 @@ pub fn pool_account_b() -> AccountId {
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
 parameter_types! {
-    pub GetBaseAssetId: AssetId = common::XOR.into();
+    pub GetBaseAssetId: AssetId = XOR.into();
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub const PoolTokenAId: AssetId = common::AssetId32::from_bytes(hex!("0211110000000000000000000000000000000000000000000000000000000000"));
     pub const PoolTokenBId: AssetId = common::AssetId32::from_bytes(hex!("0222220000000000000000000000000000000000000000000000000000000000"));
@@ -115,7 +115,6 @@ parameter_types! {
     pub const TransactionByteFee: u128 = 1;
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -218,6 +217,16 @@ impl currencies::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -225,8 +234,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -330,7 +344,7 @@ impl ExtBuilder {
             endowed_accounts: accounts,
             endowed_assets: vec![
                 (
-                    common::XOR.into(),
+                    XOR.into(),
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
@@ -392,7 +406,7 @@ impl ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         ExtBuilder::with_accounts(vec![
-            (fees_account_a(), common::XOR.into(), balance!(1)),
+            (fees_account_a(), XOR.into(), balance!(1)),
             (fees_account_a(), common::PSWAP.into(), balance!(6)),
         ])
     }

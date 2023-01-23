@@ -36,10 +36,10 @@ mod tests {
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, DAI, LiquiditySourceFilter,
         DEFAULT_BALANCE_PRECISION,
+        LiquidityProxyTrait, PriceVariant,
     };
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
-    use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::assert_err;
 use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
@@ -1007,8 +1007,16 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
-            let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
+            let val_actual_reserves = MBCPool::actual_reserves_reference_price(
+                    &crate::mock::get_pool_reserves_account_id(),
+                    &VAL,
+                    PriceVariant::Buy,
+                ).unwrap();
+            let dai_actual_reserves = MBCPool::actual_reserves_reference_price(
+                    &crate::mock::get_pool_reserves_account_id(),
+                    &DAI,
+                    PriceVariant::Buy,
+                ).unwrap();
             let val_supposed_price = MockDEXApi::quote(DEXId::Polkaswap, &VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
@@ -1986,7 +1994,7 @@ use frame_support::assert_noop;
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), DEFAULT_BALANCE_PRECISION),
-                
+
             (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, balance!(200000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),

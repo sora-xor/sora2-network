@@ -10,9 +10,9 @@ String rustcVersion           = 'nightly-2021-12-10'
 String wasmReportFile         = 'subwasm_report.json'
 String palletListFile         = 'pallet_list.txt'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
-String secretScannerExclusion = '.*Cargo.toml'
+String secretScannerExclusion = '.*Cargo.toml\$|.*pr.sh\$'
 Boolean disableSecretScanner  = false
-int sudoCheckStatus           = 101
+int sudoCheckStatus           = 0
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
 
@@ -25,6 +25,19 @@ String gitHubRepo             = 'github.com/soramitsu/sora2-substrate.git'
 String gitHubBranch           = 'doc'
 String gitHubEmail            = 'admin@soramitsu.co.jp'
 String cargoDocImage          = 'rust:1.62.0-slim-bullseye'
+String githubPrCreator        = 'ubuntu:jammy-20221020'
+String checkChangesToRegexp   = '(Jenkinsfile|housekeeping|liquidity-proxy|common|pallets|)'
+Boolean hasChanges(String regexp) {
+    echo "Comparing current changes with origin/${env.CHANGE_TARGET}"
+    return !env.CHANGE_TARGET || sh(
+        returnStatus: true,
+        returnStdout: true,
+        script: "(git diff-tree --name-only origin/${env.CHANGE_TARGET} ${env.GIT_COMMIT} | egrep '${regexp}')"
+    ) == 0
+}
+Boolean prStatusNotif = true
+String telegramChatId    = 'telegram-deploy-chat-id'
+String telegramChatIdPswap = 'telegramChatIdPswap'
 
 pipeline {
     options {
@@ -53,6 +66,7 @@ pipeline {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
                                 rm -rf ~/.cargo/.package-cache
+                                rm Cargo.lock
                                 cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -98,6 +112,7 @@ pipeline {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
+                                    sudoCheckStatus = 101
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
                                     featureList = 'private-net include-real-files'
@@ -109,6 +124,7 @@ pipeline {
                                 }
                                 else if (env.TAG_NAME) {
                                     featureList = 'include-real-files'
+                                    sudoCheckStatus = 101
                                 }
                                 sh """
                                     cargo test  --release --features runtime-benchmarks
@@ -130,6 +146,8 @@ pipeline {
                         } else {
                             docker.image(envImageName).inside() {
                                 sh '''
+                                    rm -rf ~/.cargo/.package-cache
+                                    rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features private-net
@@ -196,6 +214,58 @@ pipeline {
                              sh './housekeeping/docs.sh'
                     }
                 }
+            }
+        }
+        stage('Assign reviewers to PR') {
+            when { 
+                allOf {
+                expression { hasChanges(checkChangesToRegexp) }
+                expression { env.BRANCH_NAME.startsWith('PR-') }
+                }
+            }
+            environment {
+                GH_USER = "${gitHubUser}"
+                GH_TOKEN = credentials('sorabot-github-token')
+                GH_REPOSITORY = "${gitHubRepo}"
+                GH_EMAIL  = "${gitHubEmail}"
+                BRANCH_NAME_PR = "${env.BRANCH_NAME.startsWith('PR-')}"
+                BRANCH_NAME = "${env.BRANCH_NAME}"
+                BRANCH_NAME_TO_SWITCH = "${env.GIT_BRANCH}"
+                CHANGE_TARGET = "${env.CHANGE_TARGET}"
+                GIT_COMMIT = "${env.GIT_COMMIT}"
+                GIT_AUTHOR = "${env.GIT_AUTHOR_NAME}"
+            }
+            steps {
+                script {
+                    docker.image("${githubPrCreator}").inside() {
+                        sh './housekeeping/pr.sh'
+                        RESULT=sh (
+                            script : 'git diff-tree --name-only origin/$CHANGE_TARGET $GIT_COMMIT',
+                            returnStdout: true
+                        ).trim()
+                        
+                    }
+                }
+            }
+        }
+        stage ('Send Notification about PR') {
+            when { 
+                allOf {
+                expression { prStatusNotif }
+                expression { env.BRANCH_NAME.startsWith('PR-') }
+                }
+            }
+            environment {
+                TELEGRAM_CHAT_ID = credentials("${telegramChatId}")
+                TELEGRAM_CHAT_ID_PSWAP = credentials("${telegramChatIdPswap}")
+                RESULT = "${RESULT}"
+            }
+            steps {
+                pushNotiTelegram(
+                    prStatusNotif: prStatusNotif,
+                    telegramChatId: "${TELEGRAM_CHAT_ID}",
+                    telegramChatIdPswap: "${TELEGRAM_CHAT_ID_PSWAP}"
+                )
             }
         }
     }

@@ -43,7 +43,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR, XST,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -82,7 +82,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
-    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
         read: 100,
         write: 1000,
@@ -153,6 +152,16 @@ impl technical::Config for Runtime {
     type SwapAction = ();
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -160,8 +169,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }

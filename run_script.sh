@@ -12,6 +12,16 @@ else
 	awk="awk"
 fi
 
+# Program to preserve log colors
+#
+# sudo apt-get install expect-dev
+# brew install expect
+if which unbuffer > /dev/null 2>&1; then
+	unbuffer="unbuffer"
+else
+	unbuffer=""
+fi
+
 getopt_code=`$awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
@@ -61,11 +71,7 @@ function local_id() {
 }
 
 function logger_for_first_node() {
-	if [ "$duplicate_log" == "1" ]; then
-		tee $1
-	else
-		cat > $1
-	fi
+	tee $1
 }
 
 find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-local/network {}/chains/sora-substrate-local/db \;
@@ -78,7 +84,7 @@ do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
-		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
 		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
 	fi
@@ -90,8 +96,8 @@ done
 
 wait
 
-echo SCRIPT: you can stop script by control-C hot key
-echo SCRIPT: maybe framenode processes is still runnning, you can check it and finish it by hand
-echo SCRIPT: in future this can be done automatically
+echo "SCRIPT: you can stop script by control-C hot key"
+echo "SCRIPT: maybe framenode processes is still running, you can check it and finish it by hand"
+echo "SCRIPT: in future this can be done automatically"
 
 sleep 999999

@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "1.5.0"
+version = "1.6.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -48,6 +48,7 @@ vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
 substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
+oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }

@@ -33,15 +33,15 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquiditySourceFilter,
-    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet,
+    PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
-use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
 
 pub mod weights;
@@ -68,7 +68,7 @@ pub trait WeightInfo {
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
-    /// - `fees_account_id`: Id of Accout which accumulates fees from swaps.
+    /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
     pub fn is_subscribed(fees_account_id: &T::AccountId) -> bool {
         SubscribedAccounts::<T>::get(fees_account_id).is_some()
     }
@@ -114,6 +114,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Query actual amount of PSWAP that can be claimed by account.
+    ///
+    /// - `account_id`: Id of the account to query.
     pub fn claimable_amount(account_id: &T::AccountId) -> Result<Balance, DispatchError> {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
         Ok(current_position
@@ -123,6 +125,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Perform claim of PSWAP by account, desired amount is not indicated - all available will be claimed.
+    ///
+    /// - `account_id`: Id of the account
     fn claim_by_account(account_id: &T::AccountId) -> DispatchResult {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
         if current_position != fixed!(0) {
@@ -185,13 +189,13 @@ impl<T: Config> Pallet<T> {
                 T::GetIncentiveAssetId::get(),
                 swap_outcome.amount,
             )),
-            // TODO: put error in event
-            Err(_error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
+            Err(error) => Self::deposit_event(Event::<T>::FeesExchangeFailed(
                 dex_id.clone(),
                 fees_account_id.clone(),
                 dex_info.base_asset_id,
                 base_total,
                 T::GetIncentiveAssetId::get(),
+                error,
             )),
         }
         Ok(())
@@ -223,17 +227,12 @@ impl<T: Config> Pallet<T> {
                 return Ok(());
             }
 
-            // Calculate actual amounts regarding their destinations to be reminted. Only liquidity providers portion is reminted here, others
-            // are to be reminted in responsible pallets.
-            let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
-            // Burn all incentives.
-            assets::Pallet::<T>::burn_from(
-                &incentive_asset_id,
-                tech_account_id,
+            let mut distribution = Self::calculate_and_burn_distribution(
                 fees_account_id,
+                tech_account_id,
+                &incentive_asset_id,
                 incentive_total,
             )?;
-            T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
 
             let mut shareholders_distributed_amount = fixed_wrapper!(0);
 
@@ -298,6 +297,35 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    /// Calculate actual incentive amounts regarding their destinations to be reminted.
+    /// Only liquidity providers portion is reminted here,
+    /// others are to be reminted in responsible pallets.
+    ///
+    /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
+    /// - `tech_account_id`: Id of Account which holds permissions needed for mint/burn of arbitrary tokens, stores claimable incentives.
+    /// - `incentive_asset_id`: Incentive asset id.
+    /// - `incentive_total`: total number of incentives to be distributed.
+    fn calculate_and_burn_distribution(
+        fees_account_id: &T::AccountId,
+        tech_account_id: &T::AccountId,
+        incentive_asset_id: &T::AssetId,
+        incentive_total: Balance,
+    ) -> Result<PswapRemintInfo, DispatchError> {
+        let distribution = Self::calculate_pswap_distribution(incentive_total)?;
+        assets::Pallet::<T>::burn_from(
+            &incentive_asset_id,
+            tech_account_id,
+            fees_account_id,
+            incentive_total,
+        )?;
+        T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
+        Ok(distribution)
+    }
+
+    /// Calculates the amount of deposits to the incentive account.
+    /// Used by `distribute_incentive` function.
+    ///
+    /// - `amount_burned`: Burned fees amount
     fn calculate_pswap_distribution(
         amount_burned: Balance,
     ) -> Result<PswapRemintInfo, DispatchError> {
@@ -328,6 +356,9 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    /// Distributes incentives to all subscribed pools
+    ///
+    /// - `block_num`: The block number of the current chain head
     pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> bool {
         let tech_account_id = T::GetTechnicalAccountId::get();
 
@@ -356,6 +387,7 @@ impl<T: Config> Pallet<T> {
         distributing_count > 0
     }
 
+    /// Updates the fees' burn rate. Used in
     fn update_burn_rate() {
         let mut burn_rate = BurnRate::<T>::get();
         let (increase_delta, max) = BurnUpdateInfo::<T>::get();
@@ -470,13 +502,14 @@ pub mod pallet {
             Balance,
         ),
         /// Problem occurred that resulted in fees exchange not done.
-        /// [DEX Id, Fees Account Id, Fees Asset Id, Available Fees Amount, Incentive Asset Id]
+        /// [DEX Id, Fees Account Id, Fees Asset Id, Available Fees Amount, Incentive Asset Id, Exchange error]
         FeesExchangeFailed(
             DexIdOf<T>,
             AccountIdOf<T>,
             AssetIdOf<T>,
             Balance,
             AssetIdOf<T>,
+            DispatchError,
         ),
         /// Incentives successfully sent out to shareholders.
         /// [DEX Id, Fees Account Id, Incentive Asset Id, Incentive Total Distributed Amount, Number of shareholders]

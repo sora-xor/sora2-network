@@ -35,8 +35,9 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, DAI,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
+    TechPurpose, VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
+    XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -101,6 +102,7 @@ parameter_types! {
     pub const GetDefaultFee: u16 = 30;
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
@@ -113,7 +115,6 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
 }
@@ -198,18 +199,6 @@ impl Config for Runtime {
 pub struct MockVestedRewards;
 
 impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
-    fn update_market_maker_records(
-        _: &AccountId,
-        _: &AssetId,
-        _: Balance,
-        _: u32,
-        _: &AssetId,
-        _: &AssetId,
-        _: Option<&AssetId>,
-    ) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
     fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
         Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
             *old_amount = old_amount.saturating_add(amount)
@@ -221,11 +210,6 @@ impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
     }
 
     fn add_farming_reward(_: &AccountId, _: Balance) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
-
-    fn add_market_maker_reward(_: &AccountId, _: Balance) -> DispatchResult {
         // do nothing
         Ok(())
     }
@@ -262,6 +246,16 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -269,8 +263,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -544,7 +543,7 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     direct.into_iter().chain(reverse).collect()
 }
 
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn exchange(
         _dex_id: DEXId,
         sender: &AccountId,
@@ -586,6 +585,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
     fn get_average_price(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
+        _price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
         Ok(Self::inner_quote(
             &DEXId::Polkaswap.into(),
@@ -668,6 +668,7 @@ impl Default for ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],
@@ -753,6 +754,7 @@ impl ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

@@ -9,16 +9,18 @@ use bridge_types::H160;
 use bridge_types::H256;
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, XOR,
+    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PSWAP,
+    VAL, XOR, XST,
 };
 use frame_support::dispatch::DispatchError;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
+use hex_literal::hex;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::{AccountId32, MultiSignature};
+use sp_runtime::MultiSignature;
 use system::RawOrigin;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -134,7 +136,16 @@ impl currencies::Config for Test {
 }
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
+}
+
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
 }
 
 impl assets::Config for Test {
@@ -144,8 +155,13 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Test>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
     type GetTotalBalance = ();
 }

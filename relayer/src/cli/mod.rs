@@ -30,6 +30,7 @@
 
 mod bridge;
 mod calc_dag_roots;
+mod copy_liquidity;
 mod error;
 mod fetch_ethereum_header;
 mod mint_test_token;
@@ -110,6 +111,7 @@ enum Commands {
     OldBridge(old_bridge::Commands),
     /// Calculate DAG roots for light client
     CalcDagRoots(calc_dag_roots::Command),
+    CopyLiquidity(copy_liquidity::Command),
 }
 
 impl Commands {
@@ -121,6 +123,7 @@ impl Commands {
             Self::Bridge(cmd) => cmd.run().await,
             Self::OldBridge(cmd) => cmd.run().await,
             Self::CalcDagRoots(cmd) => cmd.run().await,
+            Self::CopyLiquidity(cmd) => cmd.run().await,
         }
     }
 }

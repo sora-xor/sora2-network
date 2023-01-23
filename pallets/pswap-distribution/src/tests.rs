@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use crate::Error;
-use common::{assert_approx_eq, balance, fixed};
+use common::{assert_approx_eq, balance, fixed, fixed_wrapper, prelude::FixedWrapper};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
@@ -770,7 +770,7 @@ fn calculating_distribution_should_pass() {
         assert_eq!(distribution.parliament, balance!(10));
 
         // large value, balance is limited to i128 max because of Fixed type calculation
-        // We use `i128::MAX - 100` otherwise assert_approx_eq! internaly overflow when adding tolerance to the left and right members
+        // We use `i128::MAX - 100` otherwise assert_approx_eq! internally overflow when adding tolerance to the left and right members
         let balance_max = 170141183460469231731687303715884105727u128 - 100;
         let distribution = PswapDistrPallet::calculate_pswap_distribution(balance_max).unwrap();
         assert_eq!(
@@ -794,4 +794,43 @@ fn calculating_distribution_should_pass() {
             50u128
         );
     })
+}
+
+#[test]
+fn claimable_amount_should_work() {
+    let mut ext =
+        ExtBuilder::with_accounts(vec![(fees_account_a(), common::PSWAP.into(), balance!(5))])
+            .build();
+    ext.execute_with(|| {
+        let amount_a = balance!(3);
+        let amount_b = balance!(2);
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), amount_a)
+            .unwrap();
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), amount_b)
+            .unwrap();
+        let tech_account_id = GetPswapDistributionAccountId::get();
+
+        PswapDistrPallet::distribute_incentive(
+            &fees_account_a(),
+            &DEX_A_ID,
+            &pool_account_a(),
+            &tech_account_id,
+        )
+        .expect("Error is not expected during incentive distribution");
+
+        let claimable_amount_a = PswapDistrPallet::claimable_amount(&liquidity_provider_a())
+            .expect("Error is not expected during claimable amount calculation");
+        let claimable_amount_b = PswapDistrPallet::claimable_amount(&liquidity_provider_b())
+            .expect("Error is not expected during claimable amount calculation");
+
+        let burn_rate = PswapDistrPallet::burn_rate();
+        assert_eq!(
+            FixedWrapper::from(claimable_amount_a),
+            FixedWrapper::from(amount_a) * (fixed_wrapper!(1) - burn_rate.clone()),
+        );
+        assert_eq!(
+            FixedWrapper::from(claimable_amount_b),
+            FixedWrapper::from(amount_b) * (fixed_wrapper!(1) - burn_rate.clone()),
+        )
+    });
 }

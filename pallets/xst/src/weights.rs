@@ -32,12 +32,9 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
+/// Weight functions for `xst`.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn on_initialize(_n: u32) -> Weight {
-        Weight::zero()
-    }
-
     fn initialize_pool() -> Weight {
         Weight::zero()
     }
@@ -45,14 +42,14 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         Weight::zero()
     }
     fn enable_synthetic_asset() -> Weight {
+        Weight::zero()
+    }
+    fn set_synthetic_base_asset_floor_price() -> Weight {
         Weight::zero()
     }
 }
 
 impl crate::WeightInfo for () {
-    fn on_initialize(_elems: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
     fn initialize_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
@@ -60,6 +57,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn enable_synthetic_asset() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn set_synthetic_base_asset_floor_price() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

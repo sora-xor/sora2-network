@@ -28,4 +28,53 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-fn main() {}
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnecessary_mut_passed)]
+
+use codec::{Codec, Decode, Encode};
+use common::{utils::string_serialization, Balance};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_runtime::DispatchError;
+use sp_std::prelude::*;
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct RateInfo {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub value: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "u64: std::fmt::Display",
+                deserialize = "u64: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub last_updated: u64,
+}
+
+sp_api::decl_runtime_apis! {
+    pub trait OracleProxyAPI<Symbol, ResolveTime> where
+        Symbol: Codec,
+        ResolveTime: Codec
+    {
+        fn quote(
+            symbol: Symbol,
+        ) -> Result<Option<RateInfo>, DispatchError>;
+
+        fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError>;
+    }
+}

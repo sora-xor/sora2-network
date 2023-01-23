@@ -17,4 +17,4 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]
-std = ["sp-api/std", "sp-std/std", "codec/std", "scale-info/std"]
+std = ["sp-api/std", "sp-std/std", "codec/std"]

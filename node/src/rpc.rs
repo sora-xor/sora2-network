@@ -34,7 +34,7 @@ use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
-    FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
+    FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
 };
 use jsonrpsee::RpcModule;
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
@@ -91,6 +91,7 @@ where
         LiquiditySourceType,
         SwapVariant,
     >,
+    C::Api: oracle_proxy_rpc::OracleProxyRuntimeApi<Block, Symbol, ResolveTime>,
     C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
     C::Api: trading_pair_rpc::TradingPairRuntimeAPI<
         Block,
@@ -137,6 +138,7 @@ where
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
+    C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     C::Api: pallet_mmr_rpc::MmrRuntimeApi<
         Block,
@@ -160,6 +162,7 @@ where
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
+    use oracle_proxy_rpc::{OracleProxyApiServer, OracleProxyClient};
     use pallet_mmr_rpc::{Mmr, MmrApiServer};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
@@ -202,6 +205,7 @@ where
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
+    io.merge(OracleProxyClient::new(client.clone()).into_rpc())?;
     io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;
     io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;

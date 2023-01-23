@@ -33,7 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
+    PSWAP, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -83,6 +84,7 @@ parameter_types! {
     pub const GetDefaultFee: u16 = 30;
     pub const GetDefaultProtocolFee: u16 = 0;
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetSyntheticBaseAssetId: AssetId = XST;
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
@@ -94,7 +96,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
-    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -201,6 +202,16 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+parameter_types! {
+    pub const GetBuyBackAssetId: AssetId = XST;
+    pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
+    pub const GetBuyBackPercentage: u8 = 10;
+    pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
+            "0000000000000000000000000000000000000000000000000000000000000023"
+    ));
+    pub const GetBuyBackDexId: DEXId = DEXId::Polkaswap;
+}
+
 impl assets::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
@@ -208,8 +219,13 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type GetBuyBackAssetId = GetBuyBackAssetId;
+    type GetBuyBackSupplyAssets = GetBuyBackSupplyAssets;
+    type GetBuyBackPercentage = GetBuyBackPercentage;
+    type GetBuyBackAccountId = GetBuyBackAccountId;
+    type GetBuyBackDexId = GetBuyBackDexId;
+    type BuyBackLiquidityProxy = ();
     type Currency = currencies::Pallet<Runtime>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
 }
@@ -295,7 +311,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 
 pub struct MockDEXApi;
 
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
+impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn exchange(
         _dex_id: DEXId,
         _sender: &AccountId,
@@ -368,6 +384,7 @@ impl Default for ExtBuilder {
                 DEX_A_ID,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
+                    synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
                     is_public: true,
                 },
             )],

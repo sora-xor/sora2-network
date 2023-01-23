@@ -85,6 +85,7 @@ beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -204,6 +205,7 @@ beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31" }
 
@@ -251,6 +253,7 @@ members = [
     "pallets/vested-rewards",
     "pallets/xst",
     "pallets/price-tools",
+    "pallets/oracle-proxy",
     "pallets/trustless-eth-bridge/ethereum-light-client",
     "pallets/trustless-eth-bridge/channel/inbound",
     "pallets/trustless-eth-bridge/channel/outbound",
@@ -261,14 +264,15 @@ members = [
     "pallets/trustless-eth-bridge/evm-bridge-proxy",
     "pallets/trustless-eth-bridge/evm-bridge-proxy/rpc",
     "pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api",
+    "pallets/band",
     "relayer",
     "relayer/substrate-gen",
     "relayer/ethereum-gen",
     "relayer/parachain-gen",
     "node/",
     "utils/parse",
-    "utils/wasm-builder",
     "utils/generate-bags",
+    "utils/remote-ext",
 ]
 
 resolver = "2"
