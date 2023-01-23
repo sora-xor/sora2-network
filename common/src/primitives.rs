@@ -268,9 +268,9 @@ impl<AssetId> AssetId32<AssetId> {
     /// Construct asset id for synthetic asset using its `reference_symbol`
     pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
     where
-        Symbol: PartialEq<&'static str> + Encode,
+        Symbol: From<SymbolName> + PartialEq + Encode,
     {
-        if *reference_symbol == "USD" {
+        if *reference_symbol == SymbolName::usd().into() {
             return Self::from_asset_id(PredefinedAssetId::XSTUSD);
         }
 
@@ -530,6 +530,12 @@ impl IsValid for Description {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
 
+impl SymbolName {
+    pub fn usd() -> Self {
+        Self::from_str("USD").expect("`USD` is a valid symbol name")
+    }
+}
+
 impl FromStr for SymbolName {
     type Err = &'static str;
 
@@ -562,12 +568,6 @@ impl IsValid for SymbolName {
                 .0
                 .iter()
                 .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
-    }
-}
-
-impl PartialEq<&'static str> for SymbolName {
-    fn eq(&self, other: &&'static str) -> bool {
-        self.0 == other.as_bytes()
     }
 }
 

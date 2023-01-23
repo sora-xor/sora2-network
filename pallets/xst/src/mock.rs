@@ -177,7 +177,7 @@ impl Config for Runtime {
 
 impl band::Config for Runtime {
     type Event = Event;
-    type Symbol = String;
+    type Symbol = common::SymbolName;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }

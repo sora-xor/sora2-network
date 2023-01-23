@@ -30,8 +30,10 @@
 
 #[rustfmt::skip]
 mod tests {
+    use core::str::FromStr;
+
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo, Oracle };
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo, Oracle, SymbolName };
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -622,7 +624,7 @@ use frame_support::assert_noop;
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
 
-            let euro = "EURO".to_owned();
+            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
             OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
@@ -663,7 +665,7 @@ use frame_support::assert_noop;
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
 
-            let euro = "EURO".to_owned();
+            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
             OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");

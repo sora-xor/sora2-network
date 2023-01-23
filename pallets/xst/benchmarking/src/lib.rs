@@ -34,11 +34,12 @@
 
 use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
-use common::{balance, fixed, AssetName, AssetSymbol, DAI};
+use common::{balance, fixed, AssetName, AssetSymbol, Oracle, DAI};
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use oracle_proxy::Pallet as OracleProxy;
 use sp_std::prelude::*;
 use xst::{Call, Event, Pallet as XSTPool};
 
@@ -71,6 +72,7 @@ mod utils {
     }
 
     pub fn relay_symbol<T: Config>() -> DispatchResultWithPostInfo {
+        OracleProxy::<T>::enable_oracle(RawOrigin::Root.into(), Oracle::BandChainFeed)?;
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![alice::<T>()])?;
         Band::<T>::relay(
             RawOrigin::Signed(alice::<T>()).into(),
@@ -98,7 +100,7 @@ mod utils {
     }
 }
 pub struct Pallet<T: Config>(xst::Pallet<T>);
-pub trait Config: xst::Config + band::Config {}
+pub trait Config: xst::Config + band::Config + oracle_proxy::Config {}
 
 benchmarks! {
     set_reference_asset {

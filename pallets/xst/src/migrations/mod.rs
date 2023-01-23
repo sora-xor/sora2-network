@@ -31,8 +31,6 @@
 use super::pallet::{Config, Pallet};
 use common::generate_storage_instance;
 use common::{fixed, Fixed, XSTUSD};
-use core::fmt::Debug;
-use core::str::FromStr;
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
@@ -43,10 +41,7 @@ generate_storage_instance!(PoolXST, BaseFee);
 type OldBaseFee = StorageValue<BaseFeeOldInstance, Fixed, ValueQuery>;
 
 /// Migration which migrates `XSTUSD` synthetic to the new format.
-pub fn migrate<T: Config>() -> Weight
-where
-    <T::Symbol as FromStr>::Err: Debug,
-{
+pub fn migrate<T: Config>() -> Weight {
     if Pallet::<T>::on_chain_storage_version() >= 2 {
         info!("Migration to version 2 has already been applied");
         return 0;
@@ -56,7 +51,7 @@ where
         OldBaseFee::kill();
     }
 
-    let xstusd_symbol = T::Symbol::from_str("USD").expect("`USD` should be a valid symbol name");
+    let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
 
     EnabledSynthetics::<T>::insert(
         T::AssetId::from(XSTUSD),

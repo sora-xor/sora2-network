@@ -27,6 +27,7 @@ mock-liquidity-source = { path = "../../mock-liquidity-source", default-features
 technical = { path = "../../technical", default-features = false  }
 trading-pair = { path = "../../trading-pair", default-features = false  }
 band = { path = "../../band", default-features = false  }
+oracle-proxy = {path = "../../oracle-proxy", default-features = false}
 xst = {path = "../../xst", default-features = false  }
 
 [dev-dependencies]
@@ -62,5 +63,6 @@ std = [
     "technical/std",
     "trading-pair/std",
     "band/std",
+    "oracle-proxy/std",
     "xst/std",
 ]

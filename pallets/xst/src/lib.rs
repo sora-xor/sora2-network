@@ -128,8 +128,6 @@ pub struct SyntheticInfo<Symbol> {
 
 #[frame_support::pallet]
 pub mod pallet {
-    use core::str::FromStr;
-
     use super::*;
     use frame_support::traits::StorageVersion;
     use frame_support::{pallet_prelude::*, Parameter};
@@ -144,7 +142,7 @@ pub mod pallet {
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
         /// Type of symbol received from oracles
-        type Symbol: Parameter + FromStr + PartialEq<&'static str> + MaybeSerializeDeserialize;
+        type Symbol: Parameter + From<common::SymbolName> + MaybeSerializeDeserialize;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -374,10 +372,7 @@ pub mod pallet {
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T>
-    where
-        <T::Symbol as FromStr>::Err: core::fmt::Debug,
-    {
+    impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 tech_account_id: Default::default(),
@@ -385,7 +380,7 @@ pub mod pallet {
                 initial_synthetic_assets: [(
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    T::Symbol::from_str("USD").expect("`USD` should be a valid symbol name"),
+                    common::SymbolName::usd().into(),
                     common::fixed!(0.00666),
                 )]
                 .into(),
@@ -394,10 +389,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
-    where
-        <T::Symbol as FromStr>::Err: core::fmt::Debug,
-    {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
@@ -835,7 +827,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn ensure_symbol_exists(reference_symbol: &T::Symbol) -> Result<(), DispatchError> {
-        if *reference_symbol == "USD" {
+        if *reference_symbol == common::SymbolName::usd().into() {
             return Ok(());
         }
 

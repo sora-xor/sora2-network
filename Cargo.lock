@@ -13696,6 +13696,7 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "mock-liquidity-source",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",

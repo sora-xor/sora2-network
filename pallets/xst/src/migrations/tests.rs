@@ -43,7 +43,7 @@ fn test() {
         let info = EnabledSynthetics::<Runtime>::get(XSTUSD)
             .expect("XSTUSD synthetic should be enabled after migration");
 
-        assert_eq!(info.reference_symbol, "USD");
+        assert_eq!(info.reference_symbol, common::SymbolName::usd().into());
         assert_eq!(info.fee_ratio, fixed!(0.00666));
         assert!(!OldBaseFee::exists());
 
