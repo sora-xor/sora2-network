@@ -62,7 +62,8 @@ type System<T> = frame_system::Pallet<T>;
 
 pub trait WeightInfo {
     fn claim_incentive() -> Weight;
-    fn on_initialize(is_distributing: bool) -> Weight;
+    fn on_initialize_intensive() -> Weight;
+    fn on_initialize_regular() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -474,13 +475,17 @@ pub mod pallet {
             let is_distributing = Self::incentive_distribution_routine(block_num);
             Self::burn_rate_update_routine(block_num);
 
-            <T as Config>::WeightInfo::on_initialize(is_distributing)
+            if is_distributing {
+                <T as Config>::WeightInfo::on_initialize_intensive()
+            } else {
+                <T as Config>::WeightInfo::on_initialize_regular()
+            }
         }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_incentive())]
         pub fn claim_incentive(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_by_account(&who)?;
