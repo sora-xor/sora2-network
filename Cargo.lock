@@ -3971,6 +3971,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "framenode-chain-spec",
+ "hermes-governance-platform",
  "hex-literal",
  "iroha-migration",
  "iroha-migration-runtime-api",
@@ -4496,6 +4497,42 @@ name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
+
+[[package]]
+name = "hermes-governance-platform"
+version = "1.2.0"
+dependencies = [
+ "assets",
+ "ceres-governance-platform",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hermes-governance-platform",
+ "hex-literal",
+ "liquidity-proxy",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
 
 [[package]]
 name = "hermit-abi"

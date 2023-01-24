@@ -30,7 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, Balance, PSWAP, VAL, XOR};
+use common::{balance, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use hex_literal::hex;
@@ -256,7 +256,12 @@ impl<T: Config> Pallet<T> {
         ))
         .into();
 
-        if asset_id == xor || asset_id == val || asset_id == pswap || asset_id == ceres {
+        if asset_id == xor
+            || asset_id == val
+            || asset_id == pswap
+            || asset_id == ceres
+            || asset_id == HERMES_ASSET_ID.into()
+        {
             Ok(())
         } else {
             Err(Error::AssetNotSupported)
