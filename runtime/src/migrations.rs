@@ -9,6 +9,7 @@ pub type Migrations = (
     PriceToolsMigration,
     pallet_staking::migrations::lock_fix::LockFix<Runtime>,
     DexManagerMigration,
+    SetXSTFloorPrice,
 );
 
 // Test and Stage already have this migration applied
@@ -31,5 +32,20 @@ impl OnRuntimeUpgrade for DexManagerMigration {
     fn on_runtime_upgrade() -> Weight {
         frame_support::log::warn!("Run migration DexManagerMigration");
         dex_manager::migrations::migrate::<Runtime>()
+    }
+}
+
+pub struct SetXSTFloorPrice;
+
+impl OnRuntimeUpgrade for SetXSTFloorPrice {
+    fn on_runtime_upgrade() -> Weight {
+        frame_support::log::warn!("Set floor price for XST");
+        if let Err(err) = xst::Pallet::<Runtime>::set_synthetic_base_asset_floor_price(
+            frame_system::RawOrigin::Root.into(),
+            balance!(0.001),
+        ) {
+            frame_support::log::error!("Failed to set floor price for XST: {:?}", err);
+        }
+        <Runtime as frame_system::Config>::BlockWeights::get().max_block
     }
 }
