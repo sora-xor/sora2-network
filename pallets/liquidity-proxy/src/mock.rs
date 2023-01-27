@@ -319,7 +319,6 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
-    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {

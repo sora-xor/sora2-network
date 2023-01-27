@@ -219,7 +219,6 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
-    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {

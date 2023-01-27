@@ -305,7 +305,7 @@ pub mod pallet {
         }
 
         /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation
-        #[pallet::weight(< T as Config >::WeightInfo::set_price_bias())]
+        #[pallet::weight(<T as Config>::WeightInfo::set_price_bias())]
         pub fn set_price_bias(
             origin: OriginFor<T>,
             price_bias: Balance,
@@ -323,7 +323,7 @@ pub mod pallet {
         }
 
         /// Changes price change rate and step
-        #[pallet::weight(< T as Config >::WeightInfo::set_price_change_config())]
+        #[pallet::weight(<T as Config>::WeightInfo::set_price_change_config())]
         pub fn set_price_change_config(
             origin: OriginFor<T>,
             price_change_rate: Balance,
