@@ -9,6 +9,7 @@ pub type Migrations = (
     PriceToolsMigration,
     pallet_staking::migrations::lock_fix::LockFix<Runtime>,
     DexManagerMigration,
+    multicollateral_bonding_curve_pool::migrations::v2::InitializeTBCD<Runtime>,
 );
 
 // Test and Stage already have this migration applied

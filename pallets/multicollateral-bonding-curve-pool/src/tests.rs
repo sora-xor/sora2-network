@@ -84,26 +84,26 @@ use frame_support::assert_noop;
 
             // base case for buy
             assert_eq!(
-                MBCPool::buy_function(&XOR, Fixed::ZERO)
+                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO)
                     .expect("failed to calculate buy price"),
-                    fixed!(536.575170537791384625)
+                    fixed!(536.574420344053851907)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(1151398.853267396927121364)
+                fixed!(1151397.348365215316854563)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(1151397.348365215316854563)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(99999.877292895570947223) // TODO: try to improve precision
+                fixed!(99999.999999999999999958) // TODO: try to improve precision
             );
 
             // base case for sell with empty reserves
             assert_eq!(
-                MBCPool::sell_function(&XOR, Fixed::ZERO)
+                MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO)
                     .expect("failed to calculate sell price"),
-                    fixed!(429.2601364302331077)
+                    fixed!(429.259536275243081525)
             );
             assert_noop!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000))),
@@ -119,12 +119,12 @@ use frame_support::assert_noop;
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(50000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(15287.882675656841911345)
+                fixed!(15287.903511880099065528)
             );
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(15287.903511880099065528)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(50000.025554804518660908) // TODO: improve precision
+                fixed!(49999.999999999999999999) // TODO: improve precision
             );
         });
     }
@@ -375,9 +375,9 @@ use frame_support::assert_noop;
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
+            let reserve_amount_expected = FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR,&VAL, Fixed::ZERO).unwrap();
             let pool_reference_amount = reserve_amount_expected
-                - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
+                - FixedWrapper::from(MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
@@ -394,13 +394,13 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
-                balance!(2.760801517613789357),
-                balance!(11.043206070455157431),
-                balance!(13.804007588068946789),
-                balance!(248.472136585241042209),
+                balance!(2.760049066522984224),
+                balance!(11.040196266091936898),
+                balance!(13.800245332614921123),
+                balance!(248.404415987068580219),
             ]);
             assert_eq!(
                 MBCPool::exchange(
@@ -413,7 +413,7 @@ use frame_support::assert_noop;
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4366.523658759765819497),
+                    balance!(4365.335149368998667748),
                     balance!(3.000000000000000000)
                 )
             );
@@ -438,7 +438,7 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let pool_reference_amount =
-                FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
+                FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
 
@@ -455,13 +455,13 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
-                balance!(2.760801517613789357),
-                balance!(11.043206070455157431),
-                balance!(13.804007588068946789),
-                balance!(248.472136585241042209),
+                balance!(2.760049066522984224),
+                balance!(11.040196266091936898),
+                balance!(13.800245332614921123),
+                balance!(248.404415987068580219),
             ]);
             assert_eq!(
                 MBCPool::exchange(
@@ -474,7 +474,7 @@ use frame_support::assert_noop;
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4366.523925066825637517),
+                    balance!(4365.335415603766574971),
                     balance!(3.000000000000000000)
                 )
             );
@@ -952,12 +952,12 @@ use frame_support::assert_noop;
 
             // calculate buy amount from zero to total supply of XOR
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            let initial_state = MBCPool::buy_function(&XOR, (fixed_wrapper!(0) - FixedWrapper::from(xor_supply)).get().unwrap()).unwrap();
-            let current_state = MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap();
+            let initial_state = MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, (fixed_wrapper!(0) - FixedWrapper::from(xor_supply)).get().unwrap()).unwrap();
+            let current_state = MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap();
             let buy_amount: Balance = ((FixedWrapper::from(initial_state) + FixedWrapper::from(current_state)) / fixed_wrapper!(2) * FixedWrapper::from(xor_supply)).try_into_balance().unwrap();
 
             // get ideal reserves
-            let ideal_reserves = MBCPool::ideal_reserves_reference_price(Fixed::ZERO).unwrap();
+            let ideal_reserves = MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, Fixed::ZERO).unwrap();
 
             // actual amount should match to 80% of buy amount
             assert_eq!(buy_amount, ideal_reserves);
@@ -1273,7 +1273,7 @@ use frame_support::assert_noop;
             let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR).unwrap().into();
             assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
             // initial XOR price is $264
-            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(Default::default()).unwrap().into();
+            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, Default::default()).unwrap().into();
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
