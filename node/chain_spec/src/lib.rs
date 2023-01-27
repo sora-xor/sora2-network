@@ -38,8 +38,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, USDT, VAL, XOR, XST,
-    XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, TBCD, USDT, VAL, XOR,
+    XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -908,8 +908,14 @@ fn testnet_genesis(
         },
         account_id: Some(iroha_migration_account_id.clone()),
     };
-    let initial_collateral_assets =
-        vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
+    let initial_collateral_assets = vec![
+        DAI.into(),
+        VAL.into(),
+        PSWAP.into(),
+        ETH.into(),
+        XST.into(),
+        TBCD.into(),
+    ];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         system: SystemConfig {
@@ -1038,6 +1044,17 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XST".to_vec()),
                     AssetName(b"SORA Synthetics".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    TBCD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"TBCD".to_vec()),
+                    AssetName(b"SORA Token Bonding Curve Dollar".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -1674,6 +1691,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XST".to_vec()),
             AssetName(b"SORA Synthetics".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            TBCD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"TBCD".to_vec()),
+            AssetName(b"SORA Token Bonding Curve Dollar".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

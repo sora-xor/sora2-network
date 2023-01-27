@@ -142,6 +142,7 @@ pub enum PredefinedAssetId {
     ETH = 7,
     XSTUSD = 8,
     XST = 9,
+    TBCD = 10,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -155,6 +156,7 @@ pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const XSTUSD: AssetId32<PredefinedAssetId> =
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XST);
+pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
