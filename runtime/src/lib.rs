@@ -3047,6 +3047,15 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPool);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
+            // Trustless bridge
+            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
+            list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
+            list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
+            list_benchmark!(list, extra, eth_app, EthApp);
+            list_benchmark!(list, extra, erc20_app, ERC20App);
+            list_benchmark!(list, extra, migration_app, MigrationApp);
+            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
+
             let storage_info = AllPalletsWithSystem::storage_info();
 
             return (list, storage_info)
@@ -3113,6 +3122,15 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+
+            // Trustless bridge
+            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
+            add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
+            add_benchmark!(params, batches, eth_app, EthApp);
+            add_benchmark!(params, batches, erc20_app, ERC20App);
+            add_benchmark!(params, batches, migration_app, MigrationApp);
+            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
