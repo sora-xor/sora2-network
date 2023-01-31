@@ -32,17 +32,17 @@ pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 
-ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
+ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false }
 dispatch = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
-bridge-inbound-channel = { path = "../pallets/trustless-eth-bridge/channel/inbound", default-features = false }
-bridge-outbound-channel = { path = "../pallets/trustless-eth-bridge/channel/outbound", default-features = false }
-eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
-migration-app = { path = "../pallets/trustless-eth-bridge/migration-app", default-features = false }
-erc20-app = { path = "../pallets/trustless-eth-bridge/erc20-app", default-features = false }
+bridge-inbound-channel = { path = "../pallets/trustless-bridge/bridge-inbound-channel", default-features = false }
+bridge-outbound-channel = { path = "../pallets/trustless-bridge/bridge-outbound-channel", default-features = false }
+eth-app = { path = "../pallets/trustless-bridge/eth-app", default-features = false }
+migration-app = { path = "../pallets/trustless-bridge/migration-app", default-features = false }
+erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false }
 leaf-provider = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
-evm-bridge-proxy = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy", default-features = false }
-evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api", default-features = false }
+evm-bridge-proxy = { path = "../pallets/trustless-bridge/evm-bridge-proxy", default-features = false }
+evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/evm-bridge-proxy/runtime-api", default-features = false }
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
 
