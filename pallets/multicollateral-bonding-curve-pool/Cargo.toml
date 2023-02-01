@@ -19,7 +19,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false, optional = true }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.3.1" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
@@ -42,7 +42,6 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch
 [dev-dependencies]
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-hex-literal = "0.3.1"
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
@@ -83,5 +82,10 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    "hex-literal",
+]
+
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "pallet-timestamp/try-runtime",
 ]
