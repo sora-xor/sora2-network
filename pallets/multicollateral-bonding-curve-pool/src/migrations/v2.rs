@@ -1,4 +1,5 @@
 use crate::Pallet;
+use common::balance;
 use common::FromGenericPair;
 use common::TBCD;
 use frame_support::traits::Get;
@@ -10,11 +11,15 @@ use frame_support::{
 };
 use sp_runtime::traits::Zero;
 
+pub const SORAMITSU_PAYMENT_ACCOUNT: [u8; 32] =
+    hex_literal::hex!("34b9a44a2d3f681d8191815a6de986bf163d15f6d6b58d56aa1ab887313e1723");
+
 pub struct InitializeTBCD<T>(core::marker::PhantomData<T>);
 
 impl<T> OnRuntimeUpgrade for InitializeTBCD<T>
 where
     T: crate::Config,
+    <T as frame_system::Config>::AccountId: From<[u8; 32]>,
 {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
         if Pallet::<T>::on_chain_storage_version() == 1 {
@@ -48,6 +53,18 @@ where
                 None,
             ) {
                 error!("Failed to register TBCD asset, error: {:?}", err);
+                return <T as frame_system::Config>::DbWeight::get().reads(1);
+            }
+            if let Err(err) = assets::Pallet::<T>::mint_to(
+                &TBCD.into(),
+                &assets_and_permissions_account_id,
+                &SORAMITSU_PAYMENT_ACCOUNT.into(),
+                balance!(1688406),
+            ) {
+                error!(
+                    "Failed to mint TBCD asset to Soramitsu payment account, error: {:?}",
+                    err
+                );
                 return <T as frame_system::Config>::DbWeight::get().reads(1);
             }
             if let Err(err) = trading_pair::Pallet::<T>::register(

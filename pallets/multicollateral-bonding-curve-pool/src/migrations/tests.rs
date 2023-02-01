@@ -30,7 +30,7 @@
 
 use crate::{mock::*, pallet::Pallet, EnabledTargets};
 use common::FromGenericPair;
-use common::{TBCD, XST};
+use common::{balance, TBCD, XST};
 use frame_support::traits::GetStorageVersion as _;
 use frame_support::traits::OnRuntimeUpgrade;
 
@@ -69,6 +69,14 @@ fn test_v2() {
         super::v2::InitializeTBCD::<Runtime>::on_runtime_upgrade();
 
         assert!(EnabledTargets::<Runtime>::get().contains(&TBCD));
+        assert_eq!(
+            assets::Pallet::<Runtime>::total_balance(
+                &TBCD,
+                &super::v2::SORAMITSU_PAYMENT_ACCOUNT.into()
+            )
+            .unwrap(),
+            balance!(1688406)
+        );
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });
 }
