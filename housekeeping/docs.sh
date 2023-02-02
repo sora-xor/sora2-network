@@ -12,6 +12,7 @@ git clone https://${GH_USER}:${GH_TOKEN}@${GH_REPOSITORY}
 cd sora2-substrate
 git checkout ${GH_BRANCH}
 rm -rf docs
+git fetch
 git pull origin master
 cargo doc --no-deps || exit 0
 cargo fmt
