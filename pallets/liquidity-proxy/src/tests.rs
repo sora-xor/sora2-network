@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{BatchReceiverInfo, Error};
+use crate::{BTreeMap, BatchReceiverInfo, Error};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -3177,32 +3177,34 @@ fn test_batch_swap_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
+            BTreeMap::from([
+                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                (
+                    KSM,
+                    vec![
+                        BatchReceiverInfo::new(charlie(), balance!(10)),
+                        BatchReceiverInfo::new(dave(), balance!(10)),
+                    ]
+                ),
+            ]),
             DEX_A_ID,
             XOR,
-            USDT,
             balance!(100),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     })
 }
 
@@ -3211,57 +3213,61 @@ fn test_batch_swap_desired_input_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
+            BTreeMap::from([
+                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                (
+                    KSM,
+                    vec![
+                        BatchReceiverInfo::new(charlie(), balance!(10)),
+                        BatchReceiverInfo::new(dave(), balance!(10)),
+                    ]
+                ),
+            ]),
             DEX_A_ID,
             XOR,
-            USDT,
             balance!(30),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     });
 }
 
 #[test]
 fn test_batch_swap_desired_input_too_low() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    println!("too_low");
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 Origin::signed(alice()),
-                [
-                    BatchReceiverInfo::new(bob(), balance!(10)),
-                    BatchReceiverInfo::new(charlie(), balance!(10)),
-                    BatchReceiverInfo::new(dave(), balance!(10))
-                ]
-                .to_vec(),
+                BTreeMap::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                ]),
                 DEX_A_ID,
                 XOR,
-                USDT,
                 balance!(1),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
