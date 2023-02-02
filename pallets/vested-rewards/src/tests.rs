@@ -31,12 +31,14 @@
 use crate::mock::*;
 use crate::{Error, RewardInfo};
 use codec::Decode;
+use common::mock::charlie;
 use common::{
     balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
     PSWAP,
 };
-use frame_support::assert_noop;
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::{assert_noop, assert_ok};
+use frame_system::RawOrigin;
 use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
 
@@ -765,6 +767,142 @@ fn market_maker_reward_pool_migration() {
                     .cloned()
                     .collect(),
             }
+        );
+    });
+}
+
+#[test]
+fn update_rewards_works() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        VestedRewards::add_pending_reward(
+            &alice(),
+            RewardReason::DeprecatedMarketMakerVolume,
+            balance!(100),
+        )
+        .unwrap();
+        VestedRewards::add_pending_reward(
+            &alice(),
+            RewardReason::LiquidityProvisionFarming,
+            balance!(200),
+        )
+        .unwrap();
+
+        VestedRewards::add_pending_reward(
+            &bob(),
+            RewardReason::DeprecatedMarketMakerVolume,
+            balance!(300),
+        )
+        .unwrap();
+        VestedRewards::add_pending_reward(&bob(), RewardReason::BuyOnBondingCurve, balance!(400))
+            .unwrap();
+
+        VestedRewards::add_pending_reward(
+            &charlie(),
+            RewardReason::DeprecatedMarketMakerVolume,
+            balance!(500),
+        )
+        .unwrap();
+        VestedRewards::add_pending_reward(
+            &charlie(),
+            RewardReason::LiquidityProvisionFarming,
+            balance!(600),
+        )
+        .unwrap();
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(2100));
+
+        crate::migrations::move_market_making_rewards_to_liquidity_provider_rewards_pool::<Runtime>(
+        );
+
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(2100));
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).total_available,
+            balance!(300)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).rewards,
+            vec![(RewardReason::LiquidityProvisionFarming, balance!(200))]
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).total_available,
+            balance!(700)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).rewards,
+            vec![(RewardReason::BuyOnBondingCurve, balance!(700))]
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).total_available,
+            balance!(1100)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).rewards,
+            vec![(RewardReason::LiquidityProvisionFarming, balance!(600))]
+                .into_iter()
+                .collect()
+        );
+
+        let rewards = vec![
+            (
+                alice(),
+                vec![(RewardReason::BuyOnBondingCurve, balance!(100))]
+                    .into_iter()
+                    .collect(),
+            ),
+            (
+                charlie(),
+                vec![(RewardReason::BuyOnBondingCurve, balance!(500))]
+                    .into_iter()
+                    .collect(),
+            ),
+        ]
+        .into_iter()
+        .collect();
+        assert_ok!(VestedRewards::update_rewards(
+            RawOrigin::Root.into(),
+            rewards
+        ));
+
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(2100));
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).total_available,
+            balance!(300)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&alice()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(200)),
+                (RewardReason::BuyOnBondingCurve, balance!(100))
+            ]
+            .into_iter()
+            .collect()
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).total_available,
+            balance!(700)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&bob()).rewards,
+            vec![(RewardReason::BuyOnBondingCurve, balance!(700))]
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).total_available,
+            balance!(1100)
+        );
+        assert_eq!(
+            crate::Rewards::<Runtime>::get(&charlie()).rewards,
+            vec![
+                (RewardReason::LiquidityProvisionFarming, balance!(600)),
+                (RewardReason::BuyOnBondingCurve, balance!(500))
+            ]
+            .into_iter()
+            .collect()
         );
     });
 }
