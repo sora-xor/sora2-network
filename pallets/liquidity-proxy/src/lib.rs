@@ -49,7 +49,7 @@ use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
-use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::prelude::*;
 use sp_std::{cmp::Ordering, vec};
 
@@ -1654,53 +1654,84 @@ pub mod pallet {
                 )))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            receivers: Vec<BatchReceiverInfo<T>>,
+            receivers: BTreeMap<T::AssetId, Vec<BatchReceiverInfo<T>>>,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
             max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            if Self::is_forbidden_filter(
-                &input_asset_id,
-                &output_asset_id,
-                &selected_source_types,
-                &filter_mode,
-            ) {
-                fail!(Error::<T>::ForbiddenFilter);
-            }
-
-            let filter =
-                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-
-            let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
-
-            Self::inner_exchange(
+            let filter = LiquiditySourceFilter::with_mode(
                 dex_id,
-                &who,
-                &who,
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: out_amount,
-                    max_amount_in: max_input_amount,
+                filter_mode.clone(),
+                selected_source_types.clone(),
+            );
+
+            let _ =
+                fallible_iterator::convert(receivers.iter().map(|val| Ok::<_, DispatchError>(val)))
+                    .fold(balance!(0), |acc, (asset_id, recv_batch)| {
+                        if Self::is_forbidden_filter(
+                            &input_asset_id,
+                            asset_id,
+                            &selected_source_types,
+                            &filter_mode,
+                        ) {
+                            fail!(Error::<T>::ForbiddenFilter);
+                        }
+
+                        let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
+                        let quote_amount = QuoteAmount::with_desired_input(out_amount);
+                        let input_amount = Self::quote(
+                            dex_id,
+                            &input_asset_id,
+                            asset_id,
+                            quote_amount,
+                            filter.clone(),
+                            true,
+                        )
+                        .map(|swap_outcome| swap_outcome.amount)?;
+
+                        match input_amount.checked_add(acc) {
+                            Some(sum) if sum <= max_input_amount => Ok(sum),
+                            Some(sum) if sum > max_input_amount => {
+                                Err(Error::<T>::SlippageNotTolerated.into())
+                            }
+                            _ => Err(Error::<T>::CalculationError.into()),
+                        }
+                    })?;
+
+            let _ = fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
+                |(asset_id, recv_batch)| {
+                    let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
+
+                    // max_input_amount will exceed the actual input amount
+                    // necessary sanity checks were introduced earlier
+                    Self::inner_exchange(
+                        dex_id,
+                        &who,
+                        &who,
+                        &input_asset_id,
+                        &asset_id,
+                        SwapAmount::WithDesiredOutput {
+                            desired_amount_out: out_amount,
+                            max_amount_in: max_input_amount,
+                        },
+                        filter.clone(),
+                    )?;
+                    fallible_iterator::convert(recv_batch.into_iter().map(|val| Ok(val))).for_each(
+                        |receiver| {
+                            assets::Pallet::<T>::transfer_from(
+                                &asset_id,
+                                &who,
+                                &receiver.account_id,
+                                receiver.target_amount,
+                            )
+                        },
+                    )
                 },
-                filter,
             )?;
-
-            for receiver in receivers {
-                assets::Pallet::<T>::transfer_from(
-                    &output_asset_id,
-                    &who,
-                    &receiver.account_id,
-                    receiver.target_amount,
-                )
-                .expect("Required amount has just been deposited");
-            }
-
             Ok(().into())
         }
 
