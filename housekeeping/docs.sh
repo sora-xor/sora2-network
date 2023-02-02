@@ -14,7 +14,7 @@ git checkout ${GH_BRANCH}
 rm -rf docs
 git fetch
 git pull origin master
-cargo doc --no-deps || exit 0
+cargo doc --no-deps --workspace --exclude relayer || exit 0
 cargo fmt
 mkdir docs
 echo "<meta http-equiv=\"refresh\" content=\"0; url=assets\">" > target/doc/index.html
