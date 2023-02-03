@@ -458,7 +458,10 @@ benchmarks! {
 
     swap_transfer_batch {
         let n in 1..10; // number of output assets
-        let k in 1..100; // number of receivers per asset
+        let m in 10..100; // full number of receivers
+
+        let k = m/n;
+
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
 
@@ -471,13 +474,15 @@ benchmarks! {
                 .expect("Failed to cast vector to [u8; 32]");
             let new_asset_id = AssetId32::from_bytes(raw_asset_id);
             let asset_symbol = {
-                let mut asset_symbol_prefix: Vec<u8> = "TEST ".into();
-                asset_symbol_prefix.extend_from_slice(&i.to_be_bytes());
+                let mut asset_symbol_prefix: Vec<u8> = "TEST".into();
+                let asset_symbol_remainder: Vec<u8> = i.to_string().into();
+                asset_symbol_prefix.extend_from_slice(&asset_symbol_remainder);
                 asset_symbol_prefix
             };
             let asset_name = {
-                let mut asset_name_prefix: Vec<u8> = "Test asset ".into();
-                asset_name_prefix.extend_from_slice(&i.to_be_bytes());
+                let mut asset_name_prefix: Vec<u8> = "Test".into();
+                let asset_name_remainder: Vec<u8> = i.to_string().into();
+                asset_name_prefix.extend_from_slice(&asset_name_remainder);
                 asset_name_prefix
             };
 
@@ -569,7 +574,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
             assert_ok!(Pallet::<Runtime>::test_benchmark_enable_liquidity_source());
             assert_ok!(Pallet::<Runtime>::test_benchmark_disable_liquidity_source());
-            // assert_ok!(Pallet::<Runtime>::test_benchmark_swap_transfer_batch());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_transfer_batch());
         });
     }
 }

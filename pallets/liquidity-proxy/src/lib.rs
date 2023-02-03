@@ -222,6 +222,7 @@ pub trait WeightInfo {
     fn swap(variant: SwapVariant) -> Weight;
     fn enable_liquidity_source() -> Weight;
     fn disable_liquidity_source() -> Weight;
+    fn swap_transfer_batch(n: u32, m: u32) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -1647,11 +1648,23 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer()
-                .saturating_mul(receivers.len() as u64)
-                .saturating_add(<T as Config>::WeightInfo::swap(
-                    SwapVariant::WithDesiredOutput,
-                )))]
+        /// Dispatches multiple swap & transfer operations. `receivers` holds info about desired out amount and
+        /// its associated account per asset id
+        ///
+        /// - `origin`: the account on whose behalf the transaction is being executed,
+        /// - `receivers`: the ordered map, which maps the asset id being bought to the vector of batch receivers
+        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
+        /// - `input_asset_id`: ID of the asset being sold,
+        /// - `max_input_amount`: the maximum amount to be sold in input_asset_id,
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::weight(<T as Config>::WeightInfo::swap_transfer_batch(
+                receivers.len() as u32,
+                receivers.iter()
+                    .map(|(_, recv_batch)| recv_batch.len() as u32)
+                    .sum()
+            )
+        )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             receivers: BTreeMap<T::AssetId, Vec<BatchReceiverInfo<T>>>,
@@ -1680,7 +1693,6 @@ pub mod pallet {
                         ) {
                             fail!(Error::<T>::ForbiddenFilter);
                         }
-
                         let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
                         let quote_amount = QuoteAmount::with_desired_input(out_amount);
                         let input_amount = Self::quote(
