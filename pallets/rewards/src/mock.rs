@@ -234,6 +234,12 @@ pub struct ExtBuilder {
     with_rewards: bool,
 }
 
+impl Default for ExtBuilder {
+    fn default() -> Self {
+        Self { with_rewards: true }
+    }
+}
+
 impl ExtBuilder {
     pub fn with_rewards(with_rewards: bool) -> Self {
         Self { with_rewards }

@@ -51,5 +51,5 @@ benchmarks! {
         assert_eq!(crate::Multiplier::<T>::get(), m);
     }
 
-    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::build(), crate::mock::Runtime);
 }

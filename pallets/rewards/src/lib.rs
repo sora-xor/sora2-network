@@ -54,7 +54,7 @@ use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
-use common::{eth, AccountIdOf, Balance, OnValBurned};
+use common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
 
 #[cfg(feature = "include-real-files")]
 use hex_literal::hex;
@@ -103,16 +103,22 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub trait WeightInfo {
     fn claim() -> Weight;
-    fn finalize_storage_migration(n: u32) -> Weight;
     fn add_umi_nfts_receivers(n: u64) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
-    /// Get available rewards:
+    /// Get available rewards for a specified `eth_address`:
     /// - VAL
     /// - PSWAP Farming
     /// - PSWAP Waifu
     /// The rest are UMI NFTS.
+    /// Returns the vector of available reward amounts.
+    /// Interacts with `ValOwners`, `PswapFarmOwners`, `PswapWaifuOwners`, and `UmiNftReceivers`
+    /// StorageMaps.
+    ///
+    /// Used in `claimables` RPC endpoint.
+    ///
+    /// - `eth_address`: address of an ETH account associated with the rewards
     pub fn claimables(eth_address: &EthAddress) -> Vec<Balance> {
         let mut res = vec![
             ValOwners::<T>::get(eth_address).claimable,
@@ -123,6 +129,13 @@ impl<T: Config> Pallet<T> {
         res
     }
 
+    /// Calculate current vesting ratio for a given `elapsed` time.
+    /// Returns the vesting ratio.
+    /// Does not interact with the storage.
+    ///
+    /// Used in `on_initialize` hook.
+    ///
+    /// - `elapsed`: elapsed time in blocks
     fn current_vesting_ratio(elapsed: T::BlockNumber) -> Perbill {
         let max_percentage = T::MAX_VESTING_RATIO.deconstruct() as u32;
         if elapsed >= T::TIME_TO_SATURATION {
@@ -134,6 +147,19 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Claims the reward for an account with specified `eth_address` and transfers the reward to
+    /// the specified `account_id`.
+    /// Does not directly return errors.
+    /// Interacts with the specified `M` StorageMap.
+    ///
+    /// Used in `claim` extrinsic.
+    ///
+    /// - `eth_address`: The ETH address associated with the specified account
+    /// - `account_id`: The account ID associated with the reward
+    /// - `asset_id`: The reward's asset ID
+    /// - `reserves_acc`: Technical account holding unclaimed rewards
+    /// - `claimed`: Flag indicating whether the reward has been claimed
+    /// - `is_eligible`: Flag indicating whether the account is eligible for the reward
     fn claim_reward<M: StorageMapTrait<EthAddress, Balance>>(
         eth_address: &EthAddress,
         account_id: &AccountIdOf<T>,
@@ -153,10 +179,21 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Claims the VAL reward for an account with specified `eth_address` and transfers the reward to
+    /// the specified `account_id` if the `eth_address` is present in `ValOwners`.
+    /// Does not directly return errors.
+    /// Interacts with the `ValOwners` StorageMap and the `TotalValRewards`, `TotalClaimableVal` StorageValues.
+    ///
+    /// Used in `claim` extrinsic.
+    ///
+    /// - `eth_address`: The ETH address associated with the specified account
+    /// - `account_id`: The account ID associated with the reward
+    /// - `reserves_acc`: Technical account holding unclaimed rewards
+    /// - `claimed`: Flag indicating whether the reward has been claimed
+    /// - `is_eligible`: Flag indicating whether the account is eligible for the reward
     fn claim_val_reward(
         eth_address: &EthAddress,
         account_id: &AccountIdOf<T>,
-        asset_id: &AssetIdOf<T>,
         reserves_acc: &T::TechAccountId,
         claimed: &mut bool,
         is_eligible: &mut bool,
@@ -168,7 +205,12 @@ impl<T: Config> Pallet<T> {
         {
             *is_eligible = true;
             if amount > 0 {
-                technical::Pallet::<T>::transfer_out(asset_id, reserves_acc, account_id, amount)?;
+                technical::Pallet::<T>::transfer_out(
+                    &VAL.into(),
+                    reserves_acc,
+                    account_id,
+                    amount,
+                )?;
                 ValOwners::<T>::mutate(eth_address, |v| {
                     *v = RewardInfo::new(0, total.saturating_sub(amount))
                 });
@@ -180,6 +222,18 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Claims the UMI NFTs for an account with specified `eth_address` and transfers the NFTs to
+    /// the specified `account_id` if the `eth_address` is present in `UmiNftReceivers`.
+    /// Does not directly return errors.
+    /// Interacts with the `UmiNftReceivers` StorageMap and the `UmiNfts` StorageValue.
+    ///
+    /// Used in `claim` extrinsic.
+    ///
+    /// - `eth_address`: The ETH address associated with the specified account
+    /// - `account_id`: The account ID associated with the reward
+    /// - `reserves_acc`: Technical account holding unclaimed rewards
+    /// - `claimed`: Flag indicating whether the reward has been claimed
+    /// - `is_eligible`: Flag indicating whether the account is eligible for the reward
     fn claim_umi_nfts(
         eth_address: &EthAddress,
         account_id: &AccountIdOf<T>,
@@ -214,6 +268,13 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Adds the specified ETH address to the list of UMI NFT receivers.
+    /// Does not directly return errors.
+    /// Interacts with the `UmiNftReceivers`, `UmiNftClaimed` StorageMaps and the `UmiNfts` StorageValue.
+    ///
+    /// Used in `claim` extrinsic.
+    ///
+    /// - `receiver`: The ETH address added to the list of UMI NFT receivers
     fn add_umi_nft_receiver(receiver: &EthAddress) -> Result<(), DispatchErrorWithPostInfo> {
         if !UmiNftClaimed::<T>::get(receiver) {
             UmiNftReceivers::<T>::insert(receiver, vec![1; UmiNfts::<T>::get().len()]);
@@ -232,6 +293,7 @@ impl<T: Config> OnValBurned for Pallet<T> {
 
 #[frame_support::pallet]
 pub mod pallet {
+    use common::PSWAP;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
@@ -239,8 +301,6 @@ pub mod pallet {
     use secp256k1::util::SIGNATURE_SIZE;
     use secp256k1::{RecoveryId, Signature};
     use sp_std::vec::Vec;
-
-    use common::{PSWAP, VAL};
 
     use super::*;
 
@@ -280,7 +340,7 @@ pub mod pallet {
                 if TotalValRewards::<T>::get() == TotalClaimableVal::<T>::get() {
                     // All VAL has been vested
                     CurrentClaimableVal::<T>::put(0);
-                    return T::DbWeight::get().reads_writes(2, 2);
+                    return T::DbWeight::get().reads_writes(2, 1);
                 }
 
                 let val_burned = ValBurnedSinceLastVesting::<T>::get();
@@ -363,7 +423,6 @@ pub mod pallet {
             Self::claim_val_reward(
                 &eth_address,
                 &account_id,
-                &VAL.into(),
                 &reserves_acc,
                 &mut claimed,
                 &mut is_eligible,
