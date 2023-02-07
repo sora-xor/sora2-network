@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{BTreeMap, BatchReceiverInfo, Error};
+use crate::{BatchReceiverInfo, Error};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -3182,7 +3182,7 @@ fn test_batch_swap_successful() {
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
-            BTreeMap::from([
+            Vec::from([
                 (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
                 (
                     KSM,
@@ -3218,7 +3218,7 @@ fn test_batch_swap_desired_input_successful() {
 
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
-            BTreeMap::from([
+            Vec::from([
                 (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
                 (
                     KSM,
@@ -3256,7 +3256,7 @@ fn test_batch_swap_desired_input_too_low() {
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 Origin::signed(alice()),
-                BTreeMap::from([
+                Vec::from([
                     (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
                     (
                         KSM,
