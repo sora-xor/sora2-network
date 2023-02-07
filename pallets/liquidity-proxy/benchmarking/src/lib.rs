@@ -50,6 +50,7 @@ use assets::Pallet as Assets;
 use multicollateral_bonding_curve_pool::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
+use scale_info::prelude::string::ToString;
 use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
