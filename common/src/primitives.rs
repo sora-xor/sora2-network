@@ -163,6 +163,9 @@ pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(h
 pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
 ));
+pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
+));
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
