@@ -49,7 +49,7 @@ use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
-use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ordering, vec};
 
@@ -1667,7 +1667,7 @@ pub mod pallet {
         )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            receivers: BTreeMap<T::AssetId, Vec<BatchReceiverInfo<T>>>,
+            receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)>,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
             max_input_amount: Balance,

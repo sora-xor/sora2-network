@@ -43,7 +43,6 @@ use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use liquidity_proxy::{BatchReceiverInfo, Call};
-use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -466,7 +465,7 @@ benchmarks! {
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
 
-        let mut receivers: BTreeMap<T::AssetId, Vec<BatchReceiverInfo<T>>> = BTreeMap::new(); // edit
+        let mut receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)> = Vec::new();
         setup_benchmark::<T>()?;
         for i in 0..n {
             let raw_asset_id = [i.to_be_bytes().to_vec(), [0u8; 28].to_vec()]
@@ -535,7 +534,7 @@ benchmarks! {
                 let target_amount = balance!(1);
                 BatchReceiverInfo {account_id, target_amount}
             }).collect();
-            receivers.insert(new_asset_id.into(), recv_batch);
+            receivers.push((new_asset_id.into(), recv_batch));
         }
         let max_input_amount = balance!(k*n + 100);
     }: {
