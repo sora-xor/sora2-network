@@ -9,7 +9,7 @@ git config --global user.name ${GH_USER}
 git config --global github.token ${GH_TOKEN}
 cd /home/
 git clone https://${GH_USER}:${GH_TOKEN}@${GH_REPOSITORY}
-cd sora2-substrate
+cd sora2-network
 git checkout master
 rm -rf docs
 git fetch
