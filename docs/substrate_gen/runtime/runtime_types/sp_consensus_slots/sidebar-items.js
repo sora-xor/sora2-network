@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["EquivocationProof",""],["Slot",""]]});

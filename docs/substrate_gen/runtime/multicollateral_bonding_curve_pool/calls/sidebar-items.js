@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["InitializePool",""],["SetOptionalRewardMultiplier",""],["SetPriceBias",""],["SetPriceChangeConfig",""],["SetReferenceAsset",""],["TransactionApi",""]]});

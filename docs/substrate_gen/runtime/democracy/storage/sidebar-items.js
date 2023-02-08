@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Blacklist",""],["Cancellations",""],["DepositOf",""],["LastTabledWasExternal",""],["LowestUnbaked",""],["NextExternal",""],["Preimages",""],["PublicPropCount",""],["PublicProps",""],["ReferendumCount",""],["ReferendumInfoOf",""],["StorageApi",""],["StorageVersion",""],["VotingOf",""]]});

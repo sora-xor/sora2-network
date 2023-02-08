@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["inbound","Channel for passing messages from ethereum to substrate."],["outbound","Channel for passing messages from substrate to ethereum."]]});

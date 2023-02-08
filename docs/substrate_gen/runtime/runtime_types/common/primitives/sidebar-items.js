@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["AssetIdExtraAssetRecordArg",""],["FilterMode",""],["LiquiditySourceType",""],["PredefinedAssetId",""],["RewardReason",""],["TechAccountId",""],["TechAssetId",""],["TechPurpose",""]],"struct":[["AssetId32",""],["AssetName",""],["AssetSymbol",""],["ContentSource",""],["DEXInfo",""],["Description",""],["LiquiditySourceId",""],["TradingPair",""]]});

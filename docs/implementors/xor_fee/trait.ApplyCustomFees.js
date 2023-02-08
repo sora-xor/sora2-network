@@ -1,0 +1,4 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl&lt;T&gt; <a class=\"trait\" href=\"xor_fee/trait.ApplyCustomFees.html\" title=\"trait xor_fee::ApplyCustomFees\">ApplyCustomFees</a>&lt;<a class=\"enum\" href=\"framenode_runtime/enum.Call.html\" title=\"enum framenode_runtime::Call\">Call</a>&gt; for <a class=\"struct\" href=\"xor_fee/pallet/struct.Pallet.html\" title=\"struct xor_fee::pallet::Pallet\">Pallet</a>&lt;T&gt;","synthetic":false,"types":["xor_fee::pallet::Pallet"]}];
+implementors["xor_fee"] = [];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Created","Create poll [who, option, start_timestamp, end_timestamp]"],["Voted","Voting [who, poll, option, balance]"],["Withdrawn","Withdrawn [who, balance]"]]});

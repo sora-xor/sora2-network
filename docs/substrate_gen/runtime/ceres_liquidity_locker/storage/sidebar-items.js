@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AuthorityAccount",""],["FeesOptionOneAccount",""],["FeesOptionTwoAccount",""],["FeesOptionTwoCeresAmount",""],["LockerData",""],["PalletStorageVersion",""],["StorageApi",""]]});

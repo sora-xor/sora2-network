@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ChannelAddresses",""],["ChannelNonces",""],["RewardFraction",""],["StorageApi",""]]});

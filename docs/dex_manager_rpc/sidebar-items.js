@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DEXManager",""]],"trait":[["DEXManagerAPIClient","Client implementation for the `DEXManagerAPI` RPC API."],["DEXManagerAPIServer","Server trait implementation for the `DEXManagerAPI` RPC API."],["DEXManagerRuntimeAPI",""]]});

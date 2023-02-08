@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AssetInfos",""],["AssetOwners",""],["AssetRecordAssetId",""],["StorageApi",""]]});

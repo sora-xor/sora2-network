@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SnowbridgeWeight","Weights for erc20_app using the Snowbridge node and recommended hardware."]],"trait":[["WeightInfo","Weight functions needed for erc20_app."]]});

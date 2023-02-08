@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AssetsClient",""]],"trait":[["AssetsAPIClient","Client implementation for the `AssetsAPI` RPC API."],["AssetsAPIServer","Server trait implementation for the `AssetsAPI` RPC API."],["AssetsRuntimeAPI",""]]});

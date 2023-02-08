@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["FillBlock",""],["KillPrefix",""],["KillStorage",""],["Remark",""],["RemarkWithEvent",""],["SetCode",""],["SetCodeWithoutChecks",""],["SetHeapPages",""],["SetStorage",""],["TransactionApi",""]]});

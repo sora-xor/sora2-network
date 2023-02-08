@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BalanceInfo",""],["CrowdloanLease",""]],"trait":[["VestedRewardsApi",""]]});

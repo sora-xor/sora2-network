@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["tech_account_id_encoded_to_account_id_32",""]],"mod":[["pallet","The module that hosts all the FRAME types needed to add this pallet to a runtime."]],"struct":[["PendingSwap","Pending atomic swap operation."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["constant_ratio","Compute the constant ratio for the thresholds."],["generate_thresholds","Write a thresholds module to the path specified."],["thresholds","Compute the list of bag thresholds."]]});

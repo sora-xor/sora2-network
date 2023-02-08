@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["AssetRecord",""],["AssetRecordArg",""]],"mod":[["pallet",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BalanceInfo",""],["CrowdloanLease",""],["VestedRewardsClient",""]],"trait":[["VestedRewardsApiClient","Client implementation for the `VestedRewardsApi` RPC API."],["VestedRewardsApiServer","Server trait implementation for the `VestedRewardsApi` RPC API."],["VestedRewardsRuntimeApi",""]]});

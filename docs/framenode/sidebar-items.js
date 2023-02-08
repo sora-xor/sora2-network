@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["main",""]],"mod":[["cli",""],["command",""],["rpc",""],["service","Service implementation. Specialized wrapper over substrate service."]]});

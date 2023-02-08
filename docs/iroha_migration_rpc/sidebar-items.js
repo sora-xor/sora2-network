@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["IrohaMigrationClient",""]],"trait":[["IrohaMigrationAPIClient","Client implementation for the `IrohaMigrationAPI` RPC API."],["IrohaMigrationAPIServer","Server trait implementation for the `IrohaMigrationAPI` RPC API."],["IrohaMigrationRuntimeAPI",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Renouncing",""]],"mod":[["pallet",""]],"struct":[["SeatHolder",""],["Voter",""]]});

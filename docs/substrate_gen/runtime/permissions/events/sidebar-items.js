@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["PermissionAssigned","Permission was assigned to the account in the scope. [permission, who]"],["PermissionCreated","Permission was created with an owner. [permission, who]"],["PermissionGranted","Permission was granted to a holder. [permission, who]"],["PermissionTransfered","Permission was transfered to a new owner. [permission, who]"]]});

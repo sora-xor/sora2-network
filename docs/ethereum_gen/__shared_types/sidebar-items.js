@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SimplifiedMMRProof","`SimplifiedMMRProof(bytes32[],uint64)`"]]});

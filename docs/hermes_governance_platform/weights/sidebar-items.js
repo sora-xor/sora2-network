@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["WeightInfo","Weight functions for `hermes_governance_platform`."]]});

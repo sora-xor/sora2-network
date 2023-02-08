@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl Config&lt;Instance1&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.Runtime.html\" title=\"struct framenode_runtime::Runtime\">Runtime</a>","synthetic":false,"types":["framenode_runtime::Runtime"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

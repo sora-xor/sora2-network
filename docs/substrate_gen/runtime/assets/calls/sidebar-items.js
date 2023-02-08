@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Burn",""],["Mint",""],["Register",""],["SetNonMintable",""],["TransactionApi",""],["Transfer",""]]});

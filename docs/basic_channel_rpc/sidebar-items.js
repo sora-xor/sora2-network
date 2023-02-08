@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["BasicChannelClient",""],["Message","Wire-format for committed messages"]],"trait":[["BasicChannelAPIClient","Client implementation for the `BasicChannelAPI` RPC API."],["BasicChannelAPIServer","Server trait implementation for the `BasicChannelAPI` RPC API."]]});

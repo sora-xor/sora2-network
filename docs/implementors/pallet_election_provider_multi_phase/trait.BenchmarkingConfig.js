@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl BenchmarkingConfig for <a class=\"struct\" href=\"framenode_runtime/struct.ElectionBenchmarkConfig.html\" title=\"struct framenode_runtime::ElectionBenchmarkConfig\">ElectionBenchmarkConfig</a>","synthetic":false,"types":["framenode_runtime::ElectionBenchmarkConfig"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

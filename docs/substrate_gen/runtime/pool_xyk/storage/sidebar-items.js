@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AccountPools",""],["PoolProviders",""],["Properties",""],["Reserves",""],["StorageApi",""],["TotalIssuances",""]]});

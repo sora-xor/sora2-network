@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AssetInfo",""],["BalanceInfo",""]],"trait":[["AssetsAPI",""]]});

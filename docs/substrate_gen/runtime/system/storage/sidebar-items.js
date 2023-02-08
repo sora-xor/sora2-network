@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Account",""],["AllExtrinsicsLen",""],["BlockHash",""],["BlockWeight",""],["Digest",""],["EventCount",""],["EventTopics",""],["Events",""],["ExecutionPhase",""],["ExtrinsicCount",""],["ExtrinsicData",""],["LastRuntimeUpgrade",""],["Number",""],["ParentHash",""],["StorageApi",""],["UpgradedToTripleRefCount",""],["UpgradedToU32RefCount",""]]});

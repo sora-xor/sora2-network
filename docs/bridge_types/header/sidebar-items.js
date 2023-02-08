@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Header","An Ethereum block header."],["HeaderId","Complete block header id."]]});

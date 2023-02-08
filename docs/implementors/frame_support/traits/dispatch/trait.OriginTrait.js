@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl OriginTrait for <a class=\"struct\" href=\"framenode_runtime/struct.Origin.html\" title=\"struct framenode_runtime::Origin\">Origin</a>","synthetic":false,"types":["framenode_runtime::Origin"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

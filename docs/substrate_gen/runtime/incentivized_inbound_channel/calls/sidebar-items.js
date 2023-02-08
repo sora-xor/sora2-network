@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RegisterChannel",""],["SetRewardFraction",""],["Submit",""],["TransactionApi",""]]});

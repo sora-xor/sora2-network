@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ClaimCrowdloanRewards",""],["ClaimRewards",""],["SetAssetPair",""],["TransactionApi",""]]});

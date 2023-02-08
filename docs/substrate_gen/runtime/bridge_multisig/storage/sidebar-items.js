@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Accounts",""],["Calls",""],["DispatchedCalls",""],["Multisigs",""],["StorageApi",""]]});

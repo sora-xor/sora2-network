@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["migrate","Migration which adds `XST` as a synthetic base asset"]]});

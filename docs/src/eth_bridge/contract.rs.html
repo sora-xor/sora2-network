@@ -1,0 +1,428 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/eth-bridge/src/contract.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>contract.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../eth_bridge/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../eth_bridge/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../eth_bridge/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+</pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
+
+<span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
+<span class="comment">// SPDX-License-Identifier: BSD-4-Clause</span>
+
+<span class="comment">// Redistribution and use in source and binary forms, with or without modification,</span>
+<span class="comment">// are permitted provided that the following conditions are met:</span>
+
+<span class="comment">// Redistributions of source code must retain the above copyright notice, this list</span>
+<span class="comment">// of conditions and the following disclaimer.</span>
+<span class="comment">// Redistributions in binary form must reproduce the above copyright notice, this</span>
+<span class="comment">// list of conditions and the following disclaimer in the documentation and/or other</span>
+<span class="comment">// materials provided with the distribution.</span>
+<span class="comment">//</span>
+<span class="comment">// All advertising materials mentioning features or use of this software must display</span>
+<span class="comment">// the following acknowledgement: This product includes software developed by Polka Biome</span>
+<span class="comment">// Ltd., SORA, and Polkaswap.</span>
+<span class="comment">//</span>
+<span class="comment">// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used</span>
+<span class="comment">// to endorse or promote products derived from this software without specific prior written permission.</span>
+
+<span class="comment">// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,</span>
+<span class="comment">// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR</span>
+<span class="comment">// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY</span>
+<span class="comment">// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,</span>
+<span class="comment">// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;</span>
+<span class="comment">// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,</span>
+<span class="comment">// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE</span>
+<span class="comment">// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</span>
+
+<span class="kw">use</span> <span class="ident">alloc::boxed::Box</span>;
+<span class="kw">use</span> <span class="ident">ethabi::Function</span>;
+<span class="kw">use</span> <span class="ident">ethabi_contract::use_contract</span>;
+<span class="kw">use</span> <span class="ident">frame_support::sp_io::hashing::keccak_256</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>)]</span>
+<span class="kw">use</span> <span class="ident">frame_support::RuntimeDebug</span>;
+<span class="kw">use</span> <span class="ident">once_cell::race::OnceBox</span>;
+<span class="kw">use</span> <span class="ident">sp_core::H256</span>;
+<span class="kw">use</span> <span class="ident">sp_std::collections::btree_map::BTreeMap</span>;
+
+<span class="macro">use_contract!</span>(
+    <span class="ident">eth_bridge_contract</span>,
+    <span class="string">r#&quot;[{&quot;anonymous&quot;:false,&quot;inputs&quot;:[{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;peerId&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;removal&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;name&quot;:&quot;ChangePeers&quot;,&quot;type&quot;:&quot;event&quot;},{&quot;anonymous&quot;:false,&quot;inputs&quot;:[{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;destination&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;amount&quot;,&quot;type&quot;:&quot;uint256&quot;},{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;token&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;sidechainAsset&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;name&quot;:&quot;Deposit&quot;,&quot;type&quot;:&quot;event&quot;},{&quot;anonymous&quot;:false,&quot;inputs&quot;:[{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;to&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;Migrated&quot;,&quot;type&quot;:&quot;event&quot;},{&quot;anonymous&quot;:false,&quot;inputs&quot;:[],&quot;name&quot;:&quot;PreparedForMigration&quot;,&quot;type&quot;:&quot;event&quot;},{&quot;anonymous&quot;:false,&quot;inputs&quot;:[{&quot;indexed&quot;:false,&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;name&quot;:&quot;Withdrawal&quot;,&quot;type&quot;:&quot;event&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;newToken&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;string&quot;,&quot;name&quot;:&quot;symbol&quot;,&quot;type&quot;:&quot;string&quot;},{&quot;internalType&quot;:&quot;string&quot;,&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;},{&quot;internalType&quot;:&quot;uint8&quot;,&quot;name&quot;:&quot;decimals&quot;,&quot;type&quot;:&quot;uint8&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;addEthNativeToken&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;string&quot;,&quot;name&quot;:&quot;name&quot;,&quot;type&quot;:&quot;string&quot;},{&quot;internalType&quot;:&quot;string&quot;,&quot;name&quot;:&quot;symbol&quot;,&quot;type&quot;:&quot;string&quot;},{&quot;internalType&quot;:&quot;uint8&quot;,&quot;name&quot;:&quot;decimals&quot;,&quot;type&quot;:&quot;uint8&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;sidechainAssetId&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;addNewSidechainToken&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;newPeerAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;addPeerByPeer&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;thisContractAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;salt&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;prepareForMigration&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;tokenAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;amount&quot;,&quot;type&quot;:&quot;uint256&quot;},{&quot;internalType&quot;:&quot;address payable&quot;,&quot;name&quot;:&quot;to&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;from&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;receiveByEthereumAssetAddress&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;sidechainAssetId&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;amount&quot;,&quot;type&quot;:&quot;uint256&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;to&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;from&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;receiveBySidechainAssetId&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;peerAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;txHash&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;removePeerByPeer&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;to&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;amount&quot;,&quot;type&quot;:&quot;uint256&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;tokenAddress&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;sendERC20ToSidechain&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;to&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;name&quot;:&quot;sendEthToSidechain&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;payable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;thisContractAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;salt&quot;,&quot;type&quot;:&quot;bytes32&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;newContractAddress&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;address[]&quot;,&quot;name&quot;:&quot;erc20nativeTokens&quot;,&quot;type&quot;:&quot;address[]&quot;},{&quot;internalType&quot;:&quot;uint8[]&quot;,&quot;name&quot;:&quot;v&quot;,&quot;type&quot;:&quot;uint8[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;r&quot;,&quot;type&quot;:&quot;bytes32[]&quot;},{&quot;internalType&quot;:&quot;bytes32[]&quot;,&quot;name&quot;:&quot;s&quot;,&quot;type&quot;:&quot;bytes32[]&quot;}],&quot;name&quot;:&quot;shutDownAndMigrate&quot;,&quot;outputs&quot;:[],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;stateMutability&quot;:&quot;payable&quot;,&quot;type&quot;:&quot;receive&quot;},{&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;fallback&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address[]&quot;,&quot;name&quot;:&quot;initialPeers&quot;,&quot;type&quot;:&quot;address[]&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;addressVAL&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;addressXOR&quot;,&quot;type&quot;:&quot;address&quot;},{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;networkId&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;stateMutability&quot;:&quot;nonpayable&quot;,&quot;type&quot;:&quot;constructor&quot;},{&quot;inputs&quot;:[],&quot;name&quot;:&quot;_addressVAL&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[],&quot;name&quot;:&quot;_addressXOR&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[],&quot;name&quot;:&quot;_networkId&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;uint256&quot;}],&quot;name&quot;:&quot;_sidechainTokenAddressArray&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;name&quot;:&quot;_sidechainTokens&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;_sidechainTokensByAddress&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;_uniqueAddresses&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;acceptedEthTokens&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;address&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;address&quot;}],&quot;name&quot;:&quot;isPeer&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[],&quot;name&quot;:&quot;peersCount&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;uint256&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;uint256&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;},{&quot;inputs&quot;:[{&quot;internalType&quot;:&quot;bytes32&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bytes32&quot;}],&quot;name&quot;:&quot;used&quot;,&quot;outputs&quot;:[{&quot;internalType&quot;:&quot;bool&quot;,&quot;name&quot;:&quot;&quot;,&quot;type&quot;:&quot;bool&quot;}],&quot;stateMutability&quot;:&quot;view&quot;,&quot;type&quot;:&quot;function&quot;}]&quot;#</span>
+);
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">METHOD_ID_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">MethodId</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="ident">METHOD_ID_SIZE</span>];
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_method_id</span>(<span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>) -&gt; <span class="ident">MethodId</span> {
+    <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">function</span>.<span class="ident">signature</span>(<span class="bool-val">false</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">id</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">METHOD_ID_SIZE</span>];
+    <span class="ident">id</span>.<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">keccak_256</span>(<span class="ident">signature</span>.<span class="ident">as_bytes</span>())[..<span class="ident">METHOD_ID_SIZE</span>]);
+    <span class="ident">id</span>
+}
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_ETH_NATIVE_TOKEN_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_ETH_NATIVE_TOKEN_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_ETH_NATIVE_TOKEN_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_NEW_SIDECHAIN_TOKEN_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_NEW_SIDECHAIN_TOKEN_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_NEW_SIDECHAIN_TOKEN_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">5</span>;
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_PEER_BY_PEER_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_PEER_BY_PEER_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">ADD_PEER_BY_PEER_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">REMOVE_PEER_BY_PEER_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">REMOVE_PEER_BY_PEER_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_FN</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">Function</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_ID</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_TX_HASH_ARG_POS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FunctionMeta</span> {
+    <span class="kw">pub</span> <span class="ident">function</span>: <span class="ident">Function</span>,
+    <span class="kw">pub</span> <span class="ident">tx_hash_arg_pos</span>: <span class="ident">usize</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">FunctionMeta</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">function</span>: <span class="ident">Function</span>, <span class="ident">tx_hash_arg_pos</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">FunctionMeta</span> {
+            <span class="ident">function</span>,
+            <span class="ident">tx_hash_arg_pos</span>,
+        }
+    }
+}
+
+<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">FUNCTIONS</span>: <span class="ident">OnceBox</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">MethodId</span>, <span class="ident">FunctionMeta</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceBox::new</span>();
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_add_peer_by_peer_fn</span>() -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">add_peer_by_peer_fn</span> <span class="op">=</span> <span class="ident">ADD_PEER_BY_PEER_FN</span>
+        .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::add_peer_by_peer::function</span>()));
+    <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">add_peer_by_peer_fn</span>))
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_remove_peer_by_peer_fn</span>() -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MethodId</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">remove_peer_by_peer_fn</span> <span class="op">=</span> <span class="ident">REMOVE_PEER_BY_PEER_FN</span>
+        .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::remove_peer_by_peer::function</span>()));
+    <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">remove_peer_by_peer_fn</span>))
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">functions</span>() -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">MethodId</span>, <span class="ident">FunctionMeta</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">add_eth_native_token_fn</span> <span class="op">=</span> <span class="ident">ADD_ETH_NATIVE_TOKEN_FN</span>
+        .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::add_eth_native_token::function</span>()));
+    <span class="kw">let</span> <span class="ident">add_new_sidechain_token_fn</span> <span class="op">=</span> <span class="ident">ADD_NEW_SIDECHAIN_TOKEN_FN</span>.<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::add_new_sidechain_token::function</span>())
+    });
+    <span class="kw">let</span> <span class="ident">add_peer_by_peer_fn</span> <span class="op">=</span> <span class="ident">ADD_PEER_BY_PEER_FN</span>
+        .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::add_peer_by_peer::function</span>()));
+    <span class="kw">let</span> <span class="ident">remove_peer_by_peer_fn</span> <span class="op">=</span> <span class="ident">REMOVE_PEER_BY_PEER_FN</span>
+        .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::remove_peer_by_peer::function</span>()));
+    <span class="kw">let</span> <span class="ident">receive_by_eth_asset_address_fn</span> <span class="op">=</span> <span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_FN</span>.<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::receive_by_ethereum_asset_address::function</span>())
+    });
+    <span class="kw">let</span> <span class="ident">receive_by_sidechain_asset_id_fn</span> <span class="op">=</span> <span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_FN</span>.<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="ident">Box::new</span>(<span class="ident">eth_bridge_contract::functions::receive_by_sidechain_asset_id::function</span>())
+    });
+    <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="macro">vec!</span>[
+        (
+            <span class="kw-2">*</span><span class="ident">ADD_ETH_NATIVE_TOKEN_ID</span>
+                .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">add_eth_native_token_fn</span>))),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">add_eth_native_token_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">ADD_ETH_NATIVE_TOKEN_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+        (
+            <span class="kw-2">*</span><span class="ident">ADD_NEW_SIDECHAIN_TOKEN_ID</span>
+                .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">add_new_sidechain_token_fn</span>))),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">add_new_sidechain_token_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">ADD_NEW_SIDECHAIN_TOKEN_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+        (
+            <span class="kw-2">*</span><span class="ident">ADD_PEER_BY_PEER_ID</span>.<span class="ident">get_or_init</span>(<span class="ident">init_add_peer_by_peer_fn</span>),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">add_peer_by_peer_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">ADD_PEER_BY_PEER_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+        (
+            <span class="kw-2">*</span><span class="ident">REMOVE_PEER_BY_PEER_ID</span>.<span class="ident">get_or_init</span>(<span class="ident">init_remove_peer_by_peer_fn</span>),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">remove_peer_by_peer_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+        (
+            <span class="kw-2">*</span><span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID</span>
+                .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">receive_by_eth_asset_address_fn</span>))),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">receive_by_eth_asset_address_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+        (
+            <span class="kw-2">*</span><span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_ID</span>
+                .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">calculate_method_id</span>(<span class="kw-2">&amp;</span><span class="ident">receive_by_sidechain_asset_id_fn</span>))),
+            <span class="ident">FunctionMeta::new</span>(
+                <span class="ident">receive_by_sidechain_asset_id_fn</span>.<span class="ident">clone</span>(),
+                <span class="ident">RECEIVE_BY_SIDECHAIN_ASSET_ID_TX_HASH_ARG_POS</span>,
+            ),
+        ),
+    ]
+    .<span class="ident">into_iter</span>()
+    .<span class="ident">collect</span>();
+    <span class="ident">Box::new</span>(<span class="ident">map</span>)
+}
+
+<span class="doccomment">/// Contract&#39;s deposit event, means that someone transferred some amount of the token/asset to the</span>
+<span class="doccomment">/// bridge contract.</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">RuntimeDebug</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DepositEvent</span><span class="op">&lt;</span><span class="ident">EthAddress</span>, <span class="ident">AccountId</span>, <span class="ident">Balance</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">destination</span>: <span class="ident">AccountId</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">amount</span>: <span class="ident">Balance</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">token</span>: <span class="ident">EthAddress</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sidechain_asset</span>: <span class="ident">H256</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">EthAddress</span>, <span class="ident">AccountId</span>, <span class="ident">Balance</span><span class="op">&gt;</span> <span class="ident">DepositEvent</span><span class="op">&lt;</span><span class="ident">EthAddress</span>, <span class="ident">AccountId</span>, <span class="ident">Balance</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">destination</span>: <span class="ident">AccountId</span>,
+        <span class="ident">amount</span>: <span class="ident">Balance</span>,
+        <span class="ident">token</span>: <span class="ident">EthAddress</span>,
+        <span class="ident">sidechain_asset</span>: <span class="ident">H256</span>,
+    ) -&gt; <span class="self">Self</span> {
+        <span class="ident">DepositEvent</span> {
+            <span class="ident">destination</span>,
+            <span class="ident">amount</span>,
+            <span class="ident">token</span>,
+            <span class="ident">sidechain_asset</span>,
+        }
+    }
+}
+
+<span class="doccomment">/// Events that can be emitted by Sidechain smart-contract.</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">RuntimeDebug</span>))]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ContractEvent</span><span class="op">&lt;</span><span class="ident">EthAddress</span>, <span class="ident">AccountId</span>, <span class="ident">Balance</span><span class="op">&gt;</span> {
+    <span class="ident">Deposit</span>(<span class="ident">DepositEvent</span><span class="op">&lt;</span><span class="ident">EthAddress</span>, <span class="ident">AccountId</span>, <span class="ident">Balance</span><span class="op">&gt;</span>),
+    <span class="ident">ChangePeers</span>(<span class="ident">EthAddress</span>, <span class="ident">bool</span>),
+    <span class="ident">PreparedForMigration</span>,
+    <span class="ident">Migrated</span>(<span class="ident">EthAddress</span>),
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="eth_bridge" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (6dd68402c 2022-05-11)" ></div>
+</body></html>

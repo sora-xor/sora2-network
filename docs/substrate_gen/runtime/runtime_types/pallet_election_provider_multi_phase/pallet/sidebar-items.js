@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Call","Contains one variant per dispatchable that can be called by an extrinsic."],["Error","Error of the pallet that can be returned in response to dispatches."],["Event","The event emitted by this pallet."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ChangeRewardsRemaining",""],["Deposit",""],["TransactionApi",""],["Withdraw",""]]});

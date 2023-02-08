@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl&lt;Block:&nbsp;BlockT, C:&nbsp;CallApiAt&lt;Block&gt;&gt; ApiExt&lt;Block&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.RuntimeApiImpl.html\" title=\"struct framenode_runtime::RuntimeApiImpl\">RuntimeApiImpl</a>&lt;Block, C&gt;","synthetic":false,"types":["framenode_runtime::RuntimeApiImpl"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Claimed","The account has claimed their rewards. [account]"],["MigrationCompleted","Storage migration to version 1.2.0 completed"]]});

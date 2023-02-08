@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Erc20Migrated",""],["EthMigrated",""],["SidechainMigrated",""]]});

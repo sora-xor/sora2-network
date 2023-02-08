@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error","Custom dispatch errors of this pallet."]]});

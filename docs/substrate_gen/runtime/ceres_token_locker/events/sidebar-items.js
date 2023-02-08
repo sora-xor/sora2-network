@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["FeeChanged","Fee Changed [who, amount]"],["Locked","Funds Locked [who, amount, asset]"],["Withdrawn","Funds Withdrawn [who, amount, asset]"]]});

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl OpaqueKeys for <a class=\"struct\" href=\"framenode_runtime/opaque/struct.SessionKeys.html\" title=\"struct framenode_runtime::opaque::SessionKeys\">SessionKeys</a>","synthetic":false,"types":["framenode_runtime::opaque::SessionKeys"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode_runtime"] = [{"text":"impl Dispatchable for <a class=\"enum\" href=\"framenode_runtime/enum.Call.html\" title=\"enum framenode_runtime::Call\">Call</a>","synthetic":false,"types":["framenode_runtime::Call"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Exchange","Exchange of tokens has been performed [Caller Account, DEX Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount, Fee Amount]"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["DAGS_MERKLE_ROOTS",""],["DAGS_START_EPOCH",""],["ETCHASH_DAGS_MERKLE_ROOTS",""],["ETCHASH_DAGS_START_EPOCH",""]]});

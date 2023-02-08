@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["RawOrigin",""]],"mod":[["pallet",""]],"struct":[["Votes",""]]});

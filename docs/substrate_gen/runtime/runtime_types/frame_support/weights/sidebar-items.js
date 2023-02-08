@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["DispatchClass",""],["Pays",""]],"struct":[["DispatchInfo",""],["PerDispatchClass",""],["RuntimeDbWeight",""]]});

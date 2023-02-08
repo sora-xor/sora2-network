@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AuthorityAccount",""],["RewardsRemaining",""],["Stakers",""],["StorageApi",""],["TotalDeposited",""]]});

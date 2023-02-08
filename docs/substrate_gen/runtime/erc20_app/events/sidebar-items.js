@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Burned","[network_id, asset_id, sender, recepient, amount]"],["Minted","[network_id, asset_id, sender, recepient, amount]"]]});

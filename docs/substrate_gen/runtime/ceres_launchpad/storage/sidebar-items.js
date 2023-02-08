@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AuthorityAccount",""],["CeresBurnFeeAmount",""],["CeresForContributionInILO",""],["Contributions",""],["ILOs",""],["PenaltiesAccount",""],["StorageApi",""],["WhitelistedContributors",""],["WhitelistedIloOrganizers",""]]});

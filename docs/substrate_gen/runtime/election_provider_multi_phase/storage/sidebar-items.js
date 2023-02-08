@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CurrentPhase",""],["DesiredTargets",""],["MinimumUntrustedScore",""],["QueuedSolution",""],["Round",""],["SignedSubmissionIndices",""],["SignedSubmissionNextIndex",""],["SignedSubmissionsMap",""],["Snapshot",""],["SnapshotMetadata",""],["StorageApi",""]]});

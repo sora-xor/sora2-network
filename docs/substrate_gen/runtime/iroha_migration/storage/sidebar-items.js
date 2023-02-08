@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Account",""],["Balances",""],["MigratedAccounts",""],["PendingMultiSigAccounts",""],["PendingReferrals",""],["PublicKeys",""],["Quorums",""],["Referrers",""],["StorageApi",""]]});

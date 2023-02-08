@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["framenode"] = [{"text":"impl NativeExecutionDispatch for <a class=\"struct\" href=\"framenode/service/struct.ExecutorDispatch.html\" title=\"struct framenode::service::ExecutorDispatch\">ExecutorDispatch</a>","synthetic":false,"types":["framenode::service::ExecutorDispatch"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

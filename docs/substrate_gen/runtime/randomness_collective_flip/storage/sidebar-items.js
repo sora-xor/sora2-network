@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RandomMaterial",""],["StorageApi",""]]});
