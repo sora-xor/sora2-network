@@ -141,6 +141,7 @@ pub enum PredefinedAssetId {
     ETH = 7,
     XSTUSD = 8,
     XST = 9,
+    TBCD = 10,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -154,11 +155,15 @@ pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const XSTUSD: AssetId32<PredefinedAssetId> =
     AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 pub const XST: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XST);
+pub const TBCD: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::TBCD);
 pub const CERES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
 pub const DEMETER_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
     "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
+));
+pub const HERMES_ASSET_ID: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
 ));
 
 impl IsRepresentation for PredefinedAssetId {

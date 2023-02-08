@@ -8,6 +8,7 @@ pub type Migrations = (
     pallet_staking::migrations::lock_fix::LockFix<Runtime>,
     DexManagerMigration,
     XSTPoolMigration,
+    multicollateral_bonding_curve_pool::migrations::v2::InitializeTBCD<Runtime>,
 );
 
 pub struct PriceToolsMigration;
