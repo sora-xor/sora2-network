@@ -10,7 +10,7 @@ git config --global github.token ${GH_TOKEN}
 cd /home/
 git clone https://${GH_USER}:${GH_TOKEN}@${GH_REPOSITORY}
 cd sora2-network
-git checkout master
+git checkout ${GH_BRANCH}
 rm -rf docs
 git fetch
 git pull origin master
@@ -21,4 +21,4 @@ echo "<meta http-equiv=\"refresh\" content=\"0; url=assets\">" > target/doc/inde
 mv target/doc/* docs/
 git add docs
 git commit -sm 'Publish doc'
-git push --force origin master
+git push origin ${GH_BRANCH}
