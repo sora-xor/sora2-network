@@ -33,28 +33,28 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::H256;
 use codec::IoReader;
 use common::{AssetId32, PredefinedAssetId};
-pub use parachain_gen::{
-    parachain_runtime, DefaultConfig as ParachainConfig,
-    SoraExtrinsicParams as ParachainExtrinsicParams,
-};
-use sp_core::{sr25519, Bytes};
+pub use parachain_gen::{parachain_runtime, SoraExtrinsicParams as ParachainExtrinsicParams};
+use sp_core::Bytes;
 use sp_mmr_primitives::Proof;
 pub use substrate_gen::{
-    runtime as mainnet_runtime, DefaultConfig as MainnetConfig,
-    SoraExtrinsicParams as MainnetExtrinsicParams,
+    runtime as mainnet_runtime, SoraExtrinsicParams as MainnetExtrinsicParams,
 };
 pub use subxt::rpc::Subscription;
+use subxt::Config as SubxtConfig;
 use subxt::OnlineClient;
 
-pub type ApiInner<T> = OnlineClient<T>;
-pub type KeyPair = sr25519::Pair;
-pub type PairSigner<T> = subxt::tx::PairSigner<T, KeyPair>;
-pub type AccountId<T> = <T as subxt::Config>::AccountId;
-pub type Address<T> = <T as subxt::Config>::Address;
-pub type Index<T> = <T as subxt::Config>::Index;
-pub type BlockNumber<T> = <T as subxt::Config>::BlockNumber;
-pub type BlockHash<T> = <T as subxt::Config>::Hash;
-pub type Signature<T> = <T as subxt::Config>::Signature;
+pub type ApiInner<T> = OnlineClient<<T as ConfigExt>::Config>;
+pub type PairSigner<T> = <T as ConfigExt>::Signer;
+pub type AccountId<T> = <<T as ConfigExt>::Config as SubxtConfig>::AccountId;
+pub type Address<T> = <<T as ConfigExt>::Config as SubxtConfig>::Address;
+pub type Index<T> = <<T as ConfigExt>::Config as SubxtConfig>::Index;
+pub type SubxtBlockHash<T> = <<T as ConfigExt>::Config as SubxtConfig>::Hash;
+pub type BlockNumber<T> = <T as ConfigExt>::BlockNumber;
+pub type BlockHash<T> = <T as ConfigExt>::Hash;
+pub type Signature<T> = <<T as ConfigExt>::Config as SubxtConfig>::Signature;
+pub type ExtrinsicParams<T> = <<T as ConfigExt>::Config as SubxtConfig>::ExtrinsicParams;
+pub type OtherParams<T> =
+    <ExtrinsicParams<T> as subxt::tx::ExtrinsicParams<Index<T>, SubxtBlockHash<T>>>::OtherParams;
 pub type MmrHash = H256;
 pub type LeafExtra = LeafExtraData<H256, H256>;
 pub type BeefySignedCommitment<T> =
@@ -79,7 +79,7 @@ impl StorageKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct LeafProof<T: subxt::Config> {
+pub struct LeafProof<T: ConfigExt> {
     pub block_hash: BlockHash<T>,
     pub leaf: MmrLeaf<T>,
     pub proof: Proof<MmrHash>,
@@ -89,7 +89,7 @@ pub struct LeafProof<T: subxt::Config> {
 pub struct EncodedBeefyCommitment(pub Bytes);
 
 impl EncodedBeefyCommitment {
-    pub fn decode<T: subxt::Config>(&self) -> AnyResult<BeefySignedCommitment<T>> {
+    pub fn decode<T: ConfigExt>(&self) -> AnyResult<BeefySignedCommitment<T>> {
         let mut reader = IoReader(&self.0[..]);
         Ok(Decode::decode(&mut reader)?)
     }

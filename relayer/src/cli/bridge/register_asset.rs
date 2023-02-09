@@ -117,17 +117,8 @@ impl Command {
         };
         let call = runtime::runtime_types::framenode_runtime::RuntimeCall::ERC20App(call);
         info!("Sudo call extrinsic: {:?}", call);
-        let result = sub
-            .api()
-            .tx()
-            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
+        sub.submit_extrinsic(&runtime::tx().sudo().sudo(call))
             .await?;
-        info!("Extrinsic successful");
-        sub_log_tx_events::<mainnet_runtime::Event, _>(result);
         Ok(())
     }
 

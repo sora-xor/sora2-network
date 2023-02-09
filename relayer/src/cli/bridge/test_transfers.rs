@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::cli::prelude::*;
+use crate::substrate::traits::KeyPair;
 use crate::substrate::AssetId;
 use bridge_types::types::AssetKind;
 use std::collections::HashMap;
@@ -122,7 +123,13 @@ impl Command {
             match asset_kind {
                 AssetKind::Thischain => {
                     let acc = sub.account_id();
-                    let sub = sub.clone().unsigned().try_sign_with("//Alice").await?;
+                    let sub = sub
+                        .clone()
+                        .unsigned()
+                        .signed(subxt::tx::PairSigner::new(
+                            KeyPair::from_string("//Alice", None).unwrap(),
+                        ))
+                        .await?;
                     sub.api()
                         .tx()
                         .sign_and_submit_then_watch_default(

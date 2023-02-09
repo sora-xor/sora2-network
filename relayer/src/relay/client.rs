@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::*;
+use crate::substrate::binary_search_first_occurence;
 use crate::substrate::types::*;
 use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_common::beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet};
@@ -39,35 +40,6 @@ use common::Balance;
 use futures::Future;
 
 const PARACHAIN_EPOCH_DURATION: u64 = 1800;
-
-async fn binary_search_first_occurence<T: PartialOrd, F, Fut>(
-    low: u32,
-    high: u32,
-    value: T,
-    f: F,
-) -> AnyResult<Option<u32>>
-where
-    F: Fn(u32) -> Fut,
-    Fut: Future<Output = AnyResult<Option<T>>>,
-{
-    let mut low = low;
-    let mut high = high;
-    while low < high {
-        let mid = (high + low) / 2;
-        let found_value = f(mid).await?;
-        match found_value {
-            None => low = mid + 1,
-            Some(found_value) if found_value < value => low = mid + 1,
-            _ => high = mid,
-        }
-    }
-    // Nonce between blocks can increase more than by 1
-    if f(low).await? >= Some(value) {
-        Ok(Some(low))
-    } else {
-        Ok(None)
-    }
-}
 
 pub type ConfigOf<C> = <C as RuntimeClient>::Config;
 pub type BlockNumberOf<C> = <ConfigOf<C> as subxt::Config>::BlockNumber;
@@ -101,7 +73,6 @@ pub trait RuntimeClient {
     ) -> subxt::tx::StaticTxPayload<Self::SubmitSignatureCommitment>;
     fn client(&self) -> &SubSignedClient<Self::Config>;
     fn epoch_duration(&self) -> AnyResult<u64>;
-    async fn latest_beefy_block(&self, network_id: GenericNetworkId) -> AnyResult<u64>;
     async fn first_beefy_block(&self) -> AnyResult<u64>;
     async fn current_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet>;
     async fn next_validator_set(&self, network_id: GenericNetworkId) -> AnyResult<ValidatorSet>;
@@ -112,6 +83,7 @@ pub trait RuntimeClient {
         network_id: GenericNetworkId,
         nonce: u64,
     ) -> AnyResult<Option<BlockNumber<Self::Config>>>;
+    async fn latest_beefy_block(&self, network_id: GenericNetworkId) -> AnyResult<u64>;
     async fn network_id(&self) -> AnyResult<GenericNetworkId>;
     async fn submit_messages_commitment(
         &self,
@@ -287,58 +259,6 @@ impl RuntimeClient for SubstrateRuntimeClient {
             .fetch_or_default(&storage, None)
             .await?;
         Ok(nonce)
-    }
-
-    async fn find_message_block(
-        &self,
-        network_id: GenericNetworkId,
-        nonce: u64,
-    ) -> AnyResult<Option<BlockNumber<Self::Config>>> {
-        let storage = match network_id {
-            GenericNetworkId::EVM(chain_id) => runtime::storage()
-                .bridge_outbound_channel()
-                .channel_nonces(chain_id),
-            GenericNetworkId::Sub(network_id) => runtime::storage()
-                .substrate_bridge_outbound_channel()
-                .channel_nonces(network_id),
-        };
-        let low = 1u32;
-        let high = self
-            .0
-            .api()
-            .rpc()
-            .header(None)
-            .await?
-            .expect("should exist")
-            .number;
-
-        trace!(
-            "Searching for message with nonce {} in block range {}..={}",
-            nonce,
-            low,
-            high
-        );
-        let start_block = binary_search_first_occurence(low, high, nonce, |block| {
-            let storage = &storage;
-            async move {
-                let hash = self
-                    .0
-                    .api()
-                    .rpc()
-                    .block_hash(Some(block.into()))
-                    .await?
-                    .expect("should exist");
-                let nonce = self.0.api().storage().fetch(storage, Some(hash)).await?;
-                info!("Nonce at block {}: {:?}", block, nonce);
-                Ok(nonce)
-            }
-        })
-        .await?;
-        info!(
-            "Found message with nonce {} at block {:?}",
-            nonce, start_block
-        );
-        Ok(start_block)
     }
 
     async fn network_id(&self) -> AnyResult<GenericNetworkId> {

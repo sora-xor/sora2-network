@@ -29,9 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::cli::prelude::*;
-use crate::relay::justification::BeefyJustification;
-use crate::substrate::EncodedBeefyCommitment;
-use beefy_gadget_rpc::BeefyApiClient;
+use crate::relay::beefy_syncer::BeefySyncer;
+use futures::StreamExt;
 
 #[derive(Args, Clone, Debug)]
 pub(super) struct Command {
@@ -41,19 +40,21 @@ pub(super) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let sub_api = self.sub.get_unsigned_substrate().await?;
+        let sub = self.sub.get_unsigned_substrate().await?;
 
-        // let proof = sub_api.mmr_generate_proof(1, None).await?;
-        // info!("Proof: {:#?}", proof);
-        let mut beefy_sub = sub_api.beefy().subscribe_justifications().await?;
-        while let Some(commitment) = beefy_sub.next().await.transpose()? {
-            let justification = BeefyJustification::create(
-                sub_api.clone(),
-                EncodedBeefyCommitment::decode::<MainnetConfig>(&commitment)?,
-            )
-            .await?;
-            println!("{:#?}", justification);
+        let syncer = BeefySyncer::new();
+        syncer.update_latest_sent(1);
+        let mut stream = crate::substrate::beefy_subscription::subscribe_beefy_justifications(
+            sub.clone(),
+            syncer.clone(),
+        )
+        .await?;
+        while let Some(justification) = stream.next().await {
+            println!("Justification: {:?}", justification);
+            let justification = justification?;
+            syncer.update_latest_sent(justification.commitment.block_number.into());
         }
+
         Ok(())
     }
 }

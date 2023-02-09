@@ -31,6 +31,7 @@
 use std::time::Duration;
 
 use crate::cli::prelude::*;
+use crate::relay::beefy_syncer::BeefySyncer;
 use crate::relay::substrate::RelayBuilder;
 
 #[derive(Args, Clone, Debug)]
@@ -42,12 +43,16 @@ pub(crate) struct Command {
     /// Send all Beefy commitments
     #[clap(short, long)]
     send_unneeded_commitments: bool,
+    /// Not send messages from Substrate to Ethereum
+    #[clap(long)]
+    disable_message_relay: bool,
 }
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let eth = self.eth.get_signed_ethereum().await?;
         let sub = self.sub.get_unsigned_substrate().await?;
+        let syncer = BeefySyncer::new();
         let network_id = eth.inner().get_chainid().await.context("fetch chain id")?;
         let eth_app = loop {
             let eth_app = sub
@@ -73,17 +78,29 @@ impl Command {
             .call()
             .await
             .context("fetch beefy light client address")?;
-        RelayBuilder::new()
-            .with_substrate_client(sub)
-            .with_ethereum_client(eth)
-            .with_inbound_channel_contract(inbound_channel_address)
+        let relay = RelayBuilder::new()
+            .with_substrate_client(sub.clone())
+            .with_ethereum_client(eth.clone())
             .with_beefy_contract(beefy)
+            .with_syncer(syncer.clone())
             .build()
             .await
-            .context("build substrate relay")?
-            .run(!self.send_unneeded_commitments)
-            .await
-            .context("run substrate relay")?;
+            .context("build substrate relay")?;
+        if self.disable_message_relay {
+            relay.run(!self.send_unneeded_commitments).await?;
+        } else {
+            let messages_relay = crate::relay::substrate_messages::RelayBuilder::new()
+                .with_inbound_channel_contract(inbound_channel_address)
+                .with_receiver_client(eth)
+                .with_sender_client(sub)
+                .with_syncer(syncer)
+                .build()
+                .await?;
+            tokio::try_join!(
+                relay.run(!self.send_unneeded_commitments),
+                messages_relay.run()
+            )?;
+        }
         Ok(())
     }
 }

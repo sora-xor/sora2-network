@@ -191,7 +191,7 @@ impl Relay {
             header.clone(),
             proof.clone(),
             mix_nonce,
-            self.sub.public_key(),
+            self.sub.account_id(),
             header_signature,
         );
         let tx = self.sub.api().tx().create_unsigned(&tx)?;

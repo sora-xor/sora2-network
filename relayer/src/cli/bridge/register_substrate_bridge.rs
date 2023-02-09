@@ -106,16 +106,7 @@ impl Command {
                 next_validator_set: next_authorities });
             info!("Submit call: {call:?}");
             let call = parachain_runtime::tx().sudo().sudo(call);
-            let events = para
-                .api()
-                .tx()
-                .sign_and_submit_then_watch_default(&call, &para)
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?;
-            sub_log_tx_events::<parachain_runtime::Event, _>(events);
+            sub.submit_extrinsic(&call).await?;
         }
 
         if self.sora || self.both {
@@ -175,16 +166,7 @@ impl Command {
                 );
             info!("Submit call: {call:?}");
             let call = mainnet_runtime::tx().sudo().sudo(call);
-            let events = sub
-                .api()
-                .tx()
-                .sign_and_submit_then_watch_default(&call, &sub)
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?;
-            sub_log_tx_events::<mainnet_runtime::Event, _>(events);
+            sub.submit_extrinsic(&call).await?;
         }
 
         Ok(())
