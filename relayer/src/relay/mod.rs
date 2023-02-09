@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pub mod beefy_syncer;
-// pub mod client;
 pub mod ethereum;
 pub mod ethereum_messages;
 pub mod justification;
