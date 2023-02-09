@@ -30,9 +30,9 @@
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, Call, Currencies, GetXorFeeAccountId, Origin,
-    PoolXYK, Referrals, ReferrerWeight, Runtime, SoraParliamentShare, Staking, System, Tokens,
-    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    AccountId, AssetId, Assets, Balance, Balances, Call, Currencies, GetBaseAssetId,
+    GetXorFeeAccountId, Origin, PoolXYK, Referrals, ReferrerWeight, Runtime, SoraParliamentShare,
+    Staking, System, Tokens, Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -355,9 +355,10 @@ fn custom_fees_work() {
 
         // An extrinsic without manual fee adjustment
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Balances(pallet_balances::Call::transfer {
-                dest: bob(),
-                value: TRANSFER_AMOUNT,
+            &Call::Assets(assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: bob(),
+                amount: TRANSFER_AMOUNT,
             });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -480,9 +481,10 @@ fn normal_fees_multiplied() {
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         // An extrinsic without custom fee adjustment
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Balances(pallet_balances::Call::transfer {
-                dest: bob(),
-                value: TRANSFER_AMOUNT,
+            &Call::Assets(assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: bob(),
+                amount: TRANSFER_AMOUNT,
             });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
