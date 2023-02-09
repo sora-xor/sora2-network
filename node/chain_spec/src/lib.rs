@@ -916,7 +916,6 @@ fn testnet_genesis(
         XST.into(),
         TBCD.into(),
     ];
-    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
@@ -1055,17 +1054,6 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"TBCD".to_vec()),
                     AssetName(b"SORA Token Bonding Curve Dollar".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                    Balance::zero(),
-                    true,
-                    None,
-                    None,
-                ),
-                (
-                    XSTUSD.into(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
