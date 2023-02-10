@@ -481,10 +481,8 @@ fn normal_fees_multiplied() {
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         // An extrinsic without custom fee adjustment
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Assets(assets::Call::transfer {
-                asset_id: GetBaseAssetId::get(),
-                to: bob(),
-                amount: TRANSFER_AMOUNT,
+            &Call::OracleProxy(oracle_proxy::Call::enable_oracle {
+                oracle: common::Oracle::BandChainFeed,
             });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
