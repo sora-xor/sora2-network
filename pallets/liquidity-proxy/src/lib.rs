@@ -1530,7 +1530,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::StorageVersion;
+    use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -1658,6 +1658,7 @@ pub mod pallet {
         /// - `max_input_amount`: the maximum amount to be sold in input_asset_id,
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::swap_transfer_batch(
                 receivers.len() as u32,
                 receivers.iter()
@@ -1670,7 +1671,7 @@ pub mod pallet {
             receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)>,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
-            max_input_amount: Balance,
+            mut max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
@@ -1682,44 +1683,18 @@ pub mod pallet {
                 selected_source_types.clone(),
             );
 
-            let _ =
-                fallible_iterator::convert(receivers.iter().map(|val| Ok::<_, DispatchError>(val)))
-                    .fold(balance!(0), |acc, (asset_id, recv_batch)| {
-                        if Self::is_forbidden_filter(
-                            &input_asset_id,
-                            asset_id,
-                            &selected_source_types,
-                            &filter_mode,
-                        ) {
-                            fail!(Error::<T>::ForbiddenFilter);
-                        }
-                        let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
-                        let quote_amount = QuoteAmount::with_desired_input(out_amount);
-                        let input_amount = Self::quote(
-                            dex_id,
-                            &input_asset_id,
-                            asset_id,
-                            quote_amount,
-                            filter.clone(),
-                            true,
-                        )
-                        .map(|swap_outcome| swap_outcome.amount)?;
-
-                        match input_amount.checked_add(acc) {
-                            Some(sum) if sum <= max_input_amount => Ok(sum),
-                            Some(sum) if sum > max_input_amount => {
-                                Err(Error::<T>::SlippageNotTolerated.into())
-                            }
-                            _ => Err(Error::<T>::CalculationError.into()),
-                        }
-                    })?;
-
-            let _ = fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
+            fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                 |(asset_id, recv_batch)| {
-                    let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
+                    if Self::is_forbidden_filter(
+                        &input_asset_id,
+                        &asset_id,
+                        &selected_source_types,
+                        &filter_mode,
+                    ) {
+                        fail!(Error::<T>::ForbiddenFilter);
+                    }
 
-                    // max_input_amount will exceed the actual input amount
-                    // necessary sanity checks were introduced earlier
+                    let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
                     Self::inner_exchange(
                         dex_id,
                         &who,
@@ -1732,6 +1707,10 @@ pub mod pallet {
                         },
                         filter.clone(),
                     )?;
+                    max_input_amount = max_input_amount
+                        .checked_sub(out_amount)
+                        .ok_or(Error::<T>::SlippageNotTolerated)?;
+
                     fallible_iterator::convert(recv_batch.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
                             assets::Pallet::<T>::transfer_from(

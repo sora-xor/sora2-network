@@ -3230,7 +3230,7 @@ fn test_batch_swap_desired_input_successful() {
             ]),
             DEX_A_ID,
             XOR,
-            balance!(30),
+            balance!(32),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));

@@ -468,7 +468,7 @@ benchmarks! {
         let mut receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)> = Vec::new();
         setup_benchmark::<T>()?;
         for i in 0..n {
-            let raw_asset_id = [i.to_be_bytes().to_vec(), [0u8; 28].to_vec()]
+            let raw_asset_id = [[3u8; 28].to_vec(), i.to_be_bytes().to_vec()]
                 .concat()
                 .try_into()
                 .expect("Failed to cast vector to [u8; 32]");
@@ -524,14 +524,14 @@ benchmarks! {
                 DEX.into(),
                 XOR.into(),
                 new_asset_id.into(),
-                balance!(1000),
-                balance!(1000),
-                balance!(1000),
-                balance!(1000),
+                balance!(10000),
+                balance!(10000),
+                balance!(10000),
+                balance!(10000),
             ).expect("Failed to deposit liquidity");
             let recv_batch: Vec<BatchReceiverInfo<T>> = (0..k).into_iter().map(|recv_num| {
                 let account_id = generic_account::<T>(i, recv_num);
-                let target_amount = balance!(1);
+                let target_amount = balance!(0.1);
                 BatchReceiverInfo {account_id, target_amount}
             }).collect();
             receivers.push((new_asset_id.into(), recv_batch));
