@@ -51,7 +51,7 @@ use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
-use sp_std::{cmp::Ordering, vec};
+use sp_std::{cmp::Ord, cmp::Ordering, vec};
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
@@ -1683,6 +1683,7 @@ pub mod pallet {
                 selected_source_types.clone(),
             );
 
+            let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
             fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                 |(asset_id, recv_batch)| {
                     if Self::is_forbidden_filter(
@@ -1692,6 +1693,10 @@ pub mod pallet {
                         &filter_mode,
                     ) {
                         fail!(Error::<T>::ForbiddenFilter);
+                    }
+
+                    if !unique_asset_ids.insert(asset_id.clone()) {
+                        Err(Error::<T>::AggregationError)?
                     }
 
                     let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
@@ -1711,8 +1716,12 @@ pub mod pallet {
                         .checked_sub(out_amount)
                         .ok_or(Error::<T>::SlippageNotTolerated)?;
 
+                    let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
                     fallible_iterator::convert(recv_batch.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
+                            if !unique_batch_receivers.insert(receiver.account_id.clone()) {
+                                Err(Error::<T>::AggregationError)?
+                            }
                             assets::Pallet::<T>::transfer_from(
                                 &asset_id,
                                 &who,

@@ -3276,3 +3276,71 @@ fn test_batch_swap_desired_input_too_low() {
         );
     });
 }
+
+#[test]
+fn test_batch_swap_fail_with_duplicate_asset_ids() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    println!("too_low");
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                Origin::signed(alice()),
+                Vec::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                ]),
+                DEX_A_ID,
+                XOR,
+                balance!(100),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::AggregationError
+        );
+    });
+}
+
+#[test]
+fn test_batch_swap_fail_with_duplicate_receivers_within_asset_id() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    println!("too_low");
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                Origin::signed(alice()),
+                Vec::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                ]),
+                DEX_A_ID,
+                XOR,
+                balance!(100),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::AggregationError
+        );
+    });
+}
