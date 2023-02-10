@@ -83,14 +83,10 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
         let sender_network_id = sender
-            .api()
-            .storage()
-            .fetch_or_default(&S::network_id(), None)
+            .storage_fetch_or_default(&S::network_id(), ())
             .await?;
         let receiver_network_id = receiver
-            .api()
-            .storage()
-            .fetch_or_default(&R::network_id(), None)
+            .storage_fetch_or_default(&R::network_id(), ())
             .await?;
         Ok(Relay {
             sender,
@@ -164,12 +160,7 @@ where
 
     async fn inbound_channel_nonce(&self) -> AnyResult<u64> {
         let storage = R::substrate_bridge_inbound_nonce(self.sender_network_id);
-        let nonce = self
-            .receiver
-            .api()
-            .storage()
-            .fetch_or_default(&storage, None)
-            .await?;
+        let nonce = self.receiver.storage_fetch_or_default(&storage, ()).await?;
         Ok(nonce)
     }
 

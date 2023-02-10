@@ -51,8 +51,8 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
             .await?
             .into(),
     };
-    let latest_sent_hash = sender.block_hash(Some(latest_beefy_block.into())).await?;
-    let block_hash = sender.block_hash(Some(block_number)).await?;
+    let latest_sent_hash = sender.block_hash(latest_beefy_block).await?;
+    let block_hash = sender.block_hash(block_number).await?;
     let digest = sender.auxiliary_digest(Some(block_hash)).await?;
     if digest.logs.is_empty() {
         return Err(anyhow!("Digest is empty"));
@@ -138,16 +138,7 @@ async fn find_message_block<S: SenderConfig>(
 ) -> AnyResult<Option<BlockNumber<S>>> {
     let storage = S::bridge_outbound_nonce(network_id);
     let low: BlockNumber<S> = 1u32.into();
-    let high = BlockNumber::<S>::from(
-        sender
-            .api()
-            .rpc()
-            .header(None)
-            .await?
-            .expect("should exist")
-            .number()
-            .clone(),
-    );
+    let high = sender.block_number(()).await?;
 
     trace!(
         "Searching for message with nonce {} in block range {:?}..={:?}",
@@ -158,21 +149,11 @@ async fn find_message_block<S: SenderConfig>(
     let start_block = binary_search_first_occurence(low, high, nonce, |block| {
         let storage = &storage;
         async move {
-            let hash = sender.block_hash(Some(block)).await?;
-            let nonce = sender
-                .api()
-                .storage()
-                .fetch(storage, Some(hash.into()))
-                .await?;
-            info!("Nonce at block {:?}: {:?}", block, nonce);
+            let nonce = sender.storage_fetch(storage, block).await?;
             Ok(nonce)
         }
     })
     .await?;
-    info!(
-        "Found message with nonce {} at block {:?}",
-        nonce, start_block
-    );
     Ok(start_block)
 }
 
@@ -190,7 +171,7 @@ async fn find_commitment_with_nonce<S: SenderConfig>(
     };
     for i in 0..count {
         let block = start_block + i.into();
-        let block_hash = sender.block_hash(Some(block)).await;
+        let block_hash = sender.block_hash(block).await;
         let Ok(block_hash) = block_hash else {
                 return Ok(None);
             };
@@ -227,12 +208,8 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
                         e
                     })?;
                 if let Some((block, _commitment_hash)) = &commitment {
-                    let block_hash = sender.block_hash(Some(block.clone().into())).await?;
-                    let storage = S::bridge_outbound_nonce(network_id);
                     let nonce = sender
-                        .api()
-                        .storage()
-                        .fetch_or_default(&storage, Some(block_hash.into()))
+                        .storage_fetch_or_default(&S::bridge_outbound_nonce(network_id), *block)
                         .await?;
                     latest_nonce.store(nonce, Ordering::Relaxed);
                 }
@@ -241,38 +218,12 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
         })
         .filter_map(|x| async move {
             let x = x.transpose();
+            debug!("Found messages: {:?}", x);
             if x.is_none() {
+                debug!("Messages not found, waiting for next block...");
                 tokio::time::sleep(S::average_block_time()).await;
             }
             x
         });
     Box::pin(stream)
 }
-
-// #[derive(Clone)]
-// pub struct MessagesSubscribtion<S: SenderConfig, R: ReceiverConfig> {
-//     sender: SubUnsignedClient<S>,
-//     receiver_network_id: GenericNetworkId,
-//     latest_nonce: u64,
-// }
-
-// impl<S> Relay<S>
-// where
-//     S: SenderConfig,
-// {
-//     fn new(
-//         sender: SubUnsignedClient<S>,
-//         syncer: Option<BeefySyncer>,
-//         receiver_network_id: GenericNetworkId,
-//         latest_nonce: u64,
-//     ) -> Self {
-//         Self {
-//             sender,
-//             commitment_queue: VecDeque::new(),
-//             syncer,
-//             receiver_network_id,
-//             latest_nonce,
-//         }
-//     }
-
-// }

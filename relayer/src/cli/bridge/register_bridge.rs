@@ -59,13 +59,11 @@ impl Command {
 
         let network_id = eth.get_chainid().await?;
         let is_light_client_registered = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &mainnet_runtime::storage()
                     .ethereum_light_client()
                     .network_config(&network_id),
-                None,
+                (),
             )
             .await?
             .is_some();
@@ -97,13 +95,11 @@ impl Command {
         }
 
         let is_channel_registered = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &mainnet_runtime::storage()
                     .bridge_inbound_channel()
                     .channel_addresses(&network_id),
-                None,
+                (),
             )
             .await?
             .is_some();

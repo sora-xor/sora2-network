@@ -173,26 +173,22 @@ impl Command {
         let (contract, registered) = match self.apps {
             Apps::ERC20App { contract } => {
                 let registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .app_addresses(&network_id, &AssetKind::Sidechain),
-                        None,
+                        (),
                     )
                     .await?;
                 (contract, registered)
             }
             Apps::NativeApp { contract } => {
                 let registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .app_addresses(&network_id, &AssetKind::Thischain),
-                        None,
+                        (),
                     )
                     .await?;
                 (contract, registered)
@@ -201,11 +197,9 @@ impl Command {
             | Apps::EthAppNew { contract, .. }
             | Apps::EthAppExisting { contract, .. } => {
                 let registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage().eth_app().addresses(&network_id),
-                        None,
+                        (),
                     )
                     .await?
                     .map(|(contract, _)| contract);
@@ -213,13 +207,11 @@ impl Command {
             }
             Apps::MigrationApp { contract } => {
                 let registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .migration_app()
                             .addresses(&network_id),
-                        None,
+                        (),
                     )
                     .await?;
                 (contract, registered)

@@ -87,15 +87,11 @@ where
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
         let sender_network_id = sender
-            .api()
-            .storage()
-            .fetch_or_default(&S::network_id(), None)
+            .storage_fetch_or_default(&S::network_id(), ())
             .await?;
 
         let latest_beefy_block = sender
-            .api()
-            .storage()
-            .fetch_or_default(&R::latest_beefy_block(sender_network_id), None)
+            .storage_fetch_or_default(&R::latest_beefy_block(sender_network_id), ())
             .await?;
         syncer.update_latest_sent(latest_beefy_block);
         Ok(Relay {

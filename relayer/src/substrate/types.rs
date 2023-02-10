@@ -39,6 +39,7 @@ use sp_mmr_primitives::Proof;
 pub use substrate_gen::{
     runtime as mainnet_runtime, SoraExtrinsicParams as MainnetExtrinsicParams,
 };
+pub use subxt::rpc::ChainBlock;
 pub use subxt::rpc::Subscription;
 use subxt::Config as SubxtConfig;
 use subxt::OnlineClient;
@@ -52,6 +53,7 @@ pub type SubxtBlockHash<T> = <<T as ConfigExt>::Config as SubxtConfig>::Hash;
 pub type BlockNumber<T> = <T as ConfigExt>::BlockNumber;
 pub type BlockHash<T> = <T as ConfigExt>::Hash;
 pub type Signature<T> = <<T as ConfigExt>::Config as SubxtConfig>::Signature;
+pub type Header<T> = <<T as ConfigExt>::Config as SubxtConfig>::Header;
 pub type ExtrinsicParams<T> = <<T as ConfigExt>::Config as SubxtConfig>::ExtrinsicParams;
 pub type OtherParams<T> =
     <ExtrinsicParams<T> as subxt::tx::ExtrinsicParams<Index<T>, SubxtBlockHash<T>>>::OtherParams;
@@ -92,5 +94,35 @@ impl EncodedBeefyCommitment {
     pub fn decode<T: ConfigExt>(&self) -> AnyResult<BeefySignedCommitment<T>> {
         let mut reader = IoReader(&self.0[..]);
         Ok(Decode::decode(&mut reader)?)
+    }
+}
+
+pub enum BlockNumberOrHash {
+    Number(u64),
+    Hash(H256),
+    Best,
+}
+
+impl From<()> for BlockNumberOrHash {
+    fn from(_: ()) -> Self {
+        BlockNumberOrHash::Best
+    }
+}
+
+impl From<u64> for BlockNumberOrHash {
+    fn from(number: u64) -> Self {
+        BlockNumberOrHash::Number(number)
+    }
+}
+
+impl From<u32> for BlockNumberOrHash {
+    fn from(number: u32) -> Self {
+        BlockNumberOrHash::Number(number.into())
+    }
+}
+
+impl From<H256> for BlockNumberOrHash {
+    fn from(hash: H256) -> Self {
+        BlockNumberOrHash::Hash(hash)
     }
 }

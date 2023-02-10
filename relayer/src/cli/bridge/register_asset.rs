@@ -130,13 +130,11 @@ impl Command {
         let is_registered = match &self.asset_kind {
             AssetKind::ExistingERC20 { asset_id, .. } | AssetKind::Native { asset_id } => {
                 let is_registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .asset_kinds(&network_id, asset_id),
-                        None,
+                        (),
                     )
                     .await?
                     .is_some();
@@ -144,13 +142,11 @@ impl Command {
             }
             AssetKind::ERC20 { address, .. } => {
                 let is_registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .assets_by_addresses(&network_id, address),
-                        None,
+                        (),
                     )
                     .await?
                     .is_some();

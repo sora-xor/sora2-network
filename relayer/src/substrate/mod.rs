@@ -46,8 +46,11 @@ use sp_runtime::traits::AtLeast32BitUnsigned;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
 use subxt::events::EventDetails;
+use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, RpcClientT};
+use subxt::storage::address::Yes;
+use subxt::storage::StorageAddress;
 use subxt::tx::{Signer, TxEvents};
 pub use types::*;
 
@@ -235,9 +238,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .number()
             .clone();
         let mmr_leaves = self
-            .api()
-            .storage()
-            .fetch_or_default(&runtime::storage().mmr().number_of_leaves(), None)
+            .storage_fetch_or_default(&runtime::storage().mmr().number_of_leaves(), ())
             .await?;
         let beefy_start_block = latest_finalized_number.into().saturating_sub(mmr_leaves);
         debug!("Beefy started at: {}", beefy_start_block);
@@ -286,25 +287,93 @@ impl<T: ConfigExt> UnsignedClient<T> {
         &self.api
     }
 
-    pub async fn block_number(&self, at: Option<BlockHash<T>>) -> AnyResult<BlockNumber<T>> {
+    pub async fn header<N: Into<BlockNumberOrHash>>(&self, at: N) -> AnyResult<Header<T>> {
+        let hash = self.block_hash(at).await?;
         let header = self
             .api()
             .rpc()
-            .header(at.map(Into::into))
+            .header(Some(hash.into()))
             .await?
             .ok_or(anyhow::anyhow!("Header not found"))?;
+        Ok(header)
+    }
+
+    pub async fn block_number<N: Into<BlockNumberOrHash>>(
+        &self,
+        at: N,
+    ) -> AnyResult<BlockNumber<T>> {
+        let header = self.header(at).await?;
         Ok(BlockNumber::<T>::from(header.number().clone()))
     }
 
-    pub async fn block_hash(&self, at: Option<BlockNumber<T>>) -> AnyResult<BlockHash<T>> {
-        let at: Option<u64> = at.map(Into::into);
+    pub async fn finalized_head(&self) -> AnyResult<BlockHash<T>> {
+        let hash = self.api().rpc().finalized_head().await?;
+        Ok(hash.into())
+    }
+
+    pub async fn block_hash<N: Into<BlockNumberOrHash>>(&self, at: N) -> AnyResult<BlockHash<T>> {
+        let block_number = match at.into() {
+            BlockNumberOrHash::Number(n) => Some(n),
+            BlockNumberOrHash::Hash(h) => return Ok(h.into()),
+            BlockNumberOrHash::Best => None,
+        };
         let res = self
             .api()
             .rpc()
-            .block_hash(at.map(Into::into))
+            .block_hash(block_number.map(Into::into))
             .await?
             .ok_or(anyhow::anyhow!("Block not found"))?;
         Ok(res.into())
+    }
+
+    pub async fn block<N: Into<BlockNumberOrHash>>(
+        &self,
+        at: N,
+    ) -> AnyResult<ChainBlock<T::Config>> {
+        let hash = self.block_hash(at).await?;
+        let block = self
+            .api()
+            .rpc()
+            .block(Some(hash.into()))
+            .await?
+            .ok_or(anyhow::anyhow!("Block not found"))?;
+        Ok(block)
+    }
+
+    pub async fn storage_fetch<N, Address>(
+        &self,
+        address: &Address,
+        hash: N,
+    ) -> AnyResult<Option<<Address::Target as DecodeWithMetadata>::Target>>
+    where
+        Address: StorageAddress<IsFetchable = Yes>,
+        N: Into<BlockNumberOrHash>,
+    {
+        let hash = self.block_hash(hash).await?;
+        let res = self
+            .api()
+            .storage()
+            .fetch(address, Some(hash.into()))
+            .await?;
+        Ok(res)
+    }
+
+    pub async fn storage_fetch_or_default<N, Address>(
+        &self,
+        address: &Address,
+        hash: N,
+    ) -> AnyResult<<Address::Target as DecodeWithMetadata>::Target>
+    where
+        Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
+        N: Into<BlockNumberOrHash>,
+    {
+        let hash = self.block_hash(hash).await?;
+        let res = self
+            .api()
+            .storage()
+            .fetch_or_default(address, Some(hash.into()))
+            .await?;
+        Ok(res)
     }
 
     pub async fn signed(self, signer: PairSigner<T>) -> AnyResult<SignedClient<T>> {

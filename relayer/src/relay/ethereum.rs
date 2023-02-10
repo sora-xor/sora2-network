@@ -57,13 +57,11 @@ impl Relay {
     ) -> AnyResult<Self> {
         let chain_id = eth.get_chainid().await?;
         let consensus = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .network_config(&chain_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow!("Network is not registered"))?
@@ -80,13 +78,11 @@ impl Relay {
     pub async fn run(&self) -> AnyResult<()> {
         let finalized_block = self
             .sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .finalized_block(&self.chain_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow::anyhow!("Network is not registered"))?;
@@ -101,13 +97,11 @@ impl Relay {
         let mut current = finalized_block.number + 1;
         let mut best = self
             .sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .best_block(&self.chain_id),
-                None,
+                (),
             )
             .await?
             .expect("should exist")
@@ -121,13 +115,11 @@ impl Relay {
             while best.number + MAX_HEADER_IMPORTS_WITHOUT_CHECK <= current {
                 best = self
                     .sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &runtime::storage()
                             .ethereum_light_client()
                             .best_block(&self.chain_id),
-                        None,
+                        (),
                     )
                     .await?
                     .expect("should exist")
@@ -163,13 +155,11 @@ impl Relay {
         trace!("Checking if block is already present");
         let has_block = self
             .sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .headers(&self.chain_id, &header.compute_hash()),
-                None,
+                (),
             )
             .await;
         if let Ok(Some(_)) = has_block {

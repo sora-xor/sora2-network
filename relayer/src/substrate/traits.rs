@@ -19,6 +19,8 @@ use subxt::{
     tx::{Signer, StaticTxPayload},
 };
 
+use super::BlockNumberOrHash;
+
 pub type KeyPair = sp_core::sr25519::Pair;
 
 #[derive(Clone, Copy, Debug)]
@@ -35,6 +37,7 @@ pub trait ConfigExt: Clone + core::fmt::Debug {
         + Member
         + Copy
         + Into<u64>
+        + Into<BlockNumberOrHash>
         + Into<<Self::Config as subxt::Config>::BlockNumber>
         + From<<Self::Config as subxt::Config>::BlockNumber>
         + Serialize
@@ -48,6 +51,8 @@ pub trait ConfigExt: Clone + core::fmt::Debug {
         + DeserializeOwned
         + AsRef<[u8]>
         + AsMut<[u8]>
+        + Into<BlockNumberOrHash>
+        + From<H256>
         + Into<<Self::Config as subxt::Config>::Hash>
         + From<<Self::Config as subxt::Config>::Hash>;
     type Signer: Signer<Self::Config> + Clone + Sync + Send + 'static;

@@ -86,28 +86,17 @@ where
                 signed_validators.push(i)
             }
         }
-        let block_hash = sub
-            .api()
-            .rpc()
-            .block_hash(Some((commitment_block_number - 1).into()))
-            .await?
-            .expect("Block hash should exist");
         let validators: Vec<H160> = sub
-            .api()
-            .storage()
-            .fetch_or_default(&runtime::storage().beefy().authorities(), Some(block_hash))
+            .storage_fetch_or_default(
+                &runtime::storage().beefy().authorities(),
+                commitment_block_number - 1,
+            )
             .await?
             .0
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
-        let block_hash = sub
-            .api()
-            .rpc()
-            .block_hash(Some(commitment_block_number.into()))
-            .await?
-            .expect("Block hash should exist")
-            .into();
+        let block_hash = sub.block_hash(commitment_block_number).await?.into();
 
         let payload = Self::get_payload(&commitment).ok_or(anyhow!("Payload is not supported"))?;
         let (leaf_proof, simplified_proof) =
@@ -135,7 +124,7 @@ where
     ) -> AnyResult<(LeafProof<T>, Proof<H256>)> {
         for block_number in 0u32..=6u32 {
             let block_number = commitment.block_number.saturating_sub(block_number.into());
-            let block_hash = sub.block_hash(Some(block_number)).await?;
+            let block_hash = sub.block_hash(block_number).await?;
             let leaf_proof = sub
                 .mmr_generate_proof(block_number, Some(block_hash))
                 .await?;

@@ -64,37 +64,31 @@ impl Command {
                 (block, hash)
             } else {
                 let hash = sub.api().rpc().finalized_head().await?;
-                let number = sub.block_number(Some(hash)).await?;
+                let number = sub.block_number(hash).await?;
                 (number, hash)
             };
             let authorities = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage().mmr_leaf().beefy_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let next_authorities = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage()
                         .mmr_leaf()
                         .beefy_next_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let network_id = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage()
                         .beefy_light_client()
                         .this_network_id(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Network id not found"))?;
@@ -120,37 +114,31 @@ impl Command {
                 (block, hash)
             } else {
                 let hash = para.api().rpc().finalized_head().await?;
-                let number = para.block_number(Some(hash)).await?;
+                let number = para.block_number(hash).await?;
                 (number, hash)
             };
             let authorities = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage().beefy_mmr().beefy_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let next_authorities = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage()
                         .beefy_mmr()
                         .beefy_next_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let network_id = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage()
                         .beefy_light_client()
                         .this_network_id(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Network id not found"))?;

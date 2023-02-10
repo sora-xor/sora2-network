@@ -56,9 +56,7 @@ impl Command {
         let network_id = eth.inner().get_chainid().await.context("fetch chain id")?;
         let eth_app = loop {
             let eth_app = sub
-                .api()
-                .storage()
-                .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
+                .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
                 .await?;
             if let Some((eth_app, _)) = eth_app {
                 break eth_app;

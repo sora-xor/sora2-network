@@ -1,9 +1,12 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
 use crate::relay::beefy_syncer::BeefySyncer;
 use crate::{prelude::*, relay::justification::BeefyJustification};
 use beefy_primitives::VersionedFinalityProof;
 use futures::Stream;
 use futures::StreamExt;
-use sp_runtime::traits::{Header as HeaderT, UniqueSaturatedInto};
+use sp_runtime::traits::UniqueSaturatedInto;
 
 use super::BlockNumber;
 
@@ -18,13 +21,7 @@ where
     T: SenderConfig,
 {
     trace!("Get commitment from block {:?}", block);
-    let hash = sub.block_hash(Some(block)).await?;
-    let block = sub
-        .api()
-        .rpc()
-        .block(Some(hash.into()))
-        .await?
-        .expect("block should exist");
+    let block = sub.block(block).await?;
     if let Some(justifications) = block.justifications {
         for (engine, justification) in justifications {
             if &engine == b"BEEF" {
@@ -53,28 +50,15 @@ pub async fn find_mandatory_commitment<T>(
 where
     T: SenderConfig,
 {
-    let finalized_head = sub.api().rpc().finalized_head().await?;
-    let high = BlockNumber::<T>::from(
-        sub.api()
-            .rpc()
-            .header(Some(finalized_head))
-            .await?
-            .expect("finalized head must exist")
-            .number()
-            .clone(),
-    );
+    let finalized_head = sub.finalized_head().await?;
+    let high = sub.block_number(finalized_head).await?;
     let low: BlockNumber<T> = 1u32.into();
     let storage = T::current_validator_set();
     let block = super::binary_search_first_occurence(low, high, vset_id, |n| {
         let storage = &storage;
         let sub = &sub;
         async move {
-            let hash = sub.block_hash(Some(n)).await?;
-            let vset = sub
-                .api()
-                .storage()
-                .fetch_or_default(storage, Some(hash.into()))
-                .await?;
+            let vset = sub.storage_fetch_or_default(storage, n).await?;
             Ok(Some(vset.id))
         }
     })
@@ -94,8 +78,7 @@ where
             let sub = sub.clone();
             async move {
                 loop {
-                    let storage = T::current_validator_set();
-                    let vset = sub.api().storage().fetch_or_default(&storage, None).await?;
+                    let vset = sub.storage_fetch_or_default(&T::current_validator_set(), ()).await?;
                     if vset.id < i {
                         tokio::time::sleep(T::average_block_time()).await;
                         continue;
@@ -122,41 +105,42 @@ pub fn beefy_commitment_stream<T>(
 where
     T: SenderConfig + 'static,
 {
+    let latest_commitment = Arc::new(AtomicU64::new(syncer.latest_sent()));
     let stream = futures::stream::repeat(())
         .then(move |()| {
             let sub = sub.clone();
             let syncer = syncer.clone();
+            let latest_commitment = latest_commitment.clone();
             async move {
                 let latest_sent = syncer.latest_sent();
-                let latest_sent_hash = sub.block_hash(Some(latest_sent.unique_saturated_into())).await?;
                 let vset_storage = T::current_validator_set();
                 let latest_sent_vset = sub
-                    .api()
-                    .storage()
-                    .fetch_or_default(&vset_storage, Some(latest_sent_hash.into()))
+                    .storage_fetch_or_default(&vset_storage, latest_sent)
                     .await?.id;
                 let best_vset = sub
-                    .api()
-                    .storage()
-                    .fetch_or_default(&vset_storage, None)
+                    .storage_fetch_or_default(&vset_storage, ())
                     .await?.id;
                 if latest_sent_vset < best_vset {
                     debug!("Waiting for mandatory commitment");
                     tokio::time::sleep(T::average_block_time()).await;
                     return Ok(None);
                 }
-                let best_block: u64 = sub.block_number(None).await?.into();
+                let best_block: u64 = sub.block_number(()).await?.into();
                 let possible_beefy_block =
                     best_block - ((best_block - latest_sent) % BEEFY_MIN_DELTA as u64);
                 for i in 0..3 {
                     let block_to_check =
                         possible_beefy_block.saturating_sub(i * BEEFY_MIN_DELTA as u64);
+                    if block_to_check <= latest_commitment.load(Ordering::Relaxed) {
+                        break;
+                    }
                     if block_to_check <= latest_sent {
                         break;
                     }
                     let Some(justification) = get_commitment_from_block(&sub, block_to_check.unique_saturated_into(), false).await? else {
                         continue;
                     };
+                    latest_commitment.store(block_to_check, Ordering::Relaxed);
                     return Ok(Some(justification));
                 }
                 tokio::time::sleep(T::average_block_time()).await;
@@ -175,14 +159,8 @@ where
     T: SenderConfig + 'static,
 {
     let latest_sent = syncer.latest_sent();
-    let latest_sent_hash = sub
-        .block_hash(Some(latest_sent.unique_saturated_into()))
-        .await?;
-    let vset_storage = T::current_validator_set();
     let latest_sent_vset = sub
-        .api()
-        .storage()
-        .fetch_or_default(&vset_storage, Some(latest_sent_hash.into()))
+        .storage_fetch_or_default(&T::current_validator_set(), latest_sent)
         .await?
         .id;
     let mandatory_stream = mandatory_commitment_stream(sub.clone(), latest_sent_vset);

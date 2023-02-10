@@ -56,9 +56,7 @@ impl Command {
         let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
         let (_, native_asset_id) = sub
-            .api()
-            .storage()
-            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
+            .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .expect("network not found");
         let balance = sub
