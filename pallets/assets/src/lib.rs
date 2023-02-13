@@ -84,6 +84,7 @@ pub trait WeightInfo {
     fn force_mint() -> Weight;
     fn mint() -> Weight;
     fn burn() -> Weight;
+    fn force_burn() -> Weight;
     fn set_non_mintable() -> Weight;
 }
 
@@ -413,6 +414,18 @@ pub mod pallet {
             let issuer = ensure_signed(origin.clone())?;
             Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
             Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::force_burn())]
+        pub fn force_burn(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            from: T::AccountId,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin.clone())?;
+            Self::burn_unchecked(&asset_id, &from, amount)?;
             Ok(().into())
         }
 
@@ -830,6 +843,14 @@ impl<T: Config> Pallet<T> {
             Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
         }
 
+        Self::burn_unchecked(asset_id, from, amount)
+    }
+
+    fn burn_unchecked(
+        asset_id: &T::AssetId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
         let r = T::Currency::withdraw(*asset_id, from, amount);
         if r.is_err() {
             Self::ensure_asset_exists(&asset_id)?;

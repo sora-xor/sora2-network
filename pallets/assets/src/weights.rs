@@ -102,6 +102,14 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
+	// TODO: benchmark on reference hardware
+	// Storage: Tokens Accounts (r:1 w:1)
+	// Storage: Tokens TotalIssuance (r:1 w:1)
+	fn force_burn() -> Weight {
+		(43_500_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+	}
 	// Storage: Assets AssetOwners (r:1 w:0)
 	// Storage: Assets AssetInfos (r:1 w:1)
 	fn set_non_mintable() -> Weight {
@@ -125,6 +133,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn burn() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn force_burn() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn set_non_mintable() -> Weight {
