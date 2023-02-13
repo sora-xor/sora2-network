@@ -1861,7 +1861,7 @@ construct_runtime! {
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
+        Currencies: currencies::{Pallet} = 19,
         TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
