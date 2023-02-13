@@ -44,6 +44,7 @@ use core::convert::TryInto;
 
 use assets::AssetIdOf;
 use codec::{Decode, Encode};
+use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, Fixed, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
