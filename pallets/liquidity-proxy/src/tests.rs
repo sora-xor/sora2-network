@@ -3247,7 +3247,6 @@ fn test_batch_swap_desired_input_successful() {
 #[test]
 fn test_batch_swap_desired_input_too_low() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    println!("too_low");
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
@@ -3280,7 +3279,6 @@ fn test_batch_swap_desired_input_too_low() {
 #[test]
 fn test_batch_swap_fail_with_duplicate_asset_ids() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    println!("too_low");
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
@@ -3314,7 +3312,6 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
 #[test]
 fn test_batch_swap_fail_with_duplicate_receivers_within_asset_id() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    println!("too_low");
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
