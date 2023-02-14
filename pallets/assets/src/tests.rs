@@ -41,6 +41,7 @@ mod tests {
         ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
     };
     use frame_support::assert_noop;
+    use frame_support::error::BadOrigin;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
@@ -581,6 +582,47 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(0u32)
+            );
+        })
+    }
+
+    #[test]
+    fn should_force_burn_correctly() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(10u32),
+                true,
+                None,
+                None,
+            ));
+            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(100u32)));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(100u32)
+            );
+            assert_ok!(Assets::force_burn(
+                Origin::root(),
+                XOR,
+                BOB,
+                Balance::from(10u32)
+            ));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
+            );
+            assert_err!(
+                Assets::force_burn(Origin::signed(ALICE), XOR, BOB, Balance::from(10u32)),
+                BadOrigin
+            );
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
             );
         })
     }
