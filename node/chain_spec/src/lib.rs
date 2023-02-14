@@ -1442,8 +1442,6 @@ fn mainnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
-    use common::fixnum::ops::Zero as _;
-
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
