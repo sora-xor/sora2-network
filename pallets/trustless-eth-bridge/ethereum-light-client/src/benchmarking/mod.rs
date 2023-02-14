@@ -85,7 +85,7 @@ benchmarks! {
     validate_unsigned_then_import_header {
         // We don't care about security but just about calculation time
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -152,7 +152,7 @@ benchmarks! {
     //   re-insert using <HeadersByNumber<T>>::insert.
     import_header_not_new_finalized_with_max_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -221,7 +221,7 @@ benchmarks! {
     // * Import will prune a single old header with no siblings.
     import_header_new_finalized_with_single_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -282,7 +282,7 @@ benchmarks! {
     // * Import will prune a single old header with no siblings.
     import_header_not_new_finalized_with_single_prune {
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
 
         let descendants_until_final = T::DescendantsUntilFinalized::get();
 
@@ -353,7 +353,7 @@ benchmarks! {
         let header_mix_nonce = data::header_mix_nonce(header.compute_hash()).unwrap();
 
         let caller_public = sp_io::crypto::sr25519_generate(123.into(), None);
-        let caller = <T as pallet::Config>::Submitter::from(caller_public);
+        let caller = <T as pallet::Config>::Submitter::from(caller_public).into_account();
 
         assert_ok!(EthereumLightClient::<T>::import_header(
             RawOrigin::None.into(),

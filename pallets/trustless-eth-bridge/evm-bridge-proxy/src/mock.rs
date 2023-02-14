@@ -237,6 +237,7 @@ impl bridge_outbound_channel::Config for Test {
     type FeeCurrency = FeeCurrency;
     type MessageStatusNotifier = EvmBridgeProxy;
     type MaxTotalGasLimit = MaxTotalGasLimit;
+    type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
 }
 

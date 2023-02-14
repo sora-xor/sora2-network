@@ -12,6 +12,7 @@ use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::unsigned::TransactionValidityError;
 use sp_core::sr25519::Pair as PairSr25519;
 use sp_core::Pair;
+use sp_runtime::traits::IdentifyAccount;
 
 use crate::mock::{mock_verifier, mock_verifier_with_pow};
 
@@ -52,7 +53,7 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
             child1.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
@@ -61,7 +62,7 @@ fn it_tracks_highest_difficulty_ethereum_chain() {
             child2.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child2),
         ));
 
@@ -90,7 +91,7 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
             child1.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child1),
         ));
         assert_ok!(Verifier::import_header(
@@ -99,7 +100,7 @@ fn it_tracks_multiple_unfinalized_ethereum_forks() {
             child2.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child2),
         ));
 
@@ -145,7 +146,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
                 header.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
@@ -190,7 +191,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
                 block5.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block5),
             ),
             Error::<Test>::HeaderOnStaleFork,
@@ -202,7 +203,7 @@ fn it_tracks_only_one_finalized_ethereum_fork() {
                 block6.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block6),
             ),
             Error::<Test>::AncientHeader,
@@ -240,7 +241,7 @@ fn it_prunes_ethereum_headers_correctly() {
                 header.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
@@ -337,7 +338,7 @@ fn it_imports_ethereum_header_only_once() {
             child.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &child),
         ));
         assert_err!(
@@ -347,7 +348,7 @@ fn it_imports_ethereum_header_only_once() {
                 child_for_reimport.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -378,7 +379,7 @@ fn it_rejects_wrong_signature() {
                 proof: Default::default(),
                 mix_nonce: Default::default(),
                 // Signer/submitter does not match with signature
-                submitter: MultiSigner::from(ferdie.clone()),
+                submitter: MultiSigner::from(ferdie.clone()).into_account(),
                 signature: digest_signature::<mock_verifier::Test>(
                     &signature_author.pair(),
                     &network_id,
@@ -408,7 +409,7 @@ fn it_rejects_ethereum_header_before_parent() {
                 child_of_child.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -446,7 +447,7 @@ fn it_validates_proof_of_work() {
                 header1.clone(),
                 header1_proof.clone(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier_with_pow::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -464,7 +465,7 @@ fn it_validates_proof_of_work() {
                 header1.clone(),
                 Default::default(),
                 header1_mix_nonce.clone(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier_with_pow::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -480,7 +481,7 @@ fn it_validates_proof_of_work() {
             header1.clone(),
             header1_proof,
             header1_mix_nonce,
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier_with_pow::Test>(&ferdie.pair(), &network_id, &header1),
         ));
 
@@ -492,7 +493,7 @@ fn it_validates_proof_of_work() {
                 header2.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier_with_pow::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -527,7 +528,7 @@ fn it_rejects_ethereum_header_with_low_difficulty() {
                 header.clone(),
                 header_proof,
                 header_mix_nonce,
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier_with_pow::Test>(
                     &ferdie.pair(),
                     &network_id,
@@ -663,7 +664,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
             block1.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block1),
         ));
 
@@ -691,7 +692,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
                 header.clone(),
                 Default::default(),
                 Default::default(),
-                MultiSigner::from(ferdie.clone()),
+                MultiSigner::from(ferdie.clone()).into_account(),
                 digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &header),
             ));
         }
@@ -717,7 +718,7 @@ fn it_denies_receipt_inclusion_for_invalid_header() {
             block4_alt.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(ferdie.clone()),
+            MultiSigner::from(ferdie.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(&ferdie.pair(), &network_id, &block4_alt),
         ));
 
@@ -755,7 +756,7 @@ fn test_register_network() {
             header.clone(),
             Default::default(),
             Default::default(),
-            MultiSigner::from(caller.clone()),
+            MultiSigner::from(caller.clone()).into_account(),
             digest_signature::<mock_verifier::Test>(
                 &caller.pair(),
                 &EthNetworkConfig::Sepolia.chain_id(),
