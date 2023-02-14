@@ -57,70 +57,70 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 
 /// Weight functions for `assets`.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-	// Storage: System Account (r:1 w:1)
-	// Storage: Assets AssetOwners (r:1 w:1)
-	// Storage: Permissions Owners (r:2 w:2)
-	// Storage: Permissions Permissions (r:2 w:1)
-	// Storage: Assets AssetInfos (r:0 w:1)
-	fn register() -> Weight {
-		(116_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-	}
-	fn transfer() -> Weight {
-		(22_000_000 as Weight)
-	}
-	// Storage: Assets AssetInfos (r:1 w:0)
-	// Storage: Permissions Permissions (r:1 w:0)
-	// Storage: Tokens Accounts (r:1 w:1)
-	// Storage: Tokens TotalIssuance (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
-	fn mint() -> Weight {
-		(71_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	// Storage: Tokens Accounts (r:1 w:1)
-	// Storage: Tokens TotalIssuance (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
-	fn force_mint() -> Weight {
-		(49_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	// Storage: Tokens Accounts (r:1 w:1)
-	// Storage: Tokens TotalIssuance (r:1 w:1)
-	fn burn() -> Weight {
-		(48_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	// Storage: Assets AssetOwners (r:1 w:0)
-	// Storage: Assets AssetInfos (r:1 w:1)
-	fn set_non_mintable() -> Weight {
-		(35_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	// This part was generated separately:
-	// DATE: 2023-02-13, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-	// HOSTNAME: `sora2-test-b1`, CPU: `AMD EPYC 7571`
-	// EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
-	
-	// Storage: Tokens Accounts (r:1 w:1)
-	// Storage: Tokens TotalIssuance (r:1 w:1)
-	fn force_burn() -> Weight {
-		(132_081_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
+    // Storage: System Account (r:1 w:1)
+    // Storage: Assets AssetOwners (r:1 w:1)
+    // Storage: Permissions Owners (r:2 w:2)
+    // Storage: Permissions Permissions (r:2 w:1)
+    // Storage: Assets AssetInfos (r:0 w:1)
+    fn register() -> Weight {
+        (116_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(6 as Weight))
+            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+    }
+    fn transfer() -> Weight {
+        (22_000_000 as Weight)
+    }
+    // Storage: Assets AssetInfos (r:1 w:0)
+    // Storage: Permissions Permissions (r:1 w:0)
+    // Storage: Tokens Accounts (r:1 w:1)
+    // Storage: Tokens TotalIssuance (r:1 w:1)
+    // Storage: System Account (r:1 w:1)
+    fn mint() -> Weight {
+        (71_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    // Storage: Tokens Accounts (r:1 w:1)
+    // Storage: Tokens TotalIssuance (r:1 w:1)
+    // Storage: System Account (r:1 w:1)
+    fn force_mint() -> Weight {
+        (49_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    // Storage: Tokens Accounts (r:1 w:1)
+    // Storage: Tokens TotalIssuance (r:1 w:1)
+    fn burn() -> Weight {
+        (48_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    // Storage: Assets AssetOwners (r:1 w:0)
+    // Storage: Assets AssetInfos (r:1 w:1)
+    fn set_non_mintable() -> Weight {
+        (35_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    // This part was generated separately:
+    // DATE: 2023-02-13, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
+    // HOSTNAME: `sora2-test-b1`, CPU: `AMD EPYC 7571`
+    // EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
+
+    // Storage: Tokens Accounts (r:1 w:1)
+    // Storage: Tokens TotalIssuance (r:1 w:1)
+    fn force_burn() -> Weight {
+        (132_081_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -140,9 +140,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn set_non_mintable() -> Weight {
-		EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT
     }
-	fn force_burn() -> Weight {
-		EXTRINSIC_FIXED_WEIGHT
-	}
+    fn force_burn() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
 }
