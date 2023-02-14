@@ -1695,17 +1695,6 @@ fn mainnet_genesis(
             None,
         ),
         (
-            XSTUSD.into(),
-            assets_and_permissions_account_id.clone(),
-            AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"SORA Synthetic USD".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ),
-        (
             common::AssetId32::from_bytes(hex!(
                 "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
             ))
