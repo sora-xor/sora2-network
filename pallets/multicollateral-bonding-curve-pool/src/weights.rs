@@ -54,6 +54,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn set_price_bias() -> Weight {
         Weight::zero()
     }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -75,6 +81,12 @@ impl crate::WeightInfo for () {
     }
 
     fn set_price_bias() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn quote() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn exchange() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

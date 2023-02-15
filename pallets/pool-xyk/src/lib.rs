@@ -383,7 +383,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -422,7 +422,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &desired_amount_in,
                     deduce_fee,
                 )?;
-                Ok(SwapOutcome::new(calculated, fee))
+                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
@@ -433,7 +433,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &desired_amount_out,
                     deduce_fee,
                 )?;
-                Ok(SwapOutcome::new(calculated, fee))
+                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
         }
     }
@@ -445,7 +445,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -488,7 +488,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         (a.fee.unwrap(), a.source.amount.unwrap())
                     }
                 };
-                Ok(common::prelude::SwapOutcome::new(amount, fee))
+                Ok((
+                    common::prelude::SwapOutcome::new(amount, fee),
+                    Self::exchange_weight(),
+                ))
             }
             _ => unreachable!("we know that always PairSwap is used"),
         };
@@ -616,6 +619,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 )
             }
         })
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::swap_pair()
     }
 }
 

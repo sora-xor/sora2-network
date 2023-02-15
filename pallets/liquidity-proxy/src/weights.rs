@@ -33,19 +33,8 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 
-use common::prelude::SwapVariant;
-
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn swap(variant: SwapVariant) -> Weight {
-        // Todo: Use all 6 weight formulas defined in benchmarks
-        match variant {
-            // swap_exact_input_multiple
-            SwapVariant::WithDesiredInput => Weight::zero(),
-            //swap_exact_output_multiple
-            SwapVariant::WithDesiredOutput => Weight::zero(),
-        }
-    }
     fn enable_liquidity_source() -> Weight {
         Weight::from_ref_time(21_575_000)
             .saturating_add(T::DbWeight::get().reads(1))
@@ -59,9 +48,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 }
 
 impl crate::WeightInfo for () {
-    fn swap(_variant: SwapVariant) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
     fn enable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

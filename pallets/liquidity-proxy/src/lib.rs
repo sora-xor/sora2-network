@@ -35,13 +35,14 @@ extern crate core;
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
-use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed_wrapper, DEXInfo, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
     LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
+use frame_support::dispatch::PostDispatchInfo;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
@@ -71,7 +72,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 /// Possible exchange paths for two assets.
 struct ExchangePath<T: Config>(Vec<T::AssetId>);
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum AssetType {
     Base,
     SyntheticBase,
@@ -219,7 +220,6 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
 }
 
 pub trait WeightInfo {
-    fn swap(variant: SwapVariant) -> Weight;
     fn enable_liquidity_source() -> Weight;
     fn disable_liquidity_source() -> Weight;
 }
@@ -261,7 +261,7 @@ impl<T: Config> Pallet<T> {
         swap_amount: SwapAmount<Balance>,
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
-    ) -> Result<(), DispatchError> {
+    ) -> Result<Weight, DispatchError> {
         ensure!(
             assets::AssetInfos::<T>::get(input_asset_id).2 != 0
                 && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
@@ -277,7 +277,7 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::ForbiddenFilter);
         }
 
-        let (outcome, sources) = Self::inner_exchange(
+        let (outcome, sources, weight) = Self::inner_exchange(
             dex_id,
             &sender,
             &receiver,
@@ -306,7 +306,7 @@ impl<T: Config> Pallet<T> {
             sources,
         ));
 
-        Ok(().into())
+        Ok(weight)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -321,7 +321,7 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -346,13 +346,13 @@ impl<T: Config> Pallet<T> {
         asset_paths: Vec<ExchangePath<T>>,
         amount: SwapAmount<Balance>,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         match amount {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let best_path = Self::select_best_path(
+                let (best_path, quote_weight) = Self::select_best_path(
                     dex_info,
                     asset_paths,
                     Ordering::Greater,
@@ -361,7 +361,7 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map(|(_, best_path)| best_path)?;
+                .map(|(_, best_path, weight)| (best_path, weight))?;
                 Self::exchange_sequence_with_input_amount(
                     dex_info,
                     sender,
@@ -370,19 +370,19 @@ impl<T: Config> Pallet<T> {
                     desired_amount_in,
                     filter,
                 )
-                .and_then(|(swap, sources)| {
+                .and_then(|(swap, sources, weight)| {
                     ensure!(
                         swap.amount >= min_amount_out,
                         Error::<T>::SlippageNotTolerated
                     );
-                    Ok((swap, sources))
+                    Ok((swap, sources, quote_weight.saturating_add(weight)))
                 })
             }
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => {
-                let best_path = Self::select_best_path(
+                let (best_path, quote_weight) = Self::select_best_path(
                     dex_info,
                     asset_paths,
                     Ordering::Less,
@@ -391,9 +391,10 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map(|(_, best_path)| best_path)?;
-                let input_amount =
+                .map(|(_, best_path, weight)| (best_path, weight))?;
+                let (input_amount, weight) =
                     Self::calculate_input_amount(dex_info, &best_path, desired_amount_out, filter)?;
+                let quote_weight = quote_weight.saturating_add(weight);
                 ensure!(
                     input_amount <= max_amount_in,
                     Error::<T>::SlippageNotTolerated
@@ -407,9 +408,9 @@ impl<T: Config> Pallet<T> {
                     input_amount,
                     filter,
                 )
-                .and_then(|(mut swap, sources)| {
+                .and_then(|(mut swap, sources, weight)| {
                     swap.amount = input_amount;
-                    Ok((swap, sources))
+                    Ok((swap, sources, quote_weight.saturating_add(weight)))
                 })
             }
         }
@@ -425,7 +426,7 @@ impl<T: Config> Pallet<T> {
         assets: &[T::AssetId],
         input_amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         use itertools::EitherOrBoth::*;
 
         let transit_account = T::GetTechnicalAccountId::get();
@@ -460,7 +461,7 @@ impl<T: Config> Pallet<T> {
                         let swap_amount =
                             SwapAmount::with_desired_input(current_amount, Balance::zero());
 
-                        let (swap_outcome, sources) = Self::exchange_single(
+                        let (swap_outcome, sources, weight) = Self::exchange_single(
                             cur_sender,
                             cur_receiver,
                             &dex_info.base_asset_id,
@@ -471,21 +472,27 @@ impl<T: Config> Pallet<T> {
                         )?;
 
                         current_amount = swap_outcome.amount;
-                        Ok((swap_outcome, sources))
+                        Ok((swap_outcome, sources, weight))
                     },
                 ),
         )
         // Exchange aggregation
         .fold(
-            (SwapOutcome::new(balance!(0), balance!(0)), Vec::new()),
-            |(mut outcome, mut sources), (swap_outcome, swap_sources)| {
+            (
+                SwapOutcome::new(balance!(0), balance!(0)),
+                Vec::new(),
+                Weight::zero(),
+            ),
+            |(mut outcome, mut sources, mut total_weight),
+             (swap_outcome, swap_sources, swap_weight)| {
                 outcome.amount = swap_outcome.amount;
                 outcome.fee = swap_outcome
                     .fee
                     .checked_add(swap_outcome.fee)
                     .ok_or(Error::<T>::CalculationError)?;
                 merge_two_vectors_unique(&mut sources, swap_sources);
-                Ok((outcome, sources))
+                total_weight = total_weight.saturating_add(swap_weight);
+                Ok((outcome, sources, total_weight))
             },
         )
     }
@@ -496,8 +503,9 @@ impl<T: Config> Pallet<T> {
         assets: &[T::AssetId],
         output_amount: Balance,
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<Balance, DispatchError> {
+    ) -> Result<(Balance, Weight), DispatchError> {
         let mut amount = output_amount;
+        let mut total_weight = Weight::zero();
 
         assets
             .iter()
@@ -505,7 +513,7 @@ impl<T: Config> Pallet<T> {
             .tuple_windows()
             .map(|(to, from)| (from, to)) // Need to reverse pairs as well
             .map(|(from, to)| -> Result<_, DispatchError> {
-                let (quote, _, _) = Self::quote_single(
+                let (quote, _, _, weight) = Self::quote_single(
                     &dex_info.base_asset_id,
                     &from,
                     &to,
@@ -514,11 +522,12 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )?;
+                total_weight = total_weight.saturating_add(weight);
                 amount = quote.amount;
                 Ok(())
             })
             .for_each(drop);
-        Ok(amount)
+        Ok((amount, total_weight))
     }
 
     /// Performs a swap given a number of liquidity sources and a distribution of the swap amount across the sources.
@@ -530,9 +539,10 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
-    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Vec<LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         common::with_transaction(|| {
-            let (outcome, _, sources) = Self::quote_single(
+            let mut total_weight = Weight::zero();
+            let (outcome, _, sources, weight) = Self::quote_single(
                 base_asset_id,
                 input_asset_id,
                 output_asset_id,
@@ -541,6 +551,7 @@ impl<T: Config> Pallet<T> {
                 true,
                 true,
             )?;
+            total_weight = total_weight.saturating_add(weight);
 
             let res = outcome
                 .distribution
@@ -560,6 +571,10 @@ impl<T: Config> Pallet<T> {
                         output_asset_id,
                         amount.copy_direction(part_amount, part_limit),
                     )
+                    .map(|(outcome, weight)| {
+                        total_weight = total_weight.saturating_add(weight);
+                        outcome
+                    })
                 })
                 .collect::<Result<Vec<SwapOutcome<Balance>>, DispatchError>>()?;
 
@@ -579,7 +594,7 @@ impl<T: Config> Pallet<T> {
                 .try_into_balance()
                 .map_err(|_| Error::CalculationError::<T>)?;
 
-            Ok((SwapOutcome::new(amount, fee), sources))
+            Ok((SwapOutcome::new(amount, fee), sources, total_weight))
         })
     }
 
@@ -600,6 +615,7 @@ impl<T: Config> Pallet<T> {
             SwapOutcome<Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
+            Weight,
         ),
         DispatchError,
     > {
@@ -630,6 +646,7 @@ impl<T: Config> Pallet<T> {
             SwapOutcome<Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
+            Weight,
         ),
         DispatchError,
     > {
@@ -643,7 +660,7 @@ impl<T: Config> Pallet<T> {
                 skip_info,
                 deduce_fee,
             )
-            .map(|(quote, _)| quote),
+            .map(|((outcome, rewards, sources), _, weight)| (outcome, rewards, sources, weight)),
             QuoteAmount::WithDesiredOutput { desired_amount_out } => Self::select_best_path(
                 dex_info,
                 asset_paths,
@@ -653,7 +670,7 @@ impl<T: Config> Pallet<T> {
                 skip_info,
                 deduce_fee,
             )
-            .map(|(quote, _)| quote),
+            .map(|((outcome, rewards, sources), _, weight)| (outcome, rewards, sources, weight)),
         }
     }
 
@@ -680,9 +697,11 @@ impl<T: Config> Pallet<T> {
                 Vec<LiquiditySourceIdOf<T>>,
             ),
             Vec<T::AssetId>,
+            Weight,
         ),
         DispatchError,
     > {
+        let mut weight = Weight::zero();
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match ord {
                 Ordering::Greater => Self::quote_pairs_with_flexible_amount(
@@ -708,28 +727,33 @@ impl<T: Config> Pallet<T> {
                     deduce_fee,
                 ),
             };
-            quote.map(|x| (x, atomic_path))
+            quote.map(|(outcome, rewards, sources, quote_weight)| {
+                weight = weight.saturating_add(quote_weight);
+                ((outcome, rewards, sources), atomic_path)
+            })
         });
 
         let primary_path = path_quote_iter
             .next()
             .ok_or(Error::<T>::UnavailableExchangePath)?;
 
-        path_quote_iter.fold(primary_path, |acc, path| match (&acc, &path) {
-            (Ok(_), Err(_)) => acc,
-            (Err(_), Ok(_)) => path,
-            (Ok((acc_quote_unwrapped, _)), Ok((quote_unwrapped, _))) => {
-                let (outcome, _, _) = quote_unwrapped;
-                let (acc_outcome, _, _) = acc_quote_unwrapped;
-                match (ord, acc_outcome.cmp(outcome)) {
-                    (Ordering::Greater, Ordering::Less) => path,
-                    (Ordering::Greater, _) => acc,
-                    (_, Ordering::Less) => acc,
-                    _ => path,
+        path_quote_iter
+            .fold(primary_path, |acc, path| match (&acc, &path) {
+                (Ok(_), Err(_)) => acc,
+                (Err(_), Ok(_)) => path,
+                (Ok((acc_quote_unwrapped, _)), Ok((quote_unwrapped, _))) => {
+                    let (outcome, _, _) = quote_unwrapped;
+                    let (acc_outcome, _, _) = acc_quote_unwrapped;
+                    match (ord, acc_outcome.cmp(outcome)) {
+                        (Ordering::Greater, Ordering::Less) => path,
+                        (Ordering::Greater, _) => acc,
+                        (_, Ordering::Less) => acc,
+                        _ => path,
+                    }
                 }
-            }
-            _ => acc,
-        })
+                _ => acc,
+            })
+            .map(|(quote, path)| (quote, path, weight))
     }
 
     /// Quote given pairs of assets using `amount_ctr` to construct [`QuoteAmount`] for each pair.
@@ -748,12 +772,13 @@ impl<T: Config> Pallet<T> {
             SwapOutcome<Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
+            Weight,
         ),
         DispatchError,
     > {
         let mut current_amount = amount;
         fallible_iterator::convert(asset_pairs.map(|(from_asset_id, to_asset_id)| {
-            let (quote, rewards, liquidity_sources) = Self::quote_single(
+            let (quote, rewards, liquidity_sources, weight) = Self::quote_single(
                 &dex_info.base_asset_id,
                 from_asset_id,
                 to_asset_id,
@@ -763,24 +788,26 @@ impl<T: Config> Pallet<T> {
                 deduce_fee,
             )?;
             current_amount = quote.amount;
-            Ok((quote, rewards, liquidity_sources))
+            Ok((quote, rewards, liquidity_sources, weight))
         }))
         .fold(
             (
                 SwapOutcome::new(balance!(0), balance!(0)),
                 Rewards::new(),
                 Vec::new(),
+                Weight::zero(),
             ),
-            |(mut outcome, mut rewards, mut liquidity_sources),
-             (quote, mut quote_rewards, quote_liquidity_sources)| {
+            |(mut outcome, mut rewards, mut liquidity_sources, mut weight),
+             (quote, mut quote_rewards, quote_liquidity_sources, quote_weight)| {
                 outcome.amount = quote.amount;
                 outcome.fee = outcome
                     .fee
                     .checked_add(quote.fee)
                     .ok_or(Error::<T>::CalculationError)?;
                 rewards.append(&mut quote_rewards);
+                weight = weight.saturating_add(quote_weight);
                 merge_two_vectors_unique(&mut liquidity_sources, quote_liquidity_sources);
-                Ok((outcome, rewards, liquidity_sources))
+                Ok((outcome, rewards, liquidity_sources, weight))
             },
         )
     }
@@ -807,6 +834,7 @@ impl<T: Config> Pallet<T> {
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
+            Weight,
         ),
         DispatchError,
     > {
@@ -819,7 +847,7 @@ impl<T: Config> Pallet<T> {
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
-            let outcome = T::LiquidityRegistry::quote(
+            let (outcome, weight) = T::LiquidityRegistry::quote(
                 src,
                 input_asset_id,
                 output_asset_id,
@@ -847,6 +875,7 @@ impl<T: Config> Pallet<T> {
                 ),
                 rewards,
                 sources,
+                weight,
             ));
         }
 
@@ -883,7 +912,7 @@ impl<T: Config> Pallet<T> {
                     skip_info,
                     deduce_fee,
                 )?;
-                return Ok((outcome.0, outcome.1, sources));
+                return Ok((outcome.0, outcome.1, sources, outcome.2));
             }
         }
 
@@ -957,6 +986,22 @@ impl<T: Config> Pallet<T> {
         })?
         .unwrap_or_default();
         Ok(sources_set)
+    }
+
+    pub fn swap_weight(dex_id: &T::DEXId, input: &T::AssetId, output: &T::AssetId) -> Weight {
+        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id).unwrap();
+        let tp = ExchangePath::<T>::new_trivial(&dex_info, *input, *output).unwrap();
+        let quote_weight = T::LiquidityRegistry::quote_weight();
+        let exchange_weight = T::LiquidityRegistry::exchange_weight();
+        let mut weight = Weight::zero();
+        for path in tp {
+            weight += quote_weight
+                .saturating_mul(3)
+                .saturating_add(exchange_weight)
+                .saturating_mul(path.0.len() as u64 - 1);
+        }
+        // todo calculate overhead
+        weight
     }
 
     /// Given two arbitrary tokens return sources that can be used to cover full path.
@@ -1071,6 +1116,7 @@ impl<T: Config> Pallet<T> {
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
             Rewards<T::AssetId>,
+            Weight,
         ),
         DispatchError,
     > {
@@ -1143,6 +1189,7 @@ impl<T: Config> Pallet<T> {
         let mut rewards = Vec::new();
         let mut distr = Vec::new();
         let mut maybe_error: Option<DispatchError> = None;
+        let mut total_weight = Weight::zero();
 
         if amount_primary.amount() > Balance::zero() {
             // Attempting to quote according to the default sources weights
@@ -1153,7 +1200,8 @@ impl<T: Config> Pallet<T> {
                 amount_primary.clone(),
                 deduce_fee,
             )
-            .and_then(|outcome_primary| {
+            .and_then(|(outcome_primary, weight)| {
+                total_weight = total_weight.saturating_add(weight);
                 if amount_primary.amount() < amount.amount() {
                     let amount_secondary = amount
                         .checked_sub(&amount_primary)
@@ -1165,7 +1213,8 @@ impl<T: Config> Pallet<T> {
                         amount_secondary.clone(),
                         deduce_fee,
                     )
-                    .and_then(|outcome_secondary| {
+                    .and_then(|(outcome_secondary, weight)| {
+                        total_weight = total_weight.saturating_add(weight);
                         if !skip_info {
                             for info in vec![
                                 (primary_source_id, amount_primary, outcome_primary.clone()),
@@ -1218,7 +1267,8 @@ impl<T: Config> Pallet<T> {
             amount.clone(),
             deduce_fee,
         )
-        .and_then(|outcome| {
+        .and_then(|(outcome, weight)| {
+            total_weight = total_weight.saturating_add(weight);
             if is_better(outcome.amount, best) {
                 best = outcome.amount;
                 total_fee = outcome.fee;
@@ -1252,7 +1302,11 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        Ok((AggregatedSwapOutcome::new(distr, best, total_fee), rewards))
+        Ok((
+            AggregatedSwapOutcome::new(distr, best, total_fee),
+            rewards,
+            total_weight,
+        ))
     }
 
     /// Determines the share of a swap that should be exchanged in the primary market
@@ -1475,7 +1529,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             true,
             deduce_fee,
         )
-        .map(|(outcome, _rewards, _)| outcome)
+        .map(|(outcome, _rewards, _, _)| outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -1491,7 +1545,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let (outcome, _) = Pallet::<T>::inner_exchange(
+        let (outcome, _, _) = Pallet::<T>::inner_exchange(
             dex_id,
             sender,
             receiver,
@@ -1587,7 +1641,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
-        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id))]
         pub fn swap(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -1598,7 +1652,7 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            Self::inner_swap(
+            let weight = Self::inner_swap(
                 who.clone(),
                 who,
                 dex_id,
@@ -1608,7 +1662,10 @@ pub mod pallet {
                 selected_source_types,
                 filter_mode,
             )?;
-            Ok(().into())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(weight),
+                pays_fee: Pays::Yes,
+            })
         }
 
         /// Perform swap of tokens (input/output defined via SwapAmount direction).
@@ -1621,7 +1678,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
-        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id))]
         pub fn swap_transfer(
             origin: OriginFor<T>,
             receiver: T::AccountId,
@@ -1634,7 +1691,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            Self::inner_swap(
+            let weight = Self::inner_swap(
                 who,
                 receiver,
                 dex_id,
@@ -1644,14 +1701,17 @@ pub mod pallet {
                 selected_source_types,
                 filter_mode,
             )?;
-            Ok(().into())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(weight),
+                pays_fee: Pays::Yes,
+            })
         }
 
+        // todo remake weights
         #[pallet::weight(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer()
                 .saturating_mul(receivers.len() as u64)
-                .saturating_add(<T as Config>::WeightInfo::swap(
-                    SwapVariant::WithDesiredOutput,
-                )))]
+                //.saturating_add(determine_weight::<T>(dex_id, input_asset_id, output_asset_id, SwapVariant::WithDesiredOutput)
+                )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             receivers: Vec<BatchReceiverInfo<T>>,

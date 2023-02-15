@@ -36,6 +36,7 @@ use common::{
     LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::Weight;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -88,7 +89,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
             ($source_type:ident) => {
@@ -120,7 +121,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! exchange {
             ($source_type:ident) => {
@@ -208,6 +209,18 @@ impl<T: Config>
             MockPool4 => quote_without_impact!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         }
+    }
+
+    fn quote_weight() -> Weight {
+        T::XSTPool::quote_weight()
+            .max(T::XYKPool::quote_weight())
+            .max(T::MulticollateralBondingCurvePool::quote_weight())
+    }
+
+    fn exchange_weight() -> Weight {
+        T::XSTPool::exchange_weight()
+            .max(T::XYKPool::exchange_weight())
+            .max(T::MulticollateralBondingCurvePool::exchange_weight())
     }
 }
 

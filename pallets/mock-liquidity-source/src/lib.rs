@@ -37,6 +37,7 @@ use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
 use sp_std::vec::Vec;
@@ -285,12 +286,12 @@ impl<T: Config<I>, I: 'static>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         let amount = amount
             .try_into()
             .map_err(|_| Error::<T, I>::CalculationError)?;
-        if input_asset_id == &dex_info.base_asset_id {
+        let res = if input_asset_id == &dex_info.base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             Ok(match amount {
                 QuoteAmount::WithDesiredInput {
@@ -401,7 +402,8 @@ impl<T: Config<I>, I: 'static>
                     Ok(SwapOutcome::new(amount, fee))
                 }
             }
-        }
+        };
+        res.map(|outcome| (outcome, Self::quote_weight()))
     }
 
     fn exchange(
@@ -411,7 +413,7 @@ impl<T: Config<I>, I: 'static>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         // actual exchange does not happen
         Self::quote(
             dex_id,
@@ -483,6 +485,14 @@ impl<T: Config<I>, I: 'static>
                 ),
             })
         }
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
     }
 }
 

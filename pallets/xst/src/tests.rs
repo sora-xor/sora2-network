@@ -235,7 +235,7 @@ use frame_support::assert_noop;
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -244,7 +244,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            let exchange_outcome_a = XSTPool::exchange(
+            let (exchange_outcome_a, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -263,7 +263,7 @@ use frame_support::assert_noop;
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -272,7 +272,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            let exchange_outcome_b = XSTPool::exchange(
+            let (exchange_outcome_b, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -291,7 +291,7 @@ use frame_support::assert_noop;
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -300,7 +300,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            let exchange_outcome_c = XSTPool::exchange(
+            let (exchange_outcome_c, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -319,7 +319,7 @@ use frame_support::assert_noop;
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -327,7 +327,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = XSTPool::exchange(
+            let (exchange_outcome_d, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -359,7 +359,7 @@ use frame_support::assert_noop;
             TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -370,7 +370,7 @@ use frame_support::assert_noop;
             assert_eq!(price_a.fee, balance!(0.003667003083916557));
             assert_eq!(price_a.amount, balance!(0.546934060567218204));
 
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -381,7 +381,7 @@ use frame_support::assert_noop;
             assert_eq!(price_b.fee, balance!(0));
             assert_eq!(price_b.amount, price_a.fee + price_a.amount);
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -392,7 +392,7 @@ use frame_support::assert_noop;
             assert_eq!(price_a.fee, balance!(0.670465298890611472));
             assert_eq!(price_a.amount, balance!(18283.739706444923188361));
 
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -433,7 +433,7 @@ use frame_support::assert_noop;
             .unwrap();
 
             // Buy
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -441,7 +441,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -453,7 +453,7 @@ use frame_support::assert_noop;
             assert_eq!(price_a.fee, balance!(0.003667003083916557));
 
             // Sell
-            let price_c = XSTPool::quote(
+            let (price_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -461,7 +461,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let price_d = XSTPool::quote(
+            let (price_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -493,7 +493,7 @@ use frame_support::assert_noop;
 
             // Buy with desired input
             let amount_a: Balance = balance!(200);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -513,7 +513,7 @@ use frame_support::assert_noop;
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -533,7 +533,7 @@ use frame_support::assert_noop;
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -553,7 +553,7 @@ use frame_support::assert_noop;
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,

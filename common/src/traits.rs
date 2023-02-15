@@ -109,7 +109,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -119,7 +119,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
-    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
 
     /// Get rewards that are given for perfoming given exchange.
     fn check_rewards(
@@ -139,6 +139,12 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    // todo comment
+    fn quote_weight() -> Weight;
+
+    // todo comment
+    fn exchange_weight() -> Weight;
 }
 
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
@@ -200,7 +206,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -211,7 +217,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -234,6 +240,14 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
@@ -253,7 +267,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -264,7 +278,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -286,6 +300,14 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
     }
 }
 

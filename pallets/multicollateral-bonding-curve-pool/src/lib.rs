@@ -77,6 +77,8 @@ pub trait WeightInfo {
     fn set_optional_reward_multiplier() -> Weight;
     fn set_price_change_config() -> Weight;
     fn set_price_bias() -> Weight;
+    fn quote() -> Weight;
+    fn exchange() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -1501,7 +1503,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1512,8 +1514,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(output_amount, fee_amount),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(input_amount, fee_amount),
+                Self::quote_weight(),
+            )),
         }
     }
 
@@ -1524,7 +1532,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1545,7 +1553,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 receiver,
             );
             Pallet::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
-            outcome
+            outcome.map(|res| (res, Self::exchange_weight()))
         } else {
             let outcome = BuyMainAsset::<T>::new(
                 *input_asset_id,
@@ -1556,7 +1564,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             )?
             .swap();
             Pallet::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
-            outcome
+            outcome.map(|res| (res, Self::exchange_weight()))
         }
     }
 
@@ -1687,6 +1695,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         };
         Ok(outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::exchange()
     }
 }
 

@@ -41,8 +41,9 @@ mod tests {
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
     use frame_support::assert_err;
-use frame_support::assert_noop;
+    use frame_support::assert_noop;
     use frame_support::storage::{with_transaction, TransactionOutcome};
+    use frame_support::weights::Weight;
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
@@ -339,7 +340,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731))
             );
             assert_eq!(
@@ -351,7 +352,7 @@ use frame_support::assert_noop;
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(2.100439516374830873),
                     balance!(0.093)
@@ -393,7 +394,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
@@ -411,7 +412,7 @@ use frame_support::assert_noop;
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4366.523658759765819497),
                     balance!(3.000000000000000000)
@@ -454,7 +455,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
@@ -472,7 +473,7 @@ use frame_support::assert_noop;
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4366.523925066825637517),
                     balance!(3.000000000000000000)
@@ -567,11 +568,11 @@ use frame_support::assert_noop;
                 .fold(
                     SwapOutcome::new(Balance::zero(), Balance::zero()),
                     |acc, x| SwapOutcome {
-                        amount: acc.amount + x.amount,
-                        fee: acc.fee + x.fee,
+                        amount: acc.amount + x.0.amount,
+                        fee: acc.fee + x.0.fee,
                     },
                 );
-            assert_eq!(whole_outcome, Ok(cumulative_outcome));
+            assert_eq!(whole_outcome, Ok((cumulative_outcome, Weight::zero())));
         });
     }
 
@@ -717,7 +718,7 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let amount: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -729,7 +730,7 @@ use frame_support::assert_noop;
             assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
             assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705206));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -741,7 +742,7 @@ use frame_support::assert_noop;
             assert_eq!(quote_outcome_b.amount, quote_outcome_a.amount + quote_outcome_a.fee);
             assert_eq!(quote_outcome_b.fee, balance!(0));
 
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -753,7 +754,7 @@ use frame_support::assert_noop;
             assert_eq!(quote_outcome_a.amount, balance!(11088.209839932824950839));
             assert_eq!(quote_outcome_a.fee, balance!(6.018054162487462387));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -785,7 +786,7 @@ use frame_support::assert_noop;
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -793,7 +794,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let exchange_outcome_a = MBCPool::exchange(
+            let (exchange_outcome_a, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -810,7 +811,7 @@ use frame_support::assert_noop;
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -818,7 +819,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let exchange_outcome_b = MBCPool::exchange(
+            let (exchange_outcome_b, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -835,7 +836,7 @@ use frame_support::assert_noop;
 
             // Sell with desired input
             let amount_c: Balance = balance!(300);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -843,7 +844,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let exchange_outcome_c = MBCPool::exchange(
+            let (exchange_outcome_c, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -860,7 +861,7 @@ use frame_support::assert_noop;
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -868,7 +869,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = MBCPool::exchange(
+            let (exchange_outcome_d, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1053,7 +1054,7 @@ use frame_support::assert_noop;
             .unwrap();
 
             // Buy
-            let price_a = MBCPool::quote(
+            let (price_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1061,7 +1062,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let price_b = MBCPool::quote(
+            let (price_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1073,7 +1074,7 @@ use frame_support::assert_noop;
             assert_eq!(price_a.fee, balance!(0.054394410184082534));
 
             // Sell
-            let price_c = MBCPool::quote(
+            let (price_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1081,7 +1082,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            let price_d = MBCPool::quote(
+            let (price_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1146,7 +1147,7 @@ use frame_support::assert_noop;
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(100724.916324262414175551));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1169,7 +1170,7 @@ use frame_support::assert_noop;
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(107896.889465954935413179));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1192,7 +1193,7 @@ use frame_support::assert_noop;
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(114934.359190755661046424));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1215,7 +1216,7 @@ use frame_support::assert_noop;
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(128633.975165230400026502));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1238,7 +1239,7 @@ use frame_support::assert_noop;
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(151530.994236602104652386));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1372,7 +1373,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.621555395065931189), balance!(0.003009027081243731))
             );
 
@@ -1430,7 +1431,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
             );
 
@@ -1518,7 +1519,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
             );
             assert_eq!(
@@ -1530,7 +1531,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731))
             );
             assert_eq!(
@@ -1542,7 +1543,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731))
             );
 
@@ -1595,7 +1596,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074))
             );
 
@@ -1620,7 +1621,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119))
             );
 
@@ -1666,7 +1667,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074))
             );
 
@@ -1680,7 +1681,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119))
             );
 
@@ -1735,7 +1736,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
             );
 
@@ -1771,7 +1772,7 @@ use frame_support::assert_noop;
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731))
             );
 
@@ -1865,7 +1866,7 @@ use frame_support::assert_noop;
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1896,7 +1897,7 @@ use frame_support::assert_noop;
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1927,7 +1928,7 @@ use frame_support::assert_noop;
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1958,7 +1959,7 @@ use frame_support::assert_noop;
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2008,7 +2009,7 @@ use frame_support::assert_noop;
 
             // Buy with desired input
             let amount_a: Balance = balance!(70000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2039,7 +2040,7 @@ use frame_support::assert_noop;
 
             // Buy with desired output
             let amount_b: Balance = balance!(14000);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2070,7 +2071,7 @@ use frame_support::assert_noop;
 
             // Sell with desired input
             let amount_c: Balance = balance!(7000);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2101,7 +2102,7 @@ use frame_support::assert_noop;
 
             // Sell with desired output
             let amount_d: Balance = balance!(7000);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,

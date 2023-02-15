@@ -2500,7 +2500,7 @@ impl_runtime_apis! {
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     true,
-                ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
             {
@@ -2738,7 +2738,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, _, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
