@@ -425,7 +425,9 @@ pub mod pallet {
         /// `currency_id`. If positive `by_amount`, do add, else do remove.
         ///
         /// Basically a wrapper of `MultiCurrencyExtended::update_balance`
-        /// for testing purposes
+        /// for testing purposes.
+        ///
+        /// TODO: move into tests extrinsic collection pallet
         #[pallet::weight(<T as Config>::WeightInfo::update_balance())]
         pub fn update_balance(
             origin: OriginFor<T>,
