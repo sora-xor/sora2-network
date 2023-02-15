@@ -109,18 +109,13 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(2 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
-    // This part was generated separately:
-    // DATE: 2023-02-13, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-    // HOSTNAME: `sora2-test-b1`, CPU: `AMD EPYC 7571`
-    // EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
-
     // Storage: Tokens Accounts (r:1 w:1)
     // Storage: Tokens TotalIssuance (r:1 w:1)
-	// TODO: benchmark
+    // Storage: System Account (r:1 w:1)
     fn update_balance() -> Weight {
-        (132_081_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+        (41_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
 }
 

@@ -225,12 +225,6 @@ benchmarks! {
             None,
             None,
         ).unwrap();
-        // Assets::<T>::mint(
-        //     RawOrigin::Signed(caller.clone()).into(),
-        //     USDT.into(),
-        //     caller.clone(),
-        //     1000_u32.into()
-        // ).unwrap();
     }: _(
         RawOrigin::Root,
         caller.clone(),
