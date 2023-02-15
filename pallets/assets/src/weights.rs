@@ -116,7 +116,8 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 
     // Storage: Tokens Accounts (r:1 w:1)
     // Storage: Tokens TotalIssuance (r:1 w:1)
-    fn force_burn() -> Weight {
+	// TODO: benchmark
+    fn update_balance() -> Weight {
         (132_081_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(2 as Weight))
             .saturating_add(T::DbWeight::get().writes(2 as Weight))
@@ -142,7 +143,7 @@ impl crate::WeightInfo for () {
     fn set_non_mintable() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn force_burn() -> Weight {
+    fn update_balance() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
