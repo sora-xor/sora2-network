@@ -1,33 +1,24 @@
-use crate::{self as ceres_launchpad};
+use crate::{self as hermes_governance_platform};
 use common::mock::ExistentialDeposits;
-pub use common::mock::*;
 use common::prelude::Balance;
-use common::AssetSymbol;
-use common::BalancePrecision;
-use common::ContentSource;
-use common::Description;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
-use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, VAL, XOR, XST};
-use common::{AssetName, XSTUSD};
+use common::{
+    balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, Fixed, HERMES_ASSET_ID, PSWAP, VAL, XST,
+};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Hooks};
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
-use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{Perbill, Percent};
 
-pub type BlockNumber = u64;
-pub type AccountId = u128;
-pub type Amount = i128;
-pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -39,8 +30,8 @@ construct_runtime! {
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
@@ -49,27 +40,25 @@ construct_runtime! {
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
-        MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Config<T>, Storage, Event<T>},
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
-        CeresTokenLocker: ceres_token_locker::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
-        CeresLaunchpad: ceres_launchpad::{Pallet, Call, Storage, Event<T>},
+        CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>},
     }
 }
 
+pub type AccountId = u128;
+pub type BlockNumber = u64;
+pub type Amount = i128;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
+
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CHARLES: AccountId = 3;
 pub const BUY_BACK_ACCOUNT: AccountId = 23;
-pub const DAN: AccountId = 4;
-pub const EMILY: AccountId = 5;
-pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
-pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
@@ -78,10 +67,6 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = 100;
     pub GetPswapDistributionAccountId: AccountId = 101;
-    pub GetMarketMakerRewardsAccountId: AccountId = 102;
-    pub GetBondingCurveRewardsAccountId: AccountId = 103;
-    pub GetFarmingRewardsAccountId: AccountId = 104;
-    pub GetCrowdloanRewardsAccountId: AccountId = 105;
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -89,8 +74,8 @@ impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
+    type Origin = Origin;
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -98,7 +83,7 @@ impl frame_system::Config for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -112,14 +97,20 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
+parameter_types! {
+    pub const HermesAssetId: AssetId = HERMES_ASSET_ID;
+}
+
 impl crate::Config for Runtime {
-    const MILLISECONDS_PER_DAY: Self::Moment = 86_400_000;
-    type RuntimeEvent = RuntimeEvent;
+    const MIN_DURATION_OF_POLL: Self::Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Self::Moment = 604_800_000;
+    type Event = Event;
+    type HermesAssetId = HermesAssetId;
     type WeightInfo = ();
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBaseAssetId: AssetId = HERMES_ASSET_ID;
     pub const GetBuyBackAssetId: AssetId = XST;
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![VAL, PSWAP];
     pub const GetBuyBackPercentage: u8 = 10;
@@ -128,10 +119,10 @@ parameter_types! {
 }
 
 impl assets::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type GetBuyBackAssetId = GetBuyBackAssetId;
@@ -146,32 +137,38 @@ impl assets::Config for Runtime {
 }
 
 impl common::Config for Runtime {
-    type DEXId = DEXId;
+    type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
 impl permissions::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
+impl ceres_governance_platform::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
@@ -185,35 +182,6 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl multicollateral_bonding_curve_pool::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
-    type PriceToolsPallet = ();
-    type VestedRewardsPallet = VestedRewards;
-    type WeightInfo = ();
-}
-
-impl vested_rewards::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const CeresAssetId: AssetId = CERES_ASSET_ID;
-}
-
-impl ceres_token_locker::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type CeresAssetId = CeresAssetId;
-    type WeightInfo = ();
-}
-
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
     type OnTimestampSet = ();
@@ -223,15 +191,15 @@ impl pallet_timestamp::Config for Runtime {
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type XYKPool = PoolXYK;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
-    type CeresAssetId = CeresAssetId;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -247,7 +215,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl technical::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -256,16 +224,13 @@ impl technical::Config for Runtime {
 }
 
 impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -291,7 +256,7 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
+    type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
@@ -301,7 +266,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
-    pub endowed_assets: Vec<(
+    endowed_assets: Vec<(
         AssetId,
         AccountId,
         AssetSymbol,
@@ -312,111 +277,48 @@ pub struct ExtBuilder {
         Option<ContentSource>,
         Option<Description>,
     )>,
-    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
-    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_assets: vec![],
-            initial_dex_list: vec![
-                (
-                    DEX_A_ID,
-                    DEXInfo {
-                        base_asset_id: XOR,
-                        synthetic_base_asset_id: XST,
-                        is_public: true,
-                    },
-                ),
-                (
-                    DEX_B_ID,
-                    DEXInfo {
-                        base_asset_id: XSTUSD,
-                        synthetic_base_asset_id: XST,
-                        is_public: true,
-                    },
-                ),
-            ],
+            endowed_assets: vec![(
+                HERMES_ASSET_ID,
+                ALICE,
+                AssetSymbol(b"HMX".to_vec()),
+                AssetName(b"Hermes".to_vec()),
+                18,
+                Balance::zero(),
+                true,
+                None,
+                None,
+            )],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID.into(), balance!(15000)),
-                (BOB, CERES_ASSET_ID.into(), balance!(5)),
-                (CHARLES, CERES_ASSET_ID.into(), balance!(3000)),
-            ],
-            initial_permission_owners: vec![
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![BOB]),
-            ],
-            initial_permissions: vec![
-                (ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
-                (ALICE, Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
+                (ALICE, HERMES_ASSET_ID, balance!(300000)),
+                (BOB, HERMES_ASSET_ID, balance!(500)),
             ],
         }
     }
 }
 
 impl ExtBuilder {
-    #[cfg(feature = "runtime-benchmarks")]
-    pub fn benchmarking() -> Self {
-        let mut res = Self::default();
-        res.endowed_assets = vec![
-            (
-                CERES_ASSET_ID,
-                ALICE,
-                AssetSymbol(b"CERES".to_vec()),
-                AssetName(b"Ceres".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                XOR,
-                ALICE,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"XOR".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                PSWAP,
-                ALICE,
-                AssetSymbol(b"PSWAP".to_vec()),
-                AssetName(b"PSWAP".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-        ];
-        res
-    }
-
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.initial_dex_list,
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .map(|(acc, _, balance)| (*acc, *balance))
+                .collect(),
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        TokensConfig {
-            balances: self.endowed_accounts,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        permissions::GenesisConfig::<Runtime> {
-            initial_permission_owners: self.initial_permission_owners,
-            initial_permissions: self.initial_permissions,
+        PermissionsConfig {
+            initial_permission_owners: vec![],
+            initial_permissions: vec![],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -427,15 +329,12 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        t.into()
-    }
-}
+        TokensConfig {
+            balances: self.endowed_accounts,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
-pub fn run_to_block(n: u64) {
-    while System::block_number() < n {
-        System::on_finalize(System::block_number());
-        System::set_block_number(System::block_number() + 1);
-        System::on_initialize(System::block_number());
-        CeresLaunchpad::on_initialize(System::block_number());
+        t.into()
     }
 }

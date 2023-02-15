@@ -1921,6 +1921,18 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
+}
+
+impl hermes_governance_platform::Config for Runtime {
+    const MIN_DURATION_OF_POLL: Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Moment = 604_800_000;
+    type RuntimeEvent = RuntimeEvent;
+    type HermesAssetId = HermesAssetId;
+    type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
@@ -2137,7 +2149,7 @@ construct_runtime! {
 
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
@@ -2160,7 +2172,7 @@ construct_runtime! {
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
+        Currencies: currencies::{Pallet} = 19,
         TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
@@ -2195,6 +2207,7 @@ construct_runtime! {
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -2292,6 +2305,7 @@ construct_runtime! {
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
 
         // Trustless ethereum bridge
@@ -3037,6 +3051,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
+            list_benchmark!(list, extra, hermes_governance_platform, HermesGovernancePlatform);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
             list_benchmark!(list, extra, band, Band);
@@ -3108,6 +3123,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

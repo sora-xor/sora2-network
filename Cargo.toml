@@ -239,6 +239,7 @@ members = [
     "pallets/ceres-staking",
     "pallets/ceres-token-locker",
     "pallets/faucet",
+    "pallets/hermes-governance-platform",
     "pallets/iroha-migration",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",

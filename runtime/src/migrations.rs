@@ -1,7 +1,14 @@
 use crate::*;
 use frame_support::traits::OnRuntimeUpgrade;
+use vested_rewards::migrations::MoveMarketMakerRewardPoolToLiquidityProviderPool;
 
-pub type Migrations = ();
+pub type Migrations = (
+    MoveMarketMakerRewardPoolToLiquidityProviderPool<Runtime>,
+    PriceToolsMigration,
+    pallet_staking::migrations::lock_fix::LockFix<Runtime>,
+    DexManagerMigration,
+    multicollateral_bonding_curve_pool::migrations::v2::InitializeTBCD<Runtime>,
+);
 
 pub struct PriceToolsMigration;
 

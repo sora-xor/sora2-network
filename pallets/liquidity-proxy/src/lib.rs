@@ -51,7 +51,7 @@ use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
-use sp_std::{cmp::Ordering, vec};
+use sp_std::{cmp::Ord, cmp::Ordering, vec};
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
@@ -222,6 +222,7 @@ pub trait WeightInfo {
     fn swap(variant: SwapVariant) -> Weight;
     fn enable_liquidity_source() -> Weight;
     fn disable_liquidity_source() -> Weight;
+    fn swap_transfer_batch(n: u32, m: u32) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -1529,7 +1530,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::StorageVersion;
+    use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -1647,60 +1648,90 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer()
-                .saturating_mul(receivers.len() as u64)
-                .saturating_add(<T as Config>::WeightInfo::swap(
-                    SwapVariant::WithDesiredOutput,
-                )))]
+        /// Dispatches multiple swap & transfer operations. `receivers` holds info about desired out amount and
+        /// its associated account per asset id
+        ///
+        /// - `origin`: the account on whose behalf the transaction is being executed,
+        /// - `receivers`: the ordered map, which maps the asset id being bought to the vector of batch receivers
+        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
+        /// - `input_asset_id`: ID of the asset being sold,
+        /// - `max_input_amount`: the maximum amount to be sold in input_asset_id,
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[transactional]
+        #[pallet::weight(<T as Config>::WeightInfo::swap_transfer_batch(
+                receivers.len() as u32,
+                receivers.iter()
+                    .map(|(_, recv_batch)| recv_batch.len() as u32)
+                    .sum()
+            )
+        )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            receivers: Vec<BatchReceiverInfo<T>>,
+            receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)>,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
-            max_input_amount: Balance,
+            mut max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            if Self::is_forbidden_filter(
-                &input_asset_id,
-                &output_asset_id,
-                &selected_source_types,
-                &filter_mode,
-            ) {
-                fail!(Error::<T>::ForbiddenFilter);
-            }
-
-            let filter =
-                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
-
-            let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
-
-            Self::inner_exchange(
+            let filter = LiquiditySourceFilter::with_mode(
                 dex_id,
-                &who,
-                &who,
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: out_amount,
-                    max_amount_in: max_input_amount,
+                filter_mode.clone(),
+                selected_source_types.clone(),
+            );
+
+            let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
+            fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
+                |(asset_id, recv_batch)| {
+                    if Self::is_forbidden_filter(
+                        &input_asset_id,
+                        &asset_id,
+                        &selected_source_types,
+                        &filter_mode,
+                    ) {
+                        fail!(Error::<T>::ForbiddenFilter);
+                    }
+
+                    if !unique_asset_ids.insert(asset_id.clone()) {
+                        Err(Error::<T>::AggregationError)?
+                    }
+
+                    let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
+                    Self::inner_exchange(
+                        dex_id,
+                        &who,
+                        &who,
+                        &input_asset_id,
+                        &asset_id,
+                        SwapAmount::WithDesiredOutput {
+                            desired_amount_out: out_amount,
+                            max_amount_in: max_input_amount,
+                        },
+                        filter.clone(),
+                    )?;
+                    max_input_amount = max_input_amount
+                        .checked_sub(out_amount)
+                        .ok_or(Error::<T>::SlippageNotTolerated)?;
+
+                    let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
+                    fallible_iterator::convert(recv_batch.into_iter().map(|val| Ok(val))).for_each(
+                        |receiver| {
+                            if !unique_batch_receivers.insert(receiver.account_id.clone()) {
+                                Err(Error::<T>::AggregationError)?
+                            }
+                            assets::Pallet::<T>::transfer_from(
+                                &asset_id,
+                                &who,
+                                &receiver.account_id,
+                                receiver.target_amount,
+                            )
+                        },
+                    )
                 },
-                filter,
             )?;
-
-            for receiver in receivers {
-                assets::Pallet::<T>::transfer_from(
-                    &output_asset_id,
-                    &who,
-                    &receiver.account_id,
-                    receiver.target_amount,
-                )
-                .expect("Required amount has just been deposited");
-            }
-
             Ok(().into())
         }
 

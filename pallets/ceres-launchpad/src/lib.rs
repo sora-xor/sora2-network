@@ -31,7 +31,7 @@ pub trait WeightInfo {
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct ILOInfo<Balance, AccountId, Moment> {
+pub struct ILOInfo<Balance, AccountId, Moment, AssetId> {
     ilo_organizer: AccountId,
     tokens_for_ilo: Balance,
     tokens_for_liquidity: Balance,
@@ -55,6 +55,7 @@ pub struct ILOInfo<Balance, AccountId, Moment> {
     lp_tokens: Balance,
     claimed_lp_tokens: bool,
     finish_timestamp: Moment,
+    base_asset: AssetId,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -92,7 +93,7 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::{balance, DEXId, PoolXykPallet, PSWAP};
+    use common::{balance, DEXId, PoolXykPallet, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -182,6 +183,17 @@ pub mod pallet {
         StorageValue<_, Balance, ValueQuery, DefaultCeresForContributionInILO<T>>;
 
     #[pallet::type_value]
+    pub fn DefaultFeePercentOnRaisedFunds<T: Config>() -> Balance {
+        balance!(0.01)
+    }
+
+    /// Fee percent on raised funds in successful ILO
+    #[pallet::storage]
+    #[pallet::getter(fn fee_percent_on_raised_funds)]
+    pub type FeePercentOnRaisedFunds<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultFeePercentOnRaisedFunds<T>>;
+
+    #[pallet::type_value]
     pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap()
@@ -199,7 +211,7 @@ pub mod pallet {
         _,
         Identity,
         AssetIdOf<T>,
-        ILOInfo<Balance, AccountIdOf<T>, T::Moment>,
+        ILOInfo<Balance, AccountIdOf<T>, T::Moment, AssetIdOf<T>>,
         OptionQuery,
     >;
 
@@ -260,7 +272,7 @@ pub mod pallet {
         ParameterCantBeZero,
         /// Soft cap should be minimum 50% of hard cap
         InvalidSoftCap,
-        /// Minimum contribution must be equal or greater than 0.01 XOR
+        /// Minimum contribution must be equal or greater than 0.01 base asset tokens
         InvalidMinimumContribution,
         /// Maximum contribution must be greater than minimum contribution
         InvalidMaximumContribution,
@@ -334,6 +346,10 @@ pub mod pallet {
         InvalidTeamVestingPeriod,
         /// Not enough team tokens to lock
         NotEnoughTeamTokensToLock,
+        /// Invalid fee percent on raised funds
+        InvalidFeePercent,
+        /// Asset in which funds are being raised is not supported
+        BaseAssetNotSupported,
     }
 
     #[pallet::call]
@@ -342,6 +358,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_ilo())]
         pub fn create_ilo(
             origin: OriginFor<T>,
+            base_asset: AssetIdOf<T>,
             asset_id: AssetIdOf<T>,
             tokens_for_ilo: Balance,
             tokens_for_liquidity: Balance,
@@ -370,16 +387,31 @@ pub mod pallet {
                 return Err(Error::<T>::AccountIsNotWhitelisted.into());
             }
 
+            if base_asset != XOR.into() && base_asset != XSTUSD.into() {
+                return Err(Error::<T>::BaseAssetNotSupported.into());
+            }
+
+            ensure!(
+                !<ILOs<T>>::contains_key(&asset_id),
+                Error::<T>::ILOAlreadyExists
+            );
+
             // Check if ILO for token already exists
             ensure!(
                 !<ILOs<T>>::contains_key(&asset_id),
                 Error::<T>::ILOAlreadyExists
             );
 
+            let dex_id = if base_asset == XOR.into() {
+                DEXId::Polkaswap.into()
+            } else {
+                DEXId::PolkaswapXSTUSD.into()
+            };
+
             ensure!(
                 TradingPair::<T>::is_trading_pair_enabled(
-                    &DEXId::Polkaswap.into(),
-                    &XOR.into(),
+                    &dex_id,
+                    &base_asset.into(),
                     &asset_id.into()
                 )
                 .unwrap_or(true)
@@ -470,6 +502,7 @@ pub mod pallet {
                 lp_tokens: balance!(0),
                 claimed_lp_tokens: false,
                 finish_timestamp: 0u32.into(),
+                base_asset,
             };
 
             <ILOs<T>>::insert(&asset_id, &ilo_info);
@@ -542,9 +575,9 @@ pub mod pallet {
             contribution_info.funds_contributed += funds_to_contribute;
             contribution_info.tokens_bought += tokens_bought;
 
-            // Transfer XOR to pallet
+            // Transfer base_asset to pallet
             Assets::<T>::transfer_from(
-                &XOR.into(),
+                &ilo_info.base_asset.into(),
                 &user,
                 &Self::account_id(),
                 funds_to_contribute,
@@ -598,12 +631,17 @@ pub mod pallet {
 
             let pallet_account = Self::account_id();
             // Emergency withdraw funds
-            Assets::<T>::transfer_from(&XOR.into(), &pallet_account, &user, funds_to_claim)?;
+            Assets::<T>::transfer_from(
+                &ilo_info.base_asset.into(),
+                &pallet_account,
+                &user,
+                funds_to_claim,
+            )?;
 
             let penalty = contribution_info.funds_contributed - funds_to_claim;
 
             Assets::<T>::transfer_from(
-                &XOR.into(),
+                &ilo_info.base_asset.into(),
                 &pallet_account,
                 &PenaltiesAccount::<T>::get(),
                 penalty,
@@ -627,7 +665,6 @@ pub mod pallet {
         }
 
         /// Finish ILO
-
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
@@ -678,32 +715,50 @@ pub mod pallet {
                 return Ok(().into());
             }
 
+            // Transfer fee to authority account
+            let funds_raised_fee = (FixedWrapper::from(ilo_info.funds_raised)
+                * FixedWrapper::from(FeePercentOnRaisedFunds::<T>::get()))
+            .try_into_balance()
+            .unwrap_or(0);
+            Assets::<T>::transfer_from(
+                &ilo_info.base_asset.into(),
+                &pallet_account,
+                &AuthorityAccount::<T>::get(),
+                funds_raised_fee,
+            )?;
+
             // Transfer raised funds to team
-            let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
+            let raised_funds_without_fee = ilo_info.funds_raised - funds_raised_fee;
+            let funds_for_liquidity = (FixedWrapper::from(raised_funds_without_fee)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
             .try_into_balance()
             .unwrap_or(0);
-            let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
+            let funds_for_team = raised_funds_without_fee - funds_for_liquidity;
             Assets::<T>::transfer_from(
-                &XOR.into(),
+                &ilo_info.base_asset.into(),
                 &pallet_account,
                 &ilo_info.ilo_organizer,
                 funds_for_team,
             )?;
 
+            let dex_id = if ilo_info.base_asset == XOR.into() {
+                DEXId::Polkaswap.into()
+            } else {
+                DEXId::PolkaswapXSTUSD.into()
+            };
             // Register trading pair
             TradingPair::<T>::register(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                DEXId::Polkaswap.into(),
-                XOR.into(),
+                dex_id,
+                ilo_info.base_asset.into(),
                 asset_id.into(),
             )?;
 
             // Initialize pool
             PoolXYK::<T>::initialize_pool(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                DEXId::Polkaswap.into(),
-                XOR.into(),
+                dex_id,
+                ilo_info.base_asset.into(),
                 asset_id.into(),
             )?;
 
@@ -718,8 +773,8 @@ pub mod pallet {
             );
             PoolXYK::<T>::deposit_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                DEXId::Polkaswap.into(),
-                XOR.into(),
+                dex_id,
+                ilo_info.base_asset.into(),
                 asset_id.into(),
                 funds_for_liquidity,
                 tokens_for_liquidity,
@@ -746,7 +801,7 @@ pub mod pallet {
                 + (T::MILLISECONDS_PER_DAY.saturating_mul(ilo_info.lockup_days.into())).into();
             CeresLiquidityLocker::<T>::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                XOR.into(),
+                ilo_info.base_asset.into(),
                 asset_id.into(),
                 unlocking_liq_timestamp,
                 balance!(1),
@@ -754,9 +809,10 @@ pub mod pallet {
             )?;
 
             // Calculate LP tokens
-            let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), asset_id)
-                .ok_or(Error::<T>::PoolDoesNotExist)?
-                .0;
+            let pool_account =
+                PoolXYK::<T>::properties_of_pool(ilo_info.base_asset.into(), asset_id)
+                    .ok_or(Error::<T>::PoolDoesNotExist)?
+                    .0;
             ilo_info.lp_tokens =
                 PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
 
@@ -839,14 +895,15 @@ pub mod pallet {
             let pallet_account = Self::account_id();
 
             // Get pool account
-            let pool_account = PoolXYK::<T>::properties_of_pool(XOR.into(), asset_id)
-                .ok_or(Error::<T>::PoolDoesNotExist)?
-                .0;
+            let pool_account =
+                PoolXYK::<T>::properties_of_pool(ilo_info.base_asset.into(), asset_id)
+                    .ok_or(Error::<T>::PoolDoesNotExist)?
+                    .0;
 
             // Transfer LP tokens
             PoolXYK::<T>::transfer_lp_tokens(
                 pool_account.clone(),
-                XOR.into(),
+                ilo_info.base_asset.into(),
                 asset_id,
                 pallet_account,
                 user.clone(),
@@ -890,7 +947,7 @@ pub mod pallet {
             if ilo_info.failed {
                 // Claim unused funds
                 Assets::<T>::transfer_from(
-                    &XOR.into(),
+                    &ilo_info.base_asset.into(),
                     &pallet_account,
                     &user,
                     contribution_info.funds_contributed,
@@ -977,6 +1034,30 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Change fee percent on raised funds in successful ILO
+        #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
+        pub fn change_fee_percent_for_raised_funds(
+            origin: OriginFor<T>,
+            fee_percent: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            if fee_percent > balance!(1) {
+                return Err(Error::<T>::InvalidFeePercent.into());
+            }
+
+            FeePercentOnRaisedFunds::<T>::put(fee_percent);
+
+            // Emit an event
+            Self::deposit_event(Event::FeeChanged(fee_percent));
+
+            Ok(().into())
+        }
+
         /// Change CERES burn fee
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_ceres_burn_fee(
@@ -1018,7 +1099,6 @@ pub mod pallet {
         }
 
         /// Claim PSWAP rewards
-
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
