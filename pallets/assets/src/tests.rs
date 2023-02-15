@@ -622,9 +622,13 @@ mod tests {
                 Balance::from(90u32)
             );
 
-            assert_ok!(
-                Assets::update_balance(Origin::signed(ALICE), BOB, XOR, -100),
-                // BadOrigin
+            assert_noop!(
+                Assets::update_balance(Origin::root(), BOB, XOR, -100),
+                pallet_balances::Error::<Runtime>::InsufficientBalance
+            );
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
             );
         })
     }
