@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Let us guide you through the creation of the issue that will make sure we have everything setted to give an answer to your question :)
+        Let us guide you through the creation of the issue that will make sure we have everything set to answer your question :)
     
   - type: textarea
     id: spike-problem
