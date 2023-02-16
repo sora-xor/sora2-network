@@ -57,6 +57,6 @@ body:
     id: feature-postconditions
     attributes:
       label: Postconditions
-      description: Is there any postcondition that should be fulfilled after the feature has been used ?
+      description: Are there any postconditions that should be fulfilled after the feature has been used?
       placeholder: Account has the chosen amount of XOR locked
       
