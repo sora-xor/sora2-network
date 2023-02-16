@@ -3,13 +3,12 @@ use framenode_runtime::eth_bridge::{
     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY,
     STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
 };
-use framenode_runtime::Runtime;
-use framenode_runtime::{eth_bridge::offchain::SignedTransactionData, opaque::Block};
+use framenode_runtime::{eth_bridge::offchain::SignedTransactionData, opaque::Block, Runtime};
 use prometheus_endpoint::{register, Gauge, Opts, PrometheusError, Registry, U64};
 use sp_core::H256;
 use sp_runtime::offchain::OffchainStorage;
-use std::collections::BTreeSet;
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 pub struct Metrics<B> {
     pub backend: Arc<B>,
