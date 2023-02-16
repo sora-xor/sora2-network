@@ -91,7 +91,7 @@ where
     pub fn get_offchain_value<T>(
         storage: &<B as sc_client_api::Backend<Block>>::OffchainStorage,
         key: &[u8],
-        desciption: &str,
+        description: &str,
     ) -> Option<T>
     where
         T: Decode,
@@ -101,7 +101,7 @@ where
             .and_then(|value| {
                 T::decode(&mut &value[..])
                     .map_err(|e| {
-                        log::error!("Failed to decode {} offchain value: {:?}", desciption, e);
+                        log::error!("Failed to decode {} offchain value: {:?}", description, e);
                     })
                     .ok()
             })
