@@ -43,7 +43,7 @@ body:
     id: tech-requirements
     attributes:
       label: Requirements
-      description: Are there any additional requirement that the tech task implementation should comply with ?
+      description: Are there any additional requirements that the tech task implementation should comply with?
       placeholder: |
         - Make sure we use a certain set of good practices
         - Use a specific programming paradigm
