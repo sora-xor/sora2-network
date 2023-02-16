@@ -60,7 +60,7 @@ impl Command {
         let beefy_address = inbound_channel.beefy_light_client().call().await?;
         let beefy = ethereum_gen::BeefyLightClient::new(beefy_address, eth.inner());
         if beefy.owner().call().await? == eth.address() {
-            let block_number = sub.block_number(None).await?;
+            let block_number = sub.block_number(()).await?;
             let block_hash = sub
                 .api()
                 .rpc()
@@ -68,19 +68,15 @@ impl Command {
                 .await?
                 .expect("block hash not found");
             let autorities = sub
-                .api()
-                .storage()
-                .fetch_or_default(
+                .storage_fetch_or_default(
                     &runtime::storage().mmr_leaf().beefy_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?;
             let next_autorities = sub
-                .api()
-                .storage()
-                .fetch_or_default(
+                .storage_fetch_or_default(
                     &runtime::storage().mmr_leaf().beefy_next_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?;
             info!("Reset beefy contract");

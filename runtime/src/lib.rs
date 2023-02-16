@@ -1999,6 +1999,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
+    type AuxiliaryDigestHandler = LeafProvider;
     type WeightInfo = ();
 }
 

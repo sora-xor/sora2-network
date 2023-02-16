@@ -34,24 +34,21 @@ use std::sync::Arc;
 use super::beefy_syncer::BeefySyncer;
 use super::justification::*;
 use crate::prelude::*;
-use crate::relay::client::*;
-use crate::substrate::EncodedBeefyCommitment;
-use beefy_gadget_rpc::BeefyApiClient;
-use beefy_primitives::VersionedFinalityProof;
+use crate::substrate::OtherParams;
 use bridge_common::bitfield::BitField;
-use bridge_types::GenericNetworkId;
-use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
-use subxt::events::StaticEvent;
+use bridge_types::SubNetworkId;
+use futures::stream::StreamExt;
+use sp_runtime::traits::UniqueSaturatedInto;
 use subxt::rpc_params;
 use subxt::tx::TxPayload;
 
-pub struct RelayBuilder<S, R> {
-    sender: Option<S>,
-    receiver: Option<R>,
+pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
+    sender: Option<SubUnsignedClient<S>>,
+    receiver: Option<SubSignedClient<R>>,
     syncer: Option<BeefySyncer>,
 }
 
-impl<S, R> Default for RelayBuilder<S, R> {
+impl<S: SenderConfig, R: ReceiverConfig> Default for RelayBuilder<S, R> {
     fn default() -> Self {
         Self {
             sender: None,
@@ -63,19 +60,19 @@ impl<S, R> Default for RelayBuilder<S, R> {
 
 impl<S, R> RelayBuilder<S, R>
 where
-    S: RuntimeClient,
-    R: RuntimeClient,
+    S: SenderConfig,
+    R: ReceiverConfig,
 {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn with_sender_client(mut self, sender: S) -> Self {
+    pub fn with_sender_client(mut self, sender: SubUnsignedClient<S>) -> Self {
         self.sender = Some(sender);
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: R) -> Self {
+    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
         self.receiver = Some(receiver);
         self
     }
@@ -89,8 +86,13 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let sender_network_id = sender.network_id().await?;
-        let latest_beefy_block = receiver.latest_beefy_block(sender_network_id).await?;
+        let sender_network_id = sender
+            .storage_fetch_or_default(&S::network_id(), ())
+            .await?;
+
+        let latest_beefy_block = sender
+            .storage_fetch_or_default(&R::latest_beefy_block(sender_network_id), ())
+            .await?;
         syncer.update_latest_sent(latest_beefy_block);
         Ok(Relay {
             sender,
@@ -104,53 +106,39 @@ where
 }
 
 #[derive(Clone)]
-pub struct Relay<S, R> {
-    sender: S,
-    receiver: R,
+pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
+    sender: SubUnsignedClient<S>,
+    receiver: SubSignedClient<R>,
     successful_sent: Arc<AtomicU64>,
     failed_to_sent: Arc<AtomicU64>,
     syncer: BeefySyncer,
-    sender_network_id: GenericNetworkId,
+    sender_network_id: SubNetworkId,
 }
 
 impl<S, R> Relay<S, R>
 where
-    S: RuntimeClient + Clone,
-    R: RuntimeClient + Clone,
-    ConfigOf<R>: Clone,
-    ConfigOf<S>: Clone,
-    BlockNumberOf<S>: AtLeast32Bit + Serialize + From<BlockNumberOf<R>>,
-    BlockNumberOf<R>: AtLeast32Bit + Serialize + From<BlockNumberOf<S>>,
-    // ExtrinsicParamsOf<R>: Default,
-    OtherExtrinsicParamsOf<R>: Default,
-    SignatureOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Signature>,
-    SignerOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Public>
-        + sp_runtime::traits::IdentifyAccount<AccountId = AccountIdOf<R>>,
-    AccountIdOf<R>: Into<AddressOf<R>>,
+    S: SenderConfig,
+    R: ReceiverConfig,
+    OtherParams<R>: Default,
 {
     async fn create_random_bitfield(
         &self,
         initial_bitfield: BitField,
         num_validators: u32,
     ) -> AnyResult<BitField> {
-        if let GenericNetworkId::Sub(network_id) = self.sender_network_id {
-            let params = rpc_params![network_id, initial_bitfield, num_validators];
-            let random_bitfield = self
-                .receiver
-                .client()
-                .api()
-                .rpc()
-                .request("beefyLightClient_getRandomBitfield", params)
-                .await?;
-            Ok(random_bitfield)
-        } else {
-            unimplemented!("Unsupported network id: {:?}", self.sender_network_id);
-        }
+        let params = rpc_params![self.sender_network_id, initial_bitfield, num_validators];
+        let random_bitfield = self
+            .receiver
+            .api()
+            .rpc()
+            .request("beefyLightClient_getRandomBitfield", params)
+            .await?;
+        Ok(random_bitfield)
     }
 
     async fn submit_signature_commitment(
         &self,
-        justification: &BeefyJustification<S::Config>,
+        justification: &BeefyJustification<S>,
     ) -> AnyResult<impl TxPayload> {
         let initial_bitfield = BitField::create_bitfield(
             &justification.signed_validators,
@@ -172,7 +160,7 @@ where
         let validator_proof = justification.validators_proof_sub(initial_bitfield, random_bitfield);
         let (latest_mmr_leaf, proof) = justification.simplified_mmr_proof_sub()?;
 
-        let call = self.receiver.submit_signature_commitment(
+        let call = R::submit_signature_commitment(
             self.sender_network_id,
             commitment,
             validator_proof,
@@ -183,189 +171,26 @@ where
         Ok(call)
     }
 
-    pub async fn call_with_event<E: StaticEvent, U: TxPayload>(&self, call: U) -> AnyResult<E> {
-        let tx = self
-            .receiver
-            .client()
-            .api()
-            .tx()
-            .sign_and_submit_then_watch_default(&call, self.receiver.client())
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
-            .await?;
-
-        let success_event = tx.find_first::<E>()?.ok_or(anyhow!("event not found"))?;
-        Ok(success_event)
-    }
-
-    pub async fn send_commitment(
-        self,
-        justification: BeefyJustification<S::Config>,
-    ) -> AnyResult<()> {
+    pub async fn send_commitment(self, justification: BeefyJustification<S>) -> AnyResult<()> {
         debug!("New justification: {:?}", justification);
         let call = self.submit_signature_commitment(&justification).await?;
-        let _event = self
-            .call_with_event::<R::VerificationSuccessful, _>(call)
-            .await?;
+        self.receiver.submit_extrinsic(&call).await?;
         self.syncer
             .update_latest_sent(justification.commitment.block_number.into());
         Ok(())
     }
 
-    async fn current_block(&self) -> AnyResult<BlockNumberOf<S>> {
-        let current_block_hash = self.sender.client().api().rpc().finalized_head().await?;
-        let current_block = self
-            .sender
-            .client()
-            .block_number(Some(current_block_hash))
-            .await?;
-        Ok(current_block)
-    }
-
-    async fn process_block(&self, block_num: u64) -> AnyResult<()> {
-        let current_validator_set_id = self
-            .receiver
-            .current_validator_set(self.sender_network_id)
-            .await?
-            .id;
-        let next_validator_set_id = self
-            .receiver
-            .next_validator_set(self.sender_network_id)
-            .await?
-            .id;
-        let block_hash = self
-            .sender
-            .client()
-            .api()
-            .rpc()
-            .block_hash(Some(block_num.into()))
-            .await?
-            .expect("block hash should exist");
-        let block = self
-            .sender
-            .client()
-            .api()
-            .rpc()
-            .block(Some(block_hash))
-            .await?
-            .expect("block should exist");
-        debug!("Check block {:?}", block.block.header.number());
-        if let Some(justifications) = block.justifications {
-            for (engine, justification) in justifications {
-                if &engine == b"BEEF" {
-                    let commitment = VersionedFinalityProof::decode(&mut justification.as_slice())?;
-                    let justification = match BeefyJustification::create(
-                        self.sender.client().clone().unsigned(),
-                        commitment,
-                    )
-                    .await
-                    {
-                        Ok(justification) => justification,
-                        Err(err) => {
-                            warn!("failed to create justification: {}", err);
-                            continue;
-                        }
-                    };
-                    debug!("Justification: {:?}", justification);
-                    if justification.commitment.validator_set_id != current_validator_set_id
-                        && justification.commitment.validator_set_id != next_validator_set_id
-                    {
-                        warn!(
-                            "validator set id mismatch: {} + 1 != {}",
-                            justification.commitment.validator_set_id, current_validator_set_id
-                        );
-                        continue;
-                    }
-
-                    let _ = self
-                        .clone()
-                        .send_commitment(justification)
-                        .await
-                        .map_err(|err| {
-                            warn!("failed to send: {}", err);
-                            err
-                        });
-                    info!(
-                        "failed: {}, successfull: {}",
-                        self.failed_to_sent.load(Ordering::Relaxed),
-                        self.successful_sent.load(Ordering::Relaxed)
-                    );
-                    return Ok(());
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn sync_historical_commitments(&self, end_block: BlockNumberOf<S>) -> AnyResult<()> {
-        let epoch_duration = self.sender.epoch_duration()?;
-        let latest_beefy_block = self
-            .receiver
-            .latest_beefy_block(self.sender_network_id)
-            .await? as u64;
-        let end_block = end_block.into();
-
-        const SHIFT: u64 = 5;
-
-        let mut next_block =
-            latest_beefy_block - latest_beefy_block % epoch_duration + epoch_duration;
-        while next_block <= end_block {
-            for block_num in (next_block - SHIFT)..(next_block + SHIFT) {
-                self.process_block(block_num).await?;
-            }
-            next_block += epoch_duration;
-        }
-        Ok(())
-    }
-
     pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
-        let current_block = self.current_block().await?;
-        self.sync_historical_commitments(current_block)
-            .await
-            .context("sync historical commitments")?;
-
-        // The sync takes some time. It is necessary to check new blocks that could be produced during the sync and resync.
-        let new_current_block = self.current_block().await?;
-        if new_current_block != current_block {
-            self.sync_historical_commitments(new_current_block)
-                .await
-                .context("sync last historical commitments")?;
-        }
-
-        let mut beefy_sub = self
-            .sender
-            .client()
-            .beefy()
-            .subscribe_justifications()
-            .await?;
+        let mut beefy_sub = crate::substrate::beefy_subscription::subscribe_beefy_justifications(
+            self.sender.clone(),
+            self.syncer.clone(),
+        )
+        .await?;
         let mut first_attempt_failed = false;
-        while let Some(encoded_commitment) = beefy_sub.next().await.transpose()? {
-            let justification = match BeefyJustification::create(
-                self.sender.client().clone().unsigned(),
-                EncodedBeefyCommitment::decode::<ConfigOf<S>>(&encoded_commitment)?,
-            )
-            .await
-            {
-                Ok(justification) => justification,
-                Err(err) => {
-                    warn!("failed to create justification: {}", err);
-                    continue;
-                }
-            };
-
-            let next_validator_set_id = self
-                .receiver
-                .next_validator_set(self.sender_network_id)
-                .await?
-                .id;
-
-            let is_mandatory =
-                next_validator_set_id < justification.leaf_proof.leaf.beefy_next_authority_set.id;
-
+        while let Some(justification) = beefy_sub.next().await.transpose()? {
             let latest_requested = self.syncer.latest_requested();
             let latest_sent = self.syncer.latest_sent();
+            let is_mandatory = justification.is_mandatory;
             let should_send = !ignore_unneeded_commitments
                 || is_mandatory
                 || (latest_requested < justification.commitment.block_number.into()
@@ -381,15 +206,11 @@ where
                         warn!("Send commitment error: {}", e);
                     })
                 {
-                    if first_attempt_failed {
+                    if first_attempt_failed || is_mandatory {
                         return Err(anyhow::anyhow!(
                             "Unable to send commitment, possibly BEEFY state is broken"
                         ));
                     }
-                    let current_block = self.current_block().await?;
-                    self.sync_historical_commitments(current_block)
-                        .await
-                        .context("sync historical commitments")?;
                     first_attempt_failed = true;
                 } else {
                     first_attempt_failed = false;

@@ -117,17 +117,8 @@ impl Command {
         };
         let call = runtime::runtime_types::framenode_runtime::RuntimeCall::ERC20App(call);
         info!("Sudo call extrinsic: {:?}", call);
-        let result = sub
-            .api()
-            .tx()
-            .sign_and_submit_then_watch_default(&runtime::tx().sudo().sudo(call), &sub)
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
+        sub.submit_extrinsic(&runtime::tx().sudo().sudo(call))
             .await?;
-        info!("Extrinsic successful");
-        sub_log_tx_events::<mainnet_runtime::Event, _>(result);
         Ok(())
     }
 
@@ -139,13 +130,11 @@ impl Command {
         let is_registered = match &self.asset_kind {
             AssetKind::ExistingERC20 { asset_id, .. } | AssetKind::Native { asset_id } => {
                 let is_registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .asset_kinds(&network_id, asset_id),
-                        None,
+                        (),
                     )
                     .await?
                     .is_some();
@@ -153,13 +142,11 @@ impl Command {
             }
             AssetKind::ERC20 { address, .. } => {
                 let is_registered = sub
-                    .api()
-                    .storage()
-                    .fetch(
+                    .storage_fetch(
                         &mainnet_runtime::storage()
                             .erc20_app()
                             .assets_by_addresses(&network_id, address),
-                        None,
+                        (),
                     )
                     .await?
                     .is_some();

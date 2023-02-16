@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::cli::prelude::*;
-use crate::relay::client::*;
 use crate::relay::parachain::RelayBuilder;
 
 #[derive(Args, Clone, Debug)]
@@ -43,8 +42,8 @@ pub(crate) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let sender = ParachainRuntimeClient::new(self.para.get_signed_substrate().await?);
-        let receiver = ParachainRuntimeClient::new(self.para.get_signed_substrate().await?);
+        let receiver = self.para.get_signed_substrate().await?;
+        let sender = receiver.clone().unsigned();
         let syncer = crate::relay::beefy_syncer::BeefySyncer::new();
         let beefy_relay = RelayBuilder::new()
             .with_sender_client(sender.clone())

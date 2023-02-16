@@ -31,33 +31,41 @@
 use std::collections::VecDeque;
 
 use super::beefy_syncer::BeefySyncer;
+use crate::ethereum::SignedClientInner;
 use crate::prelude::*;
-use crate::substrate::{BlockNumber, OtherParams};
-use beefy_light_client::ProvedSubstrateBridgeMessage;
-use bridge_types::{SubNetworkId, H256};
+use crate::substrate::BlockNumber;
+use bridge_types::EVMChainId;
+use bridge_types::{Address, H256, U256};
+use ethereum_gen::{beefy_light_client, inbound_channel, InboundChannel};
+use ethers::abi::RawLog;
+use ethers::prelude::EthLogDecode;
+use ethers::providers::Middleware;
+use ethers::types::Bytes;
 use futures::FutureExt;
 use futures::StreamExt;
+use sp_runtime::traits::Keccak256;
 
-pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
+pub struct RelayBuilder<S: SenderConfig> {
     sender: Option<SubUnsignedClient<S>>,
-    receiver: Option<SubSignedClient<R>>,
+    receiver: Option<EthSignedClient>,
     syncer: Option<BeefySyncer>,
+    inbound_channel: Option<Address>,
 }
 
-impl<S: SenderConfig, R: ReceiverConfig> Default for RelayBuilder<S, R> {
+impl<S: SenderConfig> Default for RelayBuilder<S> {
     fn default() -> Self {
         Self {
             sender: None,
             receiver: None,
             syncer: None,
+            inbound_channel: None,
         }
     }
 }
 
-impl<S, R> RelayBuilder<S, R>
+impl<S> RelayBuilder<S>
 where
     S: SenderConfig,
-    R: ReceiverConfig,
 {
     pub fn new() -> Self {
         Default::default()
@@ -68,8 +76,13 @@ where
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
+    pub fn with_receiver_client(mut self, receiver: EthSignedClient) -> Self {
         self.receiver = Some(receiver);
+        self
+    }
+
+    pub fn with_inbound_channel_contract(mut self, address: Address) -> Self {
+        self.inbound_channel = Some(address);
         self
     }
 
@@ -78,42 +91,39 @@ where
         self
     }
 
-    pub async fn build(self) -> AnyResult<Relay<S, R>> {
+    pub async fn build(self) -> AnyResult<Relay<S>> {
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let sender_network_id = sender
-            .storage_fetch_or_default(&S::network_id(), ())
-            .await?;
-        let receiver_network_id = receiver
-            .storage_fetch_or_default(&R::network_id(), ())
-            .await?;
+        let inbound_channel = InboundChannel::new(
+            self.inbound_channel
+                .expect("inbound channel address is needed"),
+            receiver.inner(),
+        );
         Ok(Relay {
+            chain_id: receiver.inner().get_chainid().await?,
             sender,
             receiver,
             syncer,
             commitment_queue: Default::default(),
-            receiver_network_id,
-            sender_network_id,
+            inbound_channel,
         })
     }
 }
 
 #[derive(Clone)]
-pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
+pub struct Relay<S: SenderConfig> {
     sender: SubUnsignedClient<S>,
-    receiver: SubSignedClient<R>,
+    receiver: EthSignedClient,
     commitment_queue: VecDeque<(BlockNumber<S>, H256)>,
     syncer: BeefySyncer,
-    receiver_network_id: SubNetworkId,
-    sender_network_id: SubNetworkId,
+    inbound_channel: InboundChannel<SignedClientInner>,
+    chain_id: EVMChainId,
 }
 
-impl<S, R> Relay<S, R>
+impl<S> Relay<S>
 where
     S: SenderConfig,
-    R: ReceiverConfig,
-    OtherParams<R>: Default,
 {
     async fn send_commitment(
         &self,
@@ -124,13 +134,13 @@ where
         let latest_sent = self.syncer.latest_sent();
         let commitment = super::messages_subscription::load_commitment_with_proof(
             &self.sender,
-            self.receiver_network_id.into(),
+            self.chain_id.into(),
             block_number,
             commitment_hash,
             latest_sent as u32,
         )
         .await?;
-        let super::messages_subscription::MessageCommitment::Sub(commitment_inner) = commitment.commitment else {
+        let super::messages_subscription::MessageCommitment::EVM(commitment_inner) = commitment.commitment else {
             return Err(anyhow::anyhow!("Invalid commitment"));
         };
         let inbound_channel_nonce = self.inbound_channel_nonce().await?;
@@ -142,25 +152,95 @@ where
             info!("Channel commitment is already sent");
             return Ok(());
         }
+        let digest_encoded = commitment.digest.encode();
+        let digest_hash = hex::encode(&Keccak256::hash(&digest_encoded));
+        debug!("Digest hash: {}", digest_hash);
+        let leaf_encoded = hex::encode(&commitment.leaf.encode());
+        debug!("Leaf: {}", leaf_encoded);
+        let leaf_prefix: Bytes =
+            hex::decode(leaf_encoded.strip_suffix(&digest_hash).unwrap())?.into();
+        let digest_hex = hex::encode(&digest_encoded);
+        debug!("Digest: {}", digest_hex);
 
-        let payload = R::submit_messages_commitment(
-            self.sender_network_id,
-            ProvedSubstrateBridgeMessage {
-                message: commitment_inner.messages,
-                proof: commitment.proof,
-                leaf: commitment.leaf,
-                digest: commitment.digest,
-            },
-        );
+        let proof = beefy_light_client::SimplifiedMMRProof {
+            merkle_proof_items: commitment
+                .proof
+                .merkle_proof_items
+                .iter()
+                .map(|x| x.0)
+                .collect(),
+            merkle_proof_order_bit_field: commitment.proof.merkle_proof_order_bit_field,
+        };
 
-        info!("Sending channel commitment");
-        self.receiver.submit_extrinsic(&payload).await?;
+        let delimiter = (self.chain_id, commitment_hash).encode();
+        let (digest_prefix, digest_suffix) =
+            digest_hex.split_once(&hex::encode(delimiter)).unwrap();
+        let digest_prefix = hex::decode(digest_prefix)?.into();
+        let digest_suffix = hex::decode(digest_suffix)?.into();
+        let mut messages = vec![];
+        for message in commitment_inner.messages {
+            messages.push(inbound_channel::Message {
+                target: message.target,
+                nonce: message.nonce,
+                payload: message.payload.into(),
+                fee: message.fee,
+                max_gas: message.max_gas,
+            });
+        }
+        let batch = inbound_channel::Batch {
+            total_max_gas: commitment_inner.total_max_gas,
+            messages,
+        };
+        let leaf_bytes = inbound_channel::LeafBytes {
+            digest_prefix,
+            digest_suffix,
+            leaf_prefix: leaf_prefix.clone(),
+        };
+        let messages_total_gas = batch.total_max_gas;
+        let mut call = self
+            .inbound_channel
+            .submit(batch, leaf_bytes, proof.clone())
+            .legacy();
+
+        debug!("Fill submit messages");
+        self.receiver
+            .fill_transaction(&mut call.tx, call.block)
+            .await?;
+        debug!("Messages total gas: {}", messages_total_gas);
+        call.tx.set_gas(self.submit_message_gas(messages_total_gas));
+        debug!("Check submit messages");
+        call.call().await?;
+        self.receiver
+            .save_gas_price(&call, "submit-messages")
+            .await?;
+        debug!("Send submit messages");
+        let tx = call.send().await?;
+        debug!("Wait for confirmations submit messages: {:?}", tx);
+        let tx = tx.confirmations(1).await?;
+        debug!("Submit messages: {:?}", tx);
+        if let Some(tx) = tx {
+            for log in tx.logs {
+                let raw_log = RawLog {
+                    topics: log.topics.clone(),
+                    data: log.data.to_vec(),
+                };
+                if let Ok(log) =
+                    <inbound_channel::MessageDispatchedFilter as EthLogDecode>::decode_log(&raw_log)
+                {
+                    info!("Message dispatched: {:?}", log);
+                }
+            }
+        }
+
         Ok(())
     }
 
+    fn submit_message_gas(&self, messages_total_gas: U256) -> U256 {
+        messages_total_gas.saturating_add(260000.into())
+    }
+
     async fn inbound_channel_nonce(&self) -> AnyResult<u64> {
-        let storage = R::substrate_bridge_inbound_nonce(self.sender_network_id);
-        let nonce = self.receiver.storage_fetch_or_default(&storage, ()).await?;
+        let nonce = self.inbound_channel.nonce().call().await?;
         Ok(nonce)
     }
 
@@ -168,7 +248,7 @@ where
         let inbound_nonce = self.inbound_channel_nonce().await?;
         let mut subscription = super::messages_subscription::subscribe_message_commitments(
             self.sender.clone(),
-            self.receiver_network_id.into(),
+            self.chain_id.into(),
             inbound_nonce,
         );
         loop {

@@ -30,7 +30,6 @@
 
 use crate::cli::prelude::*;
 use crate::relay::beefy_syncer::BeefySyncer;
-use crate::relay::client::*;
 use crate::relay::parachain::RelayBuilder;
 
 #[derive(Args, Clone, Debug)]
@@ -44,8 +43,8 @@ pub(crate) struct Command {
 
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
-        let sender = SubstrateRuntimeClient::new(self.sub.get_signed_substrate().await?);
-        let receiver = SubstrateRuntimeClient::new(self.sub.get_signed_substrate().await?);
+        let receiver = self.sub.get_signed_substrate().await?;
+        let sender = receiver.clone().unsigned();
         let syncer = BeefySyncer::new();
         let beefy_relay = RelayBuilder::new()
             .with_sender_client(sender.clone())

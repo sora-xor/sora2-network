@@ -56,9 +56,7 @@ impl Command {
         let sub = self.sub.get_signed_substrate().await?;
         let network_id = eth.get_chainid().await?;
         let (_, native_asset_id) = sub
-            .api()
-            .storage()
-            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
+            .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .expect("network not found");
         let balance = sub
@@ -66,48 +64,30 @@ impl Command {
             .total_balance(sub.account_id(), self.asset_id, None)
             .await?;
         info!("Current balance: {:?}", balance);
-        let result = if self.asset_id == native_asset_id {
+        if self.asset_id == native_asset_id {
             info!(
                 "Call eth_app.burn({}, {}, {})",
                 network_id, self.recipient, self.amount
             );
-            sub.api()
-                .tx()
-                .sign_and_submit_then_watch_default(
-                    &runtime::tx()
-                        .eth_app()
-                        .burn(network_id, self.recipient, self.amount),
-                    &sub,
-                )
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?
+            sub.submit_extrinsic(&runtime::tx().eth_app().burn(
+                network_id,
+                self.recipient,
+                self.amount,
+            ))
+            .await?;
         } else {
             info!(
                 "Call erc20_app.burn({}, {}, {}, {})",
                 network_id, self.asset_id, self.recipient, self.amount
             );
-            sub.api()
-                .tx()
-                .sign_and_submit_then_watch_default(
-                    &runtime::tx().erc20_app().burn(
-                        network_id,
-                        self.asset_id,
-                        self.recipient,
-                        self.amount,
-                    ),
-                    &sub,
-                )
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?
-        };
-        info!("Extrinsic successful");
-        sub_log_tx_events::<mainnet_runtime::Event, _>(result);
+            sub.submit_extrinsic(&runtime::tx().erc20_app().burn(
+                network_id,
+                self.asset_id,
+                self.recipient,
+                self.amount,
+            ))
+            .await?;
+        }
         Ok(())
     }
 }

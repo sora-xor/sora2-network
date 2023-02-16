@@ -64,6 +64,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
     use bridge_types::types::AdditionalEVMOutboundData;
@@ -98,6 +99,8 @@ pub mod pallet {
         type FeeCurrency: Get<Self::AssetId>;
 
         type FeeTechAccountId: Get<Self::TechAccountId>;
+
+        type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
 
         type MessageStatusNotifier: MessageStatusNotifier<
             Self::AssetId,
@@ -259,9 +262,8 @@ pub mod pallet {
             let digest_item = AuxiliaryDigestItem::Commitment(
                 GenericNetworkId::EVM(network_id),
                 commitment_hash.clone(),
-            )
-            .into();
-            <frame_system::Pallet<T>>::deposit_log(digest_item);
+            );
+            T::AuxiliaryDigestHandler::add_item(digest_item);
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&*key, &commitment.encode());
