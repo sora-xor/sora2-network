@@ -20,7 +20,7 @@ fn create_poll_invalid_start_timestamp() {
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 current_timestamp,
                 current_timestamp + 10,
                 title,
@@ -41,7 +41,7 @@ fn create_poll_invalid_end_timestamp() {
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 current_timestamp + 1,
                 current_timestamp,
                 title,
@@ -62,7 +62,7 @@ fn create_poll_invalid_minimum_duration_of_poll() {
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 current_timestamp,
                 current_timestamp + 15,
                 title,
@@ -83,7 +83,7 @@ fn create_poll_invalid_maximum_duration_of_poll() {
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 current_timestamp,
                 current_timestamp + 604800001,
                 title,
@@ -104,7 +104,7 @@ fn create_poll_not_enough_hermes_for_creating_poll() {
 
         assert_err!(
             HermesGovernancePlatform::create_poll(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 current_timestamp,
                 current_timestamp + 172800000,
                 title,
@@ -121,7 +121,7 @@ fn create_poll_ok() {
     ext.execute_with(|| {
         let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
         let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 172800000;
-        let user = Origin::signed(ALICE);
+        let user = RuntimeOrigin::signed(ALICE);
         let hermes_locked = pallet::MinimumHermesAmountForCreatingPoll::<Runtime>::get();
         let title = "Title".to_string();
         let description = "Description".to_string();
@@ -169,7 +169,7 @@ fn vote_poll_does_not_exist() {
         let poll_id = H256::from(encoded);
 
         assert_err!(
-            HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option,),
+            HermesGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, voting_option,),
             Error::<Runtime>::PollDoesNotExist
         );
     });
@@ -201,7 +201,7 @@ fn vote_poll_is_not_started() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_err!(
-            HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option),
+            HermesGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, voting_option),
             Error::<Runtime>::PollIsNotStarted
         );
     });
@@ -235,7 +235,7 @@ fn vote_poll_is_finished() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604800001);
 
         assert_err!(
-            HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id, voting_option,),
+            HermesGovernancePlatform::vote(RuntimeOrigin::signed(ALICE), poll_id, voting_option,),
             Error::<Runtime>::PollIsFinished
         );
     });
@@ -267,7 +267,7 @@ fn vote_not_enough_hermes_for_voting() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_err!(
-            HermesGovernancePlatform::vote(Origin::signed(BOB), poll_id, voting_option),
+            HermesGovernancePlatform::vote(RuntimeOrigin::signed(BOB), poll_id, voting_option),
             Error::<Runtime>::NotEnoughHermesForVoting
         );
     });
@@ -299,13 +299,17 @@ fn vote_already_voted() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_ok!(HermesGovernancePlatform::vote(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
             voting_option,
         ));
 
         assert_err!(
-            HermesGovernancePlatform::vote(Origin::signed(ALICE), poll_id.clone(), voting_option),
+            HermesGovernancePlatform::vote(
+                RuntimeOrigin::signed(ALICE),
+                poll_id.clone(),
+                voting_option
+            ),
             Error::<Runtime>::AlreadyVoted
         );
     });
@@ -338,7 +342,7 @@ fn vote_ok() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_ok!(HermesGovernancePlatform::vote(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
             voting_option,
         ));
@@ -375,7 +379,7 @@ fn withdraw_funds_voter_poll_does_not_exist() {
         let poll_id = H256::from(encoded);
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id,),
+            HermesGovernancePlatform::withdraw_funds_voter(RuntimeOrigin::signed(ALICE), poll_id,),
             Error::<Runtime>::PollDoesNotExist
         );
     });
@@ -407,13 +411,13 @@ fn withdraw_funds_voter_poll_is_not_finished() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_ok!(HermesGovernancePlatform::vote(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
             voting_option,
         ));
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id,),
+            HermesGovernancePlatform::withdraw_funds_voter(RuntimeOrigin::signed(ALICE), poll_id,),
             Error::<Runtime>::PollIsNotFinished
         );
     });
@@ -447,7 +451,7 @@ fn withdraw_funds_voter_not_voted() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id,),
+            HermesGovernancePlatform::withdraw_funds_voter(RuntimeOrigin::signed(ALICE), poll_id,),
             Error::<Runtime>::NotVoted
         );
     });
@@ -480,7 +484,7 @@ fn withdraw_funds_voter_funds_already_withdrawn() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_ok!(HermesGovernancePlatform::vote(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
             voting_option,
         ));
@@ -488,12 +492,15 @@ fn withdraw_funds_voter_funds_already_withdrawn() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_ok!(HermesGovernancePlatform::withdraw_funds_voter(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone()
         ));
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_voter(Origin::signed(ALICE), poll_id.clone(),),
+            HermesGovernancePlatform::withdraw_funds_voter(
+                RuntimeOrigin::signed(ALICE),
+                poll_id.clone(),
+            ),
             Error::<Runtime>::FundsAlreadyWithdrawn
         );
     });
@@ -527,7 +534,7 @@ fn withdraw_funds_voter_ok() {
         pallet::HermesPollData::<Runtime>::insert(&poll_id, &hermes_poll_info);
 
         assert_ok!(HermesGovernancePlatform::vote(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
             voting_option,
         ));
@@ -535,7 +542,7 @@ fn withdraw_funds_voter_ok() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_ok!(HermesGovernancePlatform::withdraw_funds_voter(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone()
         ));
 
@@ -571,7 +578,7 @@ fn withdraw_funds_creator_poll_does_not_exist() {
         let poll_id = H256::from(encoded);
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_creator(Origin::signed(ALICE), poll_id,),
+            HermesGovernancePlatform::withdraw_funds_creator(RuntimeOrigin::signed(ALICE), poll_id,),
             Error::<Runtime>::PollDoesNotExist
         );
     });
@@ -605,7 +612,10 @@ fn withdraw_funds_creator_you_are_not_creator() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_err!(
-            HermesGovernancePlatform::withdraw_funds_creator(Origin::signed(BOB), poll_id.clone(),),
+            HermesGovernancePlatform::withdraw_funds_creator(
+                RuntimeOrigin::signed(BOB),
+                poll_id.clone(),
+            ),
             Error::<Runtime>::YouAreNotCreator
         );
     });
@@ -637,7 +647,7 @@ fn withdraw_funds_creator_poll_is_not_finished() {
 
         assert_err!(
             HermesGovernancePlatform::withdraw_funds_creator(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
             ),
             Error::<Runtime>::PollIsNotFinished
@@ -681,13 +691,13 @@ fn withdraw_funds_creator_funds_already_withdrawn() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_ok!(HermesGovernancePlatform::withdraw_funds_creator(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone(),
         ));
 
         assert_err!(
             HermesGovernancePlatform::withdraw_funds_creator(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
             ),
             Error::<Runtime>::FundsAlreadyWithdrawn
@@ -731,7 +741,7 @@ fn withdraw_funds_creator_ok() {
         pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 604900000);
 
         assert_ok!(HermesGovernancePlatform::withdraw_funds_creator(
-            Origin::signed(ALICE),
+            RuntimeOrigin::signed(ALICE),
             poll_id.clone()
         ));
 
@@ -759,7 +769,7 @@ fn change_min_hermes_for_voting_unauthorized() {
     ext.execute_with(|| {
         assert_err!(
             HermesGovernancePlatform::change_min_hermes_for_voting(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 balance!(100)
             ),
             Error::<Runtime>::Unauthorized
@@ -772,7 +782,7 @@ fn change_min_hermes_for_voting_ok() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_ok!(HermesGovernancePlatform::change_min_hermes_for_voting(
-            Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+            RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
             balance!(300)
         ));
 
@@ -789,7 +799,7 @@ fn change_min_hermes_for_creating_poll_unauthorized() {
     ext.execute_with(|| {
         assert_err!(
             HermesGovernancePlatform::change_min_hermes_for_creating_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 balance!(100)
             ),
             Error::<Runtime>::Unauthorized
@@ -803,7 +813,7 @@ fn change_min_hermes_for_creating_poll_ok() {
     ext.execute_with(|| {
         assert_ok!(
             HermesGovernancePlatform::change_min_hermes_for_creating_poll(
-                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                 balance!(100)
             )
         );

@@ -80,13 +80,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     // Storage: VestedRewards Rewards (r:2 w:2)
     /// The range of component `n` is `[0, 100]`.
     fn update_rewards(n: u32) -> Weight {
-        (6_689_000 as Weight)
-            // Standard Error: 2_000
-            .saturating_add((4_609_000 as Weight).saturating_mul(n as Weight))
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
+        Weight::zero()
     }
 }
 

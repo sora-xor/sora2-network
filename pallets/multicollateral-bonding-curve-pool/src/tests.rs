@@ -142,7 +142,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
             // base case for buy
@@ -447,7 +447,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
             assert_swap_outcome(
                 MBCPool::exchange(
@@ -1035,7 +1035,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input

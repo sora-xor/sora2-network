@@ -1578,7 +1578,7 @@ mod tests {
             let asset_id = CERES_ASSET_ID;
             let base_asset = XSTUSD;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 base_asset.into(),
                 asset_id.into(),
                 balance!(7693),
@@ -1607,7 +1607,7 @@ mod tests {
             let funds_to_contribute = balance!(0.21);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
-                Origin::signed(CHARLES),
+                RuntimeOrigin::signed(CHARLES),
                 CERES_ASSET_ID.into(),
                 funds_to_contribute
             ));
@@ -1861,7 +1861,7 @@ mod tests {
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let base_asset = XSTUSD;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 base_asset.into(),
                 CERES_ASSET_ID.into(),
                 balance!(7693),
@@ -1891,7 +1891,7 @@ mod tests {
             let funds_to_contribute = balance!(0.21);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
-                Origin::signed(CHARLES),
+                RuntimeOrigin::signed(CHARLES),
                 CERES_ASSET_ID.into(),
                 funds_to_contribute
             ));
@@ -1900,7 +1900,7 @@ mod tests {
                 pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::emergency_withdraw(
-                Origin::signed(CHARLES),
+                RuntimeOrigin::signed(CHARLES),
                 CERES_ASSET_ID.into(),
             ));
 
@@ -2473,7 +2473,7 @@ mod tests {
             let mut current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let base_asset = XSTUSD;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 base_asset.into(),
                 CERES_ASSET_ID.into(),
                 balance!(7693),
@@ -2503,14 +2503,14 @@ mod tests {
             let funds_to_contribute = balance!(1000);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
-                Origin::signed(CHARLES),
+                RuntimeOrigin::signed(CHARLES),
                 CERES_ASSET_ID.into(),
                 funds_to_contribute
             ));
 
             current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID.into()
             ),);
 
@@ -2556,7 +2556,7 @@ mod tests {
 
             assert_err!(
                 pool_xyk::Pallet::<Runtime>::withdraw_liquidity(
-                    Origin::signed(pallet_account),
+                    RuntimeOrigin::signed(pallet_account),
                     DEX_B_ID,
                     base_asset.into(),
                     CERES_ASSET_ID.into(),
@@ -3014,7 +3014,7 @@ mod tests {
         preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     balance!(0.02)
                 ),
                 Error::<Runtime>::Unauthorized
@@ -3027,7 +3027,7 @@ mod tests {
         preset_initial(|| {
             assert_err!(
                 CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
-                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                     balance!(1.2)
                 ),
                 Error::<Runtime>::InvalidFeePercent
@@ -3040,7 +3040,7 @@ mod tests {
         preset_initial(|| {
             assert_ok!(
                 CeresLaunchpadPallet::<Runtime>::change_fee_percent_for_raised_funds(
-                    Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                    RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                     balance!(0.02)
                 )
             );
@@ -3200,7 +3200,7 @@ mod tests {
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let base_asset = XOR;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 base_asset.into(),
                 CERES_ASSET_ID.into(),
                 balance!(7693),
@@ -3230,7 +3230,7 @@ mod tests {
             let funds_to_contribute = balance!(800);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
-                Origin::signed(CHARLES),
+                RuntimeOrigin::signed(CHARLES),
                 CERES_ASSET_ID.into(),
                 funds_to_contribute
             ),);
@@ -3238,7 +3238,7 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID.into()
             ),);
 
@@ -3251,7 +3251,7 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
 
             assert_ok!(CeresLaunchpadPallet::<Runtime>::claim_lp_tokens(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID
             ));
 

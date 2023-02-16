@@ -14,9 +14,11 @@ use anyhow::Result as AnyResult;
 use framenode_runtime::Runtime;
 use std::sync::Arc;
 
-async fn create_ext<B: BlockT + DeserializeOwned>(
-    client: Arc<WsClient>,
-) -> AnyResult<TestExternalities> {
+async fn create_ext<B>(client: Arc<WsClient>) -> AnyResult<TestExternalities>
+where
+    B: DeserializeOwned + BlockT,
+    <B as BlockT>::Header: DeserializeOwned,
+{
     let res = Builder::<B>::new()
         .mode(Mode::OfflineOrElseOnline(
             OfflineConfig {

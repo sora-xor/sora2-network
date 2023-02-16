@@ -117,13 +117,13 @@ enum Commands {
 impl Commands {
     pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Self::SubscribeBeefy(cmd) => cmd.run(args).await,
-            Self::FetchEthereumHeader(cmd) => cmd.run(args).await,
-            Self::MintTestToken(cmd) => cmd.run(args).await,
-            Self::Bridge(cmd) => cmd.run(args).await,
-            Self::OldBridge(cmd) => cmd.run(args).await,
-            Self::CalcDagRoots(cmd) => cmd.run(args).await,
-            Self::CopyLiquidity(cmd) => cmd.run(args).await,
+            Self::SubscribeBeefy(cmd) => cmd.run().await,
+            Self::FetchEthereumHeader(cmd) => cmd.run().await,
+            Self::MintTestToken(cmd) => cmd.run().await,
+            Self::Bridge(cmd) => cmd.run().await,
+            Self::OldBridge(cmd) => cmd.run().await,
+            Self::CalcDagRoots(cmd) => cmd.run().await,
+            Self::CopyLiquidity(cmd) => cmd.run().await,
         }
     }
 }

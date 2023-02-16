@@ -31,7 +31,7 @@
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Get;
-use sp_std::marker::PhantomData;
+use sp_std::{marker::PhantomData, Writer};
 
 use common::prelude::SwapVariant;
 
@@ -70,15 +70,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     /// The range of component `n` is `[1, 10]`.
     /// The range of component `m` is `[10, 100]`.
     fn swap_transfer_batch(n: u32, m: u32) -> Weight {
-        (0 as Weight)
-            // Standard Error: 42_166_000
-            .saturating_add((1_601_298_000 as Weight).saturating_mul(n as Weight))
-            // Standard Error: 4_153_000
-            .saturating_add((240_616_000 as Weight).saturating_mul(m as Weight))
-            .saturating_add(T::DbWeight::get().reads((8 as Weight).saturating_mul(n as Weight)))
-            .saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(m as Weight)))
-            .saturating_add(T::DbWeight::get().writes((5 as Weight).saturating_mul(n as Weight)))
-            .saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(m as Weight)))
+        Weight::zero()
     }
 }
 

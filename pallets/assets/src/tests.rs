@@ -607,7 +607,7 @@ mod tests {
                 Balance::from(100u32)
             );
             assert_ok!(Assets::force_burn(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 XOR,
                 BOB,
                 Balance::from(10u32)
@@ -617,7 +617,7 @@ mod tests {
                 Balance::from(90u32)
             );
             assert_err!(
-                Assets::force_burn(Origin::signed(ALICE), XOR, BOB, Balance::from(10u32)),
+                Assets::force_burn(RuntimeOrigin::signed(ALICE), XOR, BOB, Balance::from(10u32)),
                 BadOrigin
             );
             assert_eq!(
