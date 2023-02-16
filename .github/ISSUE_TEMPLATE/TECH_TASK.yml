@@ -14,7 +14,7 @@ body:
     attributes:
       label: Problem statement
       description: What needs to be solved or optimized in the current system ?
-      placeholder: We don''t account for X when using functions Y so we need to implement a value check in each of them.
+      placeholder: We don't account for X when using functions Y so we need to implement a value check in each of them.
     validations:
       required: true
 
