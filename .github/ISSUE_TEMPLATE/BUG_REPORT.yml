@@ -60,7 +60,7 @@ body:
     id: os
     attributes:
       label: Operating System
-      description: What operating system version of the OS are you using when encountering the bug ?
+      description: What operating system and version of the OS are you using when encountering the bug?
 
   - type: textarea
     id: additional-context
