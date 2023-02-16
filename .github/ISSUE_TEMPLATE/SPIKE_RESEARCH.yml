@@ -15,7 +15,7 @@ body:
       label: Problem statement
       description: What information is missing that we need to further research before continuing to work? What is the problem statement?
       placeholder: |
-        We don''t understand how technology X works and so we cannot implement Y.
+        We don't understand how technology X works and so we cannot implement Y.
         - What does Z do in technology X
         - How does S interact with M ?
     validations:
