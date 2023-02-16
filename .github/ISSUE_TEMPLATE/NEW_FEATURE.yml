@@ -22,7 +22,7 @@ body:
     id: feature-action
     attributes:
       label: I want to
-      description: What is the feature ? What does the feature enable to do ?
+      description: What is the feature? What does the feature enable you to do?
       placeholder: Stake my assets
     validations:
       required: true
