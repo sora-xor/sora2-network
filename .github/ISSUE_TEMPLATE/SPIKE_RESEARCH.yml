@@ -38,7 +38,7 @@ body:
     attributes:
       label: Methodology
       description: How should the question be answered ? Which tools or resources should be used ?
-      placeholder: The investigation should comprise official documentation on technology X and a simple implementation.
+      placeholder: The investigation should comprise of official documentation on technology X and simple implementation.
       
   - type: textarea
     id: spike-resources
