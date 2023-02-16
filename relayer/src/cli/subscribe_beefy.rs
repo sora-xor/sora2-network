@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::cli::prelude::*;
-use crate::relay::beefy_syncer::BeefySyncer;
 use futures::StreamExt;
 
 #[derive(Args, Clone, Debug)]
@@ -42,17 +41,11 @@ impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let sub = self.sub.get_unsigned_substrate().await?;
 
-        let syncer = BeefySyncer::new();
-        syncer.update_latest_sent(1);
-        let mut stream = crate::substrate::beefy_subscription::subscribe_beefy_justifications(
-            sub.clone(),
-            syncer.clone(),
-        )
-        .await?;
+        let mut stream =
+            crate::substrate::beefy_subscription::subscribe_beefy_justifications(sub.clone(), 1)
+                .await?;
         while let Some(justification) = stream.next().await {
             println!("Justification: {:?}", justification);
-            let justification = justification?;
-            syncer.update_latest_sent(justification.commitment.block_number.into());
         }
 
         Ok(())

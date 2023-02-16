@@ -230,7 +230,7 @@ impl Relay {
     pub async fn run(&self, ignore_unneeded_commitments: bool) -> AnyResult<()> {
         let mut beefy_sub = crate::substrate::beefy_subscription::subscribe_beefy_justifications(
             self.sub.clone(),
-            self.syncer.clone(),
+            self.syncer.latest_sent(),
         )
         .await?;
         let mut first_attempt_failed = false;

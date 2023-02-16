@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use crate::relay::beefy_syncer::BeefySyncer;
 use crate::{prelude::*, relay::justification::BeefyJustification};
 use beefy_primitives::VersionedFinalityProof;
 use futures::Stream;
@@ -68,6 +67,7 @@ where
 
 pub fn mandatory_commitment_stream<T>(
     sub: SubUnsignedClient<T>,
+    latest_commitment: Arc<AtomicU64>,
     current_vset_id: u64,
 ) -> impl Stream<Item = AnyResult<BeefyJustification<T>>> + Unpin
 where
@@ -76,6 +76,7 @@ where
     Box::pin(
         futures::stream::iter((current_vset_id + 1)..).then(move |i| {
             let sub = sub.clone();
+            let latest_commitment = latest_commitment.clone();
             async move {
                 loop {
                     let vset = sub.storage_fetch_or_default(&T::current_validator_set(), ()).await?;
@@ -91,6 +92,7 @@ where
                             tokio::time::sleep(T::average_block_time()).await;
                             continue;
                         };
+                    latest_commitment.store(block.into(), Ordering::Relaxed);
                     return Ok(justification);
                 }
             }
@@ -100,19 +102,17 @@ where
 
 pub fn beefy_commitment_stream<T>(
     sub: SubUnsignedClient<T>,
-    syncer: BeefySyncer,
+    latest_commitment: Arc<AtomicU64>,
 ) -> impl Stream<Item = AnyResult<BeefyJustification<T>>> + Unpin
 where
     T: SenderConfig + 'static,
 {
-    let latest_commitment = Arc::new(AtomicU64::new(syncer.latest_sent()));
     let stream = futures::stream::repeat(())
         .then(move |()| {
             let sub = sub.clone();
-            let syncer = syncer.clone();
             let latest_commitment = latest_commitment.clone();
             async move {
-                let latest_sent = syncer.latest_sent();
+                let latest_sent = latest_commitment.load(Ordering::Relaxed);
                 let vset_storage = T::current_validator_set();
                 let latest_sent_vset = sub
                     .storage_fetch_or_default(&vset_storage, latest_sent)
@@ -131,9 +131,6 @@ where
                 for i in 0..3 {
                     let block_to_check =
                         possible_beefy_block.saturating_sub(i * BEEFY_MIN_DELTA as u64);
-                    if block_to_check <= latest_commitment.load(Ordering::Relaxed) {
-                        break;
-                    }
                     if block_to_check <= latest_sent {
                         break;
                     }
@@ -153,18 +150,34 @@ where
 
 pub async fn subscribe_beefy_justifications<T>(
     sub: SubUnsignedClient<T>,
-    syncer: BeefySyncer,
+    latest_sent: u64,
 ) -> AnyResult<impl Stream<Item = AnyResult<BeefyJustification<T>>> + Unpin>
 where
     T: SenderConfig + 'static,
 {
-    let latest_sent = syncer.latest_sent();
     let latest_sent_vset = sub
         .storage_fetch_or_default(&T::current_validator_set(), latest_sent)
         .await?
         .id;
-    let mandatory_stream = mandatory_commitment_stream(sub.clone(), latest_sent_vset);
-    let beefy_stream = beefy_commitment_stream(sub.clone(), syncer.clone());
+    let latest_commitment = if let Some(_justification) =
+        get_commitment_from_block(&sub, latest_sent.unique_saturated_into(), false).await?
+    {
+        latest_sent
+    } else {
+        debug!("Latest sent commitment not found, searching mandatory commitment");
+        let vset_id = sub
+            .storage_fetch_or_default(&T::current_validator_set(), ())
+            .await?
+            .id;
+        let mandatory = find_mandatory_commitment(&sub, vset_id)
+            .await?
+            .expect("mandatory commitment should exist");
+        mandatory.into()
+    };
+    let latest_commitment = Arc::new(AtomicU64::new(latest_commitment));
+    let mandatory_stream =
+        mandatory_commitment_stream(sub.clone(), latest_commitment.clone(), latest_sent_vset);
+    let beefy_stream = beefy_commitment_stream(sub.clone(), latest_commitment);
     // Always check mandatory commitments stream first
     let res = futures::stream::select_with_strategy(mandatory_stream, beefy_stream, |()| {
         futures::stream::PollNext::Left

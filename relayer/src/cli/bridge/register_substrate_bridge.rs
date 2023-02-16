@@ -100,7 +100,7 @@ impl Command {
                 next_validator_set: next_authorities });
             info!("Submit call: {call:?}");
             let call = parachain_runtime::tx().sudo().sudo(call);
-            sub.submit_extrinsic(&call).await?;
+            para.submit_extrinsic(&call).await?;
         }
 
         if self.sora || self.both {
