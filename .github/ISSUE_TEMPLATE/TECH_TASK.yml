@@ -22,7 +22,7 @@ body:
     id: tech-description
     attributes:
       label: Description
-      description: Can you provide a clear and concise description of the context in which the problem statement takes place ?
+      description: Can you provide a clear and concise description of the context in which the problem statement happens?
       placeholder: |
         - As part of the work on bridge X we realized that Y was not implemented in the best way
         - ...
