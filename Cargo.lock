@@ -3844,6 +3844,7 @@ dependencies = [
  "framenode-chain-spec",
  "framenode-runtime",
  "futures 0.3.25",
+ "futures-timer",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
