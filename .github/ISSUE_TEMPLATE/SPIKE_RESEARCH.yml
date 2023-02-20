@@ -1,0 +1,51 @@
+name: Spike-Research
+description: A clear and concise description the question that the research needs to answer.
+title: "[Spike]: "
+labels: ["spike"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Let us guide you through the creation of the issue that will make sure we have everything set to answer your question :)
+    
+  - type: textarea
+    id: spike-problem
+    attributes:
+      label: Problem statement
+      description: What information is missing that we need to further research before continuing to work? What is the problem statement?
+      placeholder: |
+        We don't understand how technology X works and so we cannot implement Y.
+        - What does Z do in technology X
+        - How does S interact with M ?
+    validations:
+      required: true
+   
+  - type: textarea
+    id: spike-dod
+    attributes:
+      label: Definition of Done
+      description: How can we consider the research complete ?
+      placeholder: |
+        1. We have investigated technology X and answered the questions in the problem statement
+        2. We have documented the result of our investigation on technology X
+        3. We have made a sandbox implementation of technology X to understand how it works in practice
+    validations:
+      required: true
+
+  - type: textarea
+    id: spike-methodology
+    attributes:
+      label: Methodology
+      description: How should the question be answered ? Which tools or resources should be used ?
+      placeholder: The investigation should comprise of official documentation on technology X and simple implementation.
+      
+  - type: textarea
+    id: spike-resources
+    attributes:
+      label: Useful resources
+      description: Are you already aware of some useful resources that would speed up the research ?
+      placeholder: |
+        The researcher can use the following resources to conduct the investigation:
+        - Paper P from author A (link if available)
+        - Source code G (link of the repo)
