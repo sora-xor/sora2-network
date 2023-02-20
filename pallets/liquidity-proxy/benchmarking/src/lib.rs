@@ -466,7 +466,7 @@ benchmarks! {
         let k = m/n;
 
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
 
         let mut receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)> = Vec::new();
         setup_benchmark::<T>()?;
