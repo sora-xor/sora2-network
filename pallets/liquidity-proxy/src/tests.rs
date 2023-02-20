@@ -2913,6 +2913,60 @@ fn test_quote_with_no_price_impact_with_desired_output() {
 }
 
 #[test]
+fn test_quote_returns_correct_path() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
+        let filter = LiquiditySourceFilter::with_allowed(
+            DEX_D_ID,
+            [
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::MockPool,
+            ]
+            .to_vec(),
+        );
+        let amount_val_in = balance!(45547);
+        let amount_xor_intermediate = balance!(200);
+        let amount_ksm_out = balance!(174);
+        // Buying XOR for VAL, expecting direct VAL -> XOR conversion
+        let QuoteInfo {
+            outcome: quotes,
+            path,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(amount_xor_intermediate),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+        assert_eq!(path, vec![VAL, XOR]);
+
+        // Buying KSM for VAL, expecting VAL -> XOR -> KSM conversion
+        let QuoteInfo {
+            outcome: quotes,
+            path,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &KSM,
+            QuoteAmount::with_desired_output(amount_ksm_out),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+        assert_eq!(path, vec![VAL, XOR, KSM]);
+    });
+}
+
+#[test]
 fn test_quote_does_not_overflow_with_desired_input() {
     let collateral_asset_id = VAL;
     let mut ext = ExtBuilder::with_total_supply_and_reserves(
