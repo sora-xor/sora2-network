@@ -2394,6 +2394,17 @@ mod tests {
                     deposit_fee,
                 )
             );
+
+            let pool_infos =
+                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
+            for p_info in pool_infos {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == pool_asset
+                {
+                    assert_eq!(p_info.deposit_fee, deposit_fee)
+                }
+            }
         });
     }
 
@@ -3306,6 +3317,7 @@ mod tests {
                 )
                 .expect("Pool does not exist")
                 .0;
+
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
                 <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
