@@ -210,7 +210,7 @@ benchmarks! {
         assert_last_event::<T>(Event::Burn(caller, USDT.into(), 100_u32.into()).into())
     }
 
-    force_burn {
+    update_balance {
         add_assets::<T>(100)?;
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
@@ -225,21 +225,15 @@ benchmarks! {
             None,
             None,
         ).unwrap();
-        Assets::<T>::mint(
-            RawOrigin::Signed(caller.clone()).into(),
-            USDT.into(),
-            caller.clone(),
-            1000_u32.into()
-        ).unwrap();
     }: _(
         RawOrigin::Root,
-        USDT.into(),
         caller.clone(),
-        100_u32.into()
+        USDT.into(),
+        100_i128.into()
     )
     verify {
         let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
-        assert_eq!(usdt_issuance, 900_u32.into());
+        assert_eq!(usdt_issuance, 100_u32.into());
     }
 
     set_non_mintable {
@@ -281,7 +275,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_mint());
             assert_ok!(Pallet::<Runtime>::test_benchmark_force_mint());
             assert_ok!(Pallet::<Runtime>::test_benchmark_burn());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_force_burn());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_update_balance());
             assert_ok!(Pallet::<Runtime>::test_benchmark_set_non_mintable());
         });
     }
