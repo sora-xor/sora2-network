@@ -31,7 +31,7 @@
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Get;
-use sp_std::{marker::PhantomData, Writer};
+use sp_std::marker::PhantomData;
 
 use common::prelude::SwapVariant;
 
@@ -69,7 +69,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     // Storage: PoolXYK Reserves (r:0 w:1)
     /// The range of component `n` is `[1, 10]`.
     /// The range of component `m` is `[10, 100]`.
-    fn swap_transfer_batch(n: u32, m: u32) -> Weight {
+    fn swap_transfer_batch(_n: u32, _m: u32) -> Weight {
         Weight::zero()
     }
 }
