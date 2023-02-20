@@ -45,7 +45,7 @@ where
                 assets_and_permissions_account_id.clone(),
                 TBCD.into(),
                 common::AssetSymbol(b"TBCD".to_vec()),
-                common::AssetName(b"SORA Token Bonding Curve Dollar".to_vec()),
+                common::AssetName(b"SORA TBC Dollar".to_vec()),
                 common::DEFAULT_BALANCE_PRECISION,
                 common::Balance::zero(),
                 true,
