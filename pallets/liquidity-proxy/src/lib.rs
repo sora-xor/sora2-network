@@ -70,7 +70,7 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 /// Possible exchange paths for two assets.
-struct ExchangePath<T: Config>(Vec<T::AssetId>);
+pub struct ExchangePath<T: Config>(Vec<T::AssetId>);
 
 #[derive(Debug, Eq, PartialEq)]
 enum AssetType {
@@ -222,6 +222,8 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
 pub trait WeightInfo {
     fn enable_liquidity_source() -> Weight;
     fn disable_liquidity_source() -> Weight;
+    fn new_trivial() -> Weight;
+    fn is_forbidden_filter() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -991,16 +993,22 @@ impl<T: Config> Pallet<T> {
     pub fn swap_weight(dex_id: &T::DEXId, input: &T::AssetId, output: &T::AssetId) -> Weight {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id).unwrap();
         let tp = ExchangePath::<T>::new_trivial(&dex_info, *input, *output).unwrap();
+
         let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
-        let mut weight = Weight::zero();
+
+        let mut weight = <T as Config>::WeightInfo::new_trivial()
+            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
         for path in tp {
-            weight += quote_weight
-                .saturating_mul(3)
-                .saturating_add(exchange_weight)
-                .saturating_mul(path.0.len() as u64 - 1);
+            if path.0.len() > 0 {
+                weight = weight.saturating_add(
+                    quote_weight
+                        .saturating_mul(3)
+                        .saturating_add(exchange_weight)
+                        .saturating_mul(path.0.len() as u64 - 1),
+                );
+            }
         }
-        // todo calculate overhead
         weight
     }
 

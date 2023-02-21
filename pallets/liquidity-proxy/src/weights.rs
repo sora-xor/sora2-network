@@ -45,6 +45,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
+    fn new_trivial() -> Weight {
+        Weight::zero()
+    }
+    fn is_forbidden_filter() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -53,5 +59,11 @@ impl crate::WeightInfo for () {
     }
     fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
+    }
+    fn new_trivial() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn is_forbidden_filter() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
     }
 }
