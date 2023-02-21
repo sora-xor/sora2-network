@@ -1524,6 +1524,30 @@ impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
     }
 }
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct SwapBatchInfo<T: Config> {
+    pub outcome_asset_id: T::AssetId,
+    pub dex_id: T::DEXId,
+    pub receivers: Vec<BatchReceiverInfo<T>>,
+}
+
+impl<T: Config> SwapBatchInfo<T> {
+    pub fn len(&self) -> usize {
+        self.receivers.len()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: Config> std::fmt::Debug for SwapBatchInfo<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "SwapBatchInfo {{ asset_id: {:?}, dex_id: {:?}, receivers: {:?}, }}",
+            self.outcome_asset_id, self.dex_id, self.receivers
+        ))
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -1648,28 +1672,29 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Dispatches multiple swap & transfer operations. `receivers` holds info about desired out amount and
-        /// its associated account per asset id
+        /// Dispatches multiple swap & transfer operations. `swap_batches` contains vector of
+        /// SwapBatchInfo structs, where each batch specifies which asset ID and DEX ID should
+        /// be used for swapping, receiver accounts and their desired outcome amount in asset,
+        /// specified for the current batch.
         ///
         /// - `origin`: the account on whose behalf the transaction is being executed,
-        /// - `receivers`: the ordered map, which maps the asset id being bought to the vector of batch receivers
-        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
+        /// - `swap_batches`: the vector containing the SwapBatchInfo structs,
         /// - `input_asset_id`: ID of the asset being sold,
         /// - `max_input_amount`: the maximum amount to be sold in input_asset_id,
-        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is
+        ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::swap_transfer_batch(
-                receivers.len() as u32,
-                receivers.iter()
-                    .map(|(_, recv_batch)| recv_batch.len() as u32)
+                swap_batches.len() as u32,
+                swap_batches.iter()
+                    .map(|batch| batch.len() as u32)
                     .sum()
             )
         )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)>,
-            dex_id: T::DEXId,
+            swap_batches: Vec<SwapBatchInfo<T>>,
             input_asset_id: T::AssetId,
             mut max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
@@ -1677,15 +1702,21 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
-            let filter = LiquiditySourceFilter::with_mode(
-                dex_id,
-                filter_mode.clone(),
-                selected_source_types.clone(),
-            );
-
             let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
-            fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
-                |(asset_id, recv_batch)| {
+            fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
+                |swap_batch_info| {
+                    let SwapBatchInfo {
+                        outcome_asset_id: asset_id,
+                        dex_id,
+                        receivers,
+                    } = swap_batch_info;
+
+                    let filter = LiquiditySourceFilter::with_mode(
+                        dex_id,
+                        filter_mode.clone(),
+                        selected_source_types.clone(),
+                    );
+
                     if Self::is_forbidden_filter(
                         &input_asset_id,
                         &asset_id,
@@ -1699,7 +1730,7 @@ pub mod pallet {
                         Err(Error::<T>::AggregationError)?
                     }
 
-                    let out_amount = recv_batch.iter().map(|recv| recv.target_amount).sum();
+                    let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
                     Self::inner_exchange(
                         dex_id,
                         &who,
@@ -1717,7 +1748,7 @@ pub mod pallet {
                         .ok_or(Error::<T>::SlippageNotTolerated)?;
 
                     let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
-                    fallible_iterator::convert(recv_batch.into_iter().map(|val| Ok(val))).for_each(
+                    fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
                             if !unique_batch_receivers.insert(receiver.account_id.clone()) {
                                 Err(Error::<T>::AggregationError)?

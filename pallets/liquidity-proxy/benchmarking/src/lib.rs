@@ -42,7 +42,7 @@ use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use liquidity_proxy::{BatchReceiverInfo, Call};
+use liquidity_proxy::{BatchReceiverInfo, Call, SwapBatchInfo};
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -465,7 +465,7 @@ benchmarks! {
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
 
-        let mut receivers: Vec<(T::AssetId, Vec<BatchReceiverInfo<T>>)> = Vec::new();
+        let mut swap_batches: Vec<SwapBatchInfo<T>> = Vec::new();
         setup_benchmark::<T>()?;
         for i in 0..n {
             let raw_asset_id = [[3u8; 28].to_vec(), i.to_be_bytes().to_vec()]
@@ -534,22 +534,27 @@ benchmarks! {
                 let target_amount = balance!(0.1);
                 BatchReceiverInfo {account_id, target_amount}
             }).collect();
-            receivers.push((new_asset_id.into(), recv_batch));
+            swap_batches.push(SwapBatchInfo{
+                outcome_asset_id: new_asset_id.into(),
+                dex_id: DEX.into(),
+                receivers: recv_batch,
+            });
         }
         let max_input_amount = balance!(k*n + 100);
     }: {
         liquidity_proxy::Pallet::<T>::swap_transfer_batch(
             caller_origin,
-            receivers.clone(),
-            DEX.into(),
+            swap_batches.clone(),
             XOR.into(),
             max_input_amount,
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ).unwrap();
     } verify {
-        receivers.into_iter().for_each(|(asset_id, recv_batch)| {
-            recv_batch.into_iter().for_each(|batch| {
+        swap_batches.into_iter().for_each(|swap_batch| {
+            let SwapBatchInfo{ outcome_asset_id, dex_id: _, receivers } = swap_batch;
+
+            receivers.into_iter().for_each(|batch| {
                 let BatchReceiverInfo {account_id, target_amount} = batch;
                 assert_eq!(Assets::<T>::free_balance(&asset_id, &account_id).unwrap(), target_amount);
             })
