@@ -59,6 +59,7 @@ benchmarks! {
             caller.clone()
         ).unwrap();
     }: _(RawOrigin::Signed(caller.clone()),
+        XOR.into(),
         CERES_ASSET_ID.into(),
         balance!(7693),
         balance!(3000),
@@ -116,6 +117,7 @@ benchmarks! {
         // Create ILO
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
@@ -181,6 +183,7 @@ benchmarks! {
         // Create ILO
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
@@ -251,6 +254,7 @@ benchmarks! {
 
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
@@ -329,6 +333,7 @@ benchmarks! {
         // Create ILO
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
@@ -410,6 +415,7 @@ benchmarks! {
 
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
@@ -513,6 +519,7 @@ benchmarks! {
 
         CeresLaunchpad::<T>::create_ilo(
             RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(7693),
             balance!(3000),
