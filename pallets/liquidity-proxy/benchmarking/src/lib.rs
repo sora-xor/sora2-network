@@ -556,7 +556,7 @@ benchmarks! {
 
             receivers.into_iter().for_each(|batch| {
                 let BatchReceiverInfo {account_id, target_amount} = batch;
-                assert_eq!(Assets::<T>::free_balance(&asset_id, &account_id).unwrap(), target_amount);
+                assert_eq!(Assets::<T>::free_balance(&outcome_asset_id, &account_id).unwrap(), target_amount);
             })
         });
     }
