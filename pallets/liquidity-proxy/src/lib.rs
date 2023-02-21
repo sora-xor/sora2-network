@@ -653,10 +653,10 @@ impl<T: Config> Pallet<T> {
     /// Selects the best path between two swap paths
     /// `ord` parameter influences the preprocessing before
     /// calling `quote_pairs_with_flexible_amount`. The Ordering:Greater variant
-    /// is related to QuoteOutcome::WithDesiredInput and other ordering variants are related to
-    /// QuoteOutcome::WithDesiredInput
+    /// is related to `QuoteAmount::WithDesiredInput` and other ordering variants are related to
+    /// `QuoteAmount::WithDesiredOutput`
     ///
-    /// Returns Result containing a tuple of quote result and selected path
+    /// Returns Result containing a quote result and the selected path
     fn select_best_path(
         dex_info: &DEXInfo<T::AssetId>,
         asset_paths: Vec<ExchangePath<T>>,
