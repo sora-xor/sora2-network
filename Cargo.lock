@@ -3854,7 +3854,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "framenode-chain-spec",
  "framenode-runtime",
- "futures 0.3.25",
+ "futures 0.3.26",
  "futures-timer",
  "iroha-migration",
  "iroha-migration-rpc",
