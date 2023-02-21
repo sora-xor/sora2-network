@@ -3186,32 +3186,34 @@ fn test_batch_swap_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
+            Vec::from([
+                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                (
+                    KSM,
+                    vec![
+                        BatchReceiverInfo::new(charlie(), balance!(10)),
+                        BatchReceiverInfo::new(dave(), balance!(10)),
+                    ]
+                ),
+            ]),
             DEX_A_ID,
             XOR,
-            USDT,
             balance!(100),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     })
 }
 
@@ -3220,32 +3222,34 @@ fn test_batch_swap_desired_input_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
-            [
-                BatchReceiverInfo::new(bob(), balance!(10)),
-                BatchReceiverInfo::new(charlie(), balance!(10)),
-                BatchReceiverInfo::new(dave(), balance!(10))
-            ]
-            .to_vec(),
+            Vec::from([
+                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                (
+                    KSM,
+                    vec![
+                        BatchReceiverInfo::new(charlie(), balance!(10)),
+                        BatchReceiverInfo::new(dave(), balance!(10)),
+                    ]
+                ),
+            ]),
             DEX_A_ID,
             XOR,
-            USDT,
-            balance!(30),
+            balance!(32),
             [LiquiditySourceType::XYKPool].to_vec(),
             FilterMode::AllowSelected,
         ));
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
         assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
+            Assets::free_balance(&KSM, &charlie()).unwrap(),
             balance!(10)
         );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(10));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
     });
 }
 
@@ -3254,28 +3258,95 @@ fn test_batch_swap_desired_input_too_low() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(
-            Assets::free_balance(&USDT, &charlie()).unwrap(),
-            balance!(0)
-        );
-        assert_eq!(Assets::free_balance(&USDT, &dave()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 RuntimeOrigin::signed(alice()),
-                [
-                    BatchReceiverInfo::new(bob(), balance!(10)),
-                    BatchReceiverInfo::new(charlie(), balance!(10)),
-                    BatchReceiverInfo::new(dave(), balance!(10))
-                ]
-                .to_vec(),
+                Vec::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                ]),
                 DEX_A_ID,
                 XOR,
-                USDT,
                 balance!(1),
                 [LiquiditySourceType::XYKPool].to_vec(),
                 FilterMode::AllowSelected,
             ),
             Error::<Runtime>::SlippageNotTolerated
+        );
+    });
+}
+
+#[test]
+fn test_batch_swap_fail_with_duplicate_asset_ids() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                RuntimeOrigin::signed(alice()),
+                Vec::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                ]),
+                DEX_A_ID,
+                XOR,
+                balance!(100),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::AggregationError
+        );
+    });
+}
+
+#[test]
+fn test_batch_swap_fail_with_duplicate_receivers_within_asset_id() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
+        assert_noop!(
+            LiquidityProxy::swap_transfer_batch(
+                RuntimeOrigin::signed(alice()),
+                Vec::from([
+                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    (
+                        KSM,
+                        vec![
+                            BatchReceiverInfo::new(charlie(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                            BatchReceiverInfo::new(dave(), balance!(10)),
+                        ]
+                    ),
+                ]),
+                DEX_A_ID,
+                XOR,
+                balance!(100),
+                [LiquiditySourceType::XYKPool].to_vec(),
+                FilterMode::AllowSelected,
+            ),
+            Error::<Runtime>::AggregationError
         );
     });
 }

@@ -1920,6 +1920,18 @@ impl band::Config for Runtime {
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
+}
+
+impl hermes_governance_platform::Config for Runtime {
+    const MIN_DURATION_OF_POLL: Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Moment = 604_800_000;
+    type RuntimeEvent = RuntimeEvent;
+    type HermesAssetId = HermesAssetId;
+    type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
@@ -1998,6 +2010,7 @@ impl bridge_outbound_channel::Config for Runtime {
     type FeeCurrency = FeeCurrency;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
+    type AuxiliaryDigestHandler = LeafProvider;
     type WeightInfo = ();
 }
 
@@ -2194,6 +2207,7 @@ construct_runtime! {
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -2291,6 +2305,7 @@ construct_runtime! {
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
 
         // Trustless ethereum bridge
@@ -3037,6 +3052,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
+            list_benchmark!(list, extra, hermes_governance_platform, HermesGovernancePlatform);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, ceres_token_locker, CeresTokenLocker);
             list_benchmark!(list, extra, ceres_governance_platform, CeresGovernancePlatform);
@@ -3121,6 +3137,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             // Trustless bridge

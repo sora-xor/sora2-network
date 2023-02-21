@@ -63,10 +63,10 @@ pub mod prelude {
         SignedClient as EthSignedClient, UnsignedClient as EthUnsignedClient,
     };
     pub use crate::substrate::runtime::runtime_types as sub_types;
-    pub use crate::substrate::types::{
-        mainnet_runtime, parachain_runtime, MainnetConfig, MainnetExtrinsicParams, ParachainConfig,
-        ParachainExtrinsicParams,
+    pub use crate::substrate::traits::{
+        ConfigExt, MainnetConfig, ParachainConfig, ReceiverConfig, SenderConfig,
     };
+    pub use crate::substrate::types::{mainnet_runtime, parachain_runtime};
     pub use crate::substrate::{
         event_to_string as sub_event_to_string, log_tx_events as sub_log_tx_events,
         SignedClient as SubSignedClient, UnsignedClient as SubUnsignedClient,
@@ -76,6 +76,7 @@ pub mod prelude {
     pub use hex_literal::hex;
     pub use http::Uri;
     pub use serde::{Deserialize, Serialize};
+    pub use sp_core::Pair as CryptoPair;
     pub use sp_runtime::traits::Hash;
     pub use sp_runtime::traits::Header as HeaderT;
     pub use substrate_gen::runtime;

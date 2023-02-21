@@ -32,23 +32,19 @@ use std::collections::VecDeque;
 
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
-use crate::relay::client::*;
-use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
-use crate::substrate::{BlockNumber, LeafProof};
+use crate::substrate::{BlockNumber, OtherParams};
 use beefy_light_client::ProvedSubstrateBridgeMessage;
-use bridge_types::types::AuxiliaryDigestItem;
-use bridge_types::{GenericNetworkId, H256};
-use common::Balance;
-use sp_runtime::traits::{AtLeast32Bit, UniqueSaturatedInto};
-use sp_runtime::traits::{Hash, Keccak256};
+use bridge_types::{SubNetworkId, H256};
+use futures::FutureExt;
+use futures::StreamExt;
 
-pub struct RelayBuilder<S, R> {
-    sender: Option<S>,
-    receiver: Option<R>,
+pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
+    sender: Option<SubUnsignedClient<S>>,
+    receiver: Option<SubSignedClient<R>>,
     syncer: Option<BeefySyncer>,
 }
 
-impl<S, R> Default for RelayBuilder<S, R> {
+impl<S: SenderConfig, R: ReceiverConfig> Default for RelayBuilder<S, R> {
     fn default() -> Self {
         Self {
             sender: None,
@@ -60,19 +56,19 @@ impl<S, R> Default for RelayBuilder<S, R> {
 
 impl<S, R> RelayBuilder<S, R>
 where
-    S: RuntimeClient,
-    R: RuntimeClient,
+    S: SenderConfig,
+    R: ReceiverConfig,
 {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn with_sender_client(mut self, sender: S) -> Self {
+    pub fn with_sender_client(mut self, sender: SubUnsignedClient<S>) -> Self {
         self.sender = Some(sender);
         self
     }
 
-    pub fn with_receiver_client(mut self, receiver: R) -> Self {
+    pub fn with_receiver_client(mut self, receiver: SubSignedClient<R>) -> Self {
         self.receiver = Some(receiver);
         self
     }
@@ -86,8 +82,12 @@ where
         let sender = self.sender.expect("sender client is needed");
         let receiver = self.receiver.expect("receiver client is needed");
         let syncer = self.syncer.expect("syncer is needed");
-        let receiver_network_id = receiver.network_id().await?;
-        let sender_network_id = sender.network_id().await?;
+        let sender_network_id = sender
+            .storage_fetch_or_default(&S::network_id(), ())
+            .await?;
+        let receiver_network_id = receiver
+            .storage_fetch_or_default(&R::network_id(), ())
+            .await?;
         Ok(Relay {
             sender,
             receiver,
@@ -100,103 +100,41 @@ where
 }
 
 #[derive(Clone)]
-pub struct Relay<S: RuntimeClient, R: RuntimeClient> {
-    sender: S,
-    receiver: R,
-    commitment_queue: VecDeque<(
-        BlockNumber<<S as RuntimeClient>::Config>,
-        substrate_bridge_channel_rpc::Commitment<Balance>,
-    )>,
+pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
+    sender: SubUnsignedClient<S>,
+    receiver: SubSignedClient<R>,
+    commitment_queue: VecDeque<(BlockNumber<S>, H256)>,
     syncer: BeefySyncer,
-    receiver_network_id: GenericNetworkId,
-    sender_network_id: GenericNetworkId,
+    receiver_network_id: SubNetworkId,
+    sender_network_id: SubNetworkId,
 }
 
 impl<S, R> Relay<S, R>
 where
-    S: RuntimeClient + Clone,
-    R: RuntimeClient + Clone,
-    ConfigOf<R>: Clone,
-    ConfigOf<S>: Clone,
-    BlockNumberOf<S>: AtLeast32Bit + Serialize + From<BlockNumberOf<R>>,
-    BlockNumberOf<R>: AtLeast32Bit + Serialize + From<BlockNumberOf<S>>,
-    // ExtrinsicParamsOf<R>: Default,
-    OtherExtrinsicParamsOf<R>: Default,
-    SignatureOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Signature>,
-    SignerOf<R>: From<<crate::substrate::KeyPair as sp_core::crypto::Pair>::Public>
-        + sp_runtime::traits::IdentifyAccount<AccountId = AccountIdOf<R>>,
-    AccountIdOf<R>: Into<AddressOf<R>>,
+    S: SenderConfig,
+    R: ReceiverConfig,
+    OtherParams<R>: Default,
 {
-    async fn leaf_proof_with_digest(
-        &self,
-        digest_hash: H256,
-        start_leaf: BlockNumber<ConfigOf<S>>,
-        count: u32,
-        at: Option<HashOf<S>>,
-    ) -> AnyResult<LeafProof<ConfigOf<S>>> {
-        for i in 0..count {
-            let leaf = start_leaf + i.into();
-            let leaf_proof = self.sender.client().mmr_generate_proof(leaf, at).await?;
-            if leaf_proof.leaf.leaf_extra.digest_hash == digest_hash {
-                return Ok(leaf_proof);
-            }
-        }
-        return Err(anyhow::anyhow!("leaf proof not found"));
-    }
-
-    async fn find_commitment_with_nonce(
-        &self,
-        network_id: GenericNetworkId,
-        count: u32,
-        nonce: u64,
-    ) -> AnyResult<Option<(BlockNumberOf<S>, H256)>> {
-        let start_block = self.sender.find_message_block(network_id, nonce).await?;
-        let start_block = if let Some(start_block) = start_block {
-            start_block + 1u32.into()
-        } else {
-            return Ok(None);
-        };
-        for i in 0..count {
-            let block = start_block + i.into();
-            let block_hash = self
-                .sender
-                .client()
-                .api()
-                .rpc()
-                .block_hash(Some(block.into().into()))
-                .await?;
-            let Some(block_hash) = block_hash else {
-                return Ok(None);
-            };
-            let digest = self
-                .sender
-                .client()
-                .auxiliary_digest(Some(block_hash))
-                .await?;
-            if digest.logs.is_empty() {
-                continue;
-            }
-            for log in digest.logs {
-                let AuxiliaryDigestItem::Commitment(digest_network_id, commitment_hash) = log;
-                if network_id == digest_network_id {
-                    return Ok(Some((block, commitment_hash)));
-                }
-            }
-        }
-        Ok(None)
-    }
-
     async fn send_commitment(
         &self,
-        block_number: BlockNumberOf<S>,
-        commitment: substrate_bridge_channel_rpc::Commitment<Balance>,
+        block_number: BlockNumber<S>,
+        commitment_hash: H256,
     ) -> AnyResult<()> {
         info!("Sending channel commitment for block {:?}", block_number);
-        let inbound_channel_nonce = self
-            .receiver
-            .inbound_channel_nonce(self.sender_network_id)
-            .await?;
-        if commitment
+        let latest_sent = self.syncer.latest_sent();
+        let commitment = super::messages_subscription::load_commitment_with_proof(
+            &self.sender,
+            self.receiver_network_id.into(),
+            block_number,
+            commitment_hash,
+            latest_sent as u32,
+        )
+        .await?;
+        let super::messages_subscription::MessageCommitment::Sub(commitment_inner) = commitment.commitment else {
+            return Err(anyhow::anyhow!("Invalid commitment"));
+        };
+        let inbound_channel_nonce = self.inbound_channel_nonce().await?;
+        if commitment_inner
             .messages
             .iter()
             .all(|message| message.nonce <= inbound_channel_nonce)
@@ -204,169 +142,64 @@ where
             info!("Channel commitment is already sent");
             return Ok(());
         }
-        let latest_sent = self.syncer.latest_sent();
-        let latest_sent_hash = self
-            .sender
-            .client()
-            .api()
-            .rpc()
-            .block_hash(Some(latest_sent.into()))
-            .await?
-            .expect("should exist");
-        let block_hash = self
-            .sender
-            .client()
-            .api()
-            .rpc()
-            .block_hash(Some(block_number.into().into()))
-            .await?
-            .expect("should exist");
-        let digest = self
-            .sender
-            .client()
-            .auxiliary_digest(Some(block_hash))
-            .await?;
-        if digest.logs.is_empty() {
-            warn!("Digest is empty");
-            return Ok(());
-        }
-        let valid_items = digest
-            .logs
-            .iter()
-            .filter(|log| {
-                let AuxiliaryDigestItem::Commitment(network_id, commitment_hash) = log;
-                if *network_id != self.receiver_network_id
-                    && *commitment_hash != Keccak256::hash_of(&commitment)
-                {
-                    false
-                } else {
-                    true
-                }
-            })
-            .count();
-        if valid_items != 1 {
-            warn!("Expected digest for commitment not found: {:?}", digest);
-            return Ok(());
-        }
-        let digest_hash = Keccak256::hash_of(&digest);
-        trace!("Digest hash: {}", digest_hash);
-        let leaf_proof = self
-            .leaf_proof_with_digest(digest_hash, block_number, 50, Some(latest_sent_hash))
-            .await?;
-        let leaf = leaf_proof.leaf;
-        let proof = leaf_proof.proof;
-        let parent_hash: [u8; 32] = leaf.parent_number_and_hash.1.as_ref().try_into().unwrap();
-        let ready_leaf = bridge_common::beefy_types::BeefyMMRLeaf {
-            version: leaf.version,
-            parent_number_and_hash: (
-                leaf.parent_number_and_hash.0.unique_saturated_into(),
-                parent_hash.into(),
-            ),
-            beefy_next_authority_set: leaf.beefy_next_authority_set,
-            leaf_extra: leaf.leaf_extra,
-        };
-        trace!("Leaf: {:?}", ready_leaf);
 
-        let proof =
-            convert_to_simplified_mmr_proof(proof.leaf_index, proof.leaf_count, &proof.items);
-        let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-            merkle_proof_items: proof.items,
-            merkle_proof_order_bit_field: proof.order,
-        };
-
-        let payload = self
-            .receiver
-            .submit_messages_commitment(
-                self.sender_network_id,
-                ProvedSubstrateBridgeMessage {
-                    message: commitment.messages,
-                    proof,
-                    leaf: ready_leaf,
-                    digest,
-                },
-            )
-            .await;
+        let payload = R::submit_messages_commitment(
+            self.sender_network_id,
+            ProvedSubstrateBridgeMessage {
+                message: commitment_inner.messages,
+                proof: commitment.proof,
+                leaf: commitment.leaf,
+                digest: commitment.digest,
+            },
+        );
 
         info!("Sending channel commitment");
-        let res = self
-            .receiver
-            .client()
-            .api()
-            .tx()
-            .sign_and_submit_then_watch_default(&payload, self.receiver.client())
-            .await?
-            .wait_for_in_block()
-            .await?
-            .wait_for_success()
-            .await?;
-        info!("Successfully sent channel commitment");
-        sub_log_tx_events::<<R as RuntimeClient>::Event, ConfigOf<R>>(res);
+        self.receiver.submit_extrinsic(&payload).await?;
         Ok(())
     }
 
+    async fn inbound_channel_nonce(&self) -> AnyResult<u64> {
+        let storage = R::substrate_bridge_inbound_nonce(self.sender_network_id);
+        let nonce = self.receiver.storage_fetch_or_default(&storage, ()).await?;
+        Ok(nonce)
+    }
+
     pub async fn run(mut self) -> AnyResult<()> {
+        let inbound_nonce = self.inbound_channel_nonce().await?;
+        let mut subscription = super::messages_subscription::subscribe_message_commitments(
+            self.sender.clone(),
+            self.receiver_network_id.into(),
+            inbound_nonce,
+        );
         loop {
-            let mut inbound_nonce = self
-                .receiver
-                .inbound_channel_nonce(self.sender_network_id)
-                .await?;
-            let outbound_nonce = self
-                .sender
-                .outbound_channel_nonce(self.receiver_network_id)
-                .await?;
-            // To add only new commitments to the queue
-            if let Some((_, commitment)) = self.commitment_queue.back() {
-                inbound_nonce = inbound_nonce.max(commitment.messages.last().unwrap().nonce);
-            }
-            while outbound_nonce > inbound_nonce {
-                debug!(
-                    "Fetching messages starting with nonce {}, outbound_nonce {}",
-                    inbound_nonce + 1,
-                    outbound_nonce
-                );
-                let Some((block_number, commitment_hash)) = self
-                    .find_commitment_with_nonce(self.receiver_network_id, 100, inbound_nonce + 1)
-                    .await?
-                else {
-                    debug!("Message not found, waiting for new block");
-                    break;
-                };
-                let commitment = self
-                    .sender
-                    .client()
-                    .substrate_bridge_commitments(commitment_hash)
-                    .await?;
-                inbound_nonce += commitment.messages.len() as u64;
-                self.commitment_queue.push_back((block_number, commitment));
-                info!(
-                    "Channel commitment added to queue, total: {}",
-                    self.commitment_queue.len()
-                );
+            let res = futures::select! {
+                a_res = subscription.next().fuse() => Some(a_res),
+                _ = tokio::time::sleep(S::average_block_time()).fuse() => None,
+            };
+            if let Some((block, hash)) = res.flatten().transpose()? {
+                self.commitment_queue.push_back((block, hash));
+                let block: u64 = block.into();
+                self.syncer.request(block + 1);
             }
             let latest_sent = self.syncer.latest_sent();
-            if let Some((block_number, _)) = self.commitment_queue.back().cloned() {
-                if block_number.into() > latest_sent {
-                    self.syncer.request(block_number.into() + 1);
-                }
-            }
             loop {
-                let (block_number, commitment) = match self.commitment_queue.pop_front() {
+                let (block_number, commitment_hash) = match self.commitment_queue.pop_front() {
                     Some(commitment) => commitment,
                     None => break,
                 };
-                if block_number.into() > latest_sent {
+                if Into::<u64>::into(block_number) > latest_sent {
                     debug!("Waiting for BEEFY block {:?}", block_number);
-                    self.commitment_queue.push_front((block_number, commitment));
+                    self.commitment_queue
+                        .push_front((block_number, commitment_hash));
                     break;
                 }
-                if let Err(err) = self.send_commitment(block_number, commitment.clone()).await {
+                if let Err(err) = self.send_commitment(block_number, commitment_hash).await {
                     error!("Error sending message commitment: {:?}", err);
-                    self.commitment_queue.push_front((block_number, commitment));
-                    break;
+                    self.commitment_queue
+                        .push_front((block_number, commitment_hash));
+                    return Err(anyhow!("Error sending message commitment: {:?}", err));
                 }
             }
-            info!("Commitment queue: {}", self.commitment_queue.len());
-            tokio::time::sleep(std::time::Duration::from_secs(6)).await;
         }
     }
 }

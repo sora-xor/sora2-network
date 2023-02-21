@@ -59,9 +59,7 @@ impl Command {
         let recipient: [u8; 32] = *self.recipient.as_ref();
         let network_id = eth.get_chainid().await?;
         let (eth_app_address, eth_asset) = sub
-            .api()
-            .storage()
-            .fetch(&runtime::storage().eth_app().addresses(&network_id), None)
+            .storage_fetch(&runtime::storage().eth_app().addresses(&network_id), ())
             .await?
             .ok_or(anyhow!("Network not registered"))?;
         let balance = eth.get_balance(eth.address(), None).await?;
@@ -78,35 +76,29 @@ impl Command {
             eth_app.lock(recipient).value(self.amount)
         } else {
             let asset_kind = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &runtime::storage()
                         .erc20_app()
                         .asset_kinds(&network_id, &self.asset_id),
-                    None,
+                    (),
                 )
                 .await?
                 .ok_or(anyhow!("Asset is not registered"))?;
             let app_address = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &runtime::storage()
                         .erc20_app()
                         .app_addresses(&network_id, &asset_kind),
-                    None,
+                    (),
                 )
                 .await?
                 .expect("should be registered");
             let token_address = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &runtime::storage()
                         .erc20_app()
                         .token_addresses(&network_id, &self.asset_id),
-                    None,
+                    (),
                 )
                 .await?
                 .expect("should be registered");

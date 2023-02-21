@@ -84,6 +84,13 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(6 as u64))
             .saturating_add(T::DbWeight::get().writes(4 as u64))
     }
+
+    // Storage: VestedRewards TotalRewards (r:1 w:1)
+    // Storage: VestedRewards Rewards (r:2 w:2)
+    /// The range of component `n` is `[0, 100]`.
+    fn update_rewards(_n: u32) -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -92,6 +99,10 @@ impl crate::WeightInfo for () {
     }
 
     fn claim_crowdloan_rewards() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn update_rewards(_: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

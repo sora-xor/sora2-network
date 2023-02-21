@@ -80,36 +80,30 @@ impl Command {
     ) -> AnyResult<()> {
         use mainnet_runtime::runtime_types::eth_bridge;
         let contract_address = sub
-            .api()
-            .storage()
-            .fetch_or_default(
+            .storage_fetch_or_default(
                 &runtime::storage()
                     .eth_bridge()
                     .bridge_contract_address(&self.network),
-                None,
+                (),
             )
             .await?;
         let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
         let request = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .eth_bridge()
                     .requests(&self.network, &hash),
-                None,
+                (),
             )
             .await?
             .expect("Should exists");
         info!("Send request {}: {:?}", hash, request);
         let approvals = sub
-            .api()
-            .storage()
-            .fetch_or_default(
+            .storage_fetch_or_default(
                 &runtime::storage()
                     .eth_bridge()
                     .request_approvals(&self.network, &hash),
-                None,
+                (),
             )
             .await?;
 
@@ -155,11 +149,9 @@ impl Command {
                     eth_bridge::requests::OutgoingRequest::AddAsset(request) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::AddAsset);
                         let (symbol, name, decimals, ..) = sub
-                            .api()
-                            .storage()
-                            .fetch_or_default(
+                            .storage_fetch_or_default(
                                 &runtime::storage().assets().asset_infos(&request.asset_id),
-                                None,
+                                (),
                             )
                             .await?;
                         let call = contract.add_new_sidechain_token(

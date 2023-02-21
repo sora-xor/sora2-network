@@ -56,6 +56,22 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
+    // Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
+    // Storage: DEXManager DEXInfos (r:1 w:0)
+    // Storage: XSTPool EnabledSynthetics (r:1 w:0)
+    // Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
+    // Storage: PoolXYK Properties (r:1 w:0)
+    // Storage: TradingPair LockedLiquiditySources (r:1 w:0)
+    // Storage: System Account (r:103 w:103)
+    // Storage: Tokens Accounts (r:102 w:102)
+    // Storage: Technical TechAccounts (r:2 w:0)
+    // Storage: PriceTools PriceInfos (r:1 w:0)
+    // Storage: PoolXYK Reserves (r:0 w:1)
+    /// The range of component `n` is `[1, 10]`.
+    /// The range of component `m` is `[10, 100]`.
+    fn swap_transfer_batch(_n: u32, _m: u32) -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -66,6 +82,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn disable_liquidity_source() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn swap_transfer_batch(_: u32, _: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

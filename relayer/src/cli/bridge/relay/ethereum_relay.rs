@@ -56,24 +56,20 @@ impl Command {
         let chain_id = eth.get_chainid().await?;
         loop {
             let has_light_client = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &runtime::storage()
                         .ethereum_light_client()
                         .network_config(&chain_id),
-                    None,
+                    (),
                 )
                 .await?
                 .is_some();
             let has_channel = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &runtime::storage()
                         .bridge_inbound_channel()
                         .channel_addresses(&chain_id),
-                    None,
+                    (),
                 )
                 .await?
                 .is_some();

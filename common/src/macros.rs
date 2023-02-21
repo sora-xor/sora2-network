@@ -146,7 +146,7 @@ macro_rules! assert_approx_eq {
         let right = $crate::prelude::FixedWrapper::from($right);
         assert!(
             left.clone() < right.clone() + tolerance.clone() && right < left + tolerance,
-            "{} != {} with tolerance {}",
+            "{:?} != {:?} with tolerance {:?}",
             $left,
             $right,
             $tol
