@@ -276,7 +276,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn SyntheticBaseAssetDefaultFloorPrice() -> Balance {
-        balance!(3)
+        balance!(0.0001)
     }
 
     /// Floor price for the synthetic base asset.
