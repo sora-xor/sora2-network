@@ -121,11 +121,14 @@ benchmarks! {
         );
     }
 
-    distribute_limits {
-        let n in 0 .. 100 => prepare_pending_accounts::<T>(n.into());
-    }: {
-        Pallet::<T>::distribute_limits(balance!(n))
-    }
+    claim_crowdloan_rewards {
+        prepare_crowdloan_rewards::<T>(1000);
+        let caller = create_account::<T>(b"user".to_vec(), 0);
+        frame_system::Pallet::<T>::set_block_number((BLOCKS_PER_DAY as u32).into());
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        T::AssetId::from(PSWAP)
+    )
     verify {
         let amount = fixed_wrapper!(1) / Fixed::try_from(LEASE_TOTAL_DAYS).expect("Failed to convert to fixed");
         assert_eq!(
@@ -146,20 +149,6 @@ benchmarks! {
             balance!(n) * 2
         );
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_rewards());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_limits());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_update_rewards());
-        });
-    }
+    impl_benchmark_test_suite!(VestedRewards, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
 }
