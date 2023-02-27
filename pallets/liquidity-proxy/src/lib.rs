@@ -213,6 +213,7 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
 #[derive(Eq, PartialEq, Encode, Decode)]
 pub struct QuoteInfo<AssetId, LiquiditySource> {
     pub outcome: SwapOutcome<Balance>,
+    pub amount_without_impact: Option<Balance>,
     pub rewards: Rewards<AssetId>,
     pub liquidity_sources: Vec<LiquiditySource>,
     pub path: Vec<AssetId>,
@@ -693,8 +694,9 @@ impl<T: Config> Pallet<T> {
             };
             quote.map(|x| QuoteInfo {
                 outcome: x.0,
-                rewards: x.1,
-                liquidity_sources: x.2,
+                amount_without_impact: x.1,
+                rewards: x.2,
+                liquidity_sources: x.3,
                 path: atomic_path,
             })
         });
@@ -732,12 +734,14 @@ impl<T: Config> Pallet<T> {
     ) -> Result<
         (
             SwapOutcome<Balance>,
+            Option<Balance>,
             Rewards<T::AssetId>,
             Vec<LiquiditySourceIdOf<T>>,
         ),
         DispatchError,
     > {
         let mut current_amount = amount;
+        let init_outcome_without_impact = (!skip_info).then(|| balance!(0));
         fallible_iterator::convert(asset_pairs.map(|(from_asset_id, to_asset_id)| {
             let (quote, rewards, liquidity_sources) = Self::quote_single(
                 &dex_info.base_asset_id,
@@ -749,16 +753,33 @@ impl<T: Config> Pallet<T> {
                 deduce_fee,
             )?;
             current_amount = quote.amount;
-            Ok((quote, rewards, liquidity_sources))
+            Ok((quote, rewards, liquidity_sources, (from_asset_id, to_asset_id)))
         }))
         .fold(
             (
                 SwapOutcome::new(balance!(0), balance!(0)),
+                init_outcome_without_impact,
                 Rewards::new(),
                 Vec::new(),
             ),
-            |(mut outcome, mut rewards, mut liquidity_sources),
-             (quote, mut quote_rewards, quote_liquidity_sources)| {
+            |(
+                mut outcome,
+                mut outcome_without_impact,
+                mut rewards,
+                mut liquidity_sources,
+            ),
+             (quote, mut quote_rewards, quote_liquidity_sources, (from_asset, to_asset))| {
+                outcome_without_impact = outcome_without_impact.map(|without_impact| {
+                    Self::calculate_amount_without_impact(
+                        from_asset,
+                        to_asset,
+                        &quote.distribution,
+                        outcome.amount,
+                        without_impact,
+                        deduce_fee,
+                    )
+                })
+                    .transpose()?;
                 outcome.amount = quote.amount;
                 outcome.fee = outcome
                     .fee
@@ -766,9 +787,64 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::CalculationError)?;
                 rewards.append(&mut quote_rewards);
                 merge_two_vectors_unique(&mut liquidity_sources, quote_liquidity_sources);
-                Ok((outcome, rewards, liquidity_sources))
+                Ok((
+                    outcome,
+                    outcome_without_impact,
+                    rewards,
+                    liquidity_sources,
+                ))
             },
         )
+    }
+
+    fn calculate_amount_without_impact(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        distribution: &Vec<(
+            LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+            QuoteAmount<Balance>,
+        )>,
+        outcome_amount: u128,
+        outcome_without_impact: u128,
+        deduce_fee: bool,
+    ) -> Result<Balance, DispatchError> {
+        let outcome_without_impact = if outcome_without_impact == 0 {
+            1
+        } else {
+            outcome_without_impact
+        };
+
+        // multiply all amounts in distribution to adjust prev quote without impact:
+        let distribution = distribution
+            .into_iter()
+            .filter(|(_, part_amount)| *part_amount > balance!(0))
+            .map(|(market, amount)| {
+                // Should not overflow unless the amounts are comparable to 10^38 .
+                // For reference, a trillion is 10^12.
+                let adjusted_amount = amount
+                    .amount()
+                    .checked_mul(outcome_without_impact)
+                    .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?
+                    .checked_div(outcome_amount)
+                    .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                Ok::<_, Error<T>>((market, amount.copy_direction(adjusted_amount)))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut accumulated_without_impact: Balance = 0;
+        for (src, part_amount) in distribution.into_iter() {
+            let part_outcome = T::LiquidityRegistry::quote_without_impact(
+                src,
+                input_asset_id,
+                output_asset_id,
+                part_amount,
+                deduce_fee,
+            )?;
+            accumulated_without_impact = accumulated_without_impact
+                .checked_add(part_outcome.amount)
+                .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+        }
+        Ok(accumulated_without_impact)
     }
 
     /// Computes the optimal distribution across available liquidity sources to execute the requested trade
