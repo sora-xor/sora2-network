@@ -2391,15 +2391,16 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
-                amount: asa.amount,
-                fee: asa.fee,
-                rewards: rewards.into_iter()
+            ).ok().map(|quote_info| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: quote_info.outcome.amount,
+                fee: quote_info.outcome.fee,
+                rewards: quote_info.rewards.into_iter()
                                 .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
                                     amount,
                                     currency,
                                     reason
-                                }).collect()
+                                }).collect(),
+                route: quote_info.path
                 })
         }
 

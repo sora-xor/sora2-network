@@ -210,6 +210,14 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
     }
 }
 
+#[derive(Eq, PartialEq, Encode, Decode)]
+pub struct QuoteInfo<AssetId, LiquiditySource> {
+    pub outcome: SwapOutcome<Balance>,
+    pub rewards: Rewards<AssetId>,
+    pub liquidity_sources: Vec<LiquiditySource>,
+    pub path: Vec<AssetId>,
+}
+
 fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
     for el in vec_2 {
         if !vec_1.contains(&el) {
@@ -362,7 +370,7 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map(|(_, best_path)| best_path)?;
+                .map(|info| info.path)?;
                 Self::exchange_sequence_with_input_amount(
                     dex_info,
                     sender,
@@ -392,7 +400,7 @@ impl<T: Config> Pallet<T> {
                     true,
                     true,
                 )
-                .map(|(_, best_path)| best_path)?;
+                .map(|info| info.path)?;
                 let input_amount =
                     Self::calculate_input_amount(dex_info, &best_path, desired_amount_out, filter)?;
                 ensure!(
@@ -596,14 +604,7 @@ impl<T: Config> Pallet<T> {
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            SwapOutcome<Balance>,
-            Rewards<T::AssetId>,
-            Vec<LiquiditySourceIdOf<T>>,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -626,14 +627,7 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            SwapOutcome<Balance>,
-            Rewards<T::AssetId>,
-            Vec<LiquiditySourceIdOf<T>>,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => Self::select_best_path(
                 dex_info,
@@ -643,8 +637,7 @@ impl<T: Config> Pallet<T> {
                 filter,
                 skip_info,
                 deduce_fee,
-            )
-            .map(|(quote, _)| quote),
+            ),
             QuoteAmount::WithDesiredOutput { desired_amount_out } => Self::select_best_path(
                 dex_info,
                 asset_paths,
@@ -653,18 +646,17 @@ impl<T: Config> Pallet<T> {
                 filter,
                 skip_info,
                 deduce_fee,
-            )
-            .map(|(quote, _)| quote),
+            ),
         }
     }
 
     /// Selects the best path between two swap paths
     /// `ord` parameter influences the preprocessing before
     /// calling `quote_pairs_with_flexible_amount`. The Ordering:Greater variant
-    /// is related to QuoteOutcome::WithDesiredInput and other ordering variants are related to
-    /// QuoteOutcome::WithDesiredInput
+    /// is related to `QuoteAmount::WithDesiredInput` and other ordering variants are related to
+    /// `QuoteAmount::WithDesiredOutput`
     ///
-    /// Returns Result containing a tuple of quote result and selected path
+    /// Returns Result containing a quote result and the selected path
     fn select_best_path(
         dex_info: &DEXInfo<T::AssetId>,
         asset_paths: Vec<ExchangePath<T>>,
@@ -673,17 +665,7 @@ impl<T: Config> Pallet<T> {
         filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
         deduce_fee: bool,
-    ) -> Result<
-        (
-            (
-                SwapOutcome<Balance>,
-                Rewards<T::AssetId>,
-                Vec<LiquiditySourceIdOf<T>>,
-            ),
-            Vec<T::AssetId>,
-        ),
-        DispatchError,
-    > {
+    ) -> Result<QuoteInfo<T::AssetId, LiquiditySourceIdOf<T>>, DispatchError> {
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match ord {
                 Ordering::Greater => Self::quote_pairs_with_flexible_amount(
@@ -709,7 +691,12 @@ impl<T: Config> Pallet<T> {
                     deduce_fee,
                 ),
             };
-            quote.map(|x| (x, atomic_path))
+            quote.map(|x| QuoteInfo {
+                outcome: x.0,
+                rewards: x.1,
+                liquidity_sources: x.2,
+                path: atomic_path,
+            })
         });
 
         let primary_path = path_quote_iter
@@ -719,10 +706,8 @@ impl<T: Config> Pallet<T> {
         path_quote_iter.fold(primary_path, |acc, path| match (&acc, &path) {
             (Ok(_), Err(_)) => acc,
             (Err(_), Ok(_)) => path,
-            (Ok((acc_quote_unwrapped, _)), Ok((quote_unwrapped, _))) => {
-                let (outcome, _, _) = quote_unwrapped;
-                let (acc_outcome, _, _) = acc_quote_unwrapped;
-                match (ord, acc_outcome.cmp(outcome)) {
+            (Ok(acc_quote_info), Ok(quote_info)) => {
+                match (ord, acc_quote_info.outcome.cmp(&quote_info.outcome)) {
                     (Ordering::Greater, Ordering::Less) => path,
                     (Ordering::Greater, _) => acc,
                     (_, Ordering::Less) => acc,
@@ -1476,7 +1461,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
             true,
             deduce_fee,
         )
-        .map(|(outcome, _rewards, _)| outcome)
+        .map(|quote_info| quote_info.outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.

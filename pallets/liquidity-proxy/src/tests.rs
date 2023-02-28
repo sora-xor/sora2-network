@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{BatchReceiverInfo, Error};
+use crate::{BatchReceiverInfo, Error, QuoteInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -311,7 +311,9 @@ fn test_quote_exact_output_base_should_pass() {
 fn test_poly_quote_exact_input_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &KSM,
             &DOT,
@@ -357,7 +359,9 @@ fn test_poly_quote_exact_input_1_should_pass() {
 fn test_poly_quote_exact_output_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &KSM,
             &DOT,
@@ -403,7 +407,9 @@ fn test_poly_quote_exact_output_1_should_pass() {
 fn test_poly_quote_exact_input_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &DOT,
             &KSM,
@@ -449,7 +455,9 @@ fn test_poly_quote_exact_input_2_should_pass() {
 fn test_poly_quote_exact_output_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &DOT,
             &KSM,
@@ -888,7 +896,9 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
             ]
             .into(),
         );
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -1566,7 +1576,7 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
         MockLiquiditySource3::add_reward((balance!(301), DOT.into(), RewardReason::Unspecified));
 
         let amount: Balance = balance!(500);
-        let (_, rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo { rewards, .. } = LiquidityProxy::inner_quote(
             DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -2780,7 +2790,9 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         ));
 
         // Buying KSM for VAL
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
             &KSM,
@@ -2884,7 +2896,9 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         ));
 
         // Buying KSM for VAL
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
             &KSM,
@@ -2895,6 +2909,60 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote");
         assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+    });
+}
+
+#[test]
+fn test_quote_returns_correct_path() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
+        let filter = LiquiditySourceFilter::with_allowed(
+            DEX_D_ID,
+            [
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::MockPool,
+            ]
+            .to_vec(),
+        );
+        let amount_val_in = balance!(45547);
+        let amount_xor_intermediate = balance!(200);
+        let amount_ksm_out = balance!(174);
+        // Buying XOR for VAL, expecting direct VAL -> XOR conversion
+        let QuoteInfo {
+            outcome: quotes,
+            path,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &XOR,
+            QuoteAmount::with_desired_output(amount_xor_intermediate),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+        assert_eq!(path, vec![VAL, XOR]);
+
+        // Buying KSM for VAL, expecting VAL -> XOR -> KSM conversion
+        let QuoteInfo {
+            outcome: quotes,
+            path,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &KSM,
+            QuoteAmount::with_desired_output(amount_ksm_out),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+        assert_eq!(path, vec![VAL, XOR, KSM]);
     });
 }
 
