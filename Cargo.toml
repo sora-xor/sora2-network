@@ -86,6 +86,7 @@ beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -206,22 +207,23 @@ beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31" }
 
-# [patch."https://github.com/sora-xor/sora2-common.git"]
-# beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
-# beefy-light-client-rpc = { path = "../sora2-common/pallets/beefy-light-client/rpc" }
-# beefy-light-client-runtime-api = { path = "../sora2-common/pallets/beefy-light-client/runtime-api" }
-# leaf-provider = { path = "../sora2-common/pallets/leaf-provider" }
-# leaf-provider-rpc = { path = "../sora2-common/pallets/leaf-provider/rpc" }
-# leaf-provider-runtime-api = { path = "../sora2-common/pallets/leaf-provider/runtime-api" }
-# bridge-common = { path = "../sora2-common/pallets/bridge-common" }
-# dispatch = { path = "../sora2-common/pallets/dispatch" }
-# substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
-# substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# substrate-bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
-# bridge-types = { path = "../sora2-common/pallets/types" }
+[patch."https://github.com/sora-xor/sora2-common.git"]
+beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
+beefy-light-client-rpc = { path = "../sora2-common/pallets/beefy-light-client/rpc" }
+beefy-light-client-runtime-api = { path = "../sora2-common/pallets/beefy-light-client/runtime-api" }
+leaf-provider = { path = "../sora2-common/pallets/leaf-provider" }
+leaf-provider-rpc = { path = "../sora2-common/pallets/leaf-provider/rpc" }
+leaf-provider-runtime-api = { path = "../sora2-common/pallets/leaf-provider/runtime-api" }
+bridge-common = { path = "../sora2-common/pallets/bridge-common" }
+dispatch = { path = "../sora2-common/pallets/dispatch" }
+substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
+substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
+substrate-bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
+bridge-types = { path = "../sora2-common/pallets/types" }
 
 [workspace]
 members = [

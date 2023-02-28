@@ -104,3 +104,7 @@ runtime-benchmarks = [
     "permissions",
     "pool-xyk",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]

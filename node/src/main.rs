@@ -35,6 +35,8 @@
 mod service;
 mod cli;
 mod command;
+#[cfg(feature = "private-net")]
+mod fork_off;
 mod rpc;
 
 fn main() -> sc_cli::Result<()> {

@@ -27,6 +27,7 @@ serde_json = "1.0.61"
 jsonrpsee = { version = "0.15.1", features = ["server"] }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
+hex-literal = "0.3.1"
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
@@ -83,6 +84,7 @@ sc-executor = { git = "https://github.com/sora-xor/substrate.git", branch = "pol
 sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", features = [
     "wasmtime",
 ] }
+try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 telemetry = { package = "sc-telemetry", git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
@@ -108,6 +110,7 @@ pallet-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "
 leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 bridge-channel-rpc = { path = "../pallets/trustless-eth-bridge/channel/rpc" }
+remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 [build-dependencies]
 substrate-build-script-utils = "3"
@@ -136,4 +139,9 @@ runtime-benchmarks = [
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
     "sc-client-db/runtime-benchmarks",
+]
+
+try-runtime = [
+    "try-runtime-cli",
+    "framenode-runtime/try-runtime",
 ]

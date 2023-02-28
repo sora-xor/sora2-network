@@ -58,3 +58,7 @@ std = [
     "serde",
     "sp-std/std",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]

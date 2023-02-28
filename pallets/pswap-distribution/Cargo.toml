@@ -81,3 +81,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "hex-literal",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]
