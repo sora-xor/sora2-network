@@ -817,10 +817,12 @@ impl<T: Config> Pallet<T> {
         // multiply all amounts in distribution to adjust prev quote without impact:
         let distribution = distribution
             .into_iter()
-            .filter(|(_, part_amount)| *part_amount > balance!(0))
+            .filter(|(_, part_amount)| part_amount.amount() > balance!(0))
             .map(|(market, amount)| {
                 // Should not overflow unless the amounts are comparable to 10^38 .
                 // For reference, a trillion is 10^12.
+                //
+                // same as mul by ratioToActual, just without floating point ops
                 let adjusted_amount = amount
                     .amount()
                     .checked_mul(outcome_without_impact)
