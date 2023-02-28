@@ -47,20 +47,19 @@ impl Command {
                 sub.api()
                     .tx()
                     .sign_and_submit_then_watch_default(
-                        &runtime::tx()
-                        .sudo()
-                        .sudo(
-                            runtime::runtime_types::framenode_runtime::RuntimeCall::Currencies(
-                                runtime::runtime_types::orml_currencies::module::Call::update_balance {
-                                    who: sub.account_id(),
-                                    currency_id: base,
-                                    amount: reserves.0 as i128 * 2,
-                                }
-                            )
+                        &runtime::tx().sudo().sudo(
+                            runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
+                                runtime::runtime_types::assets::pallet::Call::force_mint {
+                                    asset_id: base,
+                                    to: sub.account_id(),
+                                    amount: reserves.0 * 2,
+                                },
+                            ),
                         ),
-                        &sub
+                        &sub,
                     )
-                    .await?.wait_for_in_block()
+                    .await?
+                    .wait_for_in_block()
                     .await?
                     .wait_for_success()
                     .await?;
@@ -68,18 +67,16 @@ impl Command {
                 sub.api()
                     .tx()
                     .sign_and_submit_then_watch_default(
-                        &runtime::tx()
-                        .sudo()
-                        .sudo(
-                            runtime::runtime_types::framenode_runtime::RuntimeCall::Currencies(
-                                runtime::runtime_types::orml_currencies::module::Call::update_balance {
-                                    who: sub.account_id(),
-                                    currency_id: asset_id,
-                                    amount: reserves.1 as i128 * 2,
-                                }
-                            )
+                        &runtime::tx().sudo().sudo(
+                            runtime::runtime_types::framenode_runtime::RuntimeCall::Assets(
+                                runtime::runtime_types::assets::pallet::Call::force_mint {
+                                    asset_id: asset_id,
+                                    to: sub.account_id(),
+                                    amount: reserves.1 * 2,
+                                },
+                            ),
                         ),
-                        &sub
+                        &sub,
                     )
                     .await?
                     .wait_for_in_block()

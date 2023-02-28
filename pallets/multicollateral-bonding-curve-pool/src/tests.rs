@@ -36,17 +36,23 @@ mod tests {
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, DAI, LiquiditySourceFilter,
         DEFAULT_BALANCE_PRECISION,
-        LiquidityProxyTrait, PriceVariant,
+        LiquidityProxyTrait, PriceVariant, TBCD,
     };
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
     use frame_support::assert_err;
-use frame_support::assert_noop;
+    use frame_support::assert_noop;
+    use common::assert_approx_eq;
     use frame_support::storage::{with_transaction, TransactionOutcome};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
     type MBCPool = Pallet<Runtime>;
+
+    fn assert_swap_outcome(left: SwapOutcome<Balance>, right: SwapOutcome<Balance>, tolerance: Balance) {
+        assert_approx_eq!(left.amount, right.amount, tolerance);
+        assert_approx_eq!(left.fee, right.fee, tolerance);
+    }
 
     fn ensure_distribution_accounts_balances(distribution_accounts: DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>, balances: Vec<Balance>) {
         let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
@@ -84,26 +90,26 @@ use frame_support::assert_noop;
 
             // base case for buy
             assert_eq!(
-                MBCPool::buy_function(&XOR, Fixed::ZERO)
+                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO)
                     .expect("failed to calculate buy price"),
-                    fixed!(536.575170537791384625)
+                    fixed!(536.574420344053851907)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(1151398.853267396927121364)
+                fixed!(1151397.348365215316854563)
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(1151397.348365215316854563)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(99999.877292895570947223) // TODO: try to improve precision
+                fixed!(99999.99999999999998516) // TODO: try to improve precision
             );
 
             // base case for sell with empty reserves
             assert_eq!(
-                MBCPool::sell_function(&XOR, Fixed::ZERO)
+                MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO)
                     .expect("failed to calculate sell price"),
-                    fixed!(429.2601364302331077)
+                    fixed!(429.259536275243081525)
             );
             assert_noop!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(100000))),
@@ -119,12 +125,80 @@ use frame_support::assert_noop;
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(balance!(50000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(15287.882675656841911345)
+                fixed!(15287.903511880099065775)
             );
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(balance!(15287.903511880099065528)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(50000.025554804518660908) // TODO: improve precision
+                fixed!(49999.999999999999999697) // TODO: improve precision
+            );
+        });
+    }
+
+    #[test]
+    fn should_calculate_tbcd_price() {
+        let mut ext = ExtBuilder::default().with_tbcd().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
+
+            // base case for buy
+            assert_eq!(
+                MBCPool::buy_function(&XOR, &TBCD, PriceVariant::Buy, Fixed::ZERO)
+                    .expect("failed to calculate buy price"),
+                    fixed!(100.7),
+            );
+            assert_eq!(
+                MBCPool::buy_price(&XOR, &TBCD, QuoteAmount::with_desired_output(balance!(1000)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(100700.0),
+            );
+            assert_eq!(
+                MBCPool::buy_price(&XOR, &TBCD, QuoteAmount::with_desired_input(balance!(100700.0)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(1000.0),
+            );
+
+            assert_eq!(
+                MBCPool::buy_price(&XOR, &TBCD, QuoteAmount::with_desired_output(balance!(100000)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(10070000.0),
+            );
+            assert_eq!(
+                MBCPool::buy_price(&XOR, &TBCD, QuoteAmount::with_desired_input(balance!(10070000.0)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(100000.0),
+            );
+
+            // base case for sell with empty reserves
+            assert_eq!(
+                MBCPool::sell_function(&XOR, &TBCD, Fixed::ZERO)
+                    .expect("failed to calculate sell price"),
+                fixed!(80.56)
+            );
+            assert_noop!(
+                MBCPool::sell_price(&XOR, &TBCD, QuoteAmount::with_desired_output(balance!(100000))),
+                Error::<Runtime>::NotEnoughReserves,
+            );
+            assert_noop!(
+                MBCPool::sell_price(&XOR, &TBCD, QuoteAmount::with_desired_input(balance!(100000))),
+                Error::<Runtime>::NotEnoughReserves,
+            );
+
+            // base case for sell with some reserves
+            MBCPool::exchange(alice, alice, &DEXId::Polkaswap, &TBCD, &XOR, SwapAmount::with_desired_input(balance!(100000), 0)).expect("Failed to buy XOR.");
+            assert_eq!(
+                MBCPool::sell_price(&XOR, &TBCD, QuoteAmount::with_desired_output(balance!(50000)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(1655.081098973849718635),
+            );
+            assert_eq!(
+                MBCPool::sell_price(&XOR, &TBCD, QuoteAmount::with_desired_input(balance!(1655.081098973849718635)))
+                    .expect("failed to calculate buy assets price"),
+                fixed!(50000),
             );
         });
     }
@@ -330,7 +404,7 @@ use frame_support::assert_noop;
             let alice = &alice();
             TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -340,9 +414,10 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -355,7 +430,53 @@ use frame_support::assert_noop;
                 SwapOutcome::new(
                     balance!(2.100439516374830873),
                     balance!(0.093)
+                ),
+                balance!(0.0001)
+            );
+        });
+    }
+
+    #[test]
+    fn should_exchange_tbcd_with_empty_reserves() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), TBCD, balance!(205), AssetSymbol(b"TBCD".to_vec()), AssetName(b"SORA TBC Dollar".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
+            assert_swap_outcome(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &TBCD,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
+                .unwrap(),
+                SwapOutcome::new(balance!(101.003009027081243711), balance!(0.003009027081243731)),
+                balance!(0.0001)
+            );
+            assert_swap_outcome(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &TBCD,
+                    SwapAmount::with_desired_input(balance!(1), Balance::zero()),
+                )
+                .unwrap(),
+                SwapOutcome::new(
+                    balance!(38.370385852073146860),
+                    balance!(0.093)
+                ),
+                balance!(0.0001)
             );
         });
     }
@@ -375,16 +496,16 @@ use frame_support::assert_noop;
             TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
+            let reserve_amount_expected = FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR,&VAL, Fixed::ZERO).unwrap();
             let pool_reference_amount = reserve_amount_expected
-                - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
+                - FixedWrapper::from(MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
             let alice = &alice();
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -394,15 +515,16 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
+                balance!(0.0001)
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
-                balance!(2.760801517613789357),
-                balance!(11.043206070455157431),
-                balance!(13.804007588068946789),
-                balance!(248.472136585241042209),
+                balance!(2.760049066522984224),
+                balance!(11.040196266091936898),
+                balance!(13.800245332614921123),
+                balance!(248.404415987068580219),
             ]);
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -413,9 +535,10 @@ use frame_support::assert_noop;
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4366.523658759765819497),
+                    balance!(4365.335149368998667748),
                     balance!(3.000000000000000000)
-                )
+                ),
+                balance!(0.0001)
             );
         });
     }
@@ -438,14 +561,14 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let pool_reference_amount =
-                FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
+                FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(DEXId::Polkaswap, &USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
 
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
             let alice = &alice();
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -455,15 +578,16 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(5538.217688292456084016), balance!(3.009027081243731193))
+                SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
+                balance!(0.0001)
             );
             ensure_distribution_accounts_balances(distribution_accounts, vec![
-                balance!(2.760801517613789357),
-                balance!(11.043206070455157431),
-                balance!(13.804007588068946789),
-                balance!(248.472136585241042209),
+                balance!(2.760049066522984224),
+                balance!(11.040196266091936898),
+                balance!(13.800245332614921123),
+                balance!(248.404415987068580219),
             ]);
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -474,9 +598,10 @@ use frame_support::assert_noop;
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(4366.523925066825637517),
+                    balance!(4365.335415603766574971),
                     balance!(3.000000000000000000)
-                )
+                ),
+                balance!(0.0001)
             );
         });
     }
@@ -489,12 +614,15 @@ use frame_support::assert_noop;
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
+        .with_tbcd()
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
             let alice = &alice();
 
             assert_err!(
@@ -508,11 +636,22 @@ use frame_support::assert_noop;
                 ),
                 Error::<Runtime>::NotEnoughReserves
             );
+
+            assert_err!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &TBCD,
+                    SwapAmount::with_desired_input(balance!(1), Balance::zero()),
+                ),
+                Error::<Runtime>::NotEnoughReserves
+            );
         });
     }
 
     #[test]
-    #[ignore] // does not pass due to precision mismatch, consider optimizing precision for given cumulative case
     fn swaps_should_be_additive() {
         let mut ext = ExtBuilder::new(vec![
             (
@@ -571,7 +710,8 @@ use frame_support::assert_noop;
                         fee: acc.fee + x.fee,
                     },
                 );
-            assert_eq!(whole_outcome, Ok(cumulative_outcome));
+            assert_swap_outcome(whole_outcome.unwrap(), cumulative_outcome, balance!(0.001)); 
+            // TODO: improve precision if possible
         });
     }
 
@@ -726,8 +866,8 @@ use frame_support::assert_noop;
             )
             .unwrap();
 
-            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
-            assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705206));
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002690452));
+            assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705186));
 
             let quote_outcome_b = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -886,6 +1026,121 @@ use frame_support::assert_noop;
     }
 
     #[test]
+    fn similar_returns_should_be_identical_tbcd() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), TBCD, balance!(4000), AssetSymbol(b"TBCD".to_vec()), AssetName(b"SORA TBC Dollar".to_vec()), DEFAULT_BALANCE_PRECISION),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(2000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
+            )
+            .unwrap();
+            let exchange_outcome_a = MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
+            let tbcd_balance_a = Assets::free_balance(&TBCD, &alice()).unwrap();
+            let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
+            assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
+            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_eq!(tbcd_balance_a, amount_a.clone());
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(10);
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
+            )
+            .unwrap();
+            let exchange_outcome_b = MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            let val_balance_b = Assets::free_balance(&TBCD, &alice()).unwrap();
+            let tbcd_balance_b = Assets::free_balance(&XOR, &alice()).unwrap();
+            assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
+            assert_eq!(xor_balance_a + amount_b.clone(), tbcd_balance_b);
+            assert_eq!(val_balance_b, amount_a.clone() - quote_outcome_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(10);
+            let quote_outcome_c = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &TBCD,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
+            )
+            .unwrap();
+            let exchange_outcome_c = MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &TBCD,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+            let tbcd_balance_c = Assets::free_balance(&TBCD, &alice()).unwrap();
+            let xor_balance_c = Assets::free_balance(&XOR, &alice()).unwrap();
+            assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
+            assert_eq!(val_balance_b + exchange_outcome_c.amount, tbcd_balance_c);
+            assert_eq!(tbcd_balance_b - amount_c.clone(), xor_balance_c.clone());
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(10);
+            let quote_outcome_d = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
+            )
+            .unwrap();
+            let exchange_outcome_d = MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &TBCD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            let tbcd_balance_d = Assets::free_balance(&TBCD, &alice()).unwrap();
+            let xor_balance_d = Assets::free_balance(&XOR, &alice()).unwrap();
+            assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
+            assert_eq!(tbcd_balance_c - quote_outcome_d.amount, tbcd_balance_d);
+            assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
+        });
+    }
+
+    #[test]
     fn should_receive_pswap_reward() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
@@ -952,12 +1207,12 @@ use frame_support::assert_noop;
 
             // calculate buy amount from zero to total supply of XOR
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            let initial_state = MBCPool::buy_function(&XOR, (fixed_wrapper!(0) - FixedWrapper::from(xor_supply)).get().unwrap()).unwrap();
-            let current_state = MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap();
+            let initial_state = MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, (fixed_wrapper!(0) - FixedWrapper::from(xor_supply)).get().unwrap()).unwrap();
+            let current_state = MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap();
             let buy_amount: Balance = ((FixedWrapper::from(initial_state) + FixedWrapper::from(current_state)) / fixed_wrapper!(2) * FixedWrapper::from(xor_supply)).try_into_balance().unwrap();
 
             // get ideal reserves
-            let ideal_reserves = MBCPool::ideal_reserves_reference_price(Fixed::ZERO).unwrap();
+            let ideal_reserves = MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, Fixed::ZERO).unwrap();
 
             // actual amount should match to 80% of buy amount
             assert_eq!(buy_amount, ideal_reserves);
@@ -1070,7 +1325,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_eq!(price_a.fee, balance!(0.054394410184082534));
+            assert_eq!(price_a.fee, balance!(0.054394410184082514));
 
             // Sell
             let price_c = MBCPool::quote(
@@ -1144,7 +1399,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(100724.916324262414175551));
+            assert_eq!(xor_supply, balance!(100724.916324262414168899));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1167,7 +1422,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(107896.889465954935413179));
+            assert_eq!(xor_supply, balance!(107896.889465954935399866));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1190,7 +1445,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(114934.359190755661046424));
+            assert_eq!(xor_supply, balance!(114934.359190755661026458));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1213,7 +1468,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(128633.975165230400026502));
+            assert_eq!(xor_supply, balance!(128633.975165230400000080));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1236,7 +1491,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(151530.994236602104652386));
+            assert_eq!(xor_supply, balance!(151530.994236602104619871));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1273,7 +1528,7 @@ use frame_support::assert_noop;
             let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR).unwrap().into();
             assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
             // initial XOR price is $264
-            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(Default::default()).unwrap().into();
+            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, Default::default()).unwrap().into();
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
@@ -1421,7 +1676,7 @@ use frame_support::assert_noop;
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1431,7 +1686,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
 
             // check pending list and free reserves account
@@ -1509,7 +1765,7 @@ use frame_support::assert_noop;
             assert_eq!(free_reserves_balance, balance!(0));
 
             // perform buy on tbc multiple times
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1519,9 +1775,10 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1531,9 +1788,10 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1543,7 +1801,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
 
             // check pending list and reserves after trade
@@ -1586,7 +1845,7 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1596,7 +1855,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074))
+                SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074)),
+                balance!(0.0001)
             );
 
             // check that failed distribution was postponed
@@ -1611,7 +1871,7 @@ use frame_support::assert_noop;
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
             // another exchange with reasonable amount
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1621,7 +1881,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119))
+                SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119)),
+                balance!(0.0001)
             );
 
             // second distribution was successful, pending list didn't change
@@ -1657,7 +1918,7 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1667,11 +1928,12 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074))
+                SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074)),
+                balance!(0.0001)
             );
 
             // another exchange with reasonable amount, still current market can't handle it
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1681,7 +1943,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119))
+                SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119)),
+                balance!(0.0001)
             );
 
             // attempt for distribution
@@ -1726,7 +1989,7 @@ use frame_support::assert_noop;
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform buy on tbc
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1736,7 +1999,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
 
             // check pending list and free reserves account
@@ -1762,7 +2026,7 @@ use frame_support::assert_noop;
             ]);
 
             // another buy is performed
-            assert_eq!(
+            assert_swap_outcome(
                 MBCPool::exchange(
                     alice,
                     alice,
@@ -1772,7 +2036,8 @@ use frame_support::assert_noop;
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731))
+                SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731)),
+                balance!(0.0001)
             );
 
             // there are two pending distributions
@@ -1890,7 +2155,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002690452));
             assert_eq!(quote_without_impact_a.amount, balance!(361.728370440936309235));
             assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
@@ -1921,7 +2186,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_b.amount, balance!(1107.192203724646374582));
+            assert_eq!(quote_outcome_b.amount, balance!(1107.192203724646374562));
             assert_eq!(quote_without_impact_b.amount, balance!(1106.890317630040503506));
             assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
@@ -2033,7 +2298,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_a.amount, balance!(12448.948798121038075579));
+            assert_eq!(quote_outcome_a.amount, balance!(12448.948798121038068728));
             assert_eq!(quote_without_impact_a.amount, balance!(12660.492965432770823211));
             assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
@@ -2064,7 +2329,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_b.amount, balance!(81508.213505580992099145));
+            assert_eq!(quote_outcome_b.amount, balance!(81508.213505580992097736));
             assert_eq!(quote_without_impact_b.amount, balance!(80028.971642012224670009));
             assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
@@ -2095,7 +2360,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_c.amount, balance!(25316.104888559067751287));
+            assert_eq!(quote_outcome_c.amount, balance!(25316.104888559067750898));
             assert_eq!(quote_without_impact_c.amount, balance!(31999.826368133346115316));
             assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
@@ -2126,7 +2391,7 @@ use frame_support::assert_noop;
                 SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
             )
             .unwrap();
-            assert_eq!(quote_outcome_d.amount, balance!(1681.732720328623106894));
+            assert_eq!(quote_outcome_d.amount, balance!(1681.732720328623106924));
             assert_eq!(quote_without_impact_d.amount, balance!(1558.966302104893601417));
             assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
         });

@@ -252,7 +252,6 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
 }
 

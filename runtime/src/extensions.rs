@@ -163,7 +163,7 @@ mod tests {
     use common::{balance, VAL, XOR};
 
     use crate::extensions::ChargeTransactionPayment;
-    use crate::{Runtime, RuntimeCall};
+    use crate::{GetBaseAssetId, Runtime, RuntimeCall};
 
     #[test]
     fn check_calls_from_bridge_peers_pays_yes() {
@@ -204,9 +204,10 @@ mod tests {
 
     #[test]
     fn simple_call_should_pass() {
-        let call = RuntimeCall::Balances(pallet_balances::Call::transfer {
-            dest: From::from([1; 32]),
-            value: balance!(100),
+        let call = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: GetBaseAssetId::get(),
+            to: From::from([1; 32]),
+            amount: balance!(100),
         });
 
         assert!(call.check_for_swap_in_batch().is_ok());
@@ -215,14 +216,16 @@ mod tests {
     #[test]
     fn regular_batch_should_pass() {
         let batch_calls = vec![
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
         ];
@@ -238,9 +241,10 @@ mod tests {
 
     fn test_swap_in_batch(call: RuntimeCall) {
         let batch_calls = vec![
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
             call,
