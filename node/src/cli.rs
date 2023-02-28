@@ -73,7 +73,7 @@ pub enum Subcommand {
     #[cfg(feature = "try-runtime")]
     TryRuntime(try_runtime_cli::TryRuntimeCmd),
 
-    /// Fork-off network
+    /// Generate chainspec for network fork-off
     #[cfg(feature = "private-net")]
     ForkOff(crate::fork_off::ForkOffCmd),
 

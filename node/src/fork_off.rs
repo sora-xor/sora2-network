@@ -26,10 +26,16 @@ pub struct ForkOffCmd {
     #[allow(missing_docs)]
     #[clap(flatten)]
     pub shared_params: sc_cli::SharedParams,
+
+    /// Sora node url
     #[clap(long)]
     url: String,
+
+    /// Save snapshot files to reuse in future. Optional
     #[clap(long)]
     snapshot: Option<String>,
+
+    /// Print chainspec in raw format
     #[clap(long)]
     raw: bool,
 }
