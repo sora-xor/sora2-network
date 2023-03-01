@@ -797,6 +797,9 @@ impl<T: Config> Pallet<T> {
         )
     }
 
+    // Would likely to fail if operating near the limits,
+    // because it uses i128 for fixed-point arithmetics.
+    // TODO: switch to unsigned internal representation
     fn calculate_amount_without_impact(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
@@ -808,10 +811,29 @@ impl<T: Config> Pallet<T> {
         outcome_without_impact: u128,
         deduce_fee: bool,
     ) -> Result<Balance, DispatchError> {
-        let outcome_without_impact = if outcome_without_impact == 0 {
-            1
-        } else {
+        use common::fixnum;
+        use fixnum::ops::{One, RoundMode, RoundingDiv, RoundingMul};
+
+        let ratio_to_actual = if outcome_amount != 0 {
+            // TODO: switch to unsigned internal representation (`FixedPoint<u128, U18>`)
+            // for now lib `fixnum` doesn't implement operations for such types, so
+            // we just use `i128` repr
+            let outcome_without_impact = Fixed::from_bits(
+                outcome_without_impact
+                    .try_into()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+            );
+            let outcome_amount = Fixed::from_bits(
+                outcome_amount
+                    .try_into()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+            );
+            // Same RoundMode as was used in frontend
             outcome_without_impact
+                .rdiv(outcome_amount, RoundMode::Floor)
+                .unwrap_or(Fixed::ONE)
+        } else {
+            <Fixed as One>::ONE
         };
 
         // multiply all amounts in distribution to adjust prev quote without impact:
@@ -823,12 +845,17 @@ impl<T: Config> Pallet<T> {
                 // For reference, a trillion is 10^12.
                 //
                 // same as mul by ratioToActual, just without floating point ops
-                let adjusted_amount = amount
-                    .amount()
-                    .checked_mul(outcome_without_impact)
-                    .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?
-                    .checked_div(outcome_amount)
-                    .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                let adjusted_amount: u128 = Fixed::from_bits(
+                    amount
+                        .amount()
+                        .try_into()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+                .rmul(ratio_to_actual, RoundMode::Floor)
+                .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?
+                .into_bits()
+                .try_into()
+                .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
                 Ok::<_, Error<T>>((market, amount.copy_direction(adjusted_amount)))
             })
             .collect::<Result<Vec<_>, _>>()?;
