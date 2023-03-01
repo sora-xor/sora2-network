@@ -465,7 +465,7 @@ benchmarks! {
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
 
-        let mut swap_batches: Vec<SwapBatchInfo<T>> = Vec::new();
+        let mut swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>> = Vec::new();
         setup_benchmark::<T>()?;
         for i in 0..n {
             let raw_asset_id = [[3u8; 28].to_vec(), i.to_be_bytes().to_vec()]
@@ -529,7 +529,7 @@ benchmarks! {
                 balance!(10000),
                 balance!(10000),
             ).expect("Failed to deposit liquidity");
-            let recv_batch: Vec<BatchReceiverInfo<T>> = (0..k).into_iter().map(|recv_num| {
+            let recv_batch: Vec<BatchReceiverInfo<T::AccountId>> = (0..k).into_iter().map(|recv_num| {
                 let account_id = generic_account::<T>(i, recv_num);
                 let target_amount = balance!(0.1);
                 BatchReceiverInfo {account_id, target_amount}

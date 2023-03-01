@@ -34,12 +34,14 @@ extern crate core;
 
 use codec::{Decode, Encode};
 
+use assets::AssetIdOf;
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    balance, fixed_wrapper, DEXInfo, FilterMode, Fixed, GetMarketInfo, GetPoolReserves,
-    LiquidityProxyTrait, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
+    balance, fixed_wrapper, AccountIdOf, DEXInfo, DexIdOf, FilterMode, Fixed, GetMarketInfo,
+    GetPoolReserves, LiquidityProxyTrait, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
+    VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::traits::Get;
@@ -47,6 +49,7 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
+pub use pallet::*;
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_set::BTreeSet;
@@ -1490,54 +1493,43 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
     }
 }
 
-pub use pallet::*;
-
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
-pub struct BatchReceiverInfo<T: Config> {
-    pub account_id: T::AccountId,
+pub struct BatchReceiverInfo<AccountId> {
+    pub account_id: AccountId,
     pub target_amount: Balance,
 }
 
-#[cfg(feature = "std")]
-impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "BatchReceiverInfo {{ account_id: {:?}, amount: {:?} }}",
-            self.account_id, self.target_amount
-        ))
+impl<AccountId> BatchReceiverInfo<AccountId> {
+    pub fn new(account_id: AccountId, amount: Balance) -> Self {
+        BatchReceiverInfo {
+            account_id,
+            target_amount: amount,
+        }
     }
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, Clone, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
-pub struct SwapBatchInfo<T: Config> {
-    pub outcome_asset_id: T::AssetId,
-    pub dex_id: T::DEXId,
-    pub receivers: Vec<BatchReceiverInfo<T>>,
+pub struct SwapBatchInfo<AssetId, DEXId, AccountId> {
+    pub outcome_asset_id: AssetId,
+    pub dex_id: DEXId,
+    pub receivers: Vec<BatchReceiverInfo<AccountId>>,
 }
 
-impl<T: Config> SwapBatchInfo<T> {
+impl<AssetId, DEXId, AccountId> SwapBatchInfo<AssetId, DEXId, AccountId> {
     pub fn len(&self) -> usize {
         self.receivers.len()
-    }
-}
-
-#[cfg(feature = "std")]
-impl<T: Config> std::fmt::Debug for SwapBatchInfo<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "SwapBatchInfo {{ asset_id: {:?}, dex_id: {:?}, receivers: {:?}, }}",
-            self.outcome_asset_id, self.dex_id, self.receivers
-        ))
     }
 }
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use assets::AssetIdOf;
-    use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
@@ -1563,15 +1555,6 @@ pub mod pallet {
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
-    }
-
-    impl<T: Config> BatchReceiverInfo<T> {
-        pub fn new(account_id: T::AccountId, amount: Balance) -> BatchReceiverInfo<T> {
-            BatchReceiverInfo {
-                account_id,
-                target_amount: amount,
-            }
-        }
     }
 
     /// The current storage version.
@@ -1679,7 +1662,7 @@ pub mod pallet {
         )]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
-            swap_batches: Vec<SwapBatchInfo<T>>,
+            swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
             input_asset_id: T::AssetId,
             mut max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
