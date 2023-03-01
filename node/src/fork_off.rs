@@ -1,6 +1,35 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use std::io::Write;
 
-use hex_literal::hex;
 use remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, SnapshotConfig, Transport};
 use sc_cli::CliConfiguration;
 use sc_service::Configuration;
@@ -16,9 +45,7 @@ const SKIPPED_PALLETS: [&str; 7] = [
     "Sudo",
 ];
 
-const INCLUDED_PREFIXES: [[u8; 32]; 1] = [hex_literal::hex!(
-    "26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9"
-)];
+const INCLUDED_PREFIXES: [(&str, &str); 1] = [("System", "Accounts")];
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ForkOffCmd {
@@ -38,6 +65,18 @@ pub struct ForkOffCmd {
     /// Print chainspec in raw format
     #[clap(long)]
     raw: bool,
+}
+
+fn get_storage_prefix(pallet: &str, storage: &str) -> Vec<u8> {
+    [
+        sp_core::twox_128(pallet.as_bytes()),
+        sp_core::twox_128(storage.as_bytes()),
+    ]
+    .concat()
+}
+
+fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
+    sp_core::twox_128(pallet.as_bytes()).to_vec()
 }
 
 impl ForkOffCmd {
@@ -68,14 +107,12 @@ impl ForkOffCmd {
                 .unwrap();
         let skipped_prefixes = SKIPPED_PALLETS
             .iter()
-            .map(|p| {
-                let prefix = sp_core::twox_128(p.as_bytes()).to_vec();
-                prefix
-            })
+            .cloned()
+            .map(get_pallet_prefix)
             .collect::<std::collections::BTreeSet<_>>();
         let included_prefixes = INCLUDED_PREFIXES
             .iter()
-            .map(|x| x.to_vec())
+            .map(|(p, s)| get_storage_prefix(p, s))
             .collect::<std::collections::BTreeSet<_>>();
         let mut storage = cfg.chain_spec.as_storage_builder().build_storage()?;
         storage.top = storage
@@ -100,14 +137,13 @@ impl ForkOffCmd {
             }
         }
         // Delete System.LastRuntimeUpgrade to ensure that the on_runtime_upgrade event is triggered
-        storage.top.remove(
-            hex!("26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8").as_slice(),
-        );
+        storage
+            .top
+            .remove(&get_storage_prefix("System", "LastRuntimeUpgrade"));
         // To prevent the validator set from changing mid-test, set Staking.ForceEra to ForceNone ('0x02')
-        storage.top.insert(
-            hex!("5f3e4907f716ac89b6347d15ececedcaf7dad0317324aecae8744b87fc95f2f3").to_vec(),
-            vec![2],
-        );
+        storage
+            .top
+            .insert(get_storage_prefix("Staking", "ForceEra"), vec![2]);
         cfg.chain_spec.set_storage(storage);
         let json = sc_service::chain_ops::build_spec(&*cfg.chain_spec, self.raw)?;
         if std::io::stdout().write_all(json.as_bytes()).is_err() {
