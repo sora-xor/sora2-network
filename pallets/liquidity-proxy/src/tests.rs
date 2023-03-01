@@ -2753,6 +2753,22 @@ fn test_quote_with_no_price_impact_with_desired_input() {
                 ),
             ]
         ));
+        // without impact
+        let QuoteInfo {
+            amount_without_impact,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &GetBaseAssetId::get(),
+            QuoteAmount::with_desired_input(amount_val_in),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for XOR
         let (quotes, _rewards, _) = LiquidityProxy::quote_single(
@@ -2789,10 +2805,28 @@ fn test_quote_with_no_price_impact_with_desired_input() {
                 ),
             ]
         ));
+        // without impact
+        let QuoteInfo {
+            amount_without_impact,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &GetBaseAssetId::get(),
+            &KSM,
+            QuoteAmount::with_desired_input(amount_xor_intermediate),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(quotes.amount, amount_without_impact.unwrap(), balance!(20));
+        assert!(amount_without_impact.unwrap() > quotes.amount);
 
         // Buying KSM for VAL
         let QuoteInfo {
-            outcome: quotes, ..
+            outcome: quotes,
+            amount_without_impact,
+            ..
         } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
@@ -2804,6 +2838,8 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         )
         .expect("Failed to get a quote");
         assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
+        assert_approx_eq!(amount_without_impact.unwrap(), amount_ksm_out, balance!(20));
+        assert!(amount_without_impact.unwrap() > quotes.amount);
     });
 }
 
@@ -2859,6 +2895,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
                 ),
             ]
         ));
+        // without impact
         let QuoteInfo {
             amount_without_impact,
             ..
@@ -2877,7 +2914,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             amount_without_impact.unwrap(),
             balance!(5000)
         );
-        assert!(quotes.amount > amount_without_impact.unwrap());
+        assert!(amount_without_impact.unwrap() < quotes.amount);
 
         // Buying KSM for XOR
         let (quotes, _rewards, _) = LiquidityProxy::quote_single(
@@ -2914,6 +2951,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
                 ),
             ]
         ));
+        // without impact
         let QuoteInfo {
             amount_without_impact,
             ..
