@@ -30,6 +30,7 @@
 
 use crate::mock::*;
 use crate::{BatchReceiverInfo, Error, QuoteInfo};
+
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -2858,6 +2859,25 @@ fn test_quote_with_no_price_impact_with_desired_output() {
                 ),
             ]
         ));
+        let QuoteInfo {
+            amount_without_impact,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &VAL,
+            &GetBaseAssetId::get(),
+            QuoteAmount::with_desired_output(amount_xor_intermediate),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(
+            quotes.amount,
+            amount_without_impact.unwrap(),
+            balance!(5000)
+        );
+        assert!(quotes.amount > amount_without_impact.unwrap());
 
         // Buying KSM for XOR
         let (quotes, _rewards, _) = LiquidityProxy::quote_single(
@@ -2894,10 +2914,31 @@ fn test_quote_with_no_price_impact_with_desired_output() {
                 ),
             ]
         ));
+        let QuoteInfo {
+            amount_without_impact,
+            ..
+        } = LiquidityProxy::inner_quote(
+            DEX_D_ID,
+            &GetBaseAssetId::get(),
+            &KSM,
+            QuoteAmount::with_desired_output(amount_ksm_out),
+            filter.clone(),
+            false,
+            true,
+        )
+        .expect("Failed to get a quote");
+        assert_approx_eq!(
+            quotes.amount,
+            amount_without_impact.unwrap(),
+            balance!(5000)
+        );
+        assert!(amount_without_impact.unwrap() < quotes.amount);
 
         // Buying KSM for VAL
         let QuoteInfo {
-            outcome: quotes, ..
+            outcome: quotes,
+            amount_without_impact,
+            ..
         } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
@@ -2909,6 +2950,12 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         )
         .expect("Failed to get a quote");
         assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
+        assert_approx_eq!(
+            amount_without_impact.unwrap(),
+            amount_val_in,
+            balance!(5000)
+        );
+        assert!(amount_without_impact.unwrap() < quotes.amount);
     });
 }
 
