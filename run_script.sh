@@ -83,7 +83,7 @@ for name in alice bob charlie dave eve ferdie
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
-	$binary key insert --chain $chain --suri "//${name^}" --scheme ecdsa --key-type ethb --base-path db$num
+	$binary key insert --chain $chain --suri "//${name}" --scheme ecdsa --key-type ethb --base-path db$num
 	mkdir -p "db$num/chains/sora-substrate-$chain/bridge"
 	cp misc/eth.json "db$num/chains/sora-substrate-$chain/bridge"
 	if [ "$num" == "0" ]; then
