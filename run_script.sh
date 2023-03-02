@@ -22,6 +22,10 @@ else
 	unbuffer=""
 fi
 
+# MacOS default getopt doesn't support long args,
+# so installing gnu version should make it work.
+#
+# brew install gnu-getopt
 getopt_code=`$awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
