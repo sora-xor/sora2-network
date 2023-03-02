@@ -124,10 +124,10 @@ impl Command {
                         .tx()
                         .sign_and_submit_then_watch_default(
                             &runtime::tx().sudo().sudo(
-                                sub_types::framenode_runtime::RuntimeCall::Currencies(
-                                    sub_types::orml_currencies::module::Call::update_balance {
-                                        who: acc,
-                                        currency_id: asset,
+                                sub_types::framenode_runtime::RuntimeCall::Assets(
+                                    sub_types::assets::pallet::Call::force_mint {
+                                        asset_id: asset,
+                                        to: acc,
                                         amount: 1000000000000000000000,
                                     },
                                 ),

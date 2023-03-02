@@ -435,7 +435,6 @@ mod tests {
                     RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     multiplier,
@@ -463,7 +462,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -495,7 +493,6 @@ mod tests {
                     ),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     multiplier,
@@ -523,7 +520,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -587,7 +583,6 @@ mod tests {
                     ),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     multiplier,
@@ -626,7 +621,6 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                pool_asset,
                 pool_asset,
                 pool_asset,
                 reward_asset,
@@ -723,7 +717,6 @@ mod tests {
                     RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     balance!(10),
@@ -762,7 +755,6 @@ mod tests {
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 pool_asset,
-                pool_asset,
                 reward_asset,
                 is_farm,
                 multiplier,
@@ -773,7 +765,6 @@ mod tests {
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
                     RuntimeOrigin::signed(ALICE),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -814,7 +805,6 @@ mod tests {
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 pool_asset,
-                pool_asset,
                 reward_asset,
                 is_farm,
                 multiplier,
@@ -825,7 +815,6 @@ mod tests {
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::deposit(
                     RuntimeOrigin::signed(ALICE),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -916,7 +905,6 @@ mod tests {
                 reward_asset,
                 reward_asset,
                 reward_asset,
-                reward_asset,
                 is_farm,
                 multiplier,
                 deposit_fee,
@@ -926,7 +914,6 @@ mod tests {
             let mut pooled_tokens = balance!(10);
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 RuntimeOrigin::signed(ALICE),
-                reward_asset,
                 reward_asset,
                 reward_asset,
                 reward_asset,
@@ -1451,7 +1438,6 @@ mod tests {
                     RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                 ),
@@ -1498,7 +1484,6 @@ mod tests {
 
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::get_rewards(
                 RuntimeOrigin::signed(ALICE),
-                pool_asset,
                 pool_asset,
                 pool_asset,
                 reward_asset,
@@ -1942,7 +1927,6 @@ mod tests {
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 pool_asset,
                 pool_asset,
-                pool_asset,
                 reward_asset,
                 is_farm,
             ));
@@ -1970,7 +1954,6 @@ mod tests {
             assert_err!(
                 demeter_farming_platform::Pallet::<Runtime>::change_pool_multiplier(
                     RuntimeOrigin::signed(ALICE),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2028,7 +2011,6 @@ mod tests {
                     ),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     new_multiplier,
@@ -2064,7 +2046,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2120,7 +2101,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2189,7 +2169,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2296,7 +2275,6 @@ mod tests {
                     RuntimeOrigin::signed(ALICE),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     deposit_fee,
@@ -2320,7 +2298,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2412,67 +2389,11 @@ mod tests {
                     ),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
-                    reward_asset,
-                    is_farm,
-                    deposit_fee,
-                ),
-                demeter_farming_platform::Error::<Runtime>::InvalidDepositFee
-            )
-        });
-    }
-
-    #[test]
-    fn change_pool_deposit_fee_xstusd_ok() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let pool_asset = XSTUSD;
-            let reward_asset = CERES_ASSET_ID;
-            let is_farm = true;
-            let mut deposit_fee = balance!(1);
-
-            let pool_info = PoolData {
-                multiplier: 1,
-                deposit_fee,
-                is_core: true,
-                is_farm,
-                total_tokens_in_pool: 0,
-                rewards: 0,
-                rewards_to_be_distributed: 0,
-                is_removed: false,
-                base_asset: XOR,
-            };
-
-            demeter_farming_platform::Pools::<Runtime>::append(
-                &pool_asset,
-                &reward_asset,
-                &pool_info,
-            );
-
-            deposit_fee = balance!(0.8);
-            assert_ok!(
-                demeter_farming_platform::Pallet::<Runtime>::change_pool_deposit_fee(
-                    RuntimeOrigin::signed(
-                        demeter_farming_platform::AuthorityAccount::<Runtime>::get()
-                    ),
-                    pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     deposit_fee,
                 )
             );
-
-            let pool_infos =
-                demeter_farming_platform::Pools::<Runtime>::get(&pool_asset, &reward_asset);
-            for p_info in pool_infos {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == pool_asset
-                {
-                    assert_eq!(p_info.deposit_fee, deposit_fee)
-                }
-            }
         });
     }
 
@@ -2509,7 +2430,6 @@ mod tests {
                     RuntimeOrigin::signed(
                         demeter_farming_platform::AuthorityAccount::<Runtime>::get()
                     ),
-                    pool_asset,
                     pool_asset,
                     pool_asset,
                     reward_asset,
@@ -2791,7 +2711,6 @@ mod tests {
                     ),
                     pool_asset,
                     pool_asset,
-                    pool_asset,
                     reward_asset,
                     is_farm,
                     total_tokens,
@@ -2976,7 +2895,6 @@ mod tests {
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
                 ceres,
                 ceres,
-                ceres,
                 deo,
                 !is_farm,
                 1,
@@ -2987,7 +2905,6 @@ mod tests {
             // CERES - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
                 RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                ceres,
                 ceres,
                 ceres,
                 util,
@@ -3062,7 +2979,6 @@ mod tests {
                 RuntimeOrigin::signed(BOB),
                 ceres,
                 ceres,
-                ceres,
                 deo,
                 !is_farm,
                 balance!(100)
@@ -3071,7 +2987,6 @@ mod tests {
             // DEPOSIT TO CERES POOL - reward UTIL
             assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
                 RuntimeOrigin::signed(BOB),
-                ceres,
                 ceres,
                 ceres,
                 util,
@@ -3657,125 +3572,6 @@ mod tests {
         preset_initial(|| {
             let dex_id = DEX_A_ID;
             let pool_asset = XOR;
-            let reward_asset = CERES_ASSET_ID;
-            let is_farm = true;
-            let multiplier = 1;
-            let deposit_fee = balance!(0.04);
-            let is_core = true;
-            let token_per_block = balance!(1);
-            let farms_allocation = balance!(0.6);
-            let staking_allocation = balance!(0.2);
-            let team_allocation = balance!(0.2);
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::register_token(
-                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                reward_asset,
-                token_per_block,
-                farms_allocation,
-                staking_allocation,
-                team_allocation,
-                BOB
-            ));
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::add_pool(
-                RuntimeOrigin::signed(demeter_farming_platform::AuthorityAccount::<Runtime>::get()),
-                pool_asset,
-                reward_asset,
-                reward_asset,
-                is_farm,
-                multiplier,
-                deposit_fee,
-                is_core
-            ));
-
-            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                RuntimeOrigin::signed(ALICE),
-                dex_id,
-                pool_asset,
-                reward_asset,
-                balance!(500),
-                balance!(700),
-                balance!(500),
-                balance!(700),
-            ));
-
-            // Get pool account
-            let pool_account: AccountId =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
-                    pool_asset,
-                    reward_asset,
-                )
-                .expect("Pool does not exist")
-                .0;
-
-            // Calculate number of pool tokens of user's account
-            let mut pool_tokens: Balance =
-                <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
-                    pool_account.clone(),
-                    ALICE,
-                )
-                .expect("User is not pool provider");
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                RuntimeOrigin::signed(ALICE),
-                pool_asset,
-                reward_asset,
-                reward_asset,
-                is_farm,
-                pool_tokens
-            ));
-
-            assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-                RuntimeOrigin::signed(ALICE),
-                pool_asset,
-                reward_asset,
-                10u32.into(),
-                balance!(1),
-                true
-            ));
-
-            pool_tokens = <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
-                pool_account.clone(),
-                ALICE,
-            )
-            .expect("User is not pool provider");
-
-            let user_infos = demeter_farming_platform::UserInfos::<Runtime>::get(&ALICE);
-            for u_info in &user_infos {
-                if u_info.is_farm == is_farm && u_info.base_asset == pool_asset {
-                    assert_eq!(u_info.pooled_tokens, pool_tokens);
-                }
-            }
-            let pool_infos =
-                demeter_farming_platform::Pools::<Runtime>::get(&reward_asset, &reward_asset);
-            for p_info in &pool_infos {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == pool_asset
-                {
-                    assert_eq!(p_info.total_tokens_in_pool, pool_tokens);
-                }
-            }
-
-            assert_err!(
-                demeter_farming_platform::Pallet::<Runtime>::deposit(
-                    RuntimeOrigin::signed(ALICE),
-                    pool_asset,
-                    reward_asset,
-                    reward_asset,
-                    is_farm,
-                    balance!(14000)
-                ),
-                demeter_farming_platform::Error::<Runtime>::InsufficientLPTokens
-            );
-        });
-    }
-
-    #[test]
-    fn check_if_user_lp_is_changed_after_locking_xstusd() {
-        preset_initial(|| {
-            let dex_id = DEX_B_ID;
-            let pool_asset = XSTUSD;
             let reward_asset = CERES_ASSET_ID;
             let is_farm = true;
             let multiplier = 1;

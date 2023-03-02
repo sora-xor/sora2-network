@@ -90,15 +90,6 @@ benchmarks! {
         assert_last_event::<T>(Event::ReferenceAssetChanged(DAI.into()).into())
     }
 
-    set_reference_asset {
-    }: _(
-        RawOrigin::Root,
-        DAI.into()
-    )
-    verify {
-        assert_last_event::<T>(Event::ReferenceAssetChanged(DAI.into()).into())
-    }
-
     enable_synthetic_asset{
         let synthetic = common::AssetId32::from_bytes(hex!("0200012345000000000000000000000000000000000000000000000000000000").into());
     }: _(

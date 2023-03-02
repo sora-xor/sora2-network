@@ -1527,23 +1527,6 @@ impl<AssetId, DEXId, AccountId> SwapBatchInfo<AssetId, DEXId, AccountId> {
     }
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
-#[scale_info(skip_type_params(T))]
-pub struct BatchReceiverInfo<T: Config> {
-    pub account_id: T::AccountId,
-    pub target_amount: Balance,
-}
-
-#[cfg(feature = "std")]
-impl<T: Config> std::fmt::Debug for BatchReceiverInfo<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "BatchReceiverInfo {{ account_id: {:?}, amount: {:?} }}",
-            self.account_id, self.target_amount
-        ))
-    }
-}
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -1572,15 +1555,6 @@ pub mod pallet {
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
-    }
-
-    impl<T: Config> BatchReceiverInfo<T> {
-        pub fn new(account_id: T::AccountId, amount: Balance) -> BatchReceiverInfo<T> {
-            BatchReceiverInfo {
-                account_id,
-                target_amount: amount,
-            }
-        }
     }
 
     /// The current storage version.
