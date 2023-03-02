@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{BatchReceiverInfo, Error};
+use crate::{BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -311,7 +311,9 @@ fn test_quote_exact_output_base_should_pass() {
 fn test_poly_quote_exact_input_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &KSM,
             &DOT,
@@ -357,7 +359,9 @@ fn test_poly_quote_exact_input_1_should_pass() {
 fn test_poly_quote_exact_output_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &KSM,
             &DOT,
@@ -403,7 +407,9 @@ fn test_poly_quote_exact_output_1_should_pass() {
 fn test_poly_quote_exact_input_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &DOT,
             &KSM,
@@ -449,7 +455,9 @@ fn test_poly_quote_exact_input_2_should_pass() {
 fn test_poly_quote_exact_output_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_A_ID,
             &DOT,
             &KSM,
@@ -888,7 +896,9 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
             ]
             .into(),
         );
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -1566,7 +1576,7 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
         MockLiquiditySource3::add_reward((balance!(301), DOT.into(), RewardReason::Unspecified));
 
         let amount: Balance = balance!(500);
-        let (_, rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo { rewards, .. } = LiquidityProxy::inner_quote(
             DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -2780,7 +2790,9 @@ fn test_quote_with_no_price_impact_with_desired_input() {
         ));
 
         // Buying KSM for VAL
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
             &KSM,
@@ -2884,7 +2896,9 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         ));
 
         // Buying KSM for VAL
-        let (quotes, _rewards, _) = LiquidityProxy::inner_quote(
+        let QuoteInfo {
+            outcome: quotes, ..
+        } = LiquidityProxy::inner_quote(
             DEX_D_ID,
             &VAL,
             &KSM,
@@ -3192,16 +3206,20 @@ fn test_batch_swap_successful() {
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
             Vec::from([
-                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
-                (
-                    KSM,
-                    vec![
+                SwapBatchInfo {
+                    outcome_asset_id: USDT,
+                    dex_id: DEX_C_ID,
+                    receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                },
+                SwapBatchInfo {
+                    outcome_asset_id: KSM,
+                    dex_id: DEX_A_ID,
+                    receivers: vec![
                         BatchReceiverInfo::new(charlie(), balance!(10)),
                         BatchReceiverInfo::new(dave(), balance!(10)),
                     ]
-                ),
+                },
             ]),
-            DEX_A_ID,
             XOR,
             balance!(100),
             [LiquiditySourceType::XYKPool].to_vec(),
@@ -3228,16 +3246,20 @@ fn test_batch_swap_desired_input_successful() {
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             RuntimeOrigin::signed(alice()),
             Vec::from([
-                (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
-                (
-                    KSM,
-                    vec![
+                SwapBatchInfo {
+                    outcome_asset_id: USDT,
+                    dex_id: DEX_C_ID,
+                    receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                },
+                SwapBatchInfo {
+                    outcome_asset_id: KSM,
+                    dex_id: DEX_A_ID,
+                    receivers: vec![
                         BatchReceiverInfo::new(charlie(), balance!(10)),
                         BatchReceiverInfo::new(dave(), balance!(10)),
                     ]
-                ),
+                },
             ]),
-            DEX_A_ID,
             XOR,
             balance!(32),
             [LiquiditySourceType::XYKPool].to_vec(),
@@ -3265,16 +3287,20 @@ fn test_batch_swap_desired_input_too_low() {
             LiquidityProxy::swap_transfer_batch(
                 RuntimeOrigin::signed(alice()),
                 Vec::from([
-                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
-                    (
-                        KSM,
-                        vec![
+                    SwapBatchInfo {
+                        outcome_asset_id: USDT,
+                        dex_id: DEX_C_ID,
+                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                    },
+                    SwapBatchInfo {
+                        outcome_asset_id: KSM,
+                        dex_id: DEX_A_ID,
+                        receivers: vec![
                             BatchReceiverInfo::new(charlie(), balance!(10)),
                             BatchReceiverInfo::new(dave(), balance!(10)),
                         ]
-                    ),
+                    },
                 ]),
-                DEX_A_ID,
                 XOR,
                 balance!(1),
                 [LiquiditySourceType::XYKPool].to_vec(),
@@ -3297,17 +3323,25 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
             LiquidityProxy::swap_transfer_batch(
                 RuntimeOrigin::signed(alice()),
                 Vec::from([
-                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
-                    (
-                        KSM,
-                        vec![
+                    SwapBatchInfo {
+                        outcome_asset_id: USDT,
+                        dex_id: DEX_C_ID,
+                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                    },
+                    SwapBatchInfo {
+                        outcome_asset_id: USDT,
+                        dex_id: DEX_A_ID,
+                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                    },
+                    SwapBatchInfo {
+                        outcome_asset_id: KSM,
+                        dex_id: DEX_A_ID,
+                        receivers: vec![
                             BatchReceiverInfo::new(charlie(), balance!(10)),
                             BatchReceiverInfo::new(dave(), balance!(10)),
                         ]
-                    ),
-                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
+                    },
                 ]),
-                DEX_A_ID,
                 XOR,
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
@@ -3330,17 +3364,21 @@ fn test_batch_swap_fail_with_duplicate_receivers_within_asset_id() {
             LiquidityProxy::swap_transfer_batch(
                 RuntimeOrigin::signed(alice()),
                 Vec::from([
-                    (USDT, vec![BatchReceiverInfo::new(bob(), balance!(10))],),
-                    (
-                        KSM,
-                        vec![
+                    SwapBatchInfo {
+                        outcome_asset_id: USDT,
+                        dex_id: DEX_C_ID,
+                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
+                    },
+                    SwapBatchInfo {
+                        outcome_asset_id: KSM,
+                        dex_id: DEX_A_ID,
+                        receivers: vec![
                             BatchReceiverInfo::new(charlie(), balance!(10)),
                             BatchReceiverInfo::new(dave(), balance!(10)),
                             BatchReceiverInfo::new(dave(), balance!(10)),
                         ]
-                    ),
+                    },
                 ]),
-                DEX_A_ID,
                 XOR,
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),

@@ -72,6 +72,30 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap_transfer_batch(_n: u32, _m: u32) -> Weight {
         Weight::zero()
     }
+    // Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
+    // Storage: DEXManager DEXInfos (r:1 w:0)
+    // Storage: XSTPool EnabledSynthetics (r:1 w:0)
+    // Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
+    // Storage: PoolXYK Properties (r:1 w:0)
+    // Storage: TradingPair LockedLiquiditySources (r:1 w:0)
+    // Storage: System Account (r:103 w:103)
+    // Storage: Tokens Accounts (r:102 w:102)
+    // Storage: Technical TechAccounts (r:2 w:0)
+    // Storage: PriceTools PriceInfos (r:1 w:0)
+    // Storage: PoolXYK Reserves (r:0 w:1)
+    /// The range of component `n` is `[1, 10]`.
+    /// The range of component `m` is `[10, 100]`.
+    fn swap_transfer_batch(n: u32, m: u32) -> Weight {
+        (0 as Weight)
+            // Standard Error: 42_166_000
+            .saturating_add((1_601_298_000 as Weight).saturating_mul(n as Weight))
+            // Standard Error: 4_153_000
+            .saturating_add((240_616_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads((8 as Weight).saturating_mul(n as Weight)))
+            .saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(m as Weight)))
+            .saturating_add(T::DbWeight::get().writes((5 as Weight).saturating_mul(n as Weight)))
+            .saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(m as Weight)))
+    }
 }
 
 impl crate::WeightInfo for () {

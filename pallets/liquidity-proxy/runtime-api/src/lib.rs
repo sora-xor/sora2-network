@@ -67,6 +67,7 @@ pub struct SwapOutcomeInfo<Balance, AssetId: MaybeDisplay + MaybeFromStr> {
     )]
     pub fee: Balance,
     pub rewards: Vec<RewardsInfo<Balance, AssetId>>,
+    pub route: Vec<AssetId>,
 }
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
