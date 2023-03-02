@@ -75,12 +75,21 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         100_000_000 as Weight // TODO: benchmark
     }
 
-    fn set_asset_pair() -> Weight {
+    fn claim_crowdloan_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 
-    fn claim_crowdloan_rewards() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    // Storage: VestedRewards TotalRewards (r:1 w:1)
+    // Storage: VestedRewards Rewards (r:2 w:2)
+    /// The range of component `n` is `[0, 100]`.
+    fn update_rewards(n: u32) -> Weight {
+        (6_689_000 as Weight)
+            // Standard Error: 2_000
+            .saturating_add((4_609_000 as Weight).saturating_mul(n as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
     }
 }
 
@@ -93,11 +102,11 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
 
-    fn set_asset_pair() -> Weight {
+    fn claim_crowdloan_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 
-    fn claim_crowdloan_rewards() -> Weight {
+    fn update_rewards(_: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

@@ -36,13 +36,14 @@ use common::prelude::{
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
-    TechPurpose, VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
-    XSTUSD,
+    TechPurpose, VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
+    XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
+use frame_support::pallet_prelude::OptionQuery;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, parameter_types, Blake2_128Concat};
 use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use orml_traits::MultiCurrency;
@@ -199,18 +200,6 @@ impl Config for Runtime {
 pub struct MockVestedRewards;
 
 impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
-    fn update_market_maker_records(
-        _: &AccountId,
-        _: &AssetId,
-        _: Balance,
-        _: u32,
-        _: &AssetId,
-        _: &AssetId,
-        _: &[AssetId],
-    ) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
     fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
         Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
             *old_amount = old_amount.saturating_add(amount)
@@ -222,11 +211,6 @@ impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
     }
 
     fn add_farming_reward(_: &AccountId, _: Balance) -> DispatchResult {
-        // do nothing
-        Ok(())
-    }
-
-    fn add_market_maker_reward(_: &AccountId, _: Balance) -> DispatchResult {
         // do nothing
         Ok(())
     }
@@ -370,7 +354,21 @@ impl ceres_liquidity_locker::Config for Runtime {
 
 pub struct MockDEXApi;
 
+#[frame_support::storage_alias]
+pub type MockPrices =
+    StorageMap<MockDEXApi, Blake2_128Concat, (AssetId, AssetId), Balance, OptionQuery>;
+
 impl MockDEXApi {
+    pub fn with_price(asset_pair: (AssetId, AssetId), price: Balance) {
+        MockPrices::insert(asset_pair.clone(), price);
+        MockPrices::insert(
+            (asset_pair.1, asset_pair.0),
+            (fixed_wrapper!(1) / FixedWrapper::from(price))
+                .try_into_balance()
+                .unwrap(),
+        );
+    }
+
     fn get_mock_source_account() -> Result<(TechAccountId, AccountId), DispatchError> {
         let tech_account_id =
             TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
@@ -379,6 +377,11 @@ impl MockDEXApi {
     }
 
     pub fn init_without_reserves() -> Result<(), DispatchError> {
+        let prices = get_mock_prices();
+        for ((asset_a, asset_b), price) in prices {
+            MockDEXApi::with_price((asset_a, asset_b), price);
+        }
+
         let (tech_account_id, _) = Self::get_mock_source_account()?;
         Technical::register_tech_account_id(tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(tech_account_id)?;
@@ -408,7 +411,11 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
     ) -> bool {
-        get_mock_prices().contains_key(&(*input_asset_id, *output_asset_id))
+        MockPrices::contains_key(&(*input_asset_id, *output_asset_id))
+    }
+
+    fn get_price(input_asset_id: &AssetId, output_asset_id: &AssetId) -> Balance {
+        MockPrices::get(&(*input_asset_id, *output_asset_id)).unwrap()
     }
 
     fn inner_quote(
@@ -423,7 +430,7 @@ impl MockDEXApi {
                 desired_amount_in, ..
             } if deduce_fee => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
-                    * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                    * Self::get_price(input_asset_id, output_asset_id);
                 let fee = amount_out.clone() * balance!(0.003);
                 let fee = fee.into_balance();
                 let amount_out: Balance = amount_out.into_balance();
@@ -434,14 +441,14 @@ impl MockDEXApi {
                 desired_amount_in, ..
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
-                    * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                    * Self::get_price(input_asset_id, output_asset_id);
                 Ok(SwapOutcome::new(amount_out.into_balance(), 0))
             }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } if deduce_fee => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
-                    / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                    / Self::get_price(input_asset_id, output_asset_id);
                 let with_fee = amount_in.clone() / balance!(0.997);
                 let fee = with_fee.clone() - amount_in;
                 let fee = fee.into_balance();
@@ -452,7 +459,7 @@ impl MockDEXApi {
                 desired_amount_out, ..
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
-                    / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                    / Self::get_price(input_asset_id, output_asset_id);
                 Ok(SwapOutcome::new(amount_in.into_balance(), 0))
             }
         }
@@ -527,7 +534,7 @@ impl MockDEXApi {
 }
 
 pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
-    let direct = vec![
+    let prices = vec![
         ((XOR, VAL), balance!(2.0)),
         // USDT
         ((XOR, USDT), balance!(100.0)),
@@ -545,16 +552,9 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XSTUSD, PSWAP), balance!(1)),
         // XSTUSD
         ((XOR, XSTUSD), balance!(102.0)),
+        ((XOR, TBCD), balance!(103.0)),
     ];
-    let reverse = direct.clone().into_iter().map(|((a, b), price)| {
-        (
-            (b, a),
-            (fixed_wrapper!(1) / FixedWrapper::from(price))
-                .try_into_balance()
-                .unwrap(),
-        )
-    });
-    direct.into_iter().chain(reverse).collect()
+    prices.into_iter().collect()
 }
 
 impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
@@ -717,6 +717,18 @@ impl ExtBuilder {
             endowed_accounts,
             ..Default::default()
         }
+    }
+
+    pub fn with_tbcd(mut self) -> Self {
+        self.endowed_accounts.push((
+            alice(),
+            TBCD,
+            balance!(500000),
+            AssetSymbol(b"TBCD".to_vec()),
+            AssetName(b"Token Bonding Curve Dollar".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+        ));
+        self
     }
 
     #[allow(dead_code)]

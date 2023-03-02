@@ -59,7 +59,7 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, IsValid,
     LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -84,6 +84,7 @@ pub trait WeightInfo {
     fn force_mint() -> Weight;
     fn mint() -> Weight;
     fn burn() -> Weight;
+    fn update_balance() -> Weight;
     fn set_non_mintable() -> Weight;
 }
 
@@ -191,6 +192,10 @@ pub mod pallet {
     use common::{ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::{ensure_root, pallet_prelude::*};
+
+    pub(crate) type AmountOf<T> = <<T as Config>::Currency as MultiCurrencyExtended<
+        <T as frame_system::Config>::AccountId,
+    >>::Amount;
 
     #[pallet::config]
     pub trait Config:
@@ -414,6 +419,24 @@ pub mod pallet {
             Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
             Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
             Ok(().into())
+        }
+
+        /// Add or remove abs(`by_amount`) from the balance of `who` under
+        /// `currency_id`. If positive `by_amount`, do add, else do remove.
+        ///
+        /// Basically a wrapper of `MultiCurrencyExtended::update_balance`
+        /// for testing purposes.
+        ///
+        /// TODO: move into tests extrinsic collection pallet
+        #[pallet::weight(<T as Config>::WeightInfo::update_balance())]
+        pub fn update_balance(
+            origin: OriginFor<T>,
+            who: T::AccountId,
+            currency_id: CurrencyIdOf<T>,
+            amount: AmountOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            T::Currency::update_balance(currency_id, &who, amount)
         }
 
         /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.
@@ -830,6 +853,14 @@ impl<T: Config> Pallet<T> {
             Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
         }
 
+        Self::burn_unchecked(asset_id, from, amount)
+    }
+
+    fn burn_unchecked(
+        asset_id: &T::AssetId,
+        from: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
         let r = T::Currency::withdraw(*asset_id, from, amount);
         if r.is_err() {
             Self::ensure_asset_exists(&asset_id)?;
@@ -860,7 +891,7 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    pub fn update_balance(
+    pub fn update_own_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
         by_amount: Amount,

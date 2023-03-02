@@ -68,6 +68,8 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
+    #[cfg(test)]
+    crate::mock::MockDEXApi::init_without_reserves().unwrap();
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config

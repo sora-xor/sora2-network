@@ -38,7 +38,8 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID, PSWAP, TBCD, USDT, VAL, XOR,
+    XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -626,7 +627,6 @@ fn testnet_genesis(
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(2500000000);
-    let initial_pswap_market_maker_rewards = balance!(364988000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -680,10 +680,6 @@ fn testnet_genesis(
         framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
     let xst_pool_permissioned_account_id =
         framenode_runtime::GetXSTPoolPermissionedAccountId::get();
-
-    let market_maker_rewards_tech_account_id =
-        framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
-    let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -762,10 +758,6 @@ fn testnet_genesis(
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
-        (
-            market_maker_rewards_account_id.clone(),
-            market_maker_rewards_tech_account_id.clone(),
-        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -790,7 +782,6 @@ fn testnet_genesis(
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
         (xst_pool_permissioned_account_id.clone(), 0),
-        (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -885,11 +876,6 @@ fn testnet_genesis(
             VAL,
             parliament_investment_fund_balance,
         ),
-        (
-            market_maker_rewards_account_id.clone(),
-            PSWAP,
-            initial_pswap_market_maker_rewards,
-        ),
     ];
     let faucet_config = {
         let initial_faucet_balance = balance!(6000000000);
@@ -907,7 +893,8 @@ fn testnet_genesis(
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), ceres, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, HERMES_ASSET_ID, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }
@@ -921,8 +908,14 @@ fn testnet_genesis(
         },
         account_id: Some(iroha_migration_account_id.clone()),
     };
-    let initial_collateral_assets =
-        vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into(), XST.into()];
+    let initial_collateral_assets = vec![
+        DAI.into(),
+        VAL.into(),
+        PSWAP.into(),
+        ETH.into(),
+        XST.into(),
+        TBCD.into(),
+    ];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         system: SystemConfig {
@@ -1058,6 +1051,17 @@ fn testnet_genesis(
                     None,
                 ),
                 (
+                    TBCD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"TBCD".to_vec()),
+                    AssetName(b"SORA TBC Dollar".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
                     XSTUSD.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
@@ -1077,6 +1081,17 @@ fn testnet_genesis(
                     AssetSymbol(b"CERES".to_vec()),
                     AssetName(b"Ceres".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    common::HERMES_ASSET_ID,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"HMX".to_vec()),
+                    AssetName(b"Hermes".to_vec()),
+                    18,
                     Balance::zero(),
                     true,
                     None,
@@ -1676,6 +1691,17 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XST".to_vec()),
             AssetName(b"SORA Synthetics".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            TBCD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"TBCD".to_vec()),
+            AssetName(b"SORA TBC Dollar".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

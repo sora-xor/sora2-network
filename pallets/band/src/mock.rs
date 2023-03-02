@@ -49,6 +49,7 @@ frame_support::construct_runtime!(
     {
         System: frame_system,
         Band: band,
+        OracleProxy: oracle_proxy,
     }
 );
 
@@ -83,6 +84,14 @@ impl Config for Runtime {
     type Symbol = String;
     type Event = Event;
     type WeightInfo = ();
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+}
+
+impl oracle_proxy::Config for Runtime {
+    type Symbol = String;
+    type Event = Event;
+    type WeightInfo = ();
+    type BandChainOracle = crate::Pallet<Runtime>;
 }
 
 // Build genesis storage according to the mock runtime.

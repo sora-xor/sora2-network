@@ -21,7 +21,7 @@ String contractsEnvFile       = 'env.template'
 String solcVersion            = '0.8.14'
 String nodeVersion            = '14.16.1'
 String gitHubUser             = 'sorabot'
-String gitHubRepo             = 'github.com/soramitsu/sora2-substrate.git'
+String gitHubRepo             = 'github.com/soramitsu/sora2-network.git'
 String gitHubBranch           = 'doc'
 String gitHubEmail            = 'admin@soramitsu.co.jp'
 String cargoDocImage          = 'rust:1.62.0-slim-bullseye'
@@ -66,6 +66,7 @@ pipeline {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
                                 rm -rf ~/.cargo/.package-cache
+                                rm Cargo.lock
                                 cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -131,7 +132,8 @@ pipeline {
                         } else {
                             docker.image(envImageName).inside() {
                                 sh '''
-                                    rm -rf ~/.cargo
+                                    rm -rf ~/.cargo/.package-cache
+                                    rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features private-net

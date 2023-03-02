@@ -35,20 +35,21 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, PriceVariant, DAI,
-    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XSTUSD,
+    balance, AssetId32, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType,
+    PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use liquidity_proxy::Call;
+use liquidity_proxy::{BatchReceiverInfo, Call, SwapBatchInfo};
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
 use multicollateral_bonding_curve_pool::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
+use scale_info::prelude::string::ToString;
 use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -79,6 +80,18 @@ pub trait Config:
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap()
+}
+
+fn generic_account<T: Config>(seed_1: u32, seed_2: u32) -> T::AccountId {
+    let raw_account_id: [u8; 32] = [
+        seed_1.to_be_bytes().to_vec(),
+        seed_2.to_be_bytes().to_vec(),
+        [0u8; 24].to_vec(),
+    ]
+    .concat()
+    .try_into()
+    .expect("Failed to generate account id byte array");
+    T::AccountId::decode(&mut &raw_account_id[..]).expect("Failed to create a new account id")
 }
 
 // Prepare Runtime for running benchmarks
@@ -315,7 +328,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_to_balance) + balance!(0.999999999999999999)
+            Into::<u128>::into(initial_to_balance) + balance!(0.999999999999977496)
         );
     }
 
@@ -442,6 +455,111 @@ benchmarks! {
             ).into()
         );
     }
+
+    swap_transfer_batch {
+        let n in 1..10; // number of output assets
+        let m in 10..100; // full number of receivers
+
+        let k = m/n;
+
+        let caller = alice::<T>();
+        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+
+        let mut swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>> = Vec::new();
+        setup_benchmark::<T>()?;
+        for i in 0..n {
+            let raw_asset_id = [[3u8; 28].to_vec(), i.to_be_bytes().to_vec()]
+                .concat()
+                .try_into()
+                .expect("Failed to cast vector to [u8; 32]");
+            let new_asset_id = AssetId32::from_bytes(raw_asset_id);
+            let asset_symbol = {
+                let mut asset_symbol_prefix: Vec<u8> = "TEST".into();
+                let asset_symbol_remainder: Vec<u8> = i.to_string().into();
+                asset_symbol_prefix.extend_from_slice(&asset_symbol_remainder);
+                asset_symbol_prefix
+            };
+            let asset_name = {
+                let mut asset_name_prefix: Vec<u8> = "Test".into();
+                let asset_name_remainder: Vec<u8> = i.to_string().into();
+                asset_name_prefix.extend_from_slice(&asset_name_remainder);
+                asset_name_prefix
+            };
+
+            Assets::<T>::register_asset_id(
+                caller.clone(),
+                new_asset_id.into(),
+                AssetSymbol(asset_symbol),
+                AssetName(asset_name),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::zero(),
+                true,
+                None,
+                None,
+            ).expect("Failed to register a new asset id");
+
+            Assets::<T>::mint_to(
+                &new_asset_id.into(),
+                &caller.clone(),
+                &caller.clone(),
+                balance!(500000),
+            ).expect("Failed to mint a new asset");
+
+            TradingPair::<T>::register(
+                caller_origin.clone(),
+                DEX.into(),
+                XOR.into(),
+                new_asset_id.into()
+            ).expect("Failed to register a trading pair");
+
+            XYKPool::<T>::initialize_pool(
+                caller_origin.clone(),
+                DEX.into(),
+                XOR.into(),
+                new_asset_id.into()
+            ).expect("Failed to initialize pool");
+
+            XYKPool::<T>::deposit_liquidity(
+                caller_origin.clone(),
+                DEX.into(),
+                XOR.into(),
+                new_asset_id.into(),
+                balance!(10000),
+                balance!(10000),
+                balance!(10000),
+                balance!(10000),
+            ).expect("Failed to deposit liquidity");
+            let recv_batch: Vec<BatchReceiverInfo<T::AccountId>> = (0..k).into_iter().map(|recv_num| {
+                let account_id = generic_account::<T>(i, recv_num);
+                let target_amount = balance!(0.1);
+                BatchReceiverInfo {account_id, target_amount}
+            }).collect();
+            swap_batches.push(SwapBatchInfo{
+                outcome_asset_id: new_asset_id.into(),
+                dex_id: DEX.into(),
+                receivers: recv_batch,
+            });
+        }
+        let max_input_amount = balance!(k*n + 100);
+    }: {
+        liquidity_proxy::Pallet::<T>::swap_transfer_batch(
+            caller_origin,
+            swap_batches.clone(),
+            XOR.into(),
+            max_input_amount,
+            [LiquiditySourceType::XYKPool].to_vec(),
+            FilterMode::AllowSelected,
+        ).unwrap();
+    } verify {
+        swap_batches.into_iter().for_each(|swap_batch| {
+            let SwapBatchInfo{ outcome_asset_id, dex_id: _, receivers } = swap_batch;
+
+            receivers.into_iter().for_each(|batch| {
+                let BatchReceiverInfo {account_id, target_amount} = batch;
+                assert_eq!(Assets::<T>::free_balance(&outcome_asset_id, &account_id).unwrap(), target_amount);
+            })
+        });
+    }
 }
 
 #[cfg(test)]
@@ -461,6 +579,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
             assert_ok!(Pallet::<Runtime>::test_benchmark_enable_liquidity_source());
             assert_ok!(Pallet::<Runtime>::test_benchmark_disable_liquidity_source());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_transfer_batch());
         });
     }
 }

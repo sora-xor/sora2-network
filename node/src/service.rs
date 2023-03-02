@@ -236,6 +236,29 @@ pub fn new_partial(
             STORAGE_SUB_NODE_URL_KEY,
             &format!("http://{}", rpc_addr).encode(),
         );
+
+        config
+            .prometheus_registry()
+            .and_then(|registry| {
+                crate::eth_bridge_metrics::Metrics::register(
+                    registry,
+                    backend.clone(),
+                    std::time::Duration::from_secs(6),
+                )
+                .map_err(|e| {
+                    log::error!("Failed to register metrics: {:?}", e);
+                })
+                .ok()
+            })
+            .and_then(|metrics| {
+                task_manager.spawn_essential_handle().spawn_blocking(
+                    "eth-bridge-metrics",
+                    Some("eth-bridge-metrics"),
+                    metrics.run(),
+                );
+                Some(())
+            });
+
         log::info!("Ethereum bridge peer initialized");
     }
 

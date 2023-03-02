@@ -249,9 +249,11 @@ fn all_exchange_paths_work() {
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Buy).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Sell).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&DAI, balance!(800), PriceVariant::Buy).unwrap();
+            PriceTools::incoming_spot_price(&DAI, balance!(800), PriceVariant::Sell).unwrap();
         }
         // XOR(1)->ETH(0.5)
         assert_eq!(
@@ -346,6 +348,7 @@ fn failure_for_unsupported_assets() {
                 Error::<Runtime>::InsufficientSpotPriceData
             );
             PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Buy).unwrap();
+            PriceTools::incoming_spot_price(&ETH, balance!(10), PriceVariant::Sell).unwrap();
         }
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into(), PriceVariant::Buy).unwrap(),

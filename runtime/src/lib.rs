@@ -40,7 +40,7 @@ mod bags_thresholds;
 pub mod constants;
 mod extensions;
 mod impls;
-mod migrations;
+pub mod migrations;
 
 #[cfg(test)]
 pub mod mock;
@@ -218,15 +218,25 @@ pub mod opaque {
     }
 }
 
+/// Types used by oracle related pallets
+pub mod oracle_types {
+    use common::SymbolName;
+
+    pub type Symbol = SymbolName;
+
+    pub type ResolveTime = u64;
+}
+pub use oracle_types::*;
+
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 44,
+    spec_version: 47,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 44,
+    transaction_version: 47,
     state_version: 0,
 };
 
@@ -1778,10 +1788,30 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
 }
 
+impl oracle_proxy::Config for Runtime {
+    type Symbol = Symbol;
+    type Event = Event;
+    type WeightInfo = oracle_proxy::weights::WeightInfo<Runtime>;
+    type BandChainOracle = band::Pallet<Runtime>;
+}
+
 impl band::Config for Runtime {
     type Event = Event;
-    type Symbol = String;
+    type Symbol = Symbol;
     type WeightInfo = band::weights::WeightInfo<Runtime>;
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+}
+
+parameter_types! {
+    pub const HermesAssetId: AssetId = common::HERMES_ASSET_ID;
+}
+
+impl hermes_governance_platform::Config for Runtime {
+    const MIN_DURATION_OF_POLL: Moment = 172_800_000;
+    const MAX_DURATION_OF_POLL: Moment = 604_800_000;
+    type Event = Event;
+    type HermesAssetId = HermesAssetId;
+    type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1808,7 +1838,7 @@ construct_runtime! {
 
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
@@ -1831,12 +1861,12 @@ construct_runtime! {
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
+        Currencies: currencies::{Pallet} = 19,
         TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -1865,6 +1895,8 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
@@ -1914,7 +1946,7 @@ construct_runtime! {
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
@@ -1943,6 +1975,8 @@ construct_runtime! {
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
 
         // Trustless ethereum bridge
@@ -2357,15 +2391,16 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
-                amount: asa.amount,
-                fee: asa.fee,
-                rewards: rewards.into_iter()
+            ).ok().map(|quote_info| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: quote_info.outcome.amount,
+                fee: quote_info.outcome.fee,
+                rewards: quote_info.rewards.into_iter()
                                 .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
                                     amount,
                                     currency,
                                     reason
-                                }).collect()
+                                }).collect(),
+                route: quote_info.path
                 })
         }
 
@@ -2387,6 +2422,31 @@ impl_runtime_apis! {
             LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(Vec::new())
+        }
+    }
+
+    impl oracle_proxy_runtime_api::OracleProxyAPI<
+        Block,
+        Symbol,
+        ResolveTime
+    > for Runtime {
+        fn quote(symbol: Symbol) -> Result<Option<oracle_proxy_runtime_api::RateInfo>, DispatchError>  {
+            let rate_wrapped = <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::quote(&symbol);
+            match rate_wrapped {
+                Ok(rate) => Ok(rate.map(|rate| oracle_proxy_runtime_api::RateInfo{
+                    value: rate.value,
+                    last_updated: rate.last_updated
+                })),
+                Err(e) => Err(e)
+            }
+        }
+
+        fn list_enabled_symbols() -> Result<Vec<(Symbol, ResolveTime)>, DispatchError> {
+            <
+                OracleProxy as common::DataFeed<Symbol, common::Rate, ResolveTime>
+            >::list_enabled_symbols()
         }
     }
 
@@ -2588,9 +2648,11 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xor_fee, XorFee);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
+            list_benchmark!(list, extra, hermes_governance_platform, HermesGovernancePlatform);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2656,6 +2718,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
+            add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
