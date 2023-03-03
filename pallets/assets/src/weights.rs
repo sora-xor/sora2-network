@@ -106,7 +106,8 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 
     // Storage: Tokens Accounts (r:1 w:1)
     // Storage: Tokens TotalIssuance (r:1 w:1)
-    fn force_burn() -> Weight {
+    // Storage: System Account (r:1 w:1)
+    fn update_balance() -> Weight {
         Weight::zero()
     }
 }
@@ -130,7 +131,7 @@ impl crate::WeightInfo for () {
     fn set_non_mintable() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn force_burn() -> Weight {
+    fn update_balance() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

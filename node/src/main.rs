@@ -35,6 +35,7 @@
 mod service;
 mod cli;
 mod command;
+mod eth_bridge_metrics;
 mod rpc;
 
 fn main() -> sc_cli::Result<()> {

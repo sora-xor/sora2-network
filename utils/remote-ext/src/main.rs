@@ -65,7 +65,7 @@ async fn main() -> AnyResult<()> {
             true,
         )
         .unwrap()
-        .0;
+        .outcome;
         info!("quote(0, DAI, XSTUSD, {input:?}) = {res:?}");
         Ok(())
     });
