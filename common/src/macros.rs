@@ -51,7 +51,7 @@ macro_rules! balance {
         VALUE
     }};
     ($e:expr) => {{
-        use sp_std::convert::TryFrom;
+        use core::convert::TryFrom;
         let fixed = $crate::Fixed::try_from($e).unwrap();
         $crate::Balance::try_from(fixed.into_bits()).unwrap()
     }};

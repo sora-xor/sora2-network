@@ -1666,6 +1666,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
+ "unicode-width",
  "windows-sys",
 ]
 
@@ -4908,6 +4909,19 @@ dependencies = [
  "lazy_static",
  "number_prefix",
  "regex",
+]
+
+[[package]]
+name = "indicatif"
+version = "0.17.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cef509aa9bc73864d6756f0d34d35504af3cf0844373afe9b8669a5b8005a729"
+dependencies = [
+ "console 0.15.4",
+ "number_prefix",
+ "portable-atomic",
+ "unicode-segmentation",
+ "unicode-width",
 ]
 
 [[package]]
@@ -8224,6 +8238,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "portable-atomic"
+version = "0.3.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26f6a7b87c2e435a3241addceeeff740ff8b7e76b74c13bf9acb17fa454ea00b"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9104,6 +9124,7 @@ dependencies = [
  "hex-literal",
  "http",
  "incentivized-channel-rpc",
+ "indicatif 0.17.3",
  "jsonrpsee",
  "k256",
  "keccak-hasher",
@@ -12082,7 +12103,7 @@ dependencies = [
  "fs2",
  "hex",
  "home",
- "indicatif",
+ "indicatif 0.16.2",
  "itertools",
  "once_cell",
  "rand 0.8.5",

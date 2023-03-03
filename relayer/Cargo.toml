@@ -65,3 +65,6 @@ assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
 basic-channel-rpc = { path = "../pallets/trustless-eth-bridge/basic-channel/rpc" }
 incentivized-channel-rpc = { path = "../pallets/trustless-eth-bridge/incentivized-channel/rpc" }
+indicatif = { version = "0.17.3", features = [
+    "improved_unicode",
+] }

@@ -1,5 +1,6 @@
 mod bridge;
 mod calc_dag_roots;
+mod calculate_rewards;
 mod copy_liquidity;
 mod error;
 mod fetch_ethereum_header;
@@ -40,6 +41,7 @@ enum Commands {
     OldBridge(old_bridge::Commands),
     CalcDagRoots(calc_dag_roots::Command),
     CopyLiquidity(copy_liquidity::Command),
+    CalculateRewards(calculate_rewards::Command),
 }
 
 impl Commands {
@@ -52,6 +54,7 @@ impl Commands {
             Self::OldBridge(cmd) => cmd.run(args).await,
             Self::CalcDagRoots(cmd) => cmd.run(args).await,
             Self::CopyLiquidity(cmd) => cmd.run(args).await,
+            Self::CalculateRewards(cmd) => cmd.run(args).await,
         }
     }
 }
