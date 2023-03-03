@@ -9,11 +9,10 @@ use frame_support::{
     pallet_prelude::StorageVersion,
     traits::GetStorageVersion as _,
 };
-use hex_literal::hex;
 use sp_runtime::traits::Zero;
 
 pub const SORAMITSU_PAYMENT_ACCOUNT: [u8; 32] =
-    hex!("34b9a44a2d3f681d8191815a6de986bf163d15f6d6b58d56aa1ab887313e1723");
+    hex_literal::hex!("34b9a44a2d3f681d8191815a6de986bf163d15f6d6b58d56aa1ab887313e1723");
 
 pub struct InitializeTBCD<T>(core::marker::PhantomData<T>);
 
@@ -46,7 +45,7 @@ where
                 assets_and_permissions_account_id.clone(),
                 TBCD.into(),
                 common::AssetSymbol(b"TBCD".to_vec()),
-                common::AssetName(b"SORA Token Bonding Curve Dollar".to_vec()),
+                common::AssetName(b"SORA TBC Dollar".to_vec()),
                 common::DEFAULT_BALANCE_PRECISION,
                 common::Balance::zero(),
                 true,

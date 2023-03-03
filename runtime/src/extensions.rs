@@ -117,6 +117,7 @@ impl crate::RuntimeCall {
                     call,
                     Self::LiquidityProxy(liquidity_proxy::Call::swap { .. })
                         | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer { .. })
+                        | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. })
                 )
             }) {
                 return Err(TransactionValidityError::Invalid(InvalidTransaction::Call));
