@@ -378,7 +378,6 @@
 <span id="373">373</span>
 <span id="374">374</span>
 <span id="375">375</span>
-<span id="376">376</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -413,6 +412,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;runtime-benchmarks&quot;</span>)]</span>
 <span class="kw">mod</span> <span class="ident">benchmarking</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">migrations</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">mock</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -450,12 +450,10 @@
 
     <span class="kw">fn</span> <span class="ident">on_pool_created</span>(
         <span class="ident">_fee_account</span>: <span class="ident"><span class="self">Self</span>::AccountId</span>,
-        <span class="ident">dex_id</span>: <span class="ident"><span class="self">Self</span>::DEXId</span>,
+        <span class="ident">_dex_id</span>: <span class="ident"><span class="self">Self</span>::DEXId</span>,
         <span class="ident">pool_account</span>: <span class="ident"><span class="self">Self</span>::AccountId</span>,
     ) -&gt; <span class="ident">DispatchResult</span> {
-        <span class="kw">if</span> <span class="ident">dex_id</span> <span class="op">==</span> <span class="ident">common::DEXId::Polkaswap</span>.<span class="ident">into</span>() {
-            <span class="ident"><span class="self">Self</span>::add_pool</span>(<span class="ident">pool_account</span>, <span class="ident">frame_system::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::block_number</span>());
-        }
+        <span class="ident"><span class="self">Self</span>::add_pool</span>(<span class="ident">pool_account</span>, <span class="ident">frame_system::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::block_number</span>());
         <span class="prelude-val">Ok</span>(())
     }
 }

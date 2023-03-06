@@ -1777,6 +1777,19 @@
 <span id="1772">1772</span>
 <span id="1773">1773</span>
 <span id="1774">1774</span>
+<span id="1775">1775</span>
+<span id="1776">1776</span>
+<span id="1777">1777</span>
+<span id="1778">1778</span>
+<span id="1779">1779</span>
+<span id="1780">1780</span>
+<span id="1781">1781</span>
+<span id="1782">1782</span>
+<span id="1783">1783</span>
+<span id="1784">1784</span>
+<span id="1785">1785</span>
+<span id="1786">1786</span>
+<span id="1787">1787</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -2750,16 +2763,24 @@
     <span class="doccomment">/// ```nocompile</span>
     <span class="doccomment">/// buy_function(x) = price_change_coefficient * x + initial_price</span>
     <span class="doccomment">/// Assume `M` = 1 / price_change_coefficient = 1 / 1337</span>
+    <span class="doccomment">/// Assume `P` = price_change_coefficient = 1337</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// M * AD² + 2 * AB * AD - 2 * S = 0</span>
     <span class="doccomment">/// equation with two solutions, taking only positive one:</span>
-    <span class="doccomment">/// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2</span>
+    <span class="doccomment">/// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2 (old formula)</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// AD = √(P * (AB² * P + 2 * S)) - AB * P (new formula)</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// or</span>
     <span class="doccomment">///</span>
+    <span class="doccomment">/// (old)</span>
     <span class="doccomment">/// xor_supply_delta = (√((buy_function(xor_total_supply) * 2 / price_change_coeff)²</span>
     <span class="doccomment">///                    + 8 * buy_price_usd / price_change_coeff) - 2 * buy_function(xor_total_supply)</span>
     <span class="doccomment">///                    / price_change_coeff) / 2</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// (new)</span>
+    <span class="doccomment">/// xor_supply_delta = √price_change_coefficient * √(buy_function(xor_total_supply)² * price_change_coefficient + 2 * buy_price_usd)</span>
+    <span class="doccomment">///                    - buy_function(xor_total_supply) * price_change_coefficient</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">buy_price</span>(
         <span class="ident">main_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
@@ -2787,12 +2808,17 @@
                 <span class="kw">let</span> <span class="ident">collateral_reference_in</span> <span class="op">=</span>
                     <span class="ident">collateral_price_per_reference_unit</span> <span class="op">*</span> <span class="ident">collateral_quantity</span>;
 
-                <span class="kw">let</span> <span class="ident">under_pow</span> <span class="op">=</span>
-                    <span class="ident">current_state</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">price_change_coeff</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="macro">fixed_wrapper!</span>(<span class="number">2.0</span>);
-                <span class="kw">let</span> <span class="ident">under_sqrt</span> <span class="op">=</span> <span class="ident">under_pow</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">under_pow</span>
-                    <span class="op">+</span> <span class="macro">fixed_wrapper!</span>(<span class="number">8.0</span>) <span class="op">*</span> <span class="ident">price_change_coeff</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">collateral_reference_in</span>;
-                <span class="kw">let</span> <span class="ident">main_out</span> <span class="op">=</span> <span class="ident">under_sqrt</span>.<span class="ident">sqrt_accurate</span>() <span class="op">/</span> <span class="macro">fixed_wrapper!</span>(<span class="number">2.0</span>)
-                    <span class="op">-</span> <span class="ident">price_change_coeff</span> <span class="op">*</span> <span class="ident">current_state</span>;
+                <span class="kw">let</span> <span class="ident">main_out</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">collateral_asset_id</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">TBCD</span>.<span class="ident">into</span>() {
+                    <span class="ident">collateral_reference_in</span> <span class="op">/</span> <span class="ident">current_state</span>
+                } <span class="kw">else</span> {
+                    <span class="kw">let</span> <span class="ident">sqrt</span> <span class="op">=</span> (<span class="ident">current_state</span>.<span class="ident">clone</span>()
+                        <span class="op">*</span> <span class="ident">current_state</span>.<span class="ident">clone</span>()
+                        <span class="op">*</span> <span class="ident">price_change_coeff</span>.<span class="ident">clone</span>()
+                        <span class="op">+</span> (<span class="macro">fixed_wrapper!</span>(<span class="number">2.0</span>) <span class="op">*</span> <span class="ident">collateral_reference_in</span>.<span class="ident">clone</span>()))
+                    .<span class="ident">multiply_and_sqrt</span>(<span class="kw-2">&amp;</span><span class="ident">price_change_coeff</span>);
+                    <span class="ident">sqrt</span> <span class="op">-</span> <span class="ident">current_state</span> <span class="op">*</span> <span class="ident">price_change_coeff</span>
+                };
+
                 <span class="ident">main_out</span>
                     .<span class="ident">get</span>()
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::PriceCalculationFailed</span>.<span class="ident">into</span>())
@@ -3225,7 +3251,7 @@
         <span class="kw">let</span> <span class="ident">current_state</span> <span class="op">=</span>
             <span class="ident"><span class="self">Self</span>::buy_function</span>(<span class="kw-2">&amp;</span><span class="ident">base_asset_id</span>, <span class="ident">collateral_asset_id</span>, <span class="ident">price_variant</span>, <span class="ident">delta</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">price</span> <span class="op">=</span> (<span class="ident">initial_state</span> <span class="op">+</span> <span class="ident">current_state</span>) <span class="op">/</span> <span class="macro">fixed_wrapper!</span>(<span class="number">2.0</span>)
+        <span class="kw">let</span> <span class="ident">price</span> <span class="op">=</span> ((<span class="ident">initial_state</span> <span class="op">+</span> <span class="ident">current_state</span>) <span class="op">/</span> <span class="macro">fixed_wrapper!</span>(<span class="number">2.0</span>))
             <span class="op">*</span> (<span class="ident">FixedWrapper::from</span>(<span class="ident">base_total_supply</span>) <span class="op">+</span> <span class="ident">delta</span>);
         <span class="ident">price</span>
             .<span class="ident">try_into_balance</span>()

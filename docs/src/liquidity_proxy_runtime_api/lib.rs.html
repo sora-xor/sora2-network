@@ -134,6 +134,18 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -201,8 +213,20 @@
             <span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;string_serialization&quot;</span>
         )
     )]</span>
+    <span class="kw">pub</span> <span class="ident">amount_without_impact</span>: <span class="ident">Balance</span>,
+    <span class="attribute">#[<span class="ident">cfg_attr</span>(
+        <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>,
+        <span class="ident">serde</span>(
+            <span class="ident">bound</span>(
+                <span class="ident">serialize</span> <span class="op">=</span> <span class="string">&quot;Balance: std::fmt::Display&quot;</span>,
+                <span class="ident">deserialize</span> <span class="op">=</span> <span class="string">&quot;Balance: std::str::FromStr&quot;</span>
+            ),
+            <span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;string_serialization&quot;</span>
+        )
+    )]</span>
     <span class="kw">pub</span> <span class="ident">fee</span>: <span class="ident">Balance</span>,
     <span class="kw">pub</span> <span class="ident">rewards</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RewardsInfo</span><span class="op">&lt;</span><span class="ident">Balance</span>, <span class="ident">AssetId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">route</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AssetId</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Encode</span>, <span class="ident">Decode</span>, <span class="ident">Default</span>)]</span>
