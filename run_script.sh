@@ -22,6 +22,10 @@ else
 	unbuffer=""
 fi
 
+# MacOS default getopt doesn't support long args,
+# so installing gnu version should make it work.
+#
+# brew install gnu-getopt
 getopt_code=`$awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
@@ -83,7 +87,7 @@ for name in alice bob charlie dave eve ferdie
 do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
-	$binary key insert --chain $chain --suri "//${name^}" --scheme ecdsa --key-type ethb --base-path db$num
+	$binary key insert --chain $chain --suri "//${name}" --scheme ecdsa --key-type ethb --base-path db$num
 	mkdir -p "db$num/chains/sora-substrate-$chain/bridge"
 	cp misc/eth.json "db$num/chains/sora-substrate-$chain/bridge"
 	if [ "$num" == "0" ]; then
