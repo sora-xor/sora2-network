@@ -971,16 +971,24 @@ impl<T: Config> Pallet<T> {
     /// ```nocompile
     /// buy_function(x) = price_change_coefficient * x + initial_price
     /// Assume `M` = 1 / price_change_coefficient = 1 / 1337
+    /// Assume `P` = price_change_coefficient = 1337
     ///
     /// M * AD² + 2 * AB * AD - 2 * S = 0
     /// equation with two solutions, taking only positive one:
-    /// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2
+    /// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2 (old formula)
+    ///
+    /// AD = √(P * (AB² * P + 2 * S)) - AB * P (new formula)
     ///
     /// or
     ///
+    /// (old)
     /// xor_supply_delta = (√((buy_function(xor_total_supply) * 2 / price_change_coeff)²
     ///                    + 8 * buy_price_usd / price_change_coeff) - 2 * buy_function(xor_total_supply)
     ///                    / price_change_coeff) / 2
+    ///
+    /// (new)
+    /// xor_supply_delta = √price_change_coefficient * √(buy_function(xor_total_supply)² * price_change_coefficient + 2 * buy_price_usd)
+    ///                    - buy_function(xor_total_supply) * price_change_coefficient
     /// ```
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -1008,12 +1016,17 @@ impl<T: Config> Pallet<T> {
                 let collateral_reference_in =
                     collateral_price_per_reference_unit * collateral_quantity;
 
-                let under_pow =
-                    current_state.clone() * price_change_coeff.clone() * fixed_wrapper!(2.0);
-                let under_sqrt = under_pow.clone() * under_pow
-                    + fixed_wrapper!(8.0) * price_change_coeff.clone() * collateral_reference_in;
-                let main_out = under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0)
-                    - price_change_coeff * current_state;
+                let main_out = if collateral_asset_id == &TBCD.into() {
+                    collateral_reference_in / current_state
+                } else {
+                    let sqrt = (current_state.clone()
+                        * current_state.clone()
+                        * price_change_coeff.clone()
+                        + (fixed_wrapper!(2.0) * collateral_reference_in.clone()))
+                    .multiply_and_sqrt(&price_change_coeff);
+                    sqrt - current_state * price_change_coeff
+                };
+
                 main_out
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -1446,7 +1459,7 @@ impl<T: Config> Pallet<T> {
         let current_state =
             Self::buy_function(&base_asset_id, collateral_asset_id, price_variant, delta)?;
 
-        let price = (initial_state + current_state) / fixed_wrapper!(2.0)
+        let price = ((initial_state + current_state) / fixed_wrapper!(2.0))
             * (FixedWrapper::from(base_total_supply) + delta);
         price
             .try_into_balance()

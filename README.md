@@ -54,6 +54,10 @@ cargo build --release --features private-net
 ./run_script.sh -d -w -r
 ```
 access running network via polkadot.js/apps (select Development -> Local Node, e.g. [link](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer))
+#### On macOS
+macOS is shipped with the BSD version of `getopt`. If the script behaves incorrectly and does not parse arguments,  
+make sure you have installed and set as active the GNU versions of `awk` and `getopt`.
+
 
 ### Run benchmarks to generate weights
 > For release must be run on hardware matching validator requirements specification.

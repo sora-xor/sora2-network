@@ -41,6 +41,7 @@ mod tests {
         ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
     };
     use frame_support::assert_noop;
+    use frame_support::error::BadOrigin;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
@@ -273,7 +274,7 @@ mod tests {
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, 100u32.into()));
             assert_ok!(Assets::burn_from(&XOR, &ALICE, &ALICE, 100u32.into()));
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 100.into()));
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 100.into()));
         });
     }
 
@@ -297,7 +298,7 @@ mod tests {
                 permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
-                Assets::update_balance(&XOR, &BOB, 100u32.into()),
+                Assets::update_own_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
         });
@@ -428,11 +429,11 @@ mod tests {
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
-                Assets::update_balance(&XOR, &ALICE, 1i128),
+                Assets::update_own_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
         })
     }
 
@@ -453,9 +454,9 @@ mod tests {
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),);
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),);
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 1i128),);
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 1i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
 
             assert_noop!(
                 Assets::set_non_mintable_from(&XOR, &BOB),
@@ -472,11 +473,11 @@ mod tests {
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
-                Assets::update_balance(&XOR, &ALICE, 1i128),
+                Assets::update_own_balance(&XOR, &ALICE, 1i128),
                 Error::<Runtime>::AssetSupplyIsNotMintable
             );
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
         })
     }
 
@@ -581,6 +582,53 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(0u32)
+            );
+        })
+    }
+
+    #[test]
+    fn should_update_balance_correctly() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(10u32),
+                true,
+                None,
+                None,
+            ));
+            assert_ok!(Assets::update_balance(Origin::root(), BOB, XOR, 100));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(100u32)
+            );
+
+            assert_ok!(Assets::update_balance(Origin::root(), BOB, XOR, -10));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
+            );
+
+            assert_err!(
+                Assets::update_balance(Origin::signed(ALICE), BOB, XOR, -10),
+                BadOrigin
+            );
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
+            );
+
+            assert_noop!(
+                Assets::update_balance(Origin::root(), BOB, XOR, -100),
+                pallet_balances::Error::<Runtime>::InsufficientBalance
+            );
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(90u32)
             );
         })
     }
