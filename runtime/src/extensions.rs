@@ -118,6 +118,7 @@ impl crate::Call {
                     call,
                     Self::LiquidityProxy(liquidity_proxy::Call::swap { .. })
                         | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer { .. })
+                        | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. })
                 )
             }) {
                 return Err(TransactionValidityError::Invalid(InvalidTransaction::Call));
@@ -164,7 +165,7 @@ mod tests {
     use common::{balance, VAL, XOR};
 
     use crate::extensions::ChargeTransactionPayment;
-    use crate::{Call, Runtime};
+    use crate::{Call, GetBaseAssetId, Runtime};
 
     #[test]
     fn check_calls_from_bridge_peers_pays_yes() {
@@ -205,9 +206,10 @@ mod tests {
 
     #[test]
     fn simple_call_should_pass() {
-        let call = Call::Balances(pallet_balances::Call::transfer {
-            dest: From::from([1; 32]),
-            value: balance!(100),
+        let call = Call::Assets(assets::Call::transfer {
+            asset_id: GetBaseAssetId::get(),
+            to: From::from([1; 32]),
+            amount: balance!(100),
         });
 
         assert!(call.check_for_swap_in_batch().is_ok());
@@ -216,14 +218,16 @@ mod tests {
     #[test]
     fn regular_batch_should_pass() {
         let batch_calls = vec![
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
         ];
@@ -239,9 +243,10 @@ mod tests {
 
     fn test_swap_in_batch(call: Call) {
         let batch_calls = vec![
-            pallet_balances::Call::transfer {
-                dest: From::from([1; 32]),
-                value: balance!(100),
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
             }
             .into(),
             call,
