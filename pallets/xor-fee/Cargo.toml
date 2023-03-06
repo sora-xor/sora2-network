@@ -37,7 +37,7 @@ liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 referrals = { path = "../referrals", default-features = false }
 
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+pallet-staking = { git = "https://github.com/sora-xor/substrate.git", default-features = false, branch = "polkadot-v0.9.31", optional = true }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 permissions = { path = "../permissions", default-features = false, optional = true }
 pool-xyk = { path = "../pool-xyk", default-features = false, optional = true }
@@ -49,7 +49,7 @@ pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch =
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31" }
+pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31", package = "pallet-multisig" }
 pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
