@@ -3928,6 +3928,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#
 dependencies = [
  "frame-support",
  "frame-system",
+ "frame-try-runtime",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -4060,6 +4061,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "frame-try-runtime"
+version = "0.10.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#a355cf3446f418e8ea84cb29c0975c5ab295cd0d"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "framenode"
 version = "1.8.0"
 dependencies = [
@@ -4087,6 +4100,7 @@ dependencies = [
  "framenode-runtime",
  "futures 0.3.26",
  "futures-timer",
+ "hex-literal",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpsee",
@@ -4103,6 +4117,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "pswap-distribution-rpc",
+ "remote-externalities",
  "rewards",
  "rewards-rpc",
  "sc-basic-authorship",
@@ -4150,6 +4165,7 @@ dependencies = [
  "tokio",
  "trading-pair-rpc",
  "trie-root 0.16.0",
+ "try-runtime-cli",
  "vested-rewards-rpc",
  "xor-fee",
 ]
@@ -4228,6 +4244,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "framenode-chain-spec",
  "hermes-governance-platform",
  "hex-literal",
@@ -4285,6 +4302,7 @@ dependencies = [
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
  "referrals",
+ "remote-externalities",
  "rewards",
  "rewards-runtime-api",
  "scale-info",
@@ -4302,6 +4320,7 @@ dependencies = [
  "sp-session",
  "sp-staking",
  "sp-std",
+ "sp-tracing",
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
@@ -4309,6 +4328,7 @@ dependencies = [
  "substrate-bridge-channel",
  "substrate-wasm-builder",
  "technical",
+ "tokio",
  "trading-pair",
  "trading-pair-runtime-api",
  "vested-rewards",
@@ -12933,6 +12953,33 @@ name = "try-lock"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3528ecfd12c466c6f163363caf2d02a71161dd5e1cc6ae7b34207ea2d42d81ed"
+
+[[package]]
+name = "try-runtime-cli"
+version = "0.10.0-dev"
+source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#a355cf3446f418e8ea84cb29c0975c5ab295cd0d"
+dependencies = [
+ "clap 4.1.8",
+ "frame-try-runtime",
+ "log",
+ "parity-scale-codec",
+ "remote-externalities",
+ "sc-chain-spec",
+ "sc-cli",
+ "sc-executor",
+ "sc-service",
+ "serde",
+ "sp-core",
+ "sp-externalities",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-version",
+ "sp-weights",
+ "substrate-rpc-client",
+ "zstd",
+]
 
 [[package]]
 name = "tt-call"

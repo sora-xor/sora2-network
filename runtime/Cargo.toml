@@ -104,6 +104,7 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-try-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 pallet-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
@@ -161,6 +162,9 @@ bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "dev
 [dev-dependencies]
 env_logger = "0.9.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
+tokio = { version = "1.19.2", features = ["macros"] }
+sp-tracing = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 [features]
 default = ["std", "build-wasm-binary"]
@@ -211,6 +215,7 @@ std = [
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
+    "frame-try-runtime/std",
     "hermes-governance-platform/std",
     "iroha-migration-runtime-api/std",
     "iroha-migration/std",
@@ -341,3 +346,82 @@ runtime-benchmarks = [
 reduced-pswap-reward-periods = []
 
 build-wasm-binary = []
+
+try-runtime = [
+    "frame-try-runtime",
+    "assets/try-runtime",
+    "band/try-runtime",
+    "bridge-multisig/try-runtime",
+    "pallet-beefy/try-runtime",
+    "beefy-light-client/try-runtime",
+    "ceres-governance-platform/try-runtime",
+    "ceres-launchpad/try-runtime",
+    "ceres-liquidity-locker/try-runtime",
+    "ceres-staking/try-runtime",
+    "ceres-token-locker/try-runtime",
+    "demeter-farming-platform/try-runtime",
+    "dex-api/try-runtime",
+    "dex-manager/try-runtime",
+    "eth-bridge/try-runtime",
+    "ethereum-light-client/try-runtime",
+    "bridge-inbound-channel/try-runtime",
+    "bridge-outbound-channel/try-runtime",
+    "dispatch/try-runtime",
+    "eth-app/try-runtime",
+    "migration-app/try-runtime",
+    "erc20-app/try-runtime",
+    "leaf-provider/try-runtime",
+    "evm-bridge-proxy/try-runtime",
+    "substrate-bridge-app/try-runtime",
+    "substrate-bridge-channel/try-runtime",
+    "bridge-types/try-runtime",
+    "farming/try-runtime",
+    "faucet/try-runtime",
+    "frame-executive/try-runtime",
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "iroha-migration/try-runtime",
+    "liquidity-proxy/try-runtime",
+    "mock-liquidity-source/try-runtime",
+    "multicollateral-bonding-curve-pool/try-runtime",
+    "oracle-proxy/try-runtime",
+    "pallet-aura/try-runtime",
+    "pallet-authorship/try-runtime",
+    "pallet-babe/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-collective/try-runtime",
+    "pallet-democracy/try-runtime",
+    "pallet-elections-phragmen/try-runtime",
+    "pallet-grandpa/try-runtime",
+    "pallet-identity/try-runtime",
+    "pallet-im-online/try-runtime",
+    "pallet-membership/try-runtime",
+    "pallet-multisig/try-runtime",
+    "pallet-offences/try-runtime",
+    "pallet-preimage/try-runtime",
+    "pallet-randomness-collective-flip/try-runtime",
+    "pallet-scheduler/try-runtime",
+    "pallet-session/try-runtime",
+    "pallet-staking/try-runtime",
+    "pallet-sudo/try-runtime",
+    "pallet-timestamp/try-runtime",
+    "pallet-transaction-payment/try-runtime",
+    "pallet-utility/try-runtime",
+    "permissions/try-runtime",
+    "pool-xyk/try-runtime",
+    "price-tools/try-runtime",
+    "pswap-distribution/try-runtime",
+    "referrals/try-runtime",
+    "rewards/try-runtime",
+    "technical/try-runtime",
+    "trading-pair/try-runtime",
+    "vested-rewards/try-runtime",
+    "xor-fee/try-runtime",
+    "xst/try-runtime",
+    "tokens/try-runtime",
+    "currencies/try-runtime",
+    "pallet-election-provider-multi-phase/try-runtime",
+    "pallet-bags-list/try-runtime",
+    "pallet-mmr/try-runtime",
+    "pallet-beefy-mmr/try-runtime"
+]

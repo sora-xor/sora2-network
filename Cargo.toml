@@ -86,6 +86,7 @@ beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
@@ -208,6 +209,7 @@ beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch =
 beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 

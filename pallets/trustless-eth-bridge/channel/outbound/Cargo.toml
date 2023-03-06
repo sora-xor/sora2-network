@@ -73,3 +73,7 @@ runtime-benchmarks = [
     "hex-literal",
     "rlp",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]
