@@ -598,6 +598,8 @@ impl pallet_staking::Config for Runtime {
     type VoterList = UseNominatorsAndValidatorsMap<Runtime>;
     type MaxUnlockingChunks = ConstU32<32>;
     type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type HistoryDepth = frame_support::traits::ConstU32<84>;
+    type TargetList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime

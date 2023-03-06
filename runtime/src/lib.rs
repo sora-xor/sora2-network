@@ -243,10 +243,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 44,
+    spec_version: 47,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 44,
+    transaction_version: 47,
     state_version: 0,
 };
 
@@ -601,6 +601,8 @@ impl pallet_staking::Config for Runtime {
     type MaxNominations = MaxNominations;
     type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
     type OnStakerSlash = ();
+    type HistoryDepth = frame_support::traits::ConstU32<84>;
+    type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
 }
 
@@ -2150,7 +2152,7 @@ construct_runtime! {
 
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
@@ -2173,7 +2175,7 @@ construct_runtime! {
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
+        Currencies: currencies::{Pallet} = 19,
         TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
         DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
@@ -2379,12 +2381,7 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    (
-        pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-        pallet_preimage::migration::v1::Migration<Runtime>,
-        pallet_democracy::migrations::v1::Migration<Runtime>,
-        pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-    ),
+    migrations::Migrations,
 >;
 
 pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
@@ -2754,15 +2751,17 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|(asa, rewards, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
-                amount: asa.amount,
-                fee: asa.fee,
-                rewards: rewards.into_iter()
+            ).ok().map(|quote_info| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: quote_info.outcome.amount,
+                amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
+                fee: quote_info.outcome.fee,
+                rewards: quote_info.rewards.into_iter()
                                 .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
                                     amount,
                                     currency,
                                     reason
-                                }).collect()
+                                }).collect(),
+                route: quote_info.path
                 })
         }
 

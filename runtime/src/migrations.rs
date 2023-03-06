@@ -1,23 +1,18 @@
 use crate::*;
-use frame_support::traits::OnRuntimeUpgrade;
 
-pub type Migrations = ();
-
-pub struct PriceToolsMigration;
-
-impl OnRuntimeUpgrade for PriceToolsMigration {
-    fn on_runtime_upgrade() -> Weight {
-        frame_support::log::warn!("Run migration PriceToolsMigration");
-        price_tools::migration::migrate::<Runtime>();
-        <Runtime as frame_system::Config>::BlockWeights::get().max_block
+pub struct StakingMigrationV11OldPallet;
+impl Get<&'static str> for StakingMigrationV11OldPallet {
+    fn get() -> &'static str {
+        "BagsList"
     }
 }
 
-pub struct DexManagerMigration;
-
-impl OnRuntimeUpgrade for DexManagerMigration {
-    fn on_runtime_upgrade() -> Weight {
-        frame_support::log::warn!("Run migration DexManagerMigration");
-        dex_manager::migrations::migrate::<Runtime>()
-    }
-}
+pub type Migrations = (
+    pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+    pallet_staking::migrations::v11::MigrateToV11<Runtime, BagsList, StakingMigrationV11OldPallet>,
+    pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+    pallet_preimage::migration::v1::Migration<Runtime>,
+    pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+    pallet_democracy::migrations::v1::Migration<Runtime>,
+    pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+);

@@ -3317,7 +3317,6 @@ mod tests {
                 )
                 .expect("Pool does not exist")
                 .0;
-
             // Calculate number of pool tokens of user's account
             let pool_tokens: Balance =
                 <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(

@@ -88,6 +88,8 @@ pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = 
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
+pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -209,7 +211,7 @@ pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = 
 substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.31" }
+pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
 
 # [patch."https://github.com/sora-xor/sora2-common.git"]
 # beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
