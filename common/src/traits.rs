@@ -140,10 +140,10 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
-    // todo comment
+    /// Get weight of quote
     fn quote_weight() -> Weight;
 
-    // todo comment
+    /// Get weight of exchange
     fn exchange_weight() -> Weight;
 }
 
