@@ -2,7 +2,6 @@ use crate::{self as ceres_launchpad};
 use common::mock::ExistentialDeposits;
 pub use common::mock::*;
 use common::prelude::Balance;
-use common::AssetName;
 use common::AssetSymbol;
 use common::BalancePrecision;
 use common::ContentSource;
@@ -10,6 +9,7 @@ use common::Description;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
 use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, CERES_ASSET_ID, PSWAP, VAL, XOR, XST};
+use common::{AssetName, XSTUSD};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -65,6 +65,7 @@ pub const BUY_BACK_ACCOUNT: AccountId = 23;
 pub const DAN: AccountId = 4;
 pub const EMILY: AccountId = 5;
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -321,25 +322,37 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_assets: vec![],
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: XOR,
-                    synthetic_base_asset_id: XST,
-                    is_public: true,
-                },
-            )],
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID.into(), balance!(15000)),
                 (BOB, CERES_ASSET_ID.into(), balance!(5)),
                 (CHARLES, CERES_ASSET_ID.into(), balance!(3000)),
             ],
-            initial_permission_owners: vec![(
-                MANAGE_DEX,
-                Scope::Limited(hash(&DEX_A_ID)),
-                vec![BOB],
-            )],
-            initial_permissions: vec![(ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_permission_owners: vec![
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![BOB]),
+            ],
+            initial_permissions: vec![
+                (ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
+                (ALICE, Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
+            ],
         }
     }
 }

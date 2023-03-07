@@ -130,6 +130,7 @@ pub struct CrowdloanReward {
 pub trait WeightInfo {
     fn claim_rewards() -> Weight;
     fn claim_crowdloan_rewards() -> Weight;
+    fn update_rewards(n: u32) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -354,6 +355,7 @@ pub mod pallet {
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::UniqueSaturatedFrom;
+    use sp_std::collections::btree_map::BTreeMap;
 
     #[pallet::config]
     pub trait Config:
@@ -395,7 +397,6 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
-
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -413,6 +414,39 @@ pub mod pallet {
                 *value = T::BlockNumber::unique_saturated_from(
                     current_block_number.saturating_sub(offset),
                 )
+            });
+
+            Ok(().into())
+        }
+
+        #[transactional]
+        #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
+        pub fn update_rewards(
+            origin: OriginFor<T>,
+            rewards: BTreeMap<T::AccountId, BTreeMap<RewardReason, Balance>>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let mut total_rewards_diff = 0i128;
+            for (account, reward) in rewards {
+                Rewards::<T>::mutate(&account, |value| {
+                    for (reason, amount) in reward {
+                        let v = value.rewards.entry(reason).or_insert(0);
+                        *v += amount;
+                    }
+                    let total: i128 = value
+                        .rewards
+                        .iter_mut()
+                        .map(|(_, amount)| *amount as i128)
+                        .sum();
+                    total_rewards_diff += total - value.total_available as i128;
+                });
+            }
+            TotalRewards::<T>::mutate(|value| {
+                if total_rewards_diff < 0 {
+                    *value -= total_rewards_diff.abs() as Balance;
+                } else {
+                    *value += total_rewards_diff as Balance;
+                }
             });
 
             Ok(().into())

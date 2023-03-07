@@ -50,7 +50,7 @@ pub struct MmrPayload {
 }
 
 #[derive(Debug)]
-pub struct BeefyJustification<T: subxt::Config> {
+pub struct BeefyJustification<T: ConfigExt> {
     pub commitment: BeefyCommitment<T>,
     pub commitment_hash: H256,
     pub signatures: Vec<Option<Signature>>,
@@ -61,22 +61,23 @@ pub struct BeefyJustification<T: subxt::Config> {
     pub leaf_proof: LeafProof<T>,
     pub simplified_proof: Proof<H256>,
     pub payload: MmrPayload,
+    pub is_mandatory: bool,
 }
 
-impl<T: subxt::Config> BeefyJustification<T>
+impl<T: ConfigExt> BeefyJustification<T>
 where
     T::BlockNumber: AtLeast32Bit + Serialize,
-    T: Clone,
 {
     pub async fn create(
         sub: SubUnsignedClient<T>,
         commitment: BeefySignedCommitment<T>,
+        is_mandatory: bool,
     ) -> AnyResult<Self> {
         let BeefySignedCommitment::<T>::V1(SignedCommitment {
             commitment,
             signatures,
         }) = commitment;
-        let commitment_block_number: u64 = commitment.block_number.into();
+        let commitment_block_number: u64 = commitment.block_number.clone().into();
         let commitment_hash = keccak256(&Encode::encode(&commitment)).into();
         let num_validators = signatures.len() as u32;
         let mut signed_validators = vec![];
@@ -85,27 +86,17 @@ where
                 signed_validators.push(i)
             }
         }
-        let block_hash = sub
-            .api()
-            .rpc()
-            .block_hash(Some((commitment_block_number - 1).into()))
-            .await?
-            .expect("Block hash should exist");
         let validators: Vec<H160> = sub
-            .api()
-            .storage()
-            .fetch_or_default(&runtime::storage().beefy().authorities(), Some(block_hash))
+            .storage_fetch_or_default(
+                &runtime::storage().beefy().authorities(),
+                commitment_block_number - 1,
+            )
             .await?
             .0
             .into_iter()
             .map(|x| H160::from_slice(&pallet_beefy_mmr::BeefyEcdsaToEthereum::convert(x)))
             .collect();
-        let block_hash = sub
-            .api()
-            .rpc()
-            .block_hash(Some(commitment_block_number.into()))
-            .await?
-            .expect("Block hash should exist");
+        let block_hash = sub.block_hash(commitment_block_number).await?.into();
 
         let payload = Self::get_payload(&commitment).ok_or(anyhow!("Payload is not supported"))?;
         let (leaf_proof, simplified_proof) =
@@ -122,6 +113,7 @@ where
             leaf_proof,
             simplified_proof,
             payload,
+            is_mandatory,
         })
     }
 
@@ -130,17 +122,9 @@ where
         commitment: &BeefyCommitment<T>,
         root: H256,
     ) -> AnyResult<(LeafProof<T>, Proof<H256>)> {
-        for block_number in (0u32..=6u32).rev() {
-            let block_number = commitment
-                .block_number
-                .saturating_sub(block_number.into())
-                .saturating_add(1u32.into());
-            let block_hash = sub
-                .api()
-                .rpc()
-                .block_hash(Some(block_number.into().into()))
-                .await?
-                .expect("Block hash should exist");
+        for block_number in 0u32..=6u32 {
+            let block_number = commitment.block_number.saturating_sub(block_number.into());
+            let block_hash = sub.block_hash(block_number).await?;
             let leaf_proof = sub
                 .mmr_generate_proof(block_number, Some(block_hash))
                 .await?;

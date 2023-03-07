@@ -345,7 +345,7 @@ pub mod pallet {
             header: EthereumHeader,
             proof: Vec<EthashProofData>,
             mix_nonce: MixNonce,
-            submitter: <T as Config>::Submitter,
+            submitter: <T as frame_system::Config>::AccountId,
             // Signature was already verified in `validate_unsigned()`
             _signature: <T as Config>::ImportSignature,
         ) -> DispatchResult {
@@ -372,9 +372,7 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) =
-                Self::import_validated_header(network_id, &submitter.into_account(), &header)
-            {
+            if let Err(err) = Self::import_validated_header(network_id, &submitter, &header) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Import of header {} failed",
@@ -441,7 +439,7 @@ pub mod pallet {
                 );
                 if !signature.verify(
                     &bridge_types::import_digest(network_id, header)[..],
-                    &submitter.clone().into_account(),
+                    &submitter,
                 ) {
                     return InvalidTransaction::Custom(Error::<T>::InvalidSignature.into()).into();
                 }

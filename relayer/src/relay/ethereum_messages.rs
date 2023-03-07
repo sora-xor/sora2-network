@@ -59,24 +59,20 @@ impl SubstrateMessagesRelay {
     ) -> AnyResult<Self> {
         let network_id = eth.inner().get_chainid().await? as EVMChainId;
         let inbound_channel = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .bridge_inbound_channel()
                     .inbound_channel_addresses(&network_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow::anyhow!("Inbound channel is not registered"))?;
         let outbound_channel = sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .bridge_inbound_channel()
                     .channel_addresses(&network_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow::anyhow!("Outbound channel is not registered"))?;
@@ -94,13 +90,11 @@ impl SubstrateMessagesRelay {
     pub async fn handle_messages(&mut self) -> AnyResult<()> {
         let current_eth_block = self
             .sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .finalized_block(&self.network_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow!("Network is not registered"))?
@@ -134,13 +128,11 @@ impl SubstrateMessagesRelay {
         );
         let mut sub_nonce = self
             .sub
-            .api()
-            .storage()
-            .fetch_or_default(
+            .storage_fetch_or_default(
                 &runtime::storage()
                     .bridge_inbound_channel()
                     .channel_nonces(&self.network_id),
-                None,
+                (),
             )
             .await?;
 
@@ -211,13 +203,11 @@ impl SubstrateMessagesRelay {
 
         let mut sub_inbound_nonce = self
             .sub
-            .api()
-            .storage()
-            .fetch_or_default(
+            .storage_fetch_or_default(
                 &runtime::storage()
                     .bridge_inbound_channel()
                     .inbound_channel_nonces(&self.network_id),
-                None,
+                (),
             )
             .await?;
 
@@ -288,13 +278,11 @@ impl SubstrateMessagesRelay {
     pub async fn run(mut self) -> AnyResult<()> {
         let current_eth_block = self
             .sub
-            .api()
-            .storage()
-            .fetch(
+            .storage_fetch(
                 &runtime::storage()
                     .ethereum_light_client()
                     .finalized_block(&self.network_id),
-                None,
+                (),
             )
             .await?
             .ok_or(anyhow!("Network is not registered"))?

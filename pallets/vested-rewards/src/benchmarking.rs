@@ -38,6 +38,7 @@ use codec::Decode;
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
@@ -83,6 +84,23 @@ fn prepare_crowdloan_rewards<T: Config>(n: u128) {
     }
 }
 
+fn prepare_rewards_update<T: Config>(
+    n: u128,
+) -> BTreeMap<T::AccountId, BTreeMap<RewardReason, Balance>> {
+    let mut rewards = BTreeMap::new();
+    let reward: BTreeMap<RewardReason, Balance> = vec![
+        (RewardReason::BuyOnBondingCurve, balance!(1)),
+        (RewardReason::Crowdloan, balance!(1)),
+    ]
+    .into_iter()
+    .collect();
+    for i in 0..n {
+        let user_account = create_account::<T>(b"user".to_vec(), i);
+        rewards.insert(user_account, reward.clone());
+    }
+    rewards
+}
+
 benchmarks! {
     claim_rewards {
         let caller = alice::<T>();
@@ -103,7 +121,7 @@ benchmarks! {
         );
     }
 
-     claim_crowdloan_rewards {
+    claim_crowdloan_rewards {
         prepare_crowdloan_rewards::<T>(1000);
         let caller = create_account::<T>(b"user".to_vec(), 0);
         frame_system::Pallet::<T>::set_block_number((BLOCKS_PER_DAY as u32).into());
@@ -116,6 +134,19 @@ benchmarks! {
         assert_eq!(
             T::Currency::free_balance(T::AssetId::from(PSWAP), &caller),
             amount.try_into_balance().unwrap()
+        );
+    }
+
+    update_rewards {
+        let n in 0 .. 100;
+        let rewards = prepare_rewards_update::<T>(n.into());
+    }: {
+        Pallet::<T>::update_rewards(RawOrigin::Root.into(), rewards).unwrap()
+    }
+    verify {
+        assert_eq!(
+            TotalRewards::<T>::get(),
+            balance!(n) * 2
         );
     }
 

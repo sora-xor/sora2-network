@@ -21,7 +21,7 @@ String contractsEnvFile       = 'env.template'
 String solcVersion            = '0.8.14'
 String nodeVersion            = '14.16.1'
 String gitHubUser             = 'sorabot'
-String gitHubRepo             = 'github.com/soramitsu/sora2-substrate.git'
+String gitHubRepo             = 'github.com/soramitsu/sora2-network.git'
 String gitHubBranch           = 'doc'
 String gitHubEmail            = 'admin@soramitsu.co.jp'
 String cargoDocImage          = 'rust:1.62.0-slim-bullseye'
@@ -127,7 +127,7 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
-                                    cargo test  --release --features runtime-benchmarks
+                                    cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
@@ -151,7 +151,7 @@ pipeline {
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features private-net
-                                    cargo test --features runtime-benchmarks
+                                    cargo test --features \"private-net runtime-benchmarks\"
                                 '''
                             }
                         }

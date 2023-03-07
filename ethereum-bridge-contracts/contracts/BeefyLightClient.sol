@@ -130,7 +130,7 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
     uint64 public constant NUMBER_OF_BLOCKS_PER_SESSION = 600;
     uint64 public constant ERROR_AND_SAFETY_BUFFER = 10;
     uint64 public constant MAXIMUM_BLOCK_GAP =
-        NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
+        NUMBER_OF_BLOCKS_PER_SESSION + ERROR_AND_SAFETY_BUFFER;
 
     bytes2 public constant MMR_ROOT_ID = 0x6d68;
 
@@ -223,11 +223,10 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
             );
     }
 
-    function createInitialBitfield(uint256[] calldata bitsToSet, uint256 length)
-        external
-        pure
-        returns (uint256[] memory)
-    {
+    function createInitialBitfield(
+        uint256[] calldata bitsToSet,
+        uint256 length
+    ) external pure returns (uint256[] memory) {
         return Bitfield.createBitfield(bitsToSet, length);
     }
 
@@ -349,11 +348,9 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
         return requiredNumberOfSignatures(currentValidatorSet.length);
     }
 
-    function requiredNumberOfSignatures(uint256 numValidators)
-        public
-        pure
-        returns (uint256)
-    {
+    function requiredNumberOfSignatures(
+        uint256 numValidators
+    ) public pure returns (uint256) {
         return
             (numValidators * THRESHOLD_NUMERATOR + THRESHOLD_DENOMINATOR - 1) /
             THRESHOLD_DENOMINATOR;
@@ -493,11 +490,9 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
         );
     }
 
-    function createCommitmentHash(Commitment calldata commitment)
-        public
-        pure
-        returns (bytes32)
-    {
+    function createCommitmentHash(
+        Commitment calldata commitment
+    ) public pure returns (bytes32) {
         return
             keccak256(
                 bytes.concat(
@@ -512,11 +507,9 @@ contract BeefyLightClient is ISimplifiedMMRProof, Ownable {
             );
     }
 
-    function encodeMMRLeaf(BeefyMMRLeaf calldata leaf)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeMMRLeaf(
+        BeefyMMRLeaf calldata leaf
+    ) public pure returns (bytes memory) {
         bytes memory scaleEncodedMMRLeaf = abi.encodePacked(
             ScaleCodec.encode8(leaf.version),
             ScaleCodec.encode32(leaf.parentNumber),

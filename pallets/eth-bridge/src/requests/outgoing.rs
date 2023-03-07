@@ -50,6 +50,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
 
+use super::encode_packed::{encode_packed, TokenWrapper};
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -57,11 +58,6 @@ use serde::{Deserialize, Serialize};
 use sp_core::{H256, U256};
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
-
-pub fn encode_packed(tokens: &[Token]) -> Vec<u8> {
-    // todo vladimir
-    ethabi::encode(tokens)
-}
 
 /// Outgoing request for transferring the given asset from Thischain to Sidechain.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
@@ -114,36 +110,37 @@ impl<T: Config> OutgoingTransfer<T> {
         let is_old_contract = self.network_id == T::GetEthNetworkId::get()
             && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
         let raw = if is_old_contract {
-            ethabi::encode(&[
-                currency_id.to_token(),
-                Token::Uint(types::U256(amount.0)),
-                Token::Address(types::H160(to.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::Address(types::H160(from.0)),
+            encode_packed(&[
+                currency_id.to_token().into(),
+                Token::Uint(types::U256(amount.0)).into(),
+                Token::Address(types::H160(to.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::Address(types::H160(from.0)).into(),
             ])
         } else {
             let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
             match signature_version {
                 BridgeSignatureVersion::V1 => encode_packed(&[
-                    currency_id.to_token(),
-                    Token::Uint(types::U256(amount.0)),
-                    Token::Address(types::H160(to.0)),
-                    Token::Address(types::H160(from.0)),
-                    Token::FixedBytes(tx_hash.0.to_vec()),
-                    Token::FixedBytes(network_id.0.to_vec()),
+                    currency_id.to_token().into(),
+                    Token::Uint(types::U256(amount.0)).into(),
+                    Token::Address(types::H160(to.0)).into(),
+                    Token::Address(types::H160(from.0)).into(),
+                    Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                    Token::FixedBytes(network_id.0.to_vec()).into(),
                 ]),
                 BridgeSignatureVersion::V2 => encode_packed(&[
                     Token::Address(
                         crate::BridgeContractAddress::<T>::get(self.network_id)
                             .0
                             .into(),
-                    ),
-                    currency_id.to_token(),
-                    Token::Uint(types::U256(amount.0)),
-                    Token::Address(types::H160(to.0)),
-                    Token::Address(types::H160(from.0)),
-                    Token::FixedBytes(tx_hash.0.to_vec()),
-                    Token::FixedBytes(network_id.0.to_vec()),
+                    )
+                    .into(),
+                    currency_id.to_token().into(),
+                    Token::Uint(types::U256(amount.0)).into(),
+                    Token::Address(types::H160(to.0)).into(),
+                    Token::Address(types::H160(from.0)).into(),
+                    Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                    Token::FixedBytes(network_id.0.to_vec()).into(),
                 ]),
                 BridgeSignatureVersion::V3 => {
                     let kind = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id)
@@ -314,25 +311,26 @@ impl<T: Config> OutgoingAddAsset<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
-                Token::String(name.clone()),
-                Token::String(symbol.clone()),
-                // Token::UintSized(precision.into(), 8),
-                Token::FixedBytes(sidechain_asset_id.clone()),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::String(name.clone()).into(),
+                Token::String(symbol.clone()).into(),
+                TokenWrapper::UintSized(precision.into(), 8),
+                Token::FixedBytes(sidechain_asset_id.clone()).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V2 => encode_packed(&[
                 Token::Address(
                     crate::BridgeContractAddress::<T>::get(self.network_id)
                         .0
                         .into(),
-                ),
-                Token::String(name.clone()),
-                Token::String(symbol.clone()),
-                // Token::UintSized(precision.into(), 8),
-                Token::FixedBytes(sidechain_asset_id.clone()),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                )
+                .into(),
+                Token::String(name.clone()).into(),
+                Token::String(symbol.clone()).into(),
+                TokenWrapper::UintSized(precision.into(), 8),
+                Token::FixedBytes(sidechain_asset_id.clone()).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("addAsset".into()),
@@ -489,25 +487,26 @@ impl<T: Config> OutgoingAddToken<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
-                Token::Address(types::H160(token_address.0)),
-                Token::String(symbol.clone()),
-                Token::String(name.clone()),
-                // Token::UintSized(decimals.into(), 8),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::Address(types::H160(token_address.0)).into(),
+                Token::String(symbol.clone()).into(),
+                Token::String(name.clone()).into(),
+                TokenWrapper::UintSized(decimals.into(), 8),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V2 => encode_packed(&[
                 Token::Address(
                     crate::BridgeContractAddress::<T>::get(self.network_id)
                         .0
                         .into(),
-                ),
-                Token::Address(types::H160(token_address.0)),
-                Token::String(symbol.clone()),
-                Token::String(name.clone()),
-                // Token::UintSized(decimals.into(), 8),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                )
+                .into(),
+                Token::Address(types::H160(token_address.0)).into(),
+                Token::String(symbol.clone()).into(),
+                Token::String(name.clone()).into(),
+                TokenWrapper::UintSized(decimals.into(), 8),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("addToken".into()),
@@ -636,20 +635,21 @@ impl<T: Config> OutgoingAddPeer<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::Address(types::H160(peer_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V2 => encode_packed(&[
                 Token::Address(
                     crate::BridgeContractAddress::<T>::get(self.network_id)
                         .0
                         .into(),
-                ),
-                Token::String("addPeer".into()),
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                )
+                .into(),
+                Token::String("addPeer".into()).into(),
+                Token::Address(types::H160(peer_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("addPeer".into()),
@@ -809,20 +809,21 @@ impl<T: Config> OutgoingRemovePeer<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::Address(types::H160(peer_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V2 => encode_packed(&[
                 Token::Address(
                     crate::BridgeContractAddress::<T>::get(self.network_id)
                         .0
                         .into(),
-                ),
-                Token::String("removePeer".into()),
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                )
+                .into(),
+                Token::String("removePeer".into()).into(),
+                Token::Address(types::H160(peer_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("removePeer".into()),
@@ -929,9 +930,9 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode(&[
-            Token::Address(types::H160(peer_address.0)),
-            Token::FixedBytes(tx_hash.0.to_vec()),
+        let raw = encode_packed(&[
+            Token::Address(types::H160(peer_address.0)).into(),
+            Token::FixedBytes(tx_hash.0.to_vec()).into(),
         ]);
         Ok(OutgoingRemovePeerEncoded {
             peer_address,
@@ -1050,15 +1051,15 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
-                Token::Address(types::EthAddress::from(contract_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::Address(types::EthAddress::from(contract_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V2 => encode_packed(&[
-                Token::String("prepareMigration".into()),
-                Token::Address(types::EthAddress::from(contract_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
+                Token::String("prepareMigration".into()).into(),
+                Token::Address(types::EthAddress::from(contract_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("prepareMigration".into()),
@@ -1146,16 +1147,17 @@ impl<T: Config> OutgoingMigrate<T> {
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2 => encode_packed(&[
-                Token::Address(types::EthAddress::from(contract_address.0)),
-                Token::Address(types::EthAddress::from(self.new_contract_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
+                Token::Address(types::EthAddress::from(contract_address.0)).into(),
+                Token::Address(types::EthAddress::from(self.new_contract_address.0)).into(),
+                Token::FixedBytes(tx_hash.0.to_vec()).into(),
                 Token::Array(
                     self.erc20_native_tokens
                         .iter()
                         .map(|addr| Token::Address(types::EthAddress::from(addr.0)))
                         .collect(),
-                ),
-                Token::FixedBytes(network_id.0.to_vec()),
+                )
+                .into(),
+                Token::FixedBytes(network_id.0.to_vec()).into(),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("migrate".into()),

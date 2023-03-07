@@ -9,11 +9,12 @@ git config --global user.name ${GH_USER}
 git config --global github.token ${GH_TOKEN}
 cd /home/
 git clone https://${GH_USER}:${GH_TOKEN}@${GH_REPOSITORY}
-cd sora2-substrate
+cd sora2-network
 git checkout ${GH_BRANCH}
 rm -rf docs
+git fetch
 git pull origin master
-cargo doc --no-deps || exit 0
+cargo doc --no-deps --workspace --exclude relayer
 cargo fmt
 mkdir docs
 echo "<meta http-equiv=\"refresh\" content=\"0; url=assets\">" > target/doc/index.html

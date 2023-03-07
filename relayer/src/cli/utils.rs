@@ -31,7 +31,7 @@
 use std::path::PathBuf;
 
 use super::error::*;
-use crate::prelude::*;
+use crate::{prelude::*, substrate::traits::KeyPair};
 use bridge_types::network_config::NetworkConfig;
 use clap::*;
 
@@ -170,7 +170,10 @@ impl SubstrateClient {
         let sub = self
             .get_unsigned_substrate()
             .await?
-            .try_sign_with(self.get_key_string()?.as_str())
+            .signed(subxt::tx::PairSigner::new(
+                KeyPair::from_string(&self.get_key_string()?, None)
+                    .map_err(|e| anyhow!("Invalid key: {:?}", e))?,
+            ))
             .await?;
         Ok(sub)
     }
@@ -212,7 +215,10 @@ impl ParachainClient {
         let sub = self
             .get_unsigned_substrate()
             .await?
-            .try_sign_with(self.get_key_string()?.as_str())
+            .signed(subxt::tx::PairSigner::new(
+                KeyPair::from_string(&self.get_key_string()?, None)
+                    .map_err(|e| anyhow!("Invalid key: {:?}", e))?,
+            ))
             .await?;
         Ok(sub)
     }

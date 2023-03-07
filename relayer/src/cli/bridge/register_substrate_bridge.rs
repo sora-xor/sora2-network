@@ -64,37 +64,31 @@ impl Command {
                 (block, hash)
             } else {
                 let hash = sub.api().rpc().finalized_head().await?;
-                let number = sub.block_number(Some(hash)).await?;
+                let number = sub.block_number(hash).await?;
                 (number, hash)
             };
             let authorities = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage().mmr_leaf().beefy_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let next_authorities = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage()
                         .mmr_leaf()
                         .beefy_next_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let network_id = sub
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &mainnet_runtime::storage()
                         .beefy_light_client()
                         .this_network_id(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Network id not found"))?;
@@ -106,16 +100,7 @@ impl Command {
                 next_validator_set: next_authorities });
             info!("Submit call: {call:?}");
             let call = parachain_runtime::tx().sudo().sudo(call);
-            let events = para
-                .api()
-                .tx()
-                .sign_and_submit_then_watch_default(&call, &para)
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?;
-            sub_log_tx_events::<parachain_runtime::Event, _>(events);
+            para.submit_extrinsic(&call).await?;
         }
 
         if self.sora || self.both {
@@ -129,37 +114,31 @@ impl Command {
                 (block, hash)
             } else {
                 let hash = para.api().rpc().finalized_head().await?;
-                let number = para.block_number(Some(hash)).await?;
+                let number = para.block_number(hash).await?;
                 (number, hash)
             };
             let authorities = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage().beefy_mmr().beefy_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let next_authorities = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage()
                         .beefy_mmr()
                         .beefy_next_authorities(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Beefy authorities not found"))?;
             let network_id = para
-                .api()
-                .storage()
-                .fetch(
+                .storage_fetch(
                     &parachain_runtime::storage()
                         .beefy_light_client()
                         .this_network_id(),
-                    Some(block_hash),
+                    block_hash,
                 )
                 .await?
                 .ok_or(anyhow!("Network id not found"))?;
@@ -175,16 +154,7 @@ impl Command {
                 );
             info!("Submit call: {call:?}");
             let call = mainnet_runtime::tx().sudo().sudo(call);
-            let events = sub
-                .api()
-                .tx()
-                .sign_and_submit_then_watch_default(&call, &sub)
-                .await?
-                .wait_for_in_block()
-                .await?
-                .wait_for_success()
-                .await?;
-            sub_log_tx_events::<mainnet_runtime::Event, _>(events);
+            sub.submit_extrinsic(&call).await?;
         }
 
         Ok(())

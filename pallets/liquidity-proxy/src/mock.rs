@@ -533,6 +533,14 @@ impl Default for ExtBuilder {
                     AssetName(b"Tether".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
+                (
+                    alice(),
+                    KSM,
+                    balance!(0),
+                    AssetSymbol(b"KSM".to_vec()),
+                    AssetName(b"Kusama".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
             ],
         }
     }
@@ -860,7 +868,8 @@ impl ExtBuilder {
 
     pub fn with_xyk_pool(mut self) -> Self {
         self.xyk_reserves = vec![
-            (DEX_A_ID, USDT, (balance!(600), balance!(10000))),
+            (DEX_A_ID, USDT, (balance!(1000), balance!(1000))),
+            (DEX_A_ID, KSM, (balance!(1000), balance!(1000))),
             (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
             (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
         ];

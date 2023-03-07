@@ -72,9 +72,7 @@ impl Command {
         while let Some((asset_id, asset_kind)) = asset_iter.next().await? {
             let asset_id = crate::substrate::AssetId::from_bytes(asset_id.0.try_into().unwrap());
             let (asset_symbol, asset_name, decimals, _, _, _) = sub
-                .api()
-                .storage()
-                .fetch_or_default(&runtime::storage().assets().asset_infos(&asset_id), None)
+                .storage_fetch_or_default(&runtime::storage().assets().asset_infos(&asset_id), ())
                 .await?;
             let asset_info = AssetInfo {
                 asset_id,

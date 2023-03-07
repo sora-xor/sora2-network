@@ -68,6 +68,8 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
+    #[cfg(test)]
+    crate::mock::MockDEXApi::init_without_reserves().unwrap();
     let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
         RawOrigin::Signed(owner.clone()).into();
 
