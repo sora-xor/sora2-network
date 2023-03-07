@@ -430,10 +430,9 @@ impl<T: Config> Pallet<T> {
                 desired_amount_in: quantity_main,
             } => {
                 let output_synthetic = quantity_main * main_asset_price_per_reference_unit;
-                let output_synthetic_unwrapped = output_synthetic
+                output_synthetic
                     .get()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Ok(output_synthetic_unwrapped)
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
             // Sell some amount of XST for desired amount of XST(USD)
             QuoteAmount::WithDesiredOutput {
