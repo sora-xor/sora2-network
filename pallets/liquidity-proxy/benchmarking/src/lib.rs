@@ -99,6 +99,16 @@ benchmarks! {
         );
     }
 
+    check_indivisible_assets {
+    }: {
+        liquidity_proxy::Pallet::<T>::check_indivisible_assets(
+            XOR.into(),
+            VAL.into()
+        ).unwrap();
+    }
+    verify {
+    }
+
     new_trivial {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&DEX.into())?;
         let from_asset: T::AssetId = XSTUSD.into();
@@ -136,6 +146,7 @@ mod tests {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(Pallet::<Runtime>::test_benchmark_enable_liquidity_source());
             assert_ok!(Pallet::<Runtime>::test_benchmark_disable_liquidity_source());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_check_indivisible_assets());
             assert_ok!(Pallet::<Runtime>::test_benchmark_new_trivial());
             assert_ok!(Pallet::<Runtime>::test_benchmark_is_forbidden_filter());
         });

@@ -45,6 +45,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
+    fn check_indivisible_assets() -> Weight {
+        Weight::zero()
+    }
     fn new_trivial() -> Weight {
         Weight::zero()
     }
@@ -59,6 +62,9 @@ impl crate::WeightInfo for () {
     }
     fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
+    }
+    fn check_indivisible_assets() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
     }
     fn new_trivial() -> Weight {
         EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
