@@ -1799,12 +1799,13 @@ pub mod pallet {
                         fail!(Error::<T>::ForbiddenFilter);
                     }
 
+                    // extrinsic fails if there are duplicate output asset ids
                     if !unique_asset_ids.insert(asset_id.clone()) {
                         Err(Error::<T>::AggregationError)?
                     }
 
                     let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
-                    Self::inner_exchange(
+                    let (SwapOutcome { amount, .. }, _) = Self::inner_exchange(
                         dex_id,
                         &who,
                         &who,
@@ -1817,12 +1818,22 @@ pub mod pallet {
                         filter.clone(),
                     )?;
                     max_input_amount = max_input_amount
-                        .checked_sub(out_amount)
+                        .checked_sub(amount)
                         .ok_or(Error::<T>::SlippageNotTolerated)?;
+
+                    let exchanged_out_amount = assets::Pallet::<T>::total_balance(&asset_id, &who)?;
+                    let remainder_per_receiver: Balance = if exchanged_out_amount < out_amount {
+                        let remainder = out_amount.saturating_sub(exchanged_out_amount);
+                        remainder / (receivers.len() as u128)
+                            + remainder % (receivers.len() as u128)
+                    } else {
+                        0
+                    };
 
                     let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
                     fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
+                            // extrinsic fails if there are duplicate account ids in the same output asset id
                             if !unique_batch_receivers.insert(receiver.account_id.clone()) {
                                 Err(Error::<T>::AggregationError)?
                             }
@@ -1830,7 +1841,7 @@ pub mod pallet {
                                 &asset_id,
                                 &who,
                                 &receiver.account_id,
-                                receiver.target_amount,
+                                receiver.target_amount - remainder_per_receiver,
                             )
                         },
                     )
