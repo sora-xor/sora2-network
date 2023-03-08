@@ -33,7 +33,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "runtime-benchmarks")]
 
-use common::{DEXId, FilterMode, LiquiditySourceType, VAL, XOR, XSTUSD};
+use common::{
+    DEXId, FilterMode, LiquidityRegistry, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    XSTUSD,
+};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use liquidity_proxy::ExchangePath;
@@ -100,10 +103,12 @@ benchmarks! {
     }
 
     check_indivisible_assets {
+        let from_asset: T::AssetId = XOR.into();
+        let to_asset: T::AssetId = VAL.into();
     }: {
         liquidity_proxy::Pallet::<T>::check_indivisible_assets(
-            XOR.into(),
-            VAL.into()
+            from_asset,
+            to_asset
         ).unwrap();
     }
     verify {
@@ -133,6 +138,24 @@ benchmarks! {
     }
     verify {
     }
+
+    list_liquidity_sources {
+        let from_asset: T::AssetId = XOR.into();
+        let to_asset: T::AssetId = VAL.into();
+        let filter = LiquiditySourceFilter::<T::DEXId, LiquiditySourceType>::with_allowed(
+            DEX.into(),
+            [
+                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
+            ]
+            .to_vec()
+        );
+    }: {
+        T::LiquidityRegistry::list_liquidity_sources(&from_asset, &to_asset, filter).unwrap();
+    }
+    verify {
+    }
 }
 
 #[cfg(test)]
@@ -149,6 +172,7 @@ mod tests {
             assert_ok!(Pallet::<Runtime>::test_benchmark_check_indivisible_assets());
             assert_ok!(Pallet::<Runtime>::test_benchmark_new_trivial());
             assert_ok!(Pallet::<Runtime>::test_benchmark_is_forbidden_filter());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_list_liquidity_sources());
         });
     }
 }

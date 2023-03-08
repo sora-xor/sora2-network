@@ -54,6 +54,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn is_forbidden_filter() -> Weight {
         Weight::zero()
     }
+    fn list_liquidity_sources() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -71,5 +74,8 @@ impl crate::WeightInfo for () {
     }
     fn is_forbidden_filter() -> Weight {
         EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn list_liquidity_sources() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(4)
     }
 }

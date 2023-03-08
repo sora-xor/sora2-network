@@ -237,6 +237,7 @@ pub trait WeightInfo {
     fn check_indivisible_assets() -> Weight;
     fn new_trivial() -> Weight;
     fn is_forbidden_filter() -> Weight;
+    fn list_liquidity_sources() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -967,6 +968,7 @@ impl<T: Config> Pallet<T> {
     > {
         let mut sources =
             T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
+        let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
         let locked = trading_pair::LockedLiquiditySources::<T>::get();
         sources.retain(|x| !locked.contains(&x.liquidity_source_index));
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
@@ -981,6 +983,7 @@ impl<T: Config> Pallet<T> {
                 amount.into(),
                 deduce_fee,
             )?;
+            total_weight = total_weight.saturating_add(weight);
             let rewards = if skip_info {
                 Vec::new()
             } else {
@@ -1002,7 +1005,7 @@ impl<T: Config> Pallet<T> {
                 ),
                 rewards,
                 sources,
-                weight,
+                total_weight,
             ));
         }
 
@@ -1039,7 +1042,8 @@ impl<T: Config> Pallet<T> {
                     skip_info,
                     deduce_fee,
                 )?;
-                return Ok((outcome.0, outcome.1, sources, outcome.2));
+                total_weight = total_weight.saturating_add(outcome.2);
+                return Ok((outcome.0, outcome.1, sources, total_weight));
             }
         }
 
@@ -1129,6 +1133,7 @@ impl<T: Config> Pallet<T> {
     ///                select_best_path()
     ///                    quote_pairs_with_flexible_amount() - call M times, where M is a count of paths
     ///                        quote_single()
+    ///                            list_liquidity_sources()
     ///                            quote()
     ///                            smart_split()
     ///                                quote()
@@ -1136,6 +1141,7 @@ impl<T: Config> Pallet<T> {
     ///                                quote()
     ///                calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
     ///                    quote_single()
+    ///                        list_liquidity_sources()
     ///                        quote()
     ///                        smart_split()
     ///                            quote()
@@ -1144,6 +1150,7 @@ impl<T: Config> Pallet<T> {
     ///                exchange_sequence_with_input_amount()
     ///                    exchange_single()
     ///                        quote_single()
+    ///                        list_liquidity_sources()
     ///                            quote()
     ///                            smart_split()
     ///                                quote()
@@ -1164,7 +1171,8 @@ impl<T: Config> Pallet<T> {
         let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
 
-        let quote_single_weight = quote_weight.saturating_mul(4);
+        let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
+            .saturating_add(quote_weight.saturating_mul(4));
 
         let mut weight = <T as Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<T as Config>::WeightInfo::new_trivial())
