@@ -601,6 +601,8 @@ impl pallet_staking::Config for Runtime {
     type MaxNominations = MaxNominations;
     type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
     type OnStakerSlash = ();
+    type HistoryDepth = frame_support::traits::ConstU32<84>;
+    type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
 }
 
@@ -2378,12 +2380,7 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPalletsWithSystem,
-    (
-        pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-        pallet_preimage::migration::v1::Migration<Runtime>,
-        pallet_democracy::migrations::v1::Migration<Runtime>,
-        pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-    ),
+    migrations::Migrations,
 >;
 
 pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
@@ -3182,6 +3179,26 @@ impl_runtime_apis! {
     impl farming_runtime_api::FarmingApi<Block, AssetId> for Runtime {
         fn reward_doubling_assets() -> Vec<AssetId> {
             Farming::reward_doubling_assets()
+        }
+    }
+
+    #[cfg(feature = "try-runtime")]
+    impl frame_try_runtime::TryRuntime<Block> for Runtime {
+        fn on_runtime_upgrade() -> (Weight, Weight) {
+            log::info!("try-runtime::on_runtime_upgrade.");
+            let weight = Executive::try_runtime_upgrade().unwrap();
+            (weight, BlockWeights::get().max_block)
+        }
+
+        fn execute_block(block: Block, state_root_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
+            log::info!(
+                target: "runtime", "try-runtime: executing block #{} ({:?}) / root checks: {:?} / sanity-checks: {:?}",
+                block.header.number,
+                block.header.hash(),
+                state_root_check,
+                select,
+            );
+            Executive::try_execute_block(block, state_root_check, select).expect("try_execute_block failed")
         }
     }
 }

@@ -30,7 +30,6 @@
 
 use alloc::boxed::Box;
 use ethabi::Function;
-use frame_support::sp_io::hashing::keccak_256;
 #[cfg(feature = "std")]
 use frame_support::RuntimeDebug;
 use once_cell::race::OnceBox;
@@ -51,9 +50,7 @@ pub const METHOD_ID_SIZE: usize = 4;
 pub type MethodId = [u8; METHOD_ID_SIZE];
 
 pub fn calculate_method_id(function: &Function) -> MethodId {
-    let signature = function.signature();
-    let mut id = [0u8; METHOD_ID_SIZE];
-    id.copy_from_slice(&keccak_256(signature.as_bytes())[..METHOD_ID_SIZE]);
+    let id = function.short_signature();
     id
 }
 

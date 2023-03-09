@@ -65,3 +65,7 @@ std = [
     "sp-std/std",
     "pallet-timestamp/std",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]

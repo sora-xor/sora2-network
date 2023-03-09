@@ -1,4 +1,6 @@
 mod referrals;
+#[cfg(feature = "try-runtime")]
+mod remote;
 mod xor_fee;
 
 mod tests {
