@@ -725,6 +725,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
+    /// ## Implementation
+    ///
+    /// The implementation of this method might be quite confusing,
+    /// [here](https://hackmd.io/@jTXlKyDTTYuWUChtsJYcCg/SJ5ItHw12)
+    /// you can find the main logic and formulae without too
+    /// much technical details
+    ///
+    /// Unfortunately, confluence and rustdoc do not render math
+    /// formulae out-of-box, so I attach hackmd. Also md source +
+    /// backup is [here](https://pastebin.com/xrLzTnPn)
     fn quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
