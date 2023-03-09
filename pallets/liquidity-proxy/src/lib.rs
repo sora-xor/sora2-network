@@ -1788,6 +1788,11 @@ pub mod pallet {
                     if !unique_asset_ids.insert(asset_id.clone()) {
                         Err(Error::<T>::AggregationError)?
                     }
+
+                    if receivers.len() == 0 {
+                        Err(Error::<T>::InvalidReceiversInfo)?
+                    }
+
                     let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
                     let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
                         if asset_id != input_asset_id {
@@ -1970,5 +1975,7 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
+        // Information about swap batch receivers is invalid
+        InvalidReceiversInfo,
     }
 }
