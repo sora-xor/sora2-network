@@ -346,20 +346,6 @@ impl<T: Config> OutgoingAddAsset<T> {
                 Token::FixedBytes(tx_hash.0.to_vec()),
                 Token::FixedBytes(network_id.0.to_vec()),
             ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("addAsset".into()),
-                Token::Address(
-                    crate::BridgeContractAddress::<T>::get(self.network_id)
-                        .0
-                        .into(),
-                ),
-                Token::String(name.clone()),
-                Token::String(symbol.clone()),
-                Token::UintSized(precision.into(), 8),
-                Token::FixedBytes(sidechain_asset_id.clone()),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
-            ]),
         };
 
         Ok(OutgoingAddAssetEncoded {
@@ -536,20 +522,6 @@ impl<T: Config> OutgoingAddToken<T> {
                 Token::FixedBytes(tx_hash.0.to_vec()),
                 Token::FixedBytes(network_id.0.to_vec()),
             ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("addToken".into()),
-                Token::Address(
-                    crate::BridgeContractAddress::<T>::get(self.network_id)
-                        .0
-                        .into(),
-                ),
-                Token::Address(types::H160(token_address.0)),
-                Token::String(symbol.clone()),
-                Token::String(name.clone()),
-                Token::UintSized(decimals.into(), 8),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
-            ]),
         };
         Ok(OutgoingAddTokenEncoded {
             token_address,
@@ -678,17 +650,6 @@ impl<T: Config> OutgoingAddPeer<T> {
                 Token::Address(types::H160(peer_address.0)).into(),
                 Token::FixedBytes(tx_hash.0.to_vec()).into(),
                 Token::FixedBytes(network_id.0.to_vec()).into(),
-            ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("addPeer".into()),
-                Token::Address(
-                    crate::BridgeContractAddress::<T>::get(self.network_id)
-                        .0
-                        .into(),
-                ),
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("addPeer".into()),
@@ -863,17 +824,6 @@ impl<T: Config> OutgoingRemovePeer<T> {
                 Token::Address(types::H160(peer_address.0)).into(),
                 Token::FixedBytes(tx_hash.0.to_vec()).into(),
                 Token::FixedBytes(network_id.0.to_vec()).into(),
-            ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("removePeer".into()),
-                Token::Address(
-                    crate::BridgeContractAddress::<T>::get(self.network_id)
-                        .0
-                        .into(),
-                ),
-                Token::Address(types::H160(peer_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("removePeer".into()),
@@ -1110,12 +1060,6 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
                 Token::Address(types::EthAddress::from(contract_address.0)).into(),
                 Token::FixedBytes(tx_hash.0.to_vec()).into(),
                 Token::FixedBytes(network_id.0.to_vec()).into(),
-            ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("prepareMigration".into()),
-                Token::Address(types::EthAddress::from(contract_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::FixedBytes(network_id.0.to_vec()),
             ]),
             BridgeSignatureVersion::V3 => ethabi::encode(&[
                 Token::String("prepareMigration".into()),

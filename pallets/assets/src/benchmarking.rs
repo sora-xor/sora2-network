@@ -181,32 +181,6 @@ benchmarks! {
         assert_eq!(usdt_issuance, 100_u32.into());
     }
 
-    force_mint {
-        add_assets::<T>(100)?;
-        let caller = alice::<T>();
-        frame_system::Pallet::<T>::inc_providers(&caller);
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ).unwrap();
-    }: _(
-        RawOrigin::Root,
-        USDT.into(),
-        caller.clone(),
-        100_u32.into()
-    )
-    verify {
-        let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
-        assert_eq!(usdt_issuance, 100_u32.into());
-    }
-
     burn {
         add_assets::<T>(100)?;
         let caller = alice::<T>();
@@ -235,32 +209,6 @@ benchmarks! {
     )
     verify {
         assert_last_event::<T>(Event::<T>::Burn(caller, USDT.into(), 100_u32.into()).into())
-    }
-
-    update_balance {
-        add_assets::<T>(100)?;
-        let caller = alice::<T>();
-        frame_system::Pallet::<T>::inc_providers(&caller);
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"USDT".to_vec()),
-            AssetName(b"USDT".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        ).unwrap();
-    }: _(
-        RawOrigin::Root,
-        caller.clone(),
-        USDT.into(),
-        100_i128.into()
-    )
-    verify {
-        let usdt_issuance = Assets::<T>::total_issuance(&USDT.into())?;
-        assert_eq!(usdt_issuance, 100_u32.into());
     }
 
     update_balance {

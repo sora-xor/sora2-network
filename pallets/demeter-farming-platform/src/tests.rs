@@ -140,14 +140,14 @@ mod tests {
 
             /********* XSTUSD DEX ********/
             assert_ok!(trading_pair::Pallet::<Runtime>::register(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 dex_id_xst.clone(),
                 XSTUSD.into(),
                 CERES_ASSET_ID.into()
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 dex_id_xst.clone(),
                 XSTUSD.into(),
                 CERES_ASSET_ID.into(),

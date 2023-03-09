@@ -217,13 +217,13 @@ mod tests {
     #[test]
     fn regular_batch_should_pass() {
         let batch_calls = vec![
-            assets::RuntimeCall::transfer {
+            assets::Call::transfer {
                 asset_id: GetBaseAssetId::get(),
                 to: From::from([1; 32]),
                 amount: balance!(100),
             }
             .into(),
-            assets::RuntimeCall::transfer {
+            assets::Call::transfer {
                 asset_id: GetBaseAssetId::get(),
                 to: From::from([1; 32]),
                 amount: balance!(100),
@@ -242,7 +242,7 @@ mod tests {
 
     fn test_swap_in_batch(call: RuntimeCall) {
         let batch_calls = vec![
-            assets::RuntimeCall::transfer {
+            assets::Call::transfer {
                 asset_id: GetBaseAssetId::get(),
                 to: From::from([1; 32]),
                 amount: balance!(100),
