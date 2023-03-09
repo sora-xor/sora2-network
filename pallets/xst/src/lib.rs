@@ -448,6 +448,13 @@ impl<T: Config> Pallet<T> {
 
     /// Decompose SwapAmount into particular buy quotation query.
     ///
+    /// "Buy quotation" means that we give `synthetic_asset_id` to buy/get
+    /// `main_asset_id`. It means that `input_amount` is in `synthetic_asset_id`
+    /// and `output_amount` is in main currency.
+    ///
+    /// In other words, swap direction is
+    /// `synthetic_asset_id -> main_asset_id`
+    ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_buy_amounts(
         main_asset_id: &T::AssetId,
@@ -457,6 +464,8 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                // Calculate how much `main_asset_id` we will buy (get)
+                // if we give `desired_amount_in` of `synthetic_asset_id`
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -476,6 +485,8 @@ impl<T: Config> Pallet<T> {
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                // Calculate how much `synthetic_asset_id` we need to give to buy (get)
+                // `desired_amount_out` of `main_asset_id`
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out)
                         / (fixed_wrapper!(1) - BaseFee::<T>::get()))
@@ -504,15 +515,24 @@ impl<T: Config> Pallet<T> {
 
     /// Decompose SwapAmount into particular sell quotation query.
     ///
-    /// Returns ordered pair: (input_amount, output_amount, fee_amount).
+    /// "Sell quotation" means that we sell/give `main_asset_id` to get
+    /// `synthetic_asset_id`. It means that `input_amount` is in main
+    /// currency and `output_amount` is in `synthetic_asset_id`.
+    ///
+    /// In other words, swap direction is
+    /// `main_asset_id -> synthetic_asset_id`
+    ///
+    /// Returns ordered pair: `(input_amount, output_amount, fee_amount)`.
     fn decide_sell_amounts(
         main_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        synthetic_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                // Calculate how much `synthetic_asset_id` we will get
+                // if we sell `desired_amount_in` of `main_asset_id`
                 let fee_amount = if deduce_fee {
                     let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
@@ -523,7 +543,7 @@ impl<T: Config> Pallet<T> {
                 };
                 let output_amount = Self::sell_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_input(
                         desired_amount_in.saturating_sub(fee_amount.clone()),
                     ),
@@ -535,9 +555,11 @@ impl<T: Config> Pallet<T> {
                 (desired_amount_in, output_amount, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                // Calculate how much `main_asset_id` we need to sell to get
+                // `desired_amount_out` of `synthetic_asset_id`
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out),
                 )?)
                 .try_into_balance()
