@@ -727,6 +727,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 synthetic_base_asset_id,
                 &T::GetBaseAssetId::get(),
+                // Since `Buy` is more expensive, it seems logical to
+                // show this amount in order to not accidentally lie
+                // about the price.
                 PriceVariant::Buy,
             )?
             .into();
