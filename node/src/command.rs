@@ -212,11 +212,48 @@ pub fn run() -> sc_cli::Result<()> {
                 _ => Err(Error::Other("Command not implemented".into()).into()),
             }
         }
+        #[cfg(feature = "try-runtime")]
+        Some(Subcommand::TryRuntime(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+
+            use sc_service::TaskManager;
+            let registry = &runner
+                .config()
+                .prometheus_config
+                .as_ref()
+                .map(|cfg| &cfg.registry);
+            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
+                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+
+            runner.async_run(|config| {
+                Ok((
+                    cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config),
+                    task_manager,
+                ))
+            })
+        }
+        #[cfg(feature = "private-net")]
+        Some(Subcommand::ForkOff(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+
+            use sc_service::TaskManager;
+            let registry = &runner
+                .config()
+                .prometheus_config
+                .as_ref()
+                .map(|cfg| &cfg.registry);
+            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
+                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+
+            runner.async_run(|config| Ok((cmd.run(config), task_manager)))
+        }
         None => {
             let runner = cli.create_runner(&cli.run)?;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
-                service::new_full(config, false, None).map_err(sc_cli::Error::Service)
+                service::new_full(config, cli.disable_beefy, None).map_err(sc_cli::Error::Service)
             })
         }
     }

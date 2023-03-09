@@ -65,3 +65,7 @@ runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
     "hex-literal",
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+]
