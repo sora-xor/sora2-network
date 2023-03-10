@@ -60,6 +60,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn exchange() -> Weight {
         Weight::zero()
     }
+    fn can_exchange() -> Weight {
+        Weight::zero()
+    }
+    fn check_rewards() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -75,11 +81,9 @@ impl crate::WeightInfo for () {
     fn set_optional_reward_multiplier() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-
     fn set_price_change_config() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-
     fn set_price_bias() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
@@ -87,6 +91,12 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn exchange() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn can_exchange() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn check_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

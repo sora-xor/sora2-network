@@ -988,14 +988,16 @@ impl<T: Config> Pallet<T> {
                 Vec::new()
             } else {
                 let (input_amount, output_amount) = amount.place_input_and_output(outcome.clone());
-                T::LiquidityRegistry::check_rewards(
+                let (rewards, weight) = T::LiquidityRegistry::check_rewards(
                     src,
                     input_asset_id,
                     output_asset_id,
                     input_amount,
                     output_amount,
                 )
-                .unwrap_or(Vec::new())
+                .unwrap_or((Vec::new(), Weight::zero()));
+                total_weight = total_weight.saturating_add(weight);
+                rewards
             };
             return Ok((
                 AggregatedSwapOutcome::new(
@@ -1138,7 +1140,9 @@ impl<T: Config> Pallet<T> {
     ///                            smart_split()
     ///                                quote()
     ///                                quote()
+    ///                                check_rewards()
     ///                                quote()
+    ///                                check_rewards()
     ///                calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
     ///                    quote_single()
     ///                        list_liquidity_sources()
@@ -1146,16 +1150,20 @@ impl<T: Config> Pallet<T> {
     ///                        smart_split()
     ///                            quote()
     ///                            quote()
+    ///                            check_rewards()
     ///                            quote()
+    ///                            check_rewards()
     ///                exchange_sequence_with_input_amount()
     ///                    exchange_single()
     ///                        quote_single()
-    ///                        list_liquidity_sources()
+    ///                            list_liquidity_sources()
     ///                            quote()
     ///                            smart_split()
     ///                                quote()
     ///                                quote()
+    ///                                check_rewards()
     ///                                quote()
+    ///                                check_rewards()
     ///                        exchange() - call N times, where N is a count of assets in the path
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
@@ -1170,9 +1178,11 @@ impl<T: Config> Pallet<T> {
 
         let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
+        let check_rewards_weight = T::LiquidityRegistry::check_rewards_weight();
 
         let quote_single_weight = <T as Config>::WeightInfo::list_liquidity_sources()
-            .saturating_add(quote_weight.saturating_mul(4));
+            .saturating_add(quote_weight.saturating_mul(4))
+            .saturating_add(check_rewards_weight.saturating_mul(2));
 
         let mut weight = <T as Config>::WeightInfo::check_indivisible_assets()
             .saturating_add(<T as Config>::WeightInfo::new_trivial())
@@ -1426,16 +1436,17 @@ impl<T: Config> Pallet<T> {
                             ] {
                                 let (input_amount, output_amount) =
                                     info.1.place_input_and_output(info.2);
-                                rewards.append(
-                                    &mut T::LiquidityRegistry::check_rewards(
+                                let (mut reward, reward_weight) =
+                                    T::LiquidityRegistry::check_rewards(
                                         info.0,
                                         input_asset_id,
                                         output_asset_id,
                                         input_amount,
                                         output_amount,
                                     )
-                                    .unwrap_or(Vec::new()),
-                                );
+                                    .unwrap_or((Vec::new(), Weight::zero()));
+                                total_weight = total_weight.saturating_add(reward_weight);
+                                rewards.append(&mut reward);
                             }
                         };
                         best = outcome_primary.amount + outcome_secondary.amount;
@@ -1476,14 +1487,16 @@ impl<T: Config> Pallet<T> {
                 if !skip_info {
                     let (input_amount, output_amount) =
                         amount.place_input_and_output(outcome.clone());
-                    rewards = T::LiquidityRegistry::check_rewards(
+                    let reward_weight;
+                    (rewards, reward_weight) = T::LiquidityRegistry::check_rewards(
                         secondary_source_id,
                         input_asset_id,
                         output_asset_id,
                         input_amount,
                         output_amount,
                     )
-                    .unwrap_or(Vec::new());
+                    .unwrap_or((Vec::new(), Weight::zero()));
+                    total_weight = total_weight.saturating_add(reward_weight);
                 };
             };
             Ok(())
@@ -1979,6 +1992,7 @@ pub mod pallet {
                                     ..
                                 },
                                 _,
+                                _weight,
                             ) = Self::inner_exchange(
                                 dex_id,
                                 &who,

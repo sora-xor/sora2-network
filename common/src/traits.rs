@@ -128,7 +128,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         input_amount: Amount,
         output_amount: Amount,
-    ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
+    ) -> Result<(Vec<(Amount, AssetId, RewardReason)>, Weight), DispatchError>;
 
     /// Get spot price of tokens based on desired amount, ignoring non-linearity
     /// of underlying liquidity source.
@@ -145,6 +145,9 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
 
     /// Get weight of exchange
     fn exchange_weight() -> Weight;
+
+    /// Get weight of exchange
+    fn check_rewards_weight() -> Weight;
 }
 
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
@@ -227,7 +230,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _input_amount: Fixed,
         _output_amount: Fixed,
-    ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Fixed, AssetId, RewardReason)>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -246,6 +249,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     }
 
     fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
         Weight::zero()
     }
 }
@@ -288,7 +295,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -307,6 +314,10 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
     }
 
     fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
         Weight::zero()
     }
 }

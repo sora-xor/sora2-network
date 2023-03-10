@@ -513,9 +513,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         // XYK Pool has no rewards currently
-        Ok(Vec::new())
+        Ok((Vec::new(), Weight::zero()))
     }
 
     fn quote_without_impact(
@@ -627,6 +627,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn exchange_weight() -> Weight {
         <T as Config>::WeightInfo::swap_pair()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 

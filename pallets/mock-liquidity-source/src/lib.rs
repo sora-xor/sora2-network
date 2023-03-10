@@ -430,8 +430,8 @@ impl<T: Config<I>, I: 'static>
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        Ok(Rewards::<T, I>::get())
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Rewards::<T, I>::get(), Weight::zero()))
     }
 
     fn quote_without_impact(
@@ -492,6 +492,10 @@ impl<T: Config<I>, I: 'static>
     }
 
     fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
         Weight::zero()
     }
 }

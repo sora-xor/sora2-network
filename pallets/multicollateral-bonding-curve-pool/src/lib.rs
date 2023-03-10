@@ -79,6 +79,8 @@ pub trait WeightInfo {
     fn set_price_bias() -> Weight;
     fn quote() -> Weight;
     fn exchange() -> Weight;
+    fn can_exchange() -> Weight;
+    fn check_rewards() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -1636,12 +1638,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
+        let mut weight = <T as Config>::WeightInfo::can_exchange();
+
         let base_asset_id = &T::GetBaseAssetId::get();
         if output_asset_id == base_asset_id {
+            weight = Self::check_rewards_weight();
             let reserves_tech_account_id = ReservesAcc::<T>::get();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
@@ -1658,12 +1663,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
             }
             if !pswap_amount.is_zero() {
-                Ok([(pswap_amount, PSWAP.into(), RewardReason::BuyOnBondingCurve)].into())
+                Ok((
+                    [(pswap_amount, PSWAP.into(), RewardReason::BuyOnBondingCurve)].into(),
+                    weight,
+                ))
             } else {
-                Ok(Vec::new())
+                Ok((Vec::new(), weight))
             }
         } else {
-            Ok(Vec::new()) // no rewards on sell
+            Ok((Vec::new(), weight)) // no rewards on sell
         }
     }
 
@@ -1765,6 +1773,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn exchange_weight() -> Weight {
         <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        <T as Config>::WeightInfo::check_rewards()
     }
 }
 

@@ -153,7 +153,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! check_rewards {
             ($source_type:ident) => {
@@ -221,6 +221,12 @@ impl<T: Config>
         T::XSTPool::exchange_weight()
             .max(T::XYKPool::exchange_weight())
             .max(T::MulticollateralBondingCurvePool::exchange_weight())
+    }
+
+    fn check_rewards_weight() -> Weight {
+        T::XSTPool::check_rewards_weight()
+            .max(T::XYKPool::check_rewards_weight())
+            .max(T::MulticollateralBondingCurvePool::check_rewards_weight())
     }
 }
 

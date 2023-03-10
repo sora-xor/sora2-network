@@ -764,8 +764,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new()) // no rewards for XST
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
@@ -787,6 +787,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
     fn exchange_weight() -> Weight {
         <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 

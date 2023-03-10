@@ -142,7 +142,8 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
-        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>}
+        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
 
@@ -314,6 +315,12 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+}
+
+impl price_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type LiquidityProxy = ();
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {

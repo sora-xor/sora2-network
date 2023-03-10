@@ -731,14 +731,17 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         _input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
         // for mock just return like in input
         if output_asset_id == &GetBaseAssetId::get() {
-            Ok(vec![(
-                output_amount,
-                output_asset_id.clone(),
-                RewardReason::BuyOnBondingCurve,
-            )])
+            Ok((
+                vec![(
+                    output_amount,
+                    output_asset_id.clone(),
+                    RewardReason::BuyOnBondingCurve,
+                )],
+                Weight::zero(),
+            ))
         } else {
             fail!(crate::Error::<Runtime>::UnavailableExchangePath);
         }
@@ -761,6 +764,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
         Weight::zero()
     }
 }
@@ -1084,8 +1091,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _output_asset_id: &AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new()) // no rewards for XST
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
@@ -1105,6 +1112,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
         Weight::zero()
     }
 }
