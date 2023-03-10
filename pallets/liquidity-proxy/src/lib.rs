@@ -35,6 +35,7 @@ extern crate core;
 use codec::{Decode, Encode};
 
 use assets::AssetIdOf;
+use assets::WeightInfo as _;
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
@@ -1121,53 +1122,50 @@ impl<T: Config> Pallet<T> {
         Ok(sources_set)
     }
 
-    /// Calculates the max potential weight of swap
+    /// Calculates the max potential weight of inner_exchange
     ///
     /// This function should cover the current code map and all possible calls of some functions that can take a weight.
     /// The current code map:
-    /// swap()
-    ///    inner_swap()
-    ///        check_indivisible_assets()
-    ///        is_forbidden_filter()
-    ///        inner_exchange()
-    ///            new_trivial()
-    ///            exchange_sequence()
-    ///                select_best_path()
-    ///                    quote_pairs_with_flexible_amount() - call M times, where M is a count of paths
-    ///                        quote_single()
-    ///                            list_liquidity_sources()
-    ///                            quote()
-    ///                            smart_split()
-    ///                                quote()
-    ///                                quote()
-    ///                                check_rewards()
-    ///                                quote()
-    ///                                check_rewards()
-    ///                calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
-    ///                    quote_single()
-    ///                        list_liquidity_sources()
-    ///                        quote()
-    ///                        smart_split()
-    ///                            quote()
-    ///                            quote()
-    ///                            check_rewards()
-    ///                            quote()
-    ///                            check_rewards()
-    ///                exchange_sequence_with_input_amount()
-    ///                    exchange_single()
-    ///                        quote_single()
-    ///                            list_liquidity_sources()
-    ///                            quote()
-    ///                            smart_split()
-    ///                                quote()
-    ///                                quote()
-    ///                                check_rewards()
-    ///                                quote()
-    ///                                check_rewards()
-    ///                        exchange() - call N times, where N is a count of assets in the path
     ///
-    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
-    pub fn swap_weight(
+    /// inner_exchange()
+    ///     new_trivial()
+    ///     exchange_sequence()
+    ///         select_best_path()
+    ///             quote_pairs_with_flexible_amount() - call M times, where M is a count of paths
+    ///                 quote_single()
+    ///                     list_liquidity_sources()
+    ///                     quote()
+    ///                     smart_split()
+    ///                         quote()
+    ///                         quote()
+    ///                         check_rewards()
+    ///                         quote()
+    ///                         check_rewards()
+    ///         calculate_input_amount() - call only for SwapAmount::WithDesiredOutput
+    ///             quote_single()
+    ///                 list_liquidity_sources()
+    ///                 quote()
+    ///                 smart_split()
+    ///                     quote()
+    ///                     quote()
+    ///                     check_rewards()
+    ///                     quote()
+    ///                     check_rewards()
+    ///         exchange_sequence_with_input_amount()
+    ///             exchange_single()
+    ///                 quote_single()
+    ///                     list_liquidity_sources()
+    ///                     quote()
+    ///                     smart_split()
+    ///                         quote()
+    ///                         quote()
+    ///                         check_rewards()
+    ///                         quote()
+    ///                         check_rewards()
+    ///                 exchange() - call N times, where N is a count of assets in the path
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
+    pub fn inner_exchange_weight(
         dex_id: &T::DEXId,
         input: &T::AssetId,
         output: &T::AssetId,
@@ -1184,9 +1182,7 @@ impl<T: Config> Pallet<T> {
             .saturating_add(quote_weight.saturating_mul(4))
             .saturating_add(check_rewards_weight.saturating_mul(2));
 
-        let mut weight = <T as Config>::WeightInfo::check_indivisible_assets()
-            .saturating_add(<T as Config>::WeightInfo::new_trivial())
-            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
+        let mut weight = <T as Config>::WeightInfo::new_trivial();
 
         // in quote_pairs_with_flexible_amount()
         weight = weight.saturating_add(quote_single_weight.saturating_mul(tp.len() as u64));
@@ -1212,6 +1208,76 @@ impl<T: Config> Pallet<T> {
 
         assert!(!weights.is_empty());
         weights.iter().fold(weights[0], |max, &x| max.max(x))
+    }
+
+    /// Calculates the max potential weight of swap
+    ///
+    /// This function should cover the current code map and all possible calls of some functions that can take a weight.
+    /// The current code map:
+    ///
+    /// swap()
+    ///    inner_swap()
+    ///        check_indivisible_assets()
+    ///        is_forbidden_filter()
+    ///        inner_exchange()
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
+    pub fn swap_weight(
+        dex_id: &T::DEXId,
+        input: &T::AssetId,
+        output: &T::AssetId,
+        swap_variant: SwapVariant,
+    ) -> Weight {
+        let inner_exchange_weight =
+            Self::inner_exchange_weight(dex_id, input, output, swap_variant);
+
+        let weight = <T as Config>::WeightInfo::check_indivisible_assets()
+            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
+            .saturating_add(inner_exchange_weight);
+
+        weight
+    }
+
+    /// Calculates the max potential weight of swap_transfer_batch
+    ///
+    /// This function should cover the current code map and all possible calls of some functions that can take a weight.
+    /// The current code map:
+    ///
+    /// swap_transfer_batch
+    ///     loop - call swap_batches.len() times
+    ///         check_indivisible_assets
+    ///         is_forbidden_filter
+    ///         inner_exchange
+    ///         loop - call swap_batch_info.receivers.len() times
+    ///             transfer_from
+    ///
+    /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_transfer_batch_weight() and code map above.
+    pub fn swap_transfer_batch_weight(
+        swap_batches: &Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
+        input: &T::AssetId,
+    ) -> Weight {
+        let mut weight = Weight::zero();
+
+        for swap_batch_info in swap_batches {
+            let inner_exchange_weight = Self::inner_exchange_weight(
+                &swap_batch_info.dex_id,
+                input,
+                &swap_batch_info.outcome_asset_id,
+                SwapVariant::WithDesiredOutput,
+            );
+
+            weight = weight
+                .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
+                .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
+                .saturating_add(inner_exchange_weight);
+
+            weight = weight.saturating_add(
+                assets::weights::WeightInfo::<T>::transfer()
+                    .saturating_mul(swap_batch_info.receivers.len() as u64),
+            );
+        }
+
+        weight
     }
 
     /// Given two arbitrary tokens return sources that can be used to cover full path.
@@ -1939,7 +2005,7 @@ pub mod pallet {
 
         // todo remake weights
         #[transactional]
-        #[pallet::weight(Weight::zero())]
+        #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
@@ -1948,7 +2014,9 @@ pub mod pallet {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
+            let who = ensure_signed(origin.clone())?;
+
+            let mut total_weight = Weight::zero();
 
             let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
             fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
@@ -1978,6 +2046,9 @@ pub mod pallet {
                             );
 
                             Self::check_indivisible_assets(input_asset_id, asset_id)?;
+                            total_weight = total_weight.saturating_add(
+                                <T as Config>::WeightInfo::check_indivisible_assets(),
+                            );
 
                             if Self::is_forbidden_filter(
                                 &input_asset_id,
@@ -1987,14 +2058,16 @@ pub mod pallet {
                             ) {
                                 fail!(Error::<T>::ForbiddenFilter);
                             }
+                            total_weight = total_weight
+                                .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
                             let (
                                 SwapOutcome {
                                     amount: executed_input_amount,
-                                    ..
+                                    fee: fee_amount,
                                 },
-                                _,
-                                _weight,
+                                sources,
+                                weight,
                             ) = Self::inner_exchange(
                                 dex_id,
                                 &who,
@@ -2007,6 +2080,18 @@ pub mod pallet {
                                 },
                                 filter.clone(),
                             )?;
+                            total_weight = total_weight.saturating_add(weight);
+
+                            Self::deposit_event(Event::<T>::Exchange(
+                                who.clone(),
+                                dex_id,
+                                input_asset_id,
+                                asset_id,
+                                executed_input_amount,
+                                out_amount,
+                                fee_amount,
+                                sources,
+                            ));
 
                             let caller_output_asset_balance =
                                 assets::Pallet::<T>::total_balance(&asset_id, &who)?;
@@ -2035,17 +2120,25 @@ pub mod pallet {
                             if !unique_batch_receivers.insert(receiver.account_id.clone()) {
                                 Err(Error::<T>::AggregationError)?
                             }
-                            assets::Pallet::<T>::transfer_from(
-                                &asset_id,
-                                &who,
-                                &receiver.account_id,
+
+                            total_weight = total_weight
+                                .saturating_add(assets::weights::WeightInfo::<T>::transfer());
+
+                            assets::Pallet::<T>::transfer(
+                                origin.clone(),
+                                asset_id,
+                                receiver.account_id,
                                 receiver.target_amount - remainder_per_receiver,
                             )
+                            .map(|_| ())
                         },
                     )
                 },
             )?;
-            Ok(().into())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(total_weight),
+                pays_fee: Pays::Yes,
+            })
         }
 
         /// Enables XST or TBC liquidity source.
