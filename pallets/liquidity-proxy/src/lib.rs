@@ -1933,7 +1933,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
             input_asset_id: T::AssetId,
-            max_input_amount: Balance,
+            mut max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
