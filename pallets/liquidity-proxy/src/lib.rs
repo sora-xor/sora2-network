@@ -1977,6 +1977,8 @@ pub mod pallet {
                                 selected_source_types.clone(),
                             );
 
+                            Self::check_indivisible_assets(input_asset_id, asset_id)?;
+
                             if Self::is_forbidden_filter(
                                 &input_asset_id,
                                 &asset_id,
