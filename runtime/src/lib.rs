@@ -2233,7 +2233,6 @@ construct_runtime! {
         MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
         EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
 
-        #[cfg(feature = "wip")]
         BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
