@@ -1578,12 +1578,18 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::ForbiddenFilter);
         }
 
+        ensure!(
+            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
+                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
+            Error::<T>::UnableToSwapIndivisibleAssets
+        );
+
         let (
             SwapOutcome {
                 amount: executed_input_amount,
-                ..
+                fee: fee_amount,
             },
-            _,
+            sources,
         ) = Self::inner_exchange(
             dex_id,
             &sender,
@@ -1596,6 +1602,17 @@ impl<T: Config> Pallet<T> {
             },
             filter.clone(),
         )?;
+
+        Self::deposit_event(Event::<T>::Exchange(
+            sender.clone(),
+            dex_id,
+            input_asset_id.clone(),
+            output_asset_id.clone(),
+            executed_input_amount,
+            out_amount,
+            fee_amount,
+            sources,
+        ));
 
         let caller_output_asset_balance =
             assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
