@@ -2151,7 +2151,7 @@ construct_runtime! {
 
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
