@@ -827,7 +827,7 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
     pub const GetBuyBackDexId: DEXId = 0;
     pub const GetSyntheticBaseAssetId: AssetId = GetXstAssetId::get();
-    pub const GetADARAccountId: AccountId = todo!();
+    pub const GetADARAccountId: AccountId = AccountId::new(hex!("dc5201cda01113be2ca9093c49a92763c95c708dd61df70c945df749c365da5d"));
 }
 
 impl currencies::Config for Runtime {
