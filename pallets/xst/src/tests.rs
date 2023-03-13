@@ -31,7 +31,7 @@
 #[rustfmt::skip]
 mod tests {
     use crate::{Error, Pallet, mock::*, BaseFee};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, LiquidityProxyTrait };
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, LiquidityProxyTrait, PriceToolsPallet };
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -374,15 +374,16 @@ use frame_support::assert_noop;
             let price_a_fee_without_fee = (
                 FixedWrapper::from(price_a.fee) / balance!(0.993)
             ).into_balance();
+            println!("a_fee without fee: {price_a_fee_without_fee}");
             // convert fee back to output_asset_id (XST) for comparison
-            let price_a_fee_in_synthetic_base_asset = MockDEXApi::quote(
-                DEXId::Polkaswap.into(),
-                &XOR,
-                &XST,
-                QuoteAmount::with_desired_input(price_a_fee_without_fee),
-                common::LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-                false
-            ).expect("Failed to convert fee back to synthetic base asset").amount;
+            let base_to_output: FixedWrapper = MockDEXApi::get_average_price(&XOR, &XST, common::PriceVariant::Buy)
+                .expect("Failed to convert fee back to synthetic base asset")
+                .into();
+            // mock returns get_average_price with fee, we want no fee for this comparison
+            let base_to_output_without_fee = base_to_output / balance!(0.993);
+            println!("a_fee without fee: {price_a_fee_without_fee}");
+            let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
+            println!("a_fee in xst: {price_a_fee_in_synthetic_base_asset}");
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
@@ -392,7 +393,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
-            // to account for rounding errors
+            // more error, because more computations/roundings or larger coefficients
             assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000000000000001000));
 
             let price_a = XSTPool::quote(
