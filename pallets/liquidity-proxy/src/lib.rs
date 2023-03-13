@@ -2113,6 +2113,11 @@ pub mod pallet {
                         .checked_sub(executed_input_amount)
                         .ok_or(Error::<T>::SlippageNotTolerated)?;
 
+                    total_weight = total_weight.saturating_add(
+                        assets::weights::WeightInfo::<T>::transfer()
+                            .saturating_mul(receivers.len() as u64),
+                    );
+
                     let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
                     fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
@@ -2121,16 +2126,12 @@ pub mod pallet {
                                 Err(Error::<T>::AggregationError)?
                             }
 
-                            total_weight = total_weight
-                                .saturating_add(assets::weights::WeightInfo::<T>::transfer());
-
-                            assets::Pallet::<T>::transfer(
-                                origin.clone(),
-                                asset_id,
-                                receiver.account_id,
+                            assets::Pallet::<T>::transfer_from(
+                                &asset_id,
+                                &who,
+                                &receiver.account_id,
                                 receiver.target_amount - remainder_per_receiver,
                             )
-                            .map(|_| ())
                         },
                     )
                 },
