@@ -752,22 +752,26 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
-        // `fee_amount` is always computed to be in `main_asset_id`, which is
-        // `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR
-        // (`BaseAssetId`), so we convert.
-        let output_to_fee: FixedWrapper =
-            <T as pallet::Config>::PriceToolsPallet::get_average_price(
-                synthetic_base_asset_id,
-                &T::GetBaseAssetId::get(),
-                // Since `Buy` is more expensive, it seems logical to
-                // show this amount in order to not accidentally lie
-                // about the price.
-                PriceVariant::Buy,
-            )?
-            .into();
-        let fee_amount = (fee_amount * output_to_fee)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        let fee_amount = if deduce_fee {
+            // `fee_amount` is always computed to be in `main_asset_id`, which is
+            // `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR
+            // (`BaseAssetId`), so we convert.
+            let output_to_fee: FixedWrapper =
+                <T as pallet::Config>::PriceToolsPallet::get_average_price(
+                    synthetic_base_asset_id,
+                    &T::GetBaseAssetId::get(),
+                    // Since `Buy` is more expensive, it seems logical to
+                    // show this amount in order to not accidentally lie
+                    // about the price.
+                    PriceVariant::Buy,
+                )?
+                .into();
+            (fee_amount * output_to_fee)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+        } else {
+            fee_amount
+        };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
             QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
