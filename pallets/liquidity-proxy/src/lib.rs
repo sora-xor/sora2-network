@@ -68,6 +68,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod test_utils;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0075);
@@ -1933,7 +1936,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
             input_asset_id: T::AssetId,
-            mut max_input_amount: Balance,
+            max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
