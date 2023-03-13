@@ -288,6 +288,10 @@ private-net = [
     "framenode-chain-spec/private-net",
 ]
 
+wip = [
+    "framenode-chain-spec/wip",
+]
+
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "band/runtime-benchmarks",

@@ -136,6 +136,11 @@ private-net = [
     "framenode-runtime/private-net",
 ]
 
+wip = [
+    "framenode-chain-spec/wip",
+    "framenode-runtime/wip",
+]
+
 runtime-benchmarks = [
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",

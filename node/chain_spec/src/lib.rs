@@ -1580,7 +1580,8 @@ fn testnet_genesis(
     any(
         feature = "main-net-coded",
         feature = "test",
-        feature = "runtime-benchmarks"
+        feature = "runtime-benchmarks",
+        feature = "wip"
     ),
     not(feature = "private-net")
 ))]
@@ -1680,7 +1681,8 @@ pub fn main_net_coded() -> ChainSpec {
     any(
         feature = "main-net-coded",
         feature = "test",
-        feature = "runtime-benchmarks"
+        feature = "runtime-benchmarks",
+        feature = "wip"
     ),
     not(feature = "private-net")
 ))]
