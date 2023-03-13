@@ -756,7 +756,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             // `fee_amount` is always computed to be in `main_asset_id`, which is
             // `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR
             // (`BaseAssetId`), so we convert.
-            let output_to_fee: FixedWrapper =
+            let output_to_base: FixedWrapper =
                 <T as pallet::Config>::PriceToolsPallet::get_average_price(
                     synthetic_base_asset_id,
                     &T::GetBaseAssetId::get(),
@@ -766,7 +766,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     PriceVariant::Buy,
                 )?
                 .into();
-            (fee_amount * output_to_fee)
+            (fee_amount * output_to_base)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?
         } else {
