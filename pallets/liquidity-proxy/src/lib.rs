@@ -1784,45 +1784,76 @@ pub mod pallet {
                         receivers,
                     } = swap_batch_info;
 
-                    let filter = LiquiditySourceFilter::with_mode(
-                        dex_id,
-                        filter_mode.clone(),
-                        selected_source_types.clone(),
-                    );
-
-                    if Self::is_forbidden_filter(
-                        &input_asset_id,
-                        &asset_id,
-                        &selected_source_types,
-                        &filter_mode,
-                    ) {
-                        fail!(Error::<T>::ForbiddenFilter);
-                    }
-
+                    // extrinsic fails if there are duplicate output asset ids
                     if !unique_asset_ids.insert(asset_id.clone()) {
                         Err(Error::<T>::AggregationError)?
                     }
 
+                    if receivers.len() == 0 {
+                        Err(Error::<T>::InvalidReceiversInfo)?
+                    }
+
                     let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
-                    Self::inner_exchange(
-                        dex_id,
-                        &who,
-                        &who,
-                        &input_asset_id,
-                        &asset_id,
-                        SwapAmount::WithDesiredOutput {
-                            desired_amount_out: out_amount,
-                            max_amount_in: max_input_amount,
-                        },
-                        filter.clone(),
-                    )?;
+                    let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
+                        if asset_id != input_asset_id {
+                            let filter = LiquiditySourceFilter::with_mode(
+                                dex_id,
+                                filter_mode.clone(),
+                                selected_source_types.clone(),
+                            );
+
+                            if Self::is_forbidden_filter(
+                                &input_asset_id,
+                                &asset_id,
+                                &selected_source_types,
+                                &filter_mode,
+                            ) {
+                                fail!(Error::<T>::ForbiddenFilter);
+                            }
+
+                            let (
+                                SwapOutcome {
+                                    amount: executed_input_amount,
+                                    ..
+                                },
+                                _,
+                            ) = Self::inner_exchange(
+                                dex_id,
+                                &who,
+                                &who,
+                                &input_asset_id,
+                                &asset_id,
+                                SwapAmount::WithDesiredOutput {
+                                    desired_amount_out: out_amount,
+                                    max_amount_in: max_input_amount,
+                                },
+                                filter.clone(),
+                            )?;
+
+                            let caller_output_asset_balance =
+                                assets::Pallet::<T>::total_balance(&asset_id, &who)?;
+                            let remainder_per_receiver: Balance =
+                                if caller_output_asset_balance < out_amount {
+                                    let remainder =
+                                        out_amount.saturating_sub(caller_output_asset_balance);
+                                    remainder / (receivers.len() as u128)
+                                        + remainder % (receivers.len() as u128)
+                                } else {
+                                    0
+                                };
+                            (executed_input_amount, remainder_per_receiver)
+                        } else {
+                            (out_amount, 0)
+                        };
+
                     max_input_amount = max_input_amount
-                        .checked_sub(out_amount)
+                        .checked_sub(executed_input_amount)
                         .ok_or(Error::<T>::SlippageNotTolerated)?;
 
                     let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
                     fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
                         |receiver| {
+                            // extrinsic fails if there are duplicate account ids in the same output asset id
                             if !unique_batch_receivers.insert(receiver.account_id.clone()) {
                                 Err(Error::<T>::AggregationError)?
                             }
@@ -1830,7 +1861,7 @@ pub mod pallet {
                                 &asset_id,
                                 &who,
                                 &receiver.account_id,
-                                receiver.target_amount,
+                                receiver.target_amount - remainder_per_receiver,
                             )
                         },
                     )
@@ -1944,5 +1975,7 @@ pub mod pallet {
         UnableToDisableLiquiditySource,
         /// Liquidity source is already disabled
         LiquiditySourceAlreadyDisabled,
+        // Information about swap batch receivers is invalid
+        InvalidReceiversInfo,
     }
 }
