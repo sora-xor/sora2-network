@@ -30,8 +30,8 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}, GetMarketInfo };
+    use crate::{Error, Pallet, mock::*, BaseFee};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, LiquidityProxyTrait };
     use frame_support::assert_ok;
 use frame_support::assert_noop;
     use sp_arithmetic::traits::{Zero};
@@ -367,9 +367,22 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.003667003083916557));
+            assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
             assert_eq!(price_a.amount, balance!(0.546934060567218204));
 
+            // mock uses conversion with fee
+            let price_a_fee_without_fee = (
+                FixedWrapper::from(price_a.fee) / balance!(0.993)
+            ).into_balance();
+            // convert fee back to output_asset_id (XST) for comparison
+            let price_a_fee_in_synthetic_base_asset = MockDEXApi::quote(
+                DEXId::Polkaswap.into(),
+                &XOR,
+                &XST,
+                QuoteAmount::with_desired_input(price_a_fee_without_fee),
+                common::LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                false
+            ).expect("Failed to convert fee back to synthetic base asset").amount;
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
@@ -379,7 +392,8 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
-            assert_eq!(price_b.amount, price_a.fee + price_a.amount);
+            // to account for rounding errors
+            assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000000000000001000));
 
             let price_a = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -389,7 +403,7 @@ use frame_support::assert_noop;
                 true,
             )
             .unwrap();
-            assert_eq!(price_a.fee, balance!(0.670465298890611472));
+            assert_approx_eq!(price_a.fee, balance!(0.001563909801974061), balance!(0.000000000000000002));
             assert_eq!(price_a.amount, balance!(18283.739706444923188361));
 
             let price_b = XSTPool::quote(
@@ -450,7 +464,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_eq!(price_a.fee, balance!(0.003667003083916557));
+            assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
 
             // Sell
             let price_c = XSTPool::quote(
@@ -470,7 +484,7 @@ use frame_support::assert_noop;
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_eq!(price_c.fee, balance!(0.003691589067103466));
+            assert_approx_eq!(price_c.fee, balance!(0.000008610904004214), balance!(0.000000000000000002));
         });
     }
 
