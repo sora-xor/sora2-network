@@ -1631,12 +1631,7 @@ impl<T: Config> Pallet<T> {
         receivers: Vec<BatchReceiverInfo<T::AccountId>>,
         remainder_per_receiver: Balance,
     ) -> Result<(), DispatchError> {
-        let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
         fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(|receiver| {
-            // extrinsic fails if there are duplicate account ids in the same output asset id
-            if !unique_batch_receivers.insert(receiver.account_id.clone()) {
-                fail!(Error::<T>::AggregationError);
-            }
             assets::Pallet::<T>::transfer_from(
                 &output_asset_id,
                 &sender,
@@ -1666,7 +1661,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
 
-        let mut adar_commission = balance!(0);
+        let mut executed_batch_input_amount = balance!(0);
 
         fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
             |swap_batch_info| {
@@ -1687,7 +1682,7 @@ impl<T: Config> Pallet<T> {
 
                 let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
 
-                let (mut executed_input_amount, remainder_per_receiver): (Balance, Balance) =
+                let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
                     if &asset_id != input_asset_id {
                         Self::exchange_batch_tokens(
                             &sender,
@@ -1704,14 +1699,8 @@ impl<T: Config> Pallet<T> {
                         (out_amount, 0)
                     };
 
-                let adar_commssion_portion =
-                    Self::calculate_adar_commission(executed_input_amount)?;
-                adar_commission = adar_commission
-                    .checked_add(adar_commssion_portion)
-                    .ok_or(Error::<T>::CalculationError)?;
-
-                executed_input_amount = executed_input_amount
-                    .checked_add(adar_commssion_portion)
+                executed_batch_input_amount = executed_batch_input_amount
+                    .checked_add(executed_input_amount)
                     .ok_or(Error::<T>::CalculationError)?;
 
                 max_input_amount = max_input_amount
@@ -1726,6 +1715,10 @@ impl<T: Config> Pallet<T> {
                 )
             },
         )?;
+        let adar_commission = Self::calculate_adar_commission(executed_batch_input_amount)?;
+        max_input_amount
+            .checked_sub(adar_commission)
+            .ok_or(Error::<T>::SlippageNotTolerated)?;
         Ok(adar_commission)
     }
 }
@@ -1974,7 +1967,7 @@ pub mod pallet {
                 &T::GetADARAccountId::get(),
                 adar_commission,
             )
-            .map_err(|_| Error::<T>::InvalidReceiversInfo)?;
+            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
 
             Ok(().into())
         }
@@ -2086,5 +2079,7 @@ pub mod pallet {
         LiquiditySourceAlreadyDisabled,
         // Information about swap batch receivers is invalid
         InvalidReceiversInfo,
+        // Failure while transferring commission to ADAR account
+        FailedToTransferAdarCommission,
     }
 }
