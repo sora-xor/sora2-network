@@ -746,26 +746,25 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ///
     /// Also there are corresponding asset amount calculation funcitons:
     ///
-    /// | name                 | direc-tion | description                                                                                                                  | in-code name                               |
-    /// |----------------------|------------|------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------|
-    /// | $sell_{out}(x_{in})$ | $b$ -> $s$ | Calculate how much $s$ (secondary synthetic asset) we will get if we sell $x_{in}$ amount of $b$ (base/main synthetic asset) | [`Self::decide_sell_amounts()`], `WithDesiredInput`  |
-    /// | $sell_{in}(x_{out})$ | $b$ -> $s$ | Calculate how much $b$ we need to sell to get $x_{out}$ amount of $s$                                                        | [`Self::decide_sell_amounts()`], `WithDesiredOutput` |
-    /// | $buy_{out}(x_{in})$  | $s$ -> $b$ | Calculate how much $b$ we will buy (get) if we give $x_{in}$ amount of $s$                                                   | [`Self::decide_buy_amounts()`], `WithDesiredInput`   |
-    /// | $buy_{in}(x_{out})$  | $s$ -> $b$ | Calculate how much $s$ we need to give to buy (get) $x_{out}$ amount of $b$                                                  | [`Self::decide_buy_amounts()`], `WithDesiredOutput`  |
+    /// | name                 | direc-tion | description                                                                                                                  | in-code representation                               |
+    /// |----------------------|------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+    /// | $sell_{out}(x_{in})$ | $b$ -> $s$ | Calculate how much $s$ (secondary synthetic asset) we will get if we sell $x_{in}$ amount of $b$ (base/main synthetic asset) | `Self::decide_sell_amounts()`, `WithDesiredInput`  |
+    /// | $sell_{in}(x_{out})$ | $b$ -> $s$ | Calculate how much $b$ we need to sell to get $x_{out}$ amount of $s$                                                        | `Self::decide_sell_amounts()`, `WithDesiredOutput` |
+    /// | $buy_{out}(x_{in})$  | $s$ -> $b$ | Calculate how much $b$ we will buy (get) if we give $x_{in}$ amount of $s$                                                   | `Self::decide_buy_amounts()`, `WithDesiredInput`   |
+    /// | $buy_{in}(x_{out})$  | $s$ -> $b$ | Calculate how much $s$ we need to give to buy (get) $x_{out}$ amount of $b$                                                  | `Self::decide_buy_amounts()`, `WithDesiredOutput`  |
     ///
     /// Let's list the formulae for each combination:
-    /// * $fee_\%$ is fee percentage that is set up in the pallet
+    /// * $fee_\\%$ is fee percentage that is set up in the pallet
     /// * $fee$ calculated fee
     /// * $A_{in}$ calculated input
     /// * $A_{out}$ calculated output
     ///
     /// | quote direction   | *given*            | $fee$                                                      | $A_{in}$                              | $A_{out}$                            |
     /// |-------------------|--------------------|------------------------------------------------------------|---------------------------------------|--------------------------------------|
-    /// | $b \rightarrow s$ | $A_{in}$ (in $b$)  | $A_{in} \cdot fee_\%$                                      | $A_{in}$                              | $sell_{out}(A_{in}(1-fee_\%))$       |
-    /// | $b \rightarrow s$ | $A_{out}$ (in $s$) | $\frac{sell_{in}(A_{out})}{1-fee_\%} - sell_{in}(A_{out})$ | $\frac{sell_{in}(A_{out})}{1-fee_\%}$ | $A_{out}$                            |
-    /// | $s \rightarrow b$ | $A_{in}$  (in $s$) | $fee_\% \cdot buy_{out}(A_{in})$                           | $A_{in}$                              | $(1-fee_\%) \cdot buy_{out}(A_{in})$ |
-    /// | $s \rightarrow b$ | $A_{out}$ (in $b$) | $\frac{A_{out}}{1-fee_\%} - A_{out}$                       | $buy_{in}(\frac{A_{out}}{1-fee_\%})$  | $A_{out}$                            |
-    ///
+    /// | $b \rightarrow s$ | $A_{in}$ (in $b$)  | $A_{in} \cdot fee_\\%$                                      | $A_{in}$                              | $sell_{out}(A_{in}(1-fee_\\%))$       |
+    /// | $b \rightarrow s$ | $A_{out}$ (in $s$) | $\frac{sell_{in}(A_{out})}{1-fee_\\%} - sell_{in}(A_{out})$ | $\frac{sell_{in}(A_{out})}{1-fee_\\%}$ | $A_{out}$                            |
+    /// | $s \rightarrow b$ | $A_{in}$  (in $s$) | $fee_\\% \cdot buy_{out}(A_{in})$                           | $A_{in}$                              | $(1-fee_\\%) \cdot buy_{out}(A_{in})$ |
+    /// | $s \rightarrow b$ | $A_{out}$ (in $b$) | $\frac{A_{out}}{1-fee_\\%} - A_{out}$                       | $buy_{in}(\frac{A_{out}}{1-fee_\\%})$  | $A_{out}$                            |
     ///
     /// [here is a rendered version in case the docs above are unreadable](https://hackmd.io/@jTXlKyDTTYuWUChtsJYcCg/SJ5ItHw12)
     fn quote(
