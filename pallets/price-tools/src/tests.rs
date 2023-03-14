@@ -103,6 +103,26 @@ fn average_price_same_values() {
 }
 
 #[test]
+fn average_price_same_asset() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &XOR.into(), PriceVariant::Buy).unwrap(),
+            balance!(1)
+        );
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &XOR.into(), PriceVariant::Sell).unwrap(),
+            balance!(1)
+        );
+        PriceTools::register_asset(&ETH).unwrap();
+        assert_eq!(
+            PriceTools::get_average_price(&ETH.into(), &ETH.into(), PriceVariant::Sell).unwrap(),
+            balance!(1)
+        );
+    });
+}
+
+#[test]
 fn average_price_smoothed_change_without_cap() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
