@@ -374,16 +374,13 @@ use frame_support::assert_noop;
             let price_a_fee_without_fee = (
                 FixedWrapper::from(price_a.fee) / balance!(0.993)
             ).into_balance();
-            println!("a_fee without fee: {price_a_fee_without_fee}");
             // convert fee back to output_asset_id (XST) for comparison
             let base_to_output: FixedWrapper = MockDEXApi::get_average_price(&XOR, &XST, common::PriceVariant::Buy)
                 .expect("Failed to convert fee back to synthetic base asset")
                 .into();
             // mock returns get_average_price with fee, we want no fee for this comparison
             let base_to_output_without_fee = base_to_output / balance!(0.993);
-            println!("a_fee without fee: {price_a_fee_without_fee}");
             let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
-            println!("a_fee in xst: {price_a_fee_in_synthetic_base_asset}");
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
