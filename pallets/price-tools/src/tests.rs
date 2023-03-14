@@ -52,8 +52,8 @@ where
 fn initial_setup_without_history() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         let avg_calc = balance!(1 + AVG_BLOCK_SPAN) / 2;
         for i in 1..=AVG_BLOCK_SPAN {
@@ -80,8 +80,8 @@ fn initial_setup_without_history() {
 fn average_price_same_values() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
@@ -126,8 +126,8 @@ fn average_price_same_asset() {
 fn average_price_smoothed_change_without_cap() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(1000), PriceVariant::Buy).unwrap();
@@ -181,8 +181,8 @@ fn average_price_smoothed_change_without_cap() {
 fn different_average_for_different_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Buy).unwrap();
@@ -264,8 +264,8 @@ fn different_average_for_different_assets() {
 fn all_exchange_paths_work() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(0.5), PriceVariant::Buy).unwrap();
@@ -312,8 +312,8 @@ fn all_exchange_paths_work() {
 fn price_quote_continuous_failure() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         // initialization period
         for _ in 1..=AVG_BLOCK_SPAN {
@@ -359,8 +359,8 @@ fn price_quote_continuous_failure() {
 fn failure_for_unsupported_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
@@ -397,8 +397,8 @@ fn failure_for_unsupported_assets() {
 fn average_price_large_change_before_no_update_streak_positive() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(1000), PriceVariant::Buy).unwrap();
@@ -454,8 +454,8 @@ fn average_price_large_change_before_no_update_streak_positive() {
 fn average_price_large_change_before_no_update_streak_negative() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(4000), PriceVariant::Buy).unwrap();
@@ -511,8 +511,8 @@ fn average_price_large_change_before_no_update_streak_negative() {
 fn price_should_go_up_faster_than_going_down() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
-            PriceTools::register_asset(&asset_id).unwrap();
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter() {
+            PriceTools::register_asset(asset_id).unwrap();
         }
         let price_a = balance!(1);
         let price_b = balance!(100);
