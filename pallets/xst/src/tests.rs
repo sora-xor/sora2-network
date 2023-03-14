@@ -30,10 +30,9 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Pallet, mock::*, BaseFee};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, LiquidityProxyTrait, PriceToolsPallet };
-    use frame_support::assert_ok;
-use frame_support::assert_noop;
+    use crate::{Error, Pallet, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, PriceToolsPallet };
+    use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
