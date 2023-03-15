@@ -4,9 +4,9 @@ extern crate log;
 use clap::Parser;
 use common::prelude::QuoteAmount;
 use common::{balance, DEXId, LiquiditySourceFilter};
+use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig};
 use frame_support::traits::OnRuntimeUpgrade;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
-use remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig};
 use sp_io::TestExternalities;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 

@@ -62,8 +62,6 @@ use frame_support::weights::ConstantMultiplier;
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use beefy_primitives::crypto::AuthorityId as BeefyId;
-use beefy_primitives::mmr::MmrLeafVersion;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -80,6 +78,8 @@ use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
+pub use sp_beefy::crypto::AuthorityId as BeefyId;
+use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Encode, OpaqueMetadata, H160, U256};
 use sp_mmr_primitives as mmr;
@@ -120,9 +120,7 @@ pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
-pub use frame_support::weights::constants::{
-    BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND,
-};
+pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
 pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
@@ -2889,8 +2887,8 @@ impl_runtime_apis! {
         }
     }
 
-    impl beefy_primitives::BeefyApi<Block> for Runtime {
-        fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
+    impl sp_beefy::BeefyApi<Block> for Runtime {
+        fn validator_set() -> Option<sp_beefy::ValidatorSet<BeefyId>> {
                 Beefy::validator_set()
         }
     }

@@ -39,7 +39,7 @@ use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
-use pallet_mmr_rpc::MmrApiClient;
+use mmr_rpc::MmrApiClient;
 use sp_core::Bytes;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use sp_runtime::traits::AtLeast32BitUnsigned;
@@ -151,7 +151,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>> {
+    pub fn mmr(&self) -> &impl mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>> {
         self.rpc()
     }
 

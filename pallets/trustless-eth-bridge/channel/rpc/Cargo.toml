@@ -12,15 +12,15 @@ codec = { package = "parity-scale-codec", version = "3" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 jsonrpsee = { version = "0.15.1", features = ["server", "macros"] }
 serde = { version = "1.0.101", features = ["derive"] }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 anyhow = "1.0"
 
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
 bridge-outbound-channel = { path = "../outbound" }
 common = { path = "../../../../common" }

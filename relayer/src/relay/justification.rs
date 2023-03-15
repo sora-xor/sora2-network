@@ -30,12 +30,12 @@
 
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, BlockHash, LeafProof};
-use beefy_primitives::crypto::Signature;
-use beefy_primitives::SignedCommitment;
 use bridge_common::bitfield::BitField;
 use codec::Encode;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
+use sp_beefy::crypto::Signature;
+use sp_beefy::SignedCommitment;
 use sp_runtime::traits::{AtLeast32Bit, Keccak256, UniqueSaturatedInto};
 use sp_runtime::traits::{Convert, Hash as HashTrait};
 use sp_runtime::Saturating;
@@ -154,16 +154,12 @@ where
     pub fn get_payload(commitment: &BeefyCommitment<T>) -> Option<MmrPayload> {
         commitment
             .payload
-            .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
+            .get_raw(&sp_beefy::known_payloads::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
             .and_then(|mmr_root: [u8; 32]| {
                 let payload = hex::encode(commitment.payload.encode());
                 let mmr_root_with_id = hex::encode(
-                    (
-                        beefy_primitives::known_payloads::MMR_ROOT_ID,
-                        mmr_root.to_vec(),
-                    )
-                        .encode(),
+                    (sp_beefy::known_payloads::MMR_ROOT_ID, mmr_root.to_vec()).encode(),
                 );
                 let (prefix, suffix) = if let Some(x) = payload.strip_suffix(&mmr_root_with_id) {
                     (x, "")

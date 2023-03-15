@@ -140,12 +140,12 @@ where
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
-    C::Api: pallet_mmr_rpc::MmrRuntimeApi<
+    C::Api: mmr_rpc::MmrRuntimeApi<
         Block,
         <Block as sp_runtime::traits::Block>::Hash,
         <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
     >,
-    C::Api: beefy_primitives::BeefyApi<Block>,
+    C::Api: sp_beefy::BeefyApi<Block>,
     C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
     C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
     C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
@@ -162,8 +162,8 @@ where
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
+    use mmr_rpc::{Mmr, MmrApiServer};
     use oracle_proxy_rpc::{OracleProxyApiServer, OracleProxyClient};
-    use pallet_mmr_rpc::{Mmr, MmrApiServer};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     // use farming_rpc::*;

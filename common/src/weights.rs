@@ -30,7 +30,7 @@
 
 use frame_support::parameter_types;
 use frame_support::weights::constants::{
-    BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
+    BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_REF_TIME_PER_SECOND,
 };
 use frame_support::weights::Weight;
 use frame_system::limits;
@@ -58,7 +58,9 @@ pub struct PresetWeightInfo<T>(PhantomData<T>);
 /// by  Operational  extrinsics.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
-const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_mul(2).set_proof_size(2);
+const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND)
+    .saturating_mul(2)
+    .set_proof_size(2);
 pub const ON_INITIALIZE_RATIO: Perbill = Perbill::from_perthousand(20);
 
 parameter_types! {
