@@ -127,6 +127,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
             // Check that the extrinsic was signed and get the signer.
@@ -167,6 +168,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn withdraw(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             // Check that the extrinsic was signed and get the signer.
@@ -204,6 +206,7 @@ pub mod pallet {
         }
 
         /// Change RewardsRemaining
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::change_rewards_remaining())]
         pub fn change_rewards_remaining(
             origin: OriginFor<T>,

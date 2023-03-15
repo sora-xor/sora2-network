@@ -702,6 +702,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(0)]
         pub fn swap(
             _origin: OriginFor<T>,

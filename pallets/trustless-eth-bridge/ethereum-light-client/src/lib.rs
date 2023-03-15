@@ -272,6 +272,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
@@ -312,6 +313,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::update_difficulty_config())]
         pub fn update_difficulty_config(
             origin: OriginFor<T>,
@@ -338,6 +340,7 @@ pub mod pallet {
         ///   for each DAG node selected in the "hashimoto"-loop.
         /// - Iterating over ancestors: min `DescendantsUntilFinalized` reads to find the
         ///   newly finalized ancestor of a header.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::import_header())]
         pub fn import_header(
             origin: OriginFor<T>,

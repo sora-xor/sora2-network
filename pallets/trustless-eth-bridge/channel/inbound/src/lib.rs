@@ -152,6 +152,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::submit())]
         pub fn submit(
             origin: OriginFor<T>,
@@ -199,6 +200,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
         pub fn message_dispatched(
             origin: OriginFor<T>,
@@ -246,6 +248,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::register_channel())]
         pub fn register_channel(
             origin: OriginFor<T>,
@@ -258,6 +261,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reward_fraction())]
         pub fn set_reward_fraction(
             origin: OriginFor<T>,

@@ -460,6 +460,7 @@ pub mod pallet {
         /// network.
         /// - `initial_peers` - a set of initial network peers.
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
@@ -491,6 +492,7 @@ pub mod pallet {
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
         #[transactional]
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -523,6 +525,7 @@ pub mod pallet {
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -568,6 +571,7 @@ pub mod pallet {
         /// - `amount` - amount of the asset.
         /// - `network_id` - network identifier.
         #[transactional]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -603,6 +607,7 @@ pub mod pallet {
         /// - `network_id` - network identifier.
 
         #[transactional]
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
@@ -652,6 +657,7 @@ pub mod pallet {
         /// Parameters:
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request())]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
@@ -678,6 +684,7 @@ pub mod pallet {
         /// - `network_id` - network identifier.
 
         #[transactional]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -725,6 +732,7 @@ pub mod pallet {
         /// - `network_id` - network identifier.
 
         #[transactional]
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -791,6 +799,7 @@ pub mod pallet {
         /// - `network_id` - bridge network identifier.
 
         #[transactional]
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
@@ -828,6 +837,7 @@ pub mod pallet {
         /// - `network_id` - bridge network identifier.
 
         #[transactional]
+        #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -862,6 +872,7 @@ pub mod pallet {
         /// corresponding load-incoming-request and removes the load-request from the queue.
         ///
         /// Can only be called by a bridge account.
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request())]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
@@ -882,6 +893,7 @@ pub mod pallet {
         /// succeeded, otherwise aborts the load request.
         ///
         /// Can only be called by a bridge account.
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::import_incoming_request(incoming_request_result.is_ok()))]
         pub fn import_incoming_request(
             origin: OriginFor<T>,
@@ -902,6 +914,7 @@ pub mod pallet {
         ///
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_request())]
         pub fn approve_request(
             origin: OriginFor<T>,
@@ -929,6 +942,7 @@ pub mod pallet {
         /// removes it from the request queues.
         ///
         /// Can only be called from a bridge account.
+        #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
         pub fn abort_request(
             origin: OriginFor<T>,
@@ -951,6 +965,7 @@ pub mod pallet {
         /// Can only be called by a root account.
 
         #[transactional]
+        #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
@@ -975,6 +990,7 @@ pub mod pallet {
         /// Remove asset
         ///
         /// Can only be called by root.
+        #[pallet::call_index(15)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
         pub fn remove_sidechain_asset(
             origin: OriginFor<T>,
@@ -996,6 +1012,7 @@ pub mod pallet {
         /// Register existing asset
         ///
         /// Can only be called by root.
+        #[pallet::call_index(16)]
         #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
