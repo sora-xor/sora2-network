@@ -35,6 +35,7 @@ use common::{
     assert_approx_eq, balance, AssetId32, Balance, LiquidityProxyTrait, LiquiditySourceFilter,
     LiquiditySourceType, PredefinedAssetId, XOR,
 };
+use std::collections::HashMap;
 
 #[inline]
 pub fn mcbc_excluding_filter(dex: DEXId) -> LiquiditySourceFilter<DEXId, LiquiditySourceType> {
@@ -49,18 +50,30 @@ pub fn check_swap_batch_executed_amount(
 ) {
     swap_batches.into_iter().for_each(|batch| {
         let asset_id = batch.outcome_asset_id;
+
+        // used for aggregating info about receivers and their desired amounts, since
+        // there are possible duplicate accounts under the same asset_id
+        let mut account_desired_amount: HashMap<AccountId, Balance> = HashMap::new();
         batch.receivers.into_iter().for_each(|receiver_info| {
             let BatchReceiverInfo {
                 account_id,
                 target_amount,
             } = receiver_info;
 
-            assert_approx_eq!(
-                target_amount,
-                Assets::free_balance(&asset_id, &account_id).unwrap(),
-                balance!(0.00001)
-            )
-        })
+            account_desired_amount
+                .entry(account_id)
+                .and_modify(|balance| *balance += target_amount)
+                .or_insert(target_amount);
+        });
+        account_desired_amount
+            .into_iter()
+            .for_each(|(account_id, desired_amount)| {
+                assert_approx_eq!(
+                    desired_amount,
+                    Assets::free_balance(&asset_id, &account_id).unwrap(),
+                    balance!(0.00001)
+                )
+            })
     });
 }
 
