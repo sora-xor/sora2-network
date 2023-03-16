@@ -263,13 +263,13 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
                 ],
                 EthBridgeParams {
-                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                    xor_master_contract_address: hex!("7F62CCd5566c64cfb785f73B3c19653D93e5414c")
                         .into(),
-                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
-                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                    xor_contract_address: hex!("2F4e425760546600B73D7bD66C80d45c77D1135b").into(),
+                    val_master_contract_address: hex!("e2C58207Cc6dF5565044eccffdf7aeb2DAe89647")
                         .into(),
-                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
+                    val_contract_address: hex!("46d22744E171969f9D32C75E4c192aF79e3bb70E").into(),
+                    bridge_contract_address: hex!("401c6A23a44f72151D90878DF0aa86E77fBde0e2")
                         .into(),
                 },
                 vec![
