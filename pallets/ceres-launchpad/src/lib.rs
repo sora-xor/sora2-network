@@ -871,7 +871,7 @@ pub mod pallet {
         }
 
         /// Claim LP tokens
-        #[pallet::call_index(0)]
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_lp_tokens())]
         pub fn claim_lp_tokens(
             origin: OriginFor<T>,
