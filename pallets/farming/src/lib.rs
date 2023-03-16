@@ -32,6 +32,7 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -69,12 +70,10 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
 
     fn on_pool_created(
         _fee_account: Self::AccountId,
-        dex_id: Self::DEXId,
+        _dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        if dex_id == common::DEXId::Polkaswap.into() {
-            Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
-        }
+        Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
         Ok(())
     }
 }
