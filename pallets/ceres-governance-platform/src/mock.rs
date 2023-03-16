@@ -221,15 +221,9 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 

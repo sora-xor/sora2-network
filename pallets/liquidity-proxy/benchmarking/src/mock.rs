@@ -175,15 +175,9 @@ impl tokens::Config for Runtime {
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 

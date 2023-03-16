@@ -269,7 +269,6 @@ parameter_types! {
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 0;
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
     pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
@@ -557,8 +556,6 @@ impl pallet_session::historical::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-    type UncleGenerations = UncleGenerations;
-    type FilterUncle = ();
     type EventHandler = (Staking, ImOnline);
 }
 
@@ -587,7 +584,6 @@ impl pallet_staking::Config for Runtime {
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = SlashCancelOrigin;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
@@ -825,15 +821,9 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -2162,7 +2152,7 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
         Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         Historical: pallet_session_historical::{Pallet} = 13,
@@ -2260,7 +2250,7 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
         Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         Historical: pallet_session_historical::{Pallet} = 13,

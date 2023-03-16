@@ -466,15 +466,9 @@ impl tokens::Config for Runtime {
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -584,7 +578,6 @@ impl pallet_staking::Config for Runtime {
     type Slash = ();
     type SessionsPerEra = ();
     type SlashDeferDuration = ();
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type BondingDuration = BondingDuration;
     type SessionInterface = Self;
     type NextNewSession = Session;
