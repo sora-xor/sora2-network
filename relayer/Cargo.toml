@@ -13,7 +13,10 @@ beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", bra
 bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
 bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
 leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
-ethers = "2.0.0"
+ethers = { version = "1.0.2", features = [
+  "ws",
+  "rustls",
+] }
 common = { path = "../common" }
 subxt = "0.27.1"
 tokio = { version = "1.14.0", features = ["full"] }

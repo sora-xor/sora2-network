@@ -45,13 +45,14 @@ use sp_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
+use subxt::blocks::ExtrinsicEvents;
 use subxt::events::EventDetails;
 use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
 use subxt::rpc::{rpc_params, RpcClientT};
 use subxt::storage::address::Yes;
 use subxt::storage::StorageAddress;
-use subxt::tx::{Signer, TxEvents};
+use subxt::tx::Signer;
 pub use types::*;
 
 // Find first occurence of value in storage with increasing values
@@ -91,7 +92,7 @@ pub fn event_to_string<T: ConfigExt>(ev: EventDetails) -> String {
     format!("(Phase: {:?}, Event: {:?})", phase, event)
 }
 
-pub fn log_tx_events<T: ConfigExt>(events: TxEvents<T::Config>) {
+pub fn log_extrinsic_events<T: ConfigExt>(events: ExtrinsicEvents<T::Config>) {
     for ev in events.iter() {
         match ev {
             Ok(ev) => {
@@ -151,7 +152,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>> {
+    pub fn mmr(&self) -> &impl mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>, MmrHash> {
         self.rpc()
     }
 
@@ -405,7 +406,7 @@ impl<T: ConfigExt> SignedClient<T> {
 
     pub async fn submit_extrinsic<P: subxt::tx::TxPayload>(&self, xt: &P) -> AnyResult<()>
     where
-        <<<T as ConfigExt>::Config as subxt::Config>::ExtrinsicParams as subxt::tx::ExtrinsicParams<
+        <<<T as ConfigExt>::Config as subxt::Config>::ExtrinsicParams as subxt::config::ExtrinsicParams<
             <<T as ConfigExt>::Config as subxt::Config>::Index,
             <<T as ConfigExt>::Config as subxt::Config>::Hash,
         >>::OtherParams: Default,
@@ -427,7 +428,7 @@ impl<T: ConfigExt> SignedClient<T> {
             .await?
             .wait_for_success()
             .await?;
-        log_tx_events::<T>(res);
+        log_extrinsic_events::<T>(res);
         Ok(())
     }
 
@@ -473,16 +474,6 @@ impl<T: ConfigExt> DerefMut for SignedClient<T> {
 impl<T: ConfigExt> Signer<T::Config> for SignedClient<T> {
     fn account_id(&self) -> &AccountId<T> {
         self.key.account_id()
-    }
-
-    fn nonce(&self) -> Option<Index<T>> {
-        let res = *self.nonce.read().expect("poisoned");
-        self.nonce
-            .write()
-            .expect("poisoned")
-            .as_mut()
-            .map(|nonce| *nonce += 1u32.into());
-        res
     }
 
     fn sign(&self, extrinsic: &[u8]) -> Signature<T> {

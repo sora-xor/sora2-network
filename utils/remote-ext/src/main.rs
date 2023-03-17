@@ -4,17 +4,17 @@ extern crate log;
 use clap::Parser;
 use common::prelude::QuoteAmount;
 use common::{balance, DEXId, LiquiditySourceFilter};
+use frame_remote_externalities::RemoteExternalities;
 use frame_remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig};
 use frame_support::traits::OnRuntimeUpgrade;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
-use sp_io::TestExternalities;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
 use framenode_runtime::Runtime;
 use std::sync::Arc;
 
-async fn create_ext<B>(client: Arc<WsClient>) -> AnyResult<TestExternalities>
+async fn create_ext<B>(client: Arc<WsClient>) -> AnyResult<RemoteExternalities<B>>
 where
     B: DeserializeOwned + BlockT,
     <B as BlockT>::Header: DeserializeOwned,
