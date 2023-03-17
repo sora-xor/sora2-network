@@ -25,7 +25,7 @@ bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "pol
 bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-jsonrpsee = { version = "0.15.1", features = [
+jsonrpsee = { version = "0.16.2", features = [
     "macros",
     "ws-client",
     "http-client",

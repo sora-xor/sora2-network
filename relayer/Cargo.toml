@@ -20,7 +20,7 @@ tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
 http = "0.2.6"
 anyhow = "1.0.51"
-jsonrpsee = { version = "0.15.1", features = [
+jsonrpsee = { version = "0.16.2", features = [
   "macros",
   "ws-client",
   "http-client",

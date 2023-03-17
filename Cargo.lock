@@ -199,9 +199,9 @@ dependencies = [
 
 [[package]]
 name = "anstyle"
-version = "0.3.1"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c697cc33851b02ab0c26b2e8a211684fbe627ff1cc506131f35026dd7686dd"
+checksum = "1ba0b55c2201aa802adb684e7963ce2c3191675629e7df899774331e3ac747cf"
 
 [[package]]
 name = "anyhow"
@@ -332,9 +332,9 @@ checksum = "e22d1f4b888c298a027c99dc9048015fac177587de20fc30232a057dfbe24a21"
 
 [[package]]
 name = "assert_cmd"
-version = "2.0.9"
+version = "2.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0dcbed38184f9219183fcf38beb4cdbf5df7163a6d7cd227c6ac89b7966d6fe"
+checksum = "ec0b2340f55d9661d76793b2bfc2eb0e62689bd79d067a95707ea762afd5e9dd"
 dependencies = [
  "anstyle",
  "bstr",
@@ -375,7 +375,7 @@ version = "0.1.0"
 dependencies = [
  "assets-runtime-api",
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -758,7 +758,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "beefy-gadget",
  "futures 0.3.27",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -773,7 +773,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "beefy-merkle-tree",
  "bridge-common",
@@ -794,10 +794,10 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "beefy-light-client-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -811,7 +811,7 @@ dependencies = [
 [[package]]
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -1036,7 +1036,7 @@ dependencies = [
  "bridge-outbound-channel",
  "bridge-types",
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -1052,7 +1052,7 @@ dependencies = [
 [[package]]
 name = "bridge-common"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bitvec 1.0.1",
  "bridge-types",
@@ -1133,7 +1133,7 @@ dependencies = [
 [[package]]
 name = "bridge-types"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "enum-iterator",
  "ethabi 17.2.0",
@@ -1667,13 +1667,13 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.1.8"
+version = "4.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d7ae14b20b94cb02149ed21a86c423859cbe18dc7ed69845cace50e52b40a5"
+checksum = "9a9d6ada83c1edcce028902ea27dd929069c70df4c7600b131b4d9a1ad2879cc"
 dependencies = [
  "bitflags",
- "clap_derive 4.1.8",
- "clap_lex 0.3.2",
+ "clap_derive 4.1.9",
+ "clap_lex 0.3.3",
  "is-terminal",
  "once_cell",
  "strsim",
@@ -1707,9 +1707,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.1.8"
+version = "4.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44bec8e5c9d09e439c4335b1af0abaab56dcf3b94999a936e1bb47b9134288f0"
+checksum = "fddf67631444a3a3e3e5ac51c36a5e01335302de677bd78759eaa90ab1f46644"
 dependencies = [
  "heck 0.4.1",
  "proc-macro-error",
@@ -1729,9 +1729,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "350b9cf31731f9957399229e9b2adc51eeabdfbe9d71d9a0552275fd12710d09"
+checksum = "033f6b7a4acb1f358c742aaca805c939ee73b4c6209ae4318ec7aca81c42e646"
 dependencies = [
  "os_str_bytes",
 ]
@@ -2552,7 +2552,7 @@ version = "0.1.0"
 dependencies = [
  "common",
  "dex-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -2593,7 +2593,7 @@ version = "0.1.0"
 dependencies = [
  "common",
  "dex-manager-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -2708,7 +2708,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bridge-types",
  "frame-benchmarking",
@@ -3139,7 +3139,7 @@ dependencies = [
  "common",
  "eth-bridge",
  "eth-bridge-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -3625,7 +3625,7 @@ dependencies = [
  "bridge-types",
  "common",
  "evm-bridge-proxy-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -3726,7 +3726,7 @@ name = "farming-rpc"
 version = "0.1.0"
 dependencies = [
  "farming-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "sp-api",
  "sp-blockchain",
@@ -3828,9 +3828,9 @@ dependencies = [
 
 [[package]]
 name = "finality-grandpa"
-version = "0.16.1"
+version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e24e6c429951433ccb7c87fd528c60084834dcd14763182c1f83291bcde24c34"
+checksum = "36530797b9bf31cd4ff126dcfee8170f86b00cfdcea3269d73133cc0415945c3"
 dependencies = [
  "either",
  "futures 0.3.27",
@@ -3990,7 +3990,7 @@ dependencies = [
  "Inflector",
  "array-bytes",
  "chrono",
- "clap 4.1.8",
+ "clap 4.1.9",
  "comfy-table",
  "frame-benchmarking",
  "frame-support",
@@ -4237,7 +4237,7 @@ dependencies = [
  "beefy-light-client",
  "beefy-light-client-rpc",
  "bridge-channel-rpc",
- "clap 4.1.8",
+ "clap 4.1.9",
  "common",
  "derive_more",
  "dex-api-rpc",
@@ -4256,7 +4256,7 @@ dependencies = [
  "hex-literal",
  "iroha-migration",
  "iroha-migration-rpc",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "leaf-provider-rpc",
  "libsecp256k1",
  "liquidity-proxy-rpc",
@@ -5348,10 +5348,11 @@ checksum = "59ce5ef949d49ee85593fc4d3f3f95ad61657076395cbbce23e2121fc5542074"
 
 [[package]]
 name = "io-lifetimes"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfa919a82ea574332e2de6e74b4c36e74d41982b335080fa59d4ef31be20fdf3"
+checksum = "76e86b86ae312accbf05ade23ce76b625e0e47a255712b7414037385a1c05380"
 dependencies = [
+ "hermit-abi 0.3.1",
  "libc",
  "windows-sys 0.45.0",
 ]
@@ -5417,7 +5418,7 @@ version = "0.1.0"
 dependencies = [
  "common",
  "iroha-migration-runtime-api",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "sp-api",
  "sp-blockchain",
  "sp-rpc",
@@ -5438,7 +5439,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21b6b32576413a8e69b90e952e4a026476040d81017b80445deda5f2d3921857"
 dependencies = [
  "hermit-abi 0.3.1",
- "io-lifetimes 1.0.6",
+ "io-lifetimes 1.0.7",
  "rustix 0.36.9",
  "windows-sys 0.45.0",
 ]
@@ -5490,55 +5491,18 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bd0d559d5e679b1ab2f869b486a11182923863b1b3ee8b421763cdd707b783a"
-dependencies = [
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-http-client 0.15.1",
- "jsonrpsee-http-server",
- "jsonrpsee-proc-macros 0.15.1",
- "jsonrpsee-types 0.15.1",
- "jsonrpsee-ws-client 0.15.1",
- "jsonrpsee-ws-server",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d291e3a5818a2384645fd9756362e6d89cf0541b0b916fa7702ea4a9833608e"
 dependencies = [
- "jsonrpsee-client-transport 0.16.2",
- "jsonrpsee-core 0.16.2",
- "jsonrpsee-http-client 0.16.2",
- "jsonrpsee-proc-macros 0.16.2",
+ "jsonrpsee-client-transport",
+ "jsonrpsee-core",
+ "jsonrpsee-http-client",
+ "jsonrpsee-proc-macros",
  "jsonrpsee-server",
- "jsonrpsee-types 0.16.2",
- "jsonrpsee-ws-client 0.16.2",
+ "jsonrpsee-types",
+ "jsonrpsee-ws-client",
  "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-client-transport"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8752740ecd374bcbf8b69f3e80b0327942df76f793f8d4e60d3355650c31fb74"
-dependencies = [
- "futures-util",
- "http",
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-types 0.15.1",
- "pin-project",
- "rustls-native-certs",
- "soketto",
- "thiserror",
- "tokio",
- "tokio-rustls",
- "tokio-util",
- "tracing",
- "webpki-roots",
 ]
 
 [[package]]
@@ -5549,8 +5513,8 @@ checksum = "965de52763f2004bc91ac5bcec504192440f0b568a5d621c59d9dbd6f886c3fb"
 dependencies = [
  "futures-util",
  "http",
- "jsonrpsee-core 0.16.2",
- "jsonrpsee-types 0.16.2",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
  "pin-project",
  "rustls-native-certs",
  "soketto",
@@ -5560,38 +5524,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "webpki-roots",
-]
-
-[[package]]
-name = "jsonrpsee-core"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3dc3e9cf2ba50b7b1d7d76a667619f82846caa39e8e8daa8a4962d74acaddca"
-dependencies = [
- "anyhow",
- "arrayvec 0.7.2",
- "async-lock",
- "async-trait",
- "beef",
- "futures-channel",
- "futures-timer",
- "futures-util",
- "globset",
- "http",
- "hyper",
- "jsonrpsee-types 0.15.1",
- "lazy_static",
- "parking_lot 0.12.1",
- "rand 0.8.5",
- "rustc-hash",
- "serde",
- "serde_json",
- "soketto",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-futures",
- "unicase",
 ]
 
 [[package]]
@@ -5610,7 +5542,7 @@ dependencies = [
  "futures-util",
  "globset",
  "hyper",
- "jsonrpsee-types 0.16.2",
+ "jsonrpsee-types",
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "rustc-hash",
@@ -5624,26 +5556,6 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-http-client"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52f7c0e2333ab2115c302eeb4f137c8a4af5ab609762df68bbda8f06496677c9"
-dependencies = [
- "async-trait",
- "hyper",
- "hyper-rustls",
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-types 0.15.1",
- "rustc-hash",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-futures",
-]
-
-[[package]]
-name = "jsonrpsee-http-client"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc345b0a43c6bc49b947ebeb936e886a419ee3d894421790c969cc56040542ad"
@@ -5651,44 +5563,14 @@ dependencies = [
  "async-trait",
  "hyper",
  "hyper-rustls",
- "jsonrpsee-core 0.16.2",
- "jsonrpsee-types 0.16.2",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
  "rustc-hash",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-http-server"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03802f0373a38c2420c70b5144742d800b509e2937edc4afb116434f07120117"
-dependencies = [
- "futures-channel",
- "futures-util",
- "hyper",
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-types 0.15.1",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-futures",
-]
-
-[[package]]
-name = "jsonrpsee-proc-macros"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd67957d4280217247588ac86614ead007b301ca2fa9f19c19f880a536f029e3"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -5714,8 +5596,8 @@ dependencies = [
  "futures-util",
  "http",
  "hyper",
- "jsonrpsee-core 0.16.2",
- "jsonrpsee-types 0.16.2",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
  "serde",
  "serde_json",
  "soketto",
@@ -5723,20 +5605,6 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "tower",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-types"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e290bba767401b646812f608c099b922d8142603c9e73a50fb192d3ac86f4a0d"
-dependencies = [
- "anyhow",
- "beef",
- "serde",
- "serde_json",
- "thiserror",
  "tracing",
 ]
 
@@ -5756,46 +5624,14 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-ws-client"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ee5feddd5188e62ac08fcf0e56478138e581509d4730f3f7be9b57dd402a4ff"
-dependencies = [
- "http",
- "jsonrpsee-client-transport 0.15.1",
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-types 0.15.1",
-]
-
-[[package]]
-name = "jsonrpsee-ws-client"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b83daeecfc6517cfe210df24e570fb06213533dfb990318fae781f4c7119dd9"
 dependencies = [
  "http",
- "jsonrpsee-client-transport 0.16.2",
- "jsonrpsee-core 0.16.2",
- "jsonrpsee-types 0.16.2",
-]
-
-[[package]]
-name = "jsonrpsee-ws-server"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d488ba74fb369e5ab68926feb75a483458b88e768d44319f37e4ecad283c7325"
-dependencies = [
- "futures-channel",
- "futures-util",
- "http",
- "jsonrpsee-core 0.15.1",
- "jsonrpsee-types 0.15.1",
- "serde_json",
- "soketto",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-futures",
+ "jsonrpsee-client-transport",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
 ]
 
 [[package]]
@@ -5898,7 +5734,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "leaf-provider"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "beefy-merkle-tree",
  "bridge-types",
@@ -5921,9 +5757,9 @@ dependencies = [
 [[package]]
 name = "leaf-provider-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "leaf-provider-runtime-api",
  "parity-scale-codec",
  "scale-info",
@@ -5939,7 +5775,7 @@ dependencies = [
 [[package]]
 name = "leaf-provider-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bridge-types",
  "parity-scale-codec",
@@ -6645,7 +6481,7 @@ name = "liquidity-proxy-rpc"
 version = "0.1.0"
 dependencies = [
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "liquidity-proxy-runtime-api",
  "parity-scale-codec",
  "serde",
@@ -6951,7 +6787,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "anyhow",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -7583,7 +7419,7 @@ dependencies = [
 name = "oracle-proxy-rpc"
 version = "1.0.0"
 dependencies = [
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "oracle-proxy-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -8193,7 +8029,7 @@ name = "pallet-transaction-payment-rpc"
 version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -8241,7 +8077,7 @@ dependencies = [
  "bridge-common",
  "bridge-types",
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "reqwest",
  "scale-info",
@@ -9109,7 +8945,7 @@ name = "pswap-distribution-rpc"
 version = "0.1.0"
 dependencies = [
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "pswap-distribution-runtime-api",
  "serde",
@@ -9607,7 +9443,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "http",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "k256",
  "keccak-hasher",
  "leaf-provider-rpc",
@@ -9653,7 +9489,7 @@ dependencies = [
  "frame-system",
  "framenode-runtime",
  "hex",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "liquidity-proxy",
  "log",
  "parity-scale-codec",
@@ -9752,7 +9588,7 @@ name = "rewards-rpc"
 version = "0.1.0"
 dependencies = [
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "rewards-runtime-api",
  "serde",
@@ -9982,7 +9818,7 @@ checksum = "fd5c6ff11fecd55b40746d1995a02f2eb375bf8c00d192d521ee09f42bef37bc"
 dependencies = [
  "bitflags",
  "errno",
- "io-lifetimes 1.0.6",
+ "io-lifetimes 1.0.7",
  "libc",
  "linux-raw-sys 0.1.4",
  "windows-sys 0.45.0",
@@ -10167,7 +10003,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "array-bytes",
  "chrono",
- "clap 4.1.8",
+ "clap 4.1.9",
  "fdlimit",
  "futures 0.3.27",
  "libp2p",
@@ -10752,7 +10588,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "futures 0.3.27",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -10781,7 +10617,7 @@ name = "sc-rpc-api"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "parity-scale-codec",
  "sc-chain-spec",
  "sc-transaction-pool-api",
@@ -10801,7 +10637,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "http",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "serde_json",
  "substrate-prometheus-endpoint",
@@ -10819,7 +10655,7 @@ dependencies = [
  "futures 0.3.27",
  "futures-util",
  "hex",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -10846,7 +10682,7 @@ dependencies = [
  "exit-future",
  "futures 0.3.27",
  "futures-timer",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -10918,7 +10754,7 @@ name = "sc-storage-monitor"
 version = "0.1.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "clap 4.1.8",
+ "clap 4.1.9",
  "futures 0.3.27",
  "log",
  "nix 0.26.2",
@@ -12817,7 +12653,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-app"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -12840,7 +12676,7 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "bridge-types",
  "ethabi 17.2.0",
@@ -12864,11 +12700,11 @@ dependencies = [
 [[package]]
 name = "substrate-bridge-channel-rpc"
 version = "0.1.0"
-source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#6f4c841d7da42a4e27ad9e1cee7cd74b8019a3c5"
+source = "git+https://github.com/sora-xor/sora2-common.git?branch=polkadot-v0.9.38#9b89be9bcf11f88b74541904667dcbca30cf9dd2"
 dependencies = [
  "anyhow",
  "bridge-types",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -12898,7 +12734,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "frame-system-rpc-runtime-api",
  "futures 0.3.27",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "sc-rpc-api",
@@ -12921,7 +12757,7 @@ dependencies = [
  "common",
  "framenode-runtime",
  "hex",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -12949,7 +12785,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
  "async-trait",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "log",
  "sc-rpc-api",
  "serde",
@@ -13002,7 +12838,7 @@ dependencies = [
  "getrandom 0.2.8",
  "hex",
  "impl-serde",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "primitive-types 0.12.1",
@@ -13031,7 +12867,7 @@ dependencies = [
  "frame-metadata",
  "heck 0.4.1",
  "hex",
- "jsonrpsee 0.16.2",
+ "jsonrpsee",
  "parity-scale-codec",
  "proc-macro-error",
  "proc-macro2",
@@ -13589,7 +13425,7 @@ name = "trading-pair-rpc"
 version = "0.1.0"
 dependencies = [
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -13711,7 +13547,7 @@ name = "try-runtime-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#b12c8d200054c92586ec33f5dfc5d0e109958004"
 dependencies = [
- "clap 4.1.8",
+ "clap 4.1.9",
  "frame-remote-externalities",
  "hex",
  "log",
@@ -13807,15 +13643,6 @@ dependencies = [
  "crunchy 0.2.2",
  "hex",
  "static_assertions",
-]
-
-[[package]]
-name = "unicase"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
-dependencies = [
- "version_check",
 ]
 
 [[package]]
@@ -13996,7 +13823,7 @@ name = "vested-rewards-rpc"
 version = "0.1.0"
 dependencies = [
  "common",
- "jsonrpsee 0.15.1",
+ "jsonrpsee",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -14054,12 +13881,11 @@ checksum = "9d5b2c62b4012a3e1eca5a7e077d13b3bf498c4073e33ccd58626607748ceeca"
 
 [[package]]
 name = "walkdir"
-version = "2.3.2"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "808cf2735cd4b6866113f648b791c6adc5714537bc222d9347bb203386ffda56"
+checksum = "36df944cda56c7d8d8b7496af378e6b16de9284591917d307c9b4d313c44e698"
 dependencies = [
  "same-file",
- "winapi",
  "winapi-util",
 ]
 

@@ -25,7 +25,7 @@ clap = { version = "4.0.9", features = ["derive"] }
 ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.61"
-jsonrpsee = { version = "0.15.1", features = ["server"] }
+jsonrpsee = { version = "0.16.2", features = ["server"] }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.38", package = "pallet-multisig" }
 secp256k1 = { version = "0.7", features = ["hmac"], package = "libsecp256k1" }
 hex-literal = "0.3.1"

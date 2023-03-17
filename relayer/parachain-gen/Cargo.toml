@@ -13,7 +13,7 @@ codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
-jsonrpsee = { version = "0.15.1", features = [
+jsonrpsee = { version = "0.16.2", features = [
     "macros",
     "ws-client",
     "http-client",
