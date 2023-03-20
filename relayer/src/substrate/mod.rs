@@ -144,7 +144,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .max_notifs_per_subscription(4096)
             .build_with_tokio(sender, receiver);
         let client = ClonableClient(Arc::new(client));
-        let api = ApiInner::<T>::from_rpc_client(client.clone()).await?;
+        let api = ApiInner::<T>::from_rpc_client(client.clone().0).await?;
         Ok(Self { api, client })
     }
 
