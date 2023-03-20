@@ -124,14 +124,11 @@ where
     ) -> AnyResult<(LeafProof<T>, Proof<H256>)> {
         for block_number in 0u32..=6u32 {
             let block_number = commitment.block_number.saturating_sub(block_number.into());
-            let block_hash = sub.block_hash(block_number).await?;
-            let leaf_proof = sub
-                .mmr_generate_proof(block_number, Some(block_hash))
-                .await?;
+            let leaf_proof = sub.mmr_generate_proof(block_number, block_number).await?;
             let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
             debug!("Hashed leaf: {:?}", hashed_leaf);
             let proof = convert_to_simplified_mmr_proof(
-                leaf_proof.proof.leaf_index,
+                leaf_proof.proof.leaf_indices[0],
                 leaf_proof.proof.leaf_count,
                 &leaf_proof.proof.items,
             );

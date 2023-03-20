@@ -49,7 +49,7 @@ use subxt::blocks::ExtrinsicEvents;
 use subxt::events::EventDetails;
 use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
-use subxt::rpc::{rpc_params, RpcClientT};
+use subxt::rpc::{rpc_params, ChainBlockResponse, RpcClientT};
 use subxt::storage::address::Yes;
 use subxt::storage::StorageAddress;
 use subxt::tx::Signer;
@@ -265,17 +265,23 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn mmr_generate_proof(
         &self,
         block_number: BlockNumber<T>,
-        at: Option<BlockHash<T>>,
+        at: BlockNumber<T>,
     ) -> AnyResult<LeafProof<T>>
     where
         BlockNumber<T>: Serialize,
     {
-        let res = self.mmr().generate_proof(block_number, at).await?;
-        let leaf = MmrLeaf::<T>::decode(
-            &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
+        let res = self
+            .mmr()
+            .generate_proof(vec![block_number], Some(at), None)
+            .await?;
+        let leaf = Vec::<MmrLeaf<T>>::decode(
+            &mut &*EncodableOpaqueLeaf::decode(&mut res.leaves.as_ref())?
                 .into_opaque_leaf()
                 .0,
-        )?;
+        )?
+        .first()
+        .cloned()
+        .unwrap();
         let proof = Proof::<MmrHash>::decode(&mut res.proof.as_ref())?;
         Ok(LeafProof {
             leaf,
@@ -330,7 +336,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn block<N: Into<BlockNumberOrHash>>(
         &self,
         at: N,
-    ) -> AnyResult<ChainBlock<T::Config>> {
+    ) -> AnyResult<ChainBlockResponse<T::Config>> {
         let hash = self.block_hash(at).await?;
         let block = self
             .api()
