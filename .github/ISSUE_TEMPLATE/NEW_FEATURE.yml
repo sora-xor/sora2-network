@@ -1,0 +1,62 @@
+name: New Feature
+description: A clear and comprehensive description the new feature to be implemented.
+title: "[Feature]: "
+labels: ["feature"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Let us guide you through the creation of the issue that will enable the implementation of a new feature in the SORA network :)
+    
+  - type: input
+    id: feature-actor
+    attributes:
+      label: As a
+      description: Who is going to use the new feature ?
+      placeholder: user / developer / liquidity provider / ...
+    validations:
+      required: true
+   
+  - type: input
+    id: feature-action
+    attributes:
+      label: I want to
+      description: What is the feature? What does the feature enable you to do?
+      placeholder: Stake my assets
+    validations:
+      required: true
+
+  - type: input
+    id: feature-result
+    attributes:
+      label: So that
+      description: What is the goal of the new feature ? What problem does the new feature solve ?
+      placeholder: I can get rewards by supporting the SORA ecosystem
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-preconditions
+    attributes:
+      label: Preconditions
+      description: Is there any precondition that should be fulfilled for the feature to be usable ?
+      placeholder: Account needs to have 1337 XOR
+      
+  - type: textarea
+    id: feature-flow
+    attributes:
+      label: Flow
+      description: Can you provide any flow (and alternative flow if required) for the execution of the feature ?
+      placeholder: |
+        1. The user chooses the amount of XOR that they want to stake
+        2. The system locks the chosen amount of XOR from the user's account
+        3. ...
+
+  - type: textarea
+    id: feature-postconditions
+    attributes:
+      label: Postconditions
+      description: Are there any postconditions that should be fulfilled after the feature has been used?
+      placeholder: Account has the chosen amount of XOR locked
+      
