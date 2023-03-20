@@ -39,9 +39,9 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use crate::events::MessageDispatched;
-    use bridge_types::traits::{AppRegistry, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{AppRegistry, GasTracker, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
-    use bridge_types::{GenericNetworkId, Log, H256};
+    use bridge_types::{Address, GenericNetworkId, Log, H256};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -60,6 +60,8 @@ pub mod pallet {
         type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
 
         type Hashing: Hash<Output = H256>;
+
+        type GasTracker: GasTracker<BalanceOf<Self>>;
 
         type MessageStatusNotifier: MessageStatusNotifier<
             Self::AssetId,
@@ -199,11 +201,22 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// MessageDispatched event on Ethereum found, the function verifies tx and changes its
+        /// status.
+        ///
+        /// - `ethereum_tx_hash`: tx hash on Ethereum
+        /// - `ethereum_relayer_address`: address of relayer which paid fees.
+        /// - `gas_used`: gas used by tx.
+        /// - `gas_price`: gas price paid by relayer.
         #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
         pub fn message_dispatched(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             message: Message,
+            ethereum_tx_hash: H256,
+            ethereum_relayer_address: Address,
+            gas_used: U256,
+            gas_price: U256,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
@@ -231,10 +244,22 @@ pub mod pallet {
                 }
             })?;
 
+            let network_id = GenericNetworkId::EVM(network_id);
+            let message_id = MessageId::outbound(message_dispatched_event.nonce)
+                .using_encoded(|v| <T as Config>::Hashing::hash(v));
+
+            T::GasTracker::record_tx_fee(
+                network_id,
+                message_id,
+                ethereum_tx_hash,
+                ethereum_relayer_address,
+                gas_used,
+                gas_price,
+            );
+
             T::MessageStatusNotifier::update_status(
-                GenericNetworkId::EVM(network_id),
-                MessageId::outbound(message_dispatched_event.nonce)
-                    .using_encoded(|v| <T as Config>::Hashing::hash(v)),
+                network_id,
+                message_id,
                 if message_dispatched_event.result {
                     MessageStatus::Done
                 } else {

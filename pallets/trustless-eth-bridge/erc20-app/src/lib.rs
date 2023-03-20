@@ -289,7 +289,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,

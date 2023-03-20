@@ -10,15 +10,16 @@ mod test;
 mod benchmarking;
 
 use bridge_types::{
-    traits::MessageStatusNotifier,
+    traits::{GasTracker, MessageStatusNotifier},
     types::{MessageDirection, MessageStatus},
-    EVMChainId, GenericAccount, GenericNetworkId, H160, H256,
+    Address, EVMChainId, GenericAccount, GenericNetworkId, H160, H256,
 };
 use codec::{Decode, Encode};
 use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
 use frame_support::log;
 use scale_info::TypeInfo;
+use sp_core::U256;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
@@ -95,6 +96,12 @@ pub mod pallet {
         T::AccountId,
         OptionQuery,
     >;
+
+    /// Fee paid for relayed tx on sidechain. Map ((Network ID, Address) => Cumulative Fee Paid).
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_fee_paid)]
+    pub(super) type SidechainFeePaid<T: Config> =
+        StorageDoubleMap<_, Blake2_128Concat, GenericNetworkId, Blake2_128Concat, Address, U256>;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -188,6 +195,36 @@ pub mod pallet {
                 GenericNetworkId::Sub(_) => todo!(),
             }
         }
+    }
+}
+
+impl<T: Config> GasTracker<Balance> for Pallet<T> {
+    fn record_tx_fee(
+        network_id: GenericNetworkId,
+        message_id: H256,
+        ethereum_tx_hash: H256,
+        ethereum_relayer_address: Address,
+        gas_used: U256,
+        gas_price: U256,
+    ) {
+        log::debug!("Record tx fee: message_id={}, ethereum_tx_hash={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
+            message_id,
+            ethereum_tx_hash,
+            ethereum_relayer_address,
+            gas_used,
+            gas_price,
+        );
+
+        let tx_fee = gas_used * gas_price;
+
+        SidechainFeePaid::<T>::mutate(
+            network_id,
+            ethereum_relayer_address,
+            |maybe_cumulative_fee| {
+                let cumulative_fee = maybe_cumulative_fee.get_or_insert(U256::from(0));
+                *cumulative_fee += tx_fee;
+            },
+        );
     }
 }
 

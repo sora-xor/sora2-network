@@ -217,6 +217,14 @@ impl SubstrateMessagesRelay {
                     .get_transaction_receipt(meta.transaction_hash)
                     .await?
                     .expect("should exist");
+
+                let eth_tx_hash = meta.transaction_hash;
+                // relayer who paid for the gas
+                let relayer = tx.from;
+                // gas_used None means light client mode
+                let gas_used = tx.gas_used.unwrap_or(U256::from(0));
+                let gas_price = tx.effective_gas_price.unwrap_or(U256::from(0));
+
                 for log in tx.logs {
                     let raw_log = RawLog {
                         topics: log.topics.clone(),
@@ -236,7 +244,14 @@ impl SubstrateMessagesRelay {
                             .sign_and_submit_then_watch_default(
                                 &runtime::tx()
                                     .bridge_inbound_channel()
-                                    .message_dispatched(self.network_id, message),
+                                    .message_dispatched(
+                                        self.network_id,
+                                        message,
+                                        eth_tx_hash,
+                                        relayer,
+                                        gas_used,
+                                        gas_price
+                                    ),
                                 &self.sub,
                             )
                             .await?

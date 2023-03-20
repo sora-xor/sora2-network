@@ -16,7 +16,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
 use bridge_types::types::{Message, Proof};
-use bridge_types::{Log, H160, H256, U256};
+use bridge_types::{Address, Log, H160, H256, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{
@@ -246,6 +246,7 @@ impl bridge_inbound_channel::Config for Test {
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type Hashing = Keccak256;
+    type GasTracker = ();
     type MessageStatusNotifier = ();
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
@@ -524,7 +525,11 @@ fn test_message_dispatched_wrong_event() {
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
-                message.clone()
+                message.clone(),
+                Default::default(),
+                Address::zero(),
+                Default::default(),
+                Default::default(),
             ),
             Error::<Test>::InvalidMessageDispatchedEvent
         );
@@ -549,7 +554,11 @@ fn test_message_dispatched_with_invalid_source_channel() {
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
-                message.clone()
+                message.clone(),
+                Default::default(),
+                Address::zero(),
+                Default::default(),
+                Default::default(),
             ),
             Error::<Test>::InvalidSourceChannel
         );
@@ -573,7 +582,11 @@ fn test_message_dispatched_with_invalid_nonce() {
         assert_ok!(BridgeInboundChannel::message_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message.clone()
+            message.clone(),
+            Default::default(),
+            Address::zero(),
+            Default::default(),
+            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -583,7 +596,11 @@ fn test_message_dispatched_with_invalid_nonce() {
             BridgeInboundChannel::message_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
-                message.clone()
+                message.clone(),
+                Default::default(),
+                Address::zero(),
+                Default::default(),
+                Default::default(),
             ),
             Error::<Test>::InvalidNonce
         );
@@ -607,7 +624,11 @@ fn test_message_dispatched() {
         assert_ok!(BridgeInboundChannel::message_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_1
+            message_1,
+            Default::default(),
+            Address::zero(),
+            Default::default(),
+            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -624,7 +645,11 @@ fn test_message_dispatched() {
         assert_ok!(BridgeInboundChannel::message_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_2
+            message_2,
+            Default::default(),
+            Address::zero(),
+            Default::default(),
+            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -648,7 +673,11 @@ fn test_message_dispatched_refund() {
         assert_ok!(BridgeInboundChannel::message_dispatched(
             origin,
             BASE_NETWORK_ID,
-            message
+            message,
+            Default::default(),
+            Address::zero(),
+            Default::default(),
+            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
