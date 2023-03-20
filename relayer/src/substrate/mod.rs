@@ -406,7 +406,7 @@ impl<T: ConfigExt> SignedClient<T> {
 
     pub async fn submit_extrinsic<P: subxt::tx::TxPayload>(&self, xt: &P) -> AnyResult<()>
     where
-        <<<T as ConfigExt>::Config as subxt::Config>::ExtrinsicParams as subxt::config::ExtrinsicParams<
+        <<<T as ConfigExt>::Config as subxt::Config>::ExtrinsicParams as subxt::tx::ExtrinsicParams<
             <<T as ConfigExt>::Config as subxt::Config>::Index,
             <<T as ConfigExt>::Config as subxt::Config>::Hash,
         >>::OtherParams: Default,

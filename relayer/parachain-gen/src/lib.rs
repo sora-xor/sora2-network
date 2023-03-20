@@ -30,107 +30,73 @@
 
 #[subxt::subxt(
     runtime_metadata_path = "src/bytes/parachain_metadata.scale",
-    derive_for_all_types = "Clone",
-    substitute_type(
-        type = "beefy_light_client::ProvedSubstrateBridgeMessage",
-        with = "::beefy_light_client::ProvedSubstrateBridgeMessage"
-    ),
-    substitute_type(
-        type = "bridge_common::beefy_types::BeefyMMRLeaf",
-        with = "::bridge_common::beefy_types::BeefyMMRLeaf"
-    ),
-    substitute_type(
-        type = "bridge_common::beefy_types::Commitment",
-        with = "::bridge_common::beefy_types::Commitment"
-    ),
-    substitute_type(
-        type = "bridge_common::beefy_types::ValidatorProof",
-        with = "::bridge_common::beefy_types::ValidatorProof"
-    ),
-    substitute_type(
-        type = "bridge_common::beefy_types::ValidatorSet",
-        with = "::bridge_common::beefy_types::ValidatorSet"
-    ),
-    substitute_type(
-        type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof",
-        with = "::bridge_common::simplified_mmr_proof::SimplifiedMMRProof"
-    ),
-    substitute_type(
-        type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof",
-        with = "::bridge_types::ethashproof::DoubleNodeWithMerkleProof"
-    ),
-    substitute_type(
-        type = "bridge_types::network_config::NetworkConfig",
-        with = "::bridge_types::network_config::NetworkConfig"
-    ),
-    substitute_type(
-        type = "bridge_types::types::AssetKind",
-        with = "::bridge_types::types::AssetKind"
-    ),
-    substitute_type(
-        type = "bridge_types::types::AuxiliaryDigest",
-        with = "::bridge_types::types::AuxiliaryDigest"
-    ),
-    substitute_type(
-        type = "bridge_types::types::LeafExtraData",
-        with = "::bridge_types::types::LeafExtraData"
-    ),
-    substitute_type(
-        type = "bridge_types::types::Message",
-        with = "::bridge_types::types::Message"
-    ),
-    substitute_type(
-        type = "bridge_types::types::ParachainMessage",
-        with = "::bridge_types::types::ParachainMessage"
-    ),
-    substitute_type(
-        type = "bridge_types::GenericNetworkId",
-        with = "::bridge_types::GenericNetworkId"
-    ),
-    substitute_type(type = "bridge_types::header::Header", with = "::bridge_types::Header"),
-    substitute_type(
-        type = "bridge_types::header::HeaderId",
-        with = "::bridge_types::HeaderId"
-    ),
-    substitute_type(
-        type = "bridge_types::SubNetworkId",
-        with = "::bridge_types::SubNetworkId"
-    ),
-    substitute_type(
-        type = "beefy_primisp_beefytives::crypto::Public",
-        with = "::sp_beefy::crypto::Public"
-    ),
-    substitute_type(
-        type = "sp_beefy::mmr::BeefyAuthoritySet",
-        with = "::sp_beefy::mmr::BeefyAuthoritySet"
-    ),
-    substitute_type(type = "sp_beefy::mmr::MmrLeaf", with = "::sp_beefy::mmr::MmrLeaf"),
-    substitute_type(
-        type = "sp_beefy::commitment::Commitment",
-        with = "::sp_beefy::Commitment"
-    ),
-    substitute_type(type = "sp_core::ecdsa::Public", with = "::sp_core::ecdsa::Public"),
-    substitute_type(type = "primitive_types::H160", with = "::sp_core::H160"),
-    substitute_type(type = "primitive_types::H256", with = "::sp_core::H256"),
-    substitute_type(type = "primitive_types::H128", with = "::sp_core::H512"),
-    substitute_type(type = "primitive_types::U256", with = "::sp_core::U256"),
-    substitute_type(
-        type = "sp_runtime::MultiSignature",
-        with = "::sp_runtime::MultiSignature"
-    ),
-    substitute_type(type = "sp_runtime::MultiSigner", with = "::sp_runtime::MultiSigner"),
-    substitute_type(
-        type = "sp_runtime::bounded::bounded_vec::BoundedVec",
-        with = "::std::vec::Vec"
-    )
+    derive_for_all_types = "Clone"
 )]
-pub mod parachain_runtime {}
+pub mod parachain_runtime {
+    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
+    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
+    #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
+    use ::bridge_common::beefy_types::BeefyMMRLeaf;
+    #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
+    use ::bridge_common::beefy_types::Commitment;
+    #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorProof")]
+    use ::bridge_common::beefy_types::ValidatorProof;
+    #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorSet")]
+    use ::bridge_common::beefy_types::ValidatorSet;
+    #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
+    use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
+    #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
+    use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+    #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
+    use ::bridge_types::network_config::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::types::AssetKind")]
+    use ::bridge_types::types::AssetKind;
+    #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
+    use ::bridge_types::types::AuxiliaryDigest;
+    #[subxt(substitute_type = "bridge_types::types::LeafExtraData")]
+    use ::bridge_types::types::LeafExtraData;
+    #[subxt(substitute_type = "bridge_types::types::Message")]
+    use ::bridge_types::types::Message;
+    #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
+    use ::bridge_types::types::ParachainMessage;
+    #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
+    use ::bridge_types::GenericNetworkId;
+    #[subxt(substitute_type = "bridge_types::header::Header")]
+    use ::bridge_types::Header;
+    #[subxt(substitute_type = "bridge_types::header::HeaderId")]
+    use ::bridge_types::HeaderId;
+    #[subxt(substitute_type = "bridge_types::SubNetworkId")]
+    use ::bridge_types::SubNetworkId;
+    #[subxt(substitute_type = "sp_beefy::crypto::Public")]
+    use ::sp_beefy::crypto::Public;
+    #[subxt(substitute_type = "sp_beefy::mmr::BeefyAuthoritySet")]
+    use ::sp_beefy::mmr::BeefyAuthoritySet;
+    #[subxt(substitute_type = "sp_beefy::mmr::MmrLeaf")]
+    use ::sp_beefy::mmr::MmrLeaf;
+    #[subxt(substitute_type = "sp_beefy::commitment::Commitment")]
+    use ::sp_beefy::Commitment;
+    #[subxt(substitute_type = "sp_core::ecdsa::Public")]
+    use ::sp_core::ecdsa::Public;
+    #[subxt(substitute_type = "primitive_types::H160")]
+    use ::sp_core::H160;
+    #[subxt(substitute_type = "primitive_types::H256")]
+    use ::sp_core::H256;
+    #[subxt(substitute_type = "primitive_types::H128")]
+    use ::sp_core::H512;
+    #[subxt(substitute_type = "primitive_types::U256")]
+    use ::sp_core::U256;
+    #[subxt(substitute_type = "sp_runtime::MultiSignature")]
+    use ::sp_runtime::MultiSignature;
+    #[subxt(substitute_type = "sp_runtime::MultiSigner")]
+    use ::sp_runtime::MultiSigner;
+    #[subxt(substitute_type = "sp_runtime::bounded::bounded_vec::BoundedVec")]
+    use ::std::vec::Vec;
+}
 
 pub use config::*;
 pub mod config {
     use std::fmt::Debug;
-    use subxt::config::substrate::{BlakeTwo256, SubstrateHeader};
-    use subxt::{config::polkadot::PolkadotExtrinsicParams, Config};
+    use subxt::{tx::PolkadotExtrinsicParams, Config};
 
     pub type SoraExtrinsicParams = PolkadotExtrinsicParams<DefaultConfig>;
 
@@ -139,12 +105,14 @@ pub mod config {
 
     impl Config for DefaultConfig {
         type Index = u32;
+        type BlockNumber = u32;
         type Hash = sp_core::H256;
-        type Hasher = BlakeTwo256;
-        type Signature = sp_runtime::MultiSignature;
+        type Hashing = sp_runtime::traits::BlakeTwo256;
         type AccountId = <<Self::Signature as sp_runtime::traits::Verify>::Signer as sp_runtime::traits::IdentifyAccount>::AccountId;
         type Address = sp_runtime::MultiAddress<Self::AccountId, ()>;
-        type Header = SubstrateHeader<u32, Self::Hasher>;
+        type Header =
+            sp_runtime::generic::Header<Self::BlockNumber, sp_runtime::traits::BlakeTwo256>;
+        type Signature = sp_runtime::MultiSignature;
         type ExtrinsicParams = SoraExtrinsicParams;
     }
 }

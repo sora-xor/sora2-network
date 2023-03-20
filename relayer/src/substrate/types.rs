@@ -39,8 +39,8 @@ use sp_mmr_primitives::Proof;
 pub use substrate_gen::{
     runtime as mainnet_runtime, SoraExtrinsicParams as MainnetExtrinsicParams,
 };
-pub use subxt::rpc::types::ChainBlock;
-pub use subxt::rpc::types::Subscription;
+pub use subxt::rpc::ChainBlock;
+pub use subxt::rpc::Subscription;
 use subxt::Config as SubxtConfig;
 use subxt::OnlineClient;
 
@@ -55,10 +55,8 @@ pub type BlockHash<T> = <T as ConfigExt>::Hash;
 pub type Signature<T> = <<T as ConfigExt>::Config as SubxtConfig>::Signature;
 pub type Header<T> = <<T as ConfigExt>::Config as SubxtConfig>::Header;
 pub type ExtrinsicParams<T> = <<T as ConfigExt>::Config as SubxtConfig>::ExtrinsicParams;
-pub type OtherParams<T> = <ExtrinsicParams<T> as subxt::config::ExtrinsicParams<
-    Index<T>,
-    SubxtBlockHash<T>,
->>::OtherParams;
+pub type OtherParams<T> =
+    <ExtrinsicParams<T> as subxt::tx::ExtrinsicParams<Index<T>, SubxtBlockHash<T>>>::OtherParams;
 pub type MmrHash = H256;
 pub type LeafExtra = LeafExtraData<H256, H256>;
 pub type BeefySignedCommitment<T> =

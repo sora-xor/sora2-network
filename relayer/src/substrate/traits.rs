@@ -13,6 +13,7 @@ use sp_runtime::{
     DeserializeOwned,
 };
 use subxt::{
+    config::Parameter,
     metadata::DecodeStaticType,
     storage::{address::Yes, StaticStorageAddress},
     tx::{Signer, StaticTxPayload},
@@ -32,14 +33,18 @@ pub trait ConfigExt: Clone + core::fmt::Debug {
     type Config: subxt::Config + Clone;
     type Event: Decode + core::fmt::Debug + Send + Sync + 'static;
     type BlockNumber: AtLeast32BitUnsigned
+        + Parameter
         + Member
         + Copy
         + Into<u64>
         + Into<BlockNumberOrHash>
+        + Into<<Self::Config as subxt::Config>::BlockNumber>
+        + From<<Self::Config as subxt::Config>::BlockNumber>
         + Serialize
         // + Deserialize
         + DeserializeOwned;
-    type Hash: Member
+    type Hash: Parameter
+        + Member
         + Copy
         + Serialize
         // + Deserialize
