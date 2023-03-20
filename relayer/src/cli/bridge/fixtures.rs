@@ -170,7 +170,7 @@ impl FakeMMR {
         let size = Self::size(at);
         let pos = mmr_lib::leaf_index_to_pos(leaf);
         let mmr = mmr_lib::MMR::<MMRNode, MMRNode, _>::new(size, &self.mem);
-        let proof = mmr.gen_proof(vec![pos])?;
+        let proof = mmr.gen_proof(vec![pos]).unwrap();
         let proof = proof
             .proof_items()
             .iter()
@@ -230,12 +230,15 @@ impl MMRNode {
 impl mmr_lib::Merge for MMRNode {
     type Item = MMRNode;
 
-    fn merge(left: &Self::Item, right: &Self::Item) -> Self::Item {
+    fn merge(
+        left: &Self::Item,
+        right: &Self::Item,
+    ) -> core::result::Result<Self::Item, mmr_lib::Error> {
         let res = MMRNode::Hash(sp_runtime::traits::Keccak256::hash_of(&(
             left.hash(),
             right.hash(),
         )));
-        res
+        Ok(res)
     }
 }
 

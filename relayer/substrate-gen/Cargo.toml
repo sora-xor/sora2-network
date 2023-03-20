@@ -18,7 +18,7 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 
 [dependencies]
 common = { path = "../../common" }
-subxt = "0.27.1"
+subxt = { version = "0.25.0" }
 codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
 scale-info = { version = "2", features = ["derive"] }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
