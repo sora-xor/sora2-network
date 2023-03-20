@@ -74,14 +74,6 @@ pub mod runtime {
     use crate::SignatureParams;
     #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
     use ::beefy_light_client::ProvedSubstrateBridgeMessage;
-    #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
-    use ::beefy_primitives::crypto::Public;
-    #[subxt(substitute_type = "beefy_primitives::mmr::BeefyAuthoritySet")]
-    use ::beefy_primitives::mmr::BeefyAuthoritySet;
-    #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
-    use ::beefy_primitives::mmr::MmrLeaf;
-    #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
-    use ::beefy_primitives::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -126,6 +118,14 @@ pub mod runtime {
     use ::common::PredefinedAssetId;
     #[subxt(substitute_type = "common::primitives::RewardReason")]
     use ::common::RewardReason;
+    #[subxt(substitute_type = "sp_beefy::crypto::Public")]
+    use ::sp_beefy::crypto::Public;
+    #[subxt(substitute_type = "sp_beefy::mmr::BeefyAuthoritySet")]
+    use ::sp_beefy::mmr::BeefyAuthoritySet;
+    #[subxt(substitute_type = "sp_beefy::mmr::MmrLeaf")]
+    use ::sp_beefy::mmr::MmrLeaf;
+    #[subxt(substitute_type = "sp_beefy::commitment::Commitment")]
+    use ::sp_beefy::Commitment;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
     #[subxt(substitute_type = "primitive_types::H160")]
