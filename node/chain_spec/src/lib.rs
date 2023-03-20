@@ -261,6 +261,7 @@ pub fn dev_net_coded() -> ChainSpec {
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
                     hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
+                    hex!("aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69").into(),
                 ],
                 EthBridgeParams {
                     xor_master_contract_address: hex!("7F62CCd5566c64cfb785f73B3c19653D93e5414c")
