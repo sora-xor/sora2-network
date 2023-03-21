@@ -31,7 +31,7 @@
 use std::io::Write;
 
 use frame_remote_externalities::{
-    Builder, Mode, OfflineConfig, OnlineConfig, SnapshotConfig, Transport,
+    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig, Transport,
 };
 use sc_cli::CliConfiguration;
 use sc_service::Configuration;
@@ -85,7 +85,7 @@ impl ForkOffCmd {
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
         let transport: Transport = self.url.clone().into();
         let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
-        let ext: frame_remote_externalities::TestExternalities =
+        let ext: RemoteExternalities<framenode_runtime::Block> =
             Builder::<framenode_runtime::Block>::default()
                 .mode(if let Some(state_snapshot) = maybe_state_snapshot {
                     Mode::OfflineOrElseOnline(
