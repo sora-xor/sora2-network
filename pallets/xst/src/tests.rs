@@ -33,7 +33,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper,}, GetMarketInfo, assert_approx_eq, PriceToolsPallet };
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
@@ -721,8 +721,15 @@ mod tests {
             )
             .expect("Failed to quote XST -> XSTEURO");
 
+            let xst_to_xor_price = MockDEXApi::get_average_price(
+                &XST.into(),
+                &XOR.into(),
+                PriceVariant::Buy,
+            ).expect("Expected to calculate price XST->XOR");
+            let expected_fee_amount = FixedWrapper::from(quote_amount.amount() / 2) * FixedWrapper::from(xst_to_xor_price);
+
             assert_eq!(swap_outcome_after.amount, swap_outcome_before.amount / 2);
-            assert_eq!(swap_outcome_after.fee, quote_amount.amount() / 2);
+            assert_eq!(swap_outcome_after.fee, expected_fee_amount.into_balance());
         });
     }
 }
