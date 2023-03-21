@@ -567,7 +567,12 @@ impl<T: Config> Pallet<T> {
 
     /// Decompose SwapAmount into particular buy quotation query.
     ///
-    /// *Buy* means main asset buy (e.g., XST buy).
+    /// "Buy quotation" means that we give `synthetic_asset_id` to buy/get
+    /// `main_asset_id`. It means that `input_amount` is in `synthetic_asset_id`
+    /// and `output_amount` is in main currency.
+    ///
+    /// In other words, swap direction is
+    /// `synthetic_asset_id -> main_asset_id`
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_buy_amounts(
@@ -584,6 +589,8 @@ impl<T: Config> Pallet<T> {
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                // Calculate how much `main_asset_id` we will buy (get)
+                // if we give `desired_amount_in` of `synthetic_asset_id`
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -603,6 +610,8 @@ impl<T: Config> Pallet<T> {
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                // Calculate how much `synthetic_asset_id` we need to give to buy (get)
+                // `desired_amount_out` of `main_asset_id`
                 let desired_amount_out_with_fee = if deduce_fee {
                     (FixedWrapper::from(desired_amount_out) / (fixed_wrapper!(1) - fee_ratio))
                         .try_into_balance()
@@ -630,9 +639,14 @@ impl<T: Config> Pallet<T> {
 
     /// Decompose SwapAmount into particular sell quotation query.
     ///
-    /// *Sell* means main asset sell (e.g., XST sell).
+    /// "Sell quotation" means that we sell/give `main_asset_id` to get
+    /// `synthetic_asset_id`. It means that `input_amount` is in main
+    /// currency and `output_amount` is in `synthetic_asset_id`.
     ///
-    /// Returns ordered pair: (input_amount, output_amount, fee_amount).
+    /// In other words, swap direction is
+    /// `main_asset_id -> synthetic_asset_id`
+    ///
+    /// Returns ordered pair: `(input_amount, output_amount, fee_amount)`.
     fn decide_sell_amounts(
         main_asset_id: &T::AssetId,
         synthetic_asset_id: &T::AssetId,
@@ -647,6 +661,8 @@ impl<T: Config> Pallet<T> {
 
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                // Calculate how much `synthetic_asset_id` we will get
+                // if we sell `desired_amount_in` of `main_asset_id`
                 let fee_amount = if deduce_fee {
                     (fee_ratio * FixedWrapper::from(desired_amount_in))
                         .try_into_balance()
@@ -668,6 +684,8 @@ impl<T: Config> Pallet<T> {
                 (desired_amount_in, output_amount, fee_amount)
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                // Calculate how much `main_asset_id` we need to sell to get
+                // `desired_amount_out` of `synthetic_asset_id`
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -881,6 +899,48 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
+    /// Get spot price of tokens based on desired amount.
+    ///
+    /// ## How it works
+    ///
+    /// The implementation of this method might be quite confusing, so
+    /// let's review it in details.
+    ///
+    /// We have `input_asset_id` and `output_asset_id`. Let's call them $Id_{in}$ and $Id_{out}$ respectively.
+    ///
+    /// Also in the pallet there is a base synthetic asset ($b$, for example XST) and some other synthetic ($s$, XSTUSD or other similar assets).
+    ///
+    /// There are 2 cases:
+    /// 1. $Id_{in}=b$ and $Id_{out}=s$, we are **sell**ing (giving) base asset $b$ to get some other synthetic asset $s$.
+    /// 1. $Id_{in}=s$ and $Id_{out}=b$, we are **buy**ing (getting) base asset $b$ by giving some other synthetic asset $s$.
+    ///
+    /// For each of them we have 2 cases:
+    /// 1. `WithDesiredInput`
+    /// 1. `WithDesiredOutput`
+    ///
+    /// Also there are corresponding asset amount calculation funcitons:
+    ///
+    /// | name                 | direc-tion | description                                                                                                                  | in-code representation                               |
+    /// |----------------------|------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+    /// | $sell_{out}(x_{in})$ | $b$ -> $s$ | Calculate how much $s$ (secondary synthetic asset) we will get if we sell $x_{in}$ amount of $b$ (base/main synthetic asset) | `Self::decide_sell_amounts()`, `WithDesiredInput`  |
+    /// | $sell_{in}(x_{out})$ | $b$ -> $s$ | Calculate how much $b$ we need to sell to get $x_{out}$ amount of $s$                                                        | `Self::decide_sell_amounts()`, `WithDesiredOutput` |
+    /// | $buy_{out}(x_{in})$  | $s$ -> $b$ | Calculate how much $b$ we will buy (get) if we give $x_{in}$ amount of $s$                                                   | `Self::decide_buy_amounts()`, `WithDesiredInput`   |
+    /// | $buy_{in}(x_{out})$  | $s$ -> $b$ | Calculate how much $s$ we need to give to buy (get) $x_{out}$ amount of $b$                                                  | `Self::decide_buy_amounts()`, `WithDesiredOutput`  |
+    ///
+    /// Let's list the formulae for each combination:
+    /// * $fee_\\%$ is fee percentage that is set up in the pallet
+    /// * $fee$ calculated fee
+    /// * $A_{in}$ calculated input
+    /// * $A_{out}$ calculated output
+    ///
+    /// | quote direction   | *given*            | $fee$                                                      | $A_{in}$                              | $A_{out}$                            |
+    /// |-------------------|--------------------|------------------------------------------------------------|---------------------------------------|--------------------------------------|
+    /// | $b \rightarrow s$ | $A_{in}$ (in $b$)  | $A_{in} \cdot fee_\\%$                                      | $A_{in}$                              | $sell_{out}(A_{in}(1-fee_\\%))$       |
+    /// | $b \rightarrow s$ | $A_{out}$ (in $s$) | $\frac{sell_{in}(A_{out})}{1-fee_\\%} - sell_{in}(A_{out})$ | $\frac{sell_{in}(A_{out})}{1-fee_\\%}$ | $A_{out}$                            |
+    /// | $s \rightarrow b$ | $A_{in}$  (in $s$) | $fee_\\% \cdot buy_{out}(A_{in})$                           | $A_{in}$                              | $(1-fee_\\%) \cdot buy_{out}(A_{in})$ |
+    /// | $s \rightarrow b$ | $A_{out}$ (in $b$) | $\frac{A_{out}}{1-fee_\\%} - A_{out}$                       | $buy_{in}(\frac{A_{out}}{1-fee_\\%})$  | $A_{out}$                            |
+    ///
+    /// [here is a rendered version in case the docs above are unreadable](https://hackmd.io/@jTXlKyDTTYuWUChtsJYcCg/SJ5ItHw12)
     fn quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
@@ -897,6 +957,26 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
         } else {
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
+        };
+        let fee_amount = if deduce_fee {
+            // `fee_amount` is always computed to be in `main_asset_id`, which is
+            // `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR
+            // (`BaseAssetId`), so we convert.
+            let output_to_base: FixedWrapper =
+                <T as pallet::Config>::PriceToolsPallet::get_average_price(
+                    synthetic_base_asset_id,
+                    &T::GetBaseAssetId::get(),
+                    // Since `Buy` is more expensive, it seems logical to
+                    // show this amount in order to not accidentally lie
+                    // about the price.
+                    PriceVariant::Buy,
+                )?
+                .into();
+            (fee_amount * output_to_base)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?
+        } else {
+            fee_amount
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),

@@ -214,6 +214,9 @@ impl<T: Config> Pallet<T> {
         output_asset: &T::AssetId,
         price_variant: PriceVariant,
     ) -> Result<Balance, DispatchError> {
+        if input_asset == output_asset {
+            return Ok(balance!(1));
+        }
         match (input_asset, output_asset) {
             (xor, output) if xor == &XOR.into() => {
                 Self::get_asset_average_price(output, price_variant)

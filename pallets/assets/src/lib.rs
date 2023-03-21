@@ -338,7 +338,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin.clone())?;
             Self::transfer_from(&asset_id, &from, &to, amount)?;
-            Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
             Ok(().into())
         }
 
@@ -819,6 +818,7 @@ impl<T: Config> Pallet<T> {
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
         }
+        Self::deposit_event(Event::Transfer(from.clone(), to.clone(), *asset_id, amount));
         r
     }
 
