@@ -17,6 +17,7 @@ ethers = { version = "2.0.0", features = [
   "ws",
   "rustls",
 ] }
+ethers-core = "=2.0.0"
 common = { path = "../common" }
 subxt = { version = "0.25.0" }
 tokio = { version = "1.14.0", features = ["full"] }
