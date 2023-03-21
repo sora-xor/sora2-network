@@ -77,6 +77,9 @@ pub fn charlie() -> AccountId {
 pub fn dave() -> AccountId {
     AccountId32::from([4u8; 32])
 }
+pub fn adar() -> AccountId {
+    GetADARAccountId::get()
+}
 
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
@@ -124,6 +127,7 @@ parameter_types! {
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetADARAccountId: AccountId = AccountId32::from([14; 32]);
     pub const MinimumPeriod: u64 = 5;
 }
 
@@ -195,6 +199,7 @@ impl Config for Runtime {
     type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Pallet<Runtime>;
+    type GetADARAccountId = GetADARAccountId;
 }
 
 impl tokens::Config for Runtime {
@@ -852,7 +857,7 @@ impl ExtBuilder {
     pub fn with_xyk_pool(mut self) -> Self {
         self.xyk_reserves = vec![
             (DEX_A_ID, USDT, (balance!(1000), balance!(1000))),
-            (DEX_A_ID, KSM, (balance!(1000), balance!(1000))),
+            (DEX_A_ID, KSM, (balance!(1000), balance!(2000))),
             (DEX_C_ID, USDT, (balance!(600), balance!(10000))),
             (DEX_D_ID, USDT, (balance!(1000), balance!(1000))),
         ];
