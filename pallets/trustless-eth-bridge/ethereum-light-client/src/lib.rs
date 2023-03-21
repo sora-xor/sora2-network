@@ -897,10 +897,8 @@ pub mod pallet {
         fn verify_receipt_inclusion(
             network_id: EVMChainId,
             proof: &Proof,
+            stored_header: &StoredHeader<T::AccountId>,
         ) -> Result<(Receipt, u64), DispatchError> {
-            let stored_header =
-                <Headers<T>>::get(network_id, proof.block_hash).ok_or(Error::<T>::MissingHeader)?;
-
             ensure!(stored_header.finalized, Error::<T>::HeaderNotFinalized);
 
             let result = stored_header
@@ -1031,15 +1029,26 @@ pub mod pallet {
         })
     }
 
+    // TODO: move to bridge-types
+    pub struct VerificationResult {
+        gas_used: U256,
+        gas_price: U256,
+        logs: Vec<Log>,
+        timestamp: u64,
+    }
+
     impl<T: Config> Verifier<EVMChainId, Message> for Pallet<T> {
-        type Result = (Log, u64);
+        type Result = VerificationResult;
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
         fn verify(
             network_id: EVMChainId,
             message: &Message,
         ) -> Result<Self::Result, DispatchError> {
-            let (receipt, timestamp) = Self::verify_receipt_inclusion(network_id, &message.proof)?;
+            let stored_header = <Headers<T>>::get(network_id, message.proof.block_hash)
+                .ok_or(Error::<T>::MissingHeader)?;
+            let (receipt, timestamp) =
+                Self::verify_receipt_inclusion(network_id, &message.proof, &stored_header)?;
 
             log::trace!(
                 target: "ethereum-light-client",
@@ -1057,18 +1066,12 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidProof.into());
             }
 
-            let log: Log = rlp::decode(&message.data).map_err(|_| Error::<T>::DecodeFailed)?;
-
-            if !receipt.contains_log(&log) {
-                log::trace!(
-                    target: "ethereum-light-client",
-                    "Event log not found in receipt for transaction at index {} in block {}",
-                    message.proof.tx_index, message.proof.block_hash,
-                );
-                return Err(Error::<T>::InvalidProof.into());
-            }
-
-            Ok((log, timestamp))
+            Ok(VerificationResult {
+                gas_used: receipt.cumulative_gas_used.into(),
+                logs: receipt.logs,
+                timestamp,
+                gas_price: stored_header.header.base_fee.unwrap_or_default(),
+            })
         }
     }
 }

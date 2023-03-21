@@ -192,7 +192,7 @@ impl SubstrateMessagesRelay {
             ethereum_gen::inbound_channel::MessageDispatchedFilter,
             LogMeta,
         )> = inbound_channel
-            .message_dispatched_filter()
+            .batch_dispatched_filter()
             .from_block(self.latest_channel_block)
             .to_block(current_eth_block)
             .query_with_meta()
@@ -215,18 +215,36 @@ impl SubstrateMessagesRelay {
             .await?;
 
         for (event, meta) in events {
-            if event.nonce > sub_inbound_nonce && meta.address == self.inbound_channel {
+            if meta.address == self.inbound_channel {
                 let tx = eth
                     .get_transaction_receipt(meta.transaction_hash)
                     .await?
                     .expect("should exist");
-                for log in tx.logs {
+                let need_to_handle = tx.logs.iter().all(|log| {
                     let raw_log = RawLog {
                         topics: log.topics.clone(),
                         data: log.data.to_vec(),
                     };
                     if let Ok(event) =
                     <ethereum_gen::inbound_channel::MessageDispatchedFilter as EthEvent>::decode_log(
+                        &raw_log,
+                    ) {
+                        if event.nonce > sub_inbound_nonce {
+                            return true;
+                        }
+                    }
+                    false
+                });
+                if !need_to_handle {
+                    return Ok(());
+                }
+                for log in tx.logs {
+                    let raw_log = RawLog {
+                        topics: log.topics.clone(),
+                        data: log.data.to_vec(),
+                    };
+                    if let Ok(event) =
+                    <ethereum_gen::inbound_channel::BatchDispatchedFilter as EthEvent>::decode_log(
                         &raw_log,
                     )
                     {
