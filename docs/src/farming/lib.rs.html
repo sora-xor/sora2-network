@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/farming/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../farming/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../farming/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../farming/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -378,6 +393,47 @@
 <span id="373">373</span>
 <span id="374">374</span>
 <span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -421,8 +477,9 @@
 <span class="kw">mod</span> <span class="ident">utils</span>;
 <span class="kw">mod</span> <span class="ident">weights</span>;
 
+<span class="kw">use</span> <span class="ident">assets::AssetIdOf</span>;
 <span class="kw">use</span> <span class="ident">codec</span>::{<span class="ident">Decode</span>, <span class="ident">Encode</span>};
-<span class="kw">use</span> <span class="ident">common::RewardReason</span>;
+<span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">RewardReason</span>, <span class="ident">TradingPair</span>};
 <span class="kw">use</span> <span class="ident">frame_support::dispatch::DispatchResult</span>;
 <span class="kw">use</span> <span class="ident">frame_support::traits::Get</span>;
 <span class="kw">use</span> <span class="ident">frame_support::weights::Weight</span>;
@@ -430,11 +487,12 @@
 <span class="kw">use</span> <span class="ident">pool_xyk::PoolProviders</span>;
 <span class="kw">use</span> <span class="ident">sp_arithmetic::traits::UniqueSaturatedInto</span>;
 <span class="kw">use</span> <span class="ident">sp_runtime::traits::Saturating</span>;
+<span class="kw">use</span> <span class="ident">sp_runtime::DispatchError</span>;
 <span class="kw">use</span> <span class="ident">sp_std::collections::btree_map</span>::{<span class="ident">BTreeMap</span>, <span class="ident">Entry</span>};
 <span class="kw">use</span> <span class="ident">sp_std::vec::Vec</span>;
 
-<span class="kw">use</span> <span class="ident">common::prelude::FixedWrapper</span>;
-<span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">balance</span>, <span class="ident">AccountIdOf</span>, <span class="ident">Balance</span>, <span class="ident">DexIdOf</span>, <span class="ident">OnPoolCreated</span>};
+<span class="kw">use</span> <span class="ident">common::prelude</span>::{<span class="ident">FixedWrapper</span>, <span class="ident">QuoteAmount</span>};
+<span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">balance</span>, <span class="ident">AccountIdOf</span>, <span class="ident">Balance</span>, <span class="ident">DexIdOf</span>, <span class="ident">LiquiditySource</span>, <span class="ident">OnPoolCreated</span>};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">WeightInfoOf</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">Config</span><span class="op">&gt;</span><span class="ident">::WeightInfo</span>;
 
@@ -475,14 +533,50 @@
         <span class="ident">total_weight</span>
     }
 
+    <span class="kw">fn</span> <span class="ident">get_multiplier</span>(<span class="ident">asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">AssetIdOf</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FixedWrapper</span>, <span class="ident">DispatchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">base_asset</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">assets::Config</span><span class="op">&gt;</span><span class="ident">::GetBaseAssetId::get</span>();
+        <span class="kw">if</span> <span class="ident">asset_id</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">base_asset</span> {
+            <span class="prelude-val">Ok</span>(<span class="macro">balance!</span>(<span class="number">1</span>).<span class="ident">into</span>())
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">outcome</span> <span class="op">=</span> <span class="ident">pool_xyk::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::quote</span>(
+                <span class="kw-2">&amp;</span><span class="ident">common::DEXId::Polkaswap</span>.<span class="ident">into</span>(),
+                <span class="kw-2">&amp;</span><span class="ident">base_asset</span>,
+                <span class="ident">asset_id</span>,
+                <span class="ident">QuoteAmount::with_desired_output</span>(<span class="macro">balance!</span>(<span class="number">1</span>)),
+                <span class="bool-val">false</span>,
+            )<span class="question-mark">?</span>;
+            <span class="macro">frame_support::log::debug!</span>(<span class="string">&quot;{outcome:?}&quot;</span>);
+            <span class="prelude-val">Ok</span>(<span class="ident">FixedWrapper::from</span>(<span class="ident">outcome</span>.<span class="ident">amount</span>))
+        }
+    }
+
     <span class="kw">fn</span> <span class="ident">refresh_pool</span>(<span class="ident">pool</span>: <span class="ident">T::AccountId</span>, <span class="ident">now</span>: <span class="ident">T::BlockNumber</span>) -&gt; <span class="ident">u32</span> {
+        <span class="kw">let</span> <span class="ident">trading_pair</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pool_xyk::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get_pool_trading_pair</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">trading_pair</span>) =&gt; <span class="ident">trading_pair</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
+                <span class="macro">frame_support::log::warn!</span>(<span class="string">&quot;Failed to get trading pair for {pool:?} pool: {err:?}&quot;</span>,);
+                <span class="kw">return</span> <span class="number">0</span>;
+            }
+        };
+        <span class="kw">let</span> <span class="ident">multiplier</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::get_multiplier</span>(<span class="kw-2">&amp;</span><span class="ident">trading_pair</span>.<span class="ident">base_asset_id</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">multiplier</span>) =&gt; <span class="ident">multiplier</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
+                <span class="macro">frame_support::log::warn!</span>(
+                    <span class="string">&quot;Failed to get farming rewards multiplier for {:?} asset: {err:?}&quot;</span>,
+                    <span class="ident">trading_pair</span>.<span class="ident">base_asset_id</span>
+                );
+                <span class="kw">return</span> <span class="number">0</span>;
+            }
+        };
+        <span class="macro">frame_support::log::debug!</span>(<span class="string">&quot;Multiplier for TP {trading_pair:?}: {multiplier:?}&quot;</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">read_count</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="ident">old_farmers</span> <span class="op">=</span> <span class="ident">PoolFarmers</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_farmers</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> (<span class="ident">account</span>, <span class="ident">pool_tokens</span>) <span class="kw">in</span> <span class="ident">PoolProviders</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::iter_prefix</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>) {
             <span class="ident">read_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
 
-            <span class="kw">let</span> <span class="ident">weight</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::get_account_weight</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>, <span class="ident">pool_tokens</span>);
+            <span class="kw">let</span> <span class="ident">weight</span> <span class="op">=</span>
+                <span class="ident"><span class="self">Self</span>::get_account_weight</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>, <span class="kw-2">&amp;</span><span class="ident">trading_pair</span>, <span class="ident">multiplier</span>.<span class="ident">clone</span>(), <span class="ident">pool_tokens</span>);
             <span class="kw">if</span> <span class="ident">weight</span> <span class="op">==</span> <span class="number">0</span> {
                 <span class="kw">continue</span>;
             }
@@ -511,20 +605,23 @@
         <span class="ident">read_count</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_account_weight</span>(<span class="ident">pool</span>: <span class="kw-2">&amp;</span><span class="ident">T::AccountId</span>, <span class="ident">pool_tokens</span>: <span class="ident">Balance</span>) -&gt; <span class="ident">Balance</span> {
-        <span class="kw">let</span> <span class="ident">trading_pair</span> <span class="op">=</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">trading_pair</span>) <span class="op">=</span> <span class="ident">pool_xyk::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get_pool_trading_pair</span>(<span class="kw-2">&amp;</span><span class="ident">pool</span>) {
-                <span class="ident">trading_pair</span>
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="number">0</span>;
-            };
-
+    <span class="kw">fn</span> <span class="ident">get_account_weight</span>(
+        <span class="ident">pool</span>: <span class="kw-2">&amp;</span><span class="ident">T::AccountId</span>,
+        <span class="ident">trading_pair</span>: <span class="kw-2">&amp;</span><span class="ident">TradingPair</span><span class="op">&lt;</span><span class="ident">AssetIdOf</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">multiplier</span>: <span class="ident">FixedWrapper</span>,
+        <span class="ident">pool_tokens</span>: <span class="ident">Balance</span>,
+    ) -&gt; <span class="ident">Balance</span> {
         <span class="kw">let</span> <span class="ident">base_asset_amt</span> <span class="op">=</span> <span class="ident">pool_xyk::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get_base_asset_part_from_pool_account</span>(
             <span class="ident">pool</span>,
             <span class="kw-2">&amp;</span><span class="ident">trading_pair</span>,
             <span class="ident">pool_tokens</span>,
         )
         .<span class="ident">unwrap_or</span>(<span class="number">0</span>);
+
+        <span class="kw">let</span> <span class="ident">base_asset_amt</span> <span class="op">=</span> (<span class="ident">FixedWrapper::from</span>(<span class="ident">base_asset_amt</span>) <span class="op">*</span> <span class="ident">multiplier</span>)
+            .<span class="ident">try_into_balance</span>()
+            .<span class="ident">unwrap_or</span>(<span class="number">0</span>);
+
         <span class="kw">if</span> <span class="ident">base_asset_amt</span> <span class="op">&lt;</span> <span class="macro">balance!</span>(<span class="number">1</span>) {
             <span class="kw">return</span> <span class="number">0</span>;
         }

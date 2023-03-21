@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/liquidity-proxy/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../liquidity_proxy/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../liquidity_proxy/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../liquidity_proxy/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -1984,6 +1999,110 @@
 <span id="1979">1979</span>
 <span id="1980">1980</span>
 <span id="1981">1981</span>
+<span id="1982">1982</span>
+<span id="1983">1983</span>
+<span id="1984">1984</span>
+<span id="1985">1985</span>
+<span id="1986">1986</span>
+<span id="1987">1987</span>
+<span id="1988">1988</span>
+<span id="1989">1989</span>
+<span id="1990">1990</span>
+<span id="1991">1991</span>
+<span id="1992">1992</span>
+<span id="1993">1993</span>
+<span id="1994">1994</span>
+<span id="1995">1995</span>
+<span id="1996">1996</span>
+<span id="1997">1997</span>
+<span id="1998">1998</span>
+<span id="1999">1999</span>
+<span id="2000">2000</span>
+<span id="2001">2001</span>
+<span id="2002">2002</span>
+<span id="2003">2003</span>
+<span id="2004">2004</span>
+<span id="2005">2005</span>
+<span id="2006">2006</span>
+<span id="2007">2007</span>
+<span id="2008">2008</span>
+<span id="2009">2009</span>
+<span id="2010">2010</span>
+<span id="2011">2011</span>
+<span id="2012">2012</span>
+<span id="2013">2013</span>
+<span id="2014">2014</span>
+<span id="2015">2015</span>
+<span id="2016">2016</span>
+<span id="2017">2017</span>
+<span id="2018">2018</span>
+<span id="2019">2019</span>
+<span id="2020">2020</span>
+<span id="2021">2021</span>
+<span id="2022">2022</span>
+<span id="2023">2023</span>
+<span id="2024">2024</span>
+<span id="2025">2025</span>
+<span id="2026">2026</span>
+<span id="2027">2027</span>
+<span id="2028">2028</span>
+<span id="2029">2029</span>
+<span id="2030">2030</span>
+<span id="2031">2031</span>
+<span id="2032">2032</span>
+<span id="2033">2033</span>
+<span id="2034">2034</span>
+<span id="2035">2035</span>
+<span id="2036">2036</span>
+<span id="2037">2037</span>
+<span id="2038">2038</span>
+<span id="2039">2039</span>
+<span id="2040">2040</span>
+<span id="2041">2041</span>
+<span id="2042">2042</span>
+<span id="2043">2043</span>
+<span id="2044">2044</span>
+<span id="2045">2045</span>
+<span id="2046">2046</span>
+<span id="2047">2047</span>
+<span id="2048">2048</span>
+<span id="2049">2049</span>
+<span id="2050">2050</span>
+<span id="2051">2051</span>
+<span id="2052">2052</span>
+<span id="2053">2053</span>
+<span id="2054">2054</span>
+<span id="2055">2055</span>
+<span id="2056">2056</span>
+<span id="2057">2057</span>
+<span id="2058">2058</span>
+<span id="2059">2059</span>
+<span id="2060">2060</span>
+<span id="2061">2061</span>
+<span id="2062">2062</span>
+<span id="2063">2063</span>
+<span id="2064">2064</span>
+<span id="2065">2065</span>
+<span id="2066">2066</span>
+<span id="2067">2067</span>
+<span id="2068">2068</span>
+<span id="2069">2069</span>
+<span id="2070">2070</span>
+<span id="2071">2071</span>
+<span id="2072">2072</span>
+<span id="2073">2073</span>
+<span id="2074">2074</span>
+<span id="2075">2075</span>
+<span id="2076">2076</span>
+<span id="2077">2077</span>
+<span id="2078">2078</span>
+<span id="2079">2079</span>
+<span id="2080">2080</span>
+<span id="2081">2081</span>
+<span id="2082">2082</span>
+<span id="2083">2083</span>
+<span id="2084">2084</span>
+<span id="2085">2085</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -2054,8 +2173,12 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">test_utils</span>;
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TECH_ACCOUNT_PREFIX</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="string">b&quot;liquidity-proxy&quot;</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TECH_ACCOUNT_MAIN</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="string">b&quot;main&quot;</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ADAR_COMMISSION_RATIO</span>: <span class="ident">Balance</span> <span class="op">=</span> <span class="macro">balance!</span>(<span class="number">0.0075</span>);
 
 <span class="doccomment">/// Possible exchange paths for two assets.</span>
 <span class="kw">struct</span> <span class="ident">ExchangePath</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Config</span><span class="op">&gt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T::AssetId</span><span class="op">&gt;</span>);
@@ -3531,6 +3654,178 @@
             }
         }
     }
+
+    <span class="doccomment">/// Swaps tokens for the following batch distribution and calculates a remainder.</span>
+    <span class="doccomment">/// Remainder is used due to inaccuracy of the quote calculation.</span>
+    <span class="kw">fn</span> <span class="ident">exchange_batch_tokens</span>(
+        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">T::AccountId</span>,
+        <span class="ident">num_of_receivers</span>: <span class="ident">u128</span>,
+        <span class="ident">input_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
+        <span class="ident">output_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
+        <span class="ident">max_input_amount</span>: <span class="ident">Balance</span>,
+        <span class="ident">selected_source_types</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LiquiditySourceType</span><span class="op">&gt;</span>,
+        <span class="ident">dex_id</span>: <span class="ident">T::DEXId</span>,
+        <span class="ident">filter_mode</span>: <span class="kw-2">&amp;</span><span class="ident">FilterMode</span>,
+        <span class="ident">out_amount</span>: <span class="ident">Balance</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Balance</span>, <span class="ident">Balance</span>), <span class="ident">DispatchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">LiquiditySourceFilter::with_mode</span>(
+            <span class="ident">dex_id</span>,
+            <span class="ident">filter_mode</span>.<span class="ident">clone</span>(),
+            <span class="ident">selected_source_types</span>.<span class="ident">clone</span>(),
+        );
+
+        <span class="kw">if</span> <span class="ident"><span class="self">Self</span>::is_forbidden_filter</span>(
+            <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
+            <span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>,
+            <span class="kw-2">&amp;</span><span class="ident">selected_source_types</span>,
+            <span class="kw-2">&amp;</span><span class="ident">filter_mode</span>,
+        ) {
+            <span class="macro">fail!</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::ForbiddenFilter</span>);
+        }
+
+        <span class="macro">ensure!</span>(
+            <span class="ident">assets::AssetInfos</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get</span>(<span class="ident">input_asset_id</span>).<span class="number">2</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
+                <span class="op">&amp;&amp;</span> <span class="ident">assets::AssetInfos</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get</span>(<span class="ident">output_asset_id</span>).<span class="number">2</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>,
+            <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::UnableToSwapIndivisibleAssets</span>
+        );
+
+        <span class="kw">let</span> (
+            <span class="ident">SwapOutcome</span> {
+                <span class="ident">amount</span>: <span class="ident">executed_input_amount</span>,
+                <span class="ident">fee</span>: <span class="ident">fee_amount</span>,
+            },
+            <span class="ident">sources</span>,
+        ) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::inner_exchange</span>(
+            <span class="ident">dex_id</span>,
+            <span class="kw-2">&amp;</span><span class="ident">sender</span>,
+            <span class="kw-2">&amp;</span><span class="ident">sender</span>,
+            <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
+            <span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>,
+            <span class="ident">SwapAmount::WithDesiredOutput</span> {
+                <span class="ident">desired_amount_out</span>: <span class="ident">out_amount</span>,
+                <span class="ident">max_amount_in</span>: <span class="ident">max_input_amount</span>,
+            },
+            <span class="ident">filter</span>.<span class="ident">clone</span>(),
+        )<span class="question-mark">?</span>;
+
+        <span class="ident"><span class="self">Self</span>::deposit_event</span>(<span class="ident">Event</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::Exchange</span>(
+            <span class="ident">sender</span>.<span class="ident">clone</span>(),
+            <span class="ident">dex_id</span>,
+            <span class="ident">input_asset_id</span>.<span class="ident">clone</span>(),
+            <span class="ident">output_asset_id</span>.<span class="ident">clone</span>(),
+            <span class="ident">executed_input_amount</span>,
+            <span class="ident">out_amount</span>,
+            <span class="ident">fee_amount</span>,
+            <span class="ident">sources</span>,
+        ));
+
+        <span class="kw">let</span> <span class="ident">caller_output_asset_balance</span> <span class="op">=</span>
+            <span class="ident">assets::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::total_balance</span>(<span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>, <span class="kw-2">&amp;</span><span class="ident">sender</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">remainder_per_receiver</span>: <span class="ident">Balance</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">caller_output_asset_balance</span> <span class="op">&lt;</span> <span class="ident">out_amount</span> {
+            <span class="kw">let</span> <span class="ident">remainder</span> <span class="op">=</span> <span class="ident">out_amount</span>.<span class="ident">saturating_sub</span>(<span class="ident">caller_output_asset_balance</span>);
+            <span class="ident">remainder</span> <span class="op">/</span> <span class="ident">num_of_receivers</span> <span class="op">+</span> <span class="ident">remainder</span> <span class="op">%</span> <span class="ident">num_of_receivers</span>
+        } <span class="kw">else</span> {
+            <span class="number">0</span>
+        };
+        <span class="prelude-val">Ok</span>((<span class="ident">executed_input_amount</span>, <span class="ident">remainder_per_receiver</span>))
+    }
+
+    <span class="kw">fn</span> <span class="ident">transfer_batch_tokens_unchecked</span>(
+        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">T::AccountId</span>,
+        <span class="ident">output_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
+        <span class="ident">receivers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BatchReceiverInfo</span><span class="op">&lt;</span><span class="ident">T::AccountId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">remainder_per_receiver</span>: <span class="ident">Balance</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">DispatchError</span><span class="op">&gt;</span> {
+        <span class="ident">fallible_iterator::convert</span>(<span class="ident">receivers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">val</span>))).<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">receiver</span><span class="op">|</span> {
+            <span class="ident">assets::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::transfer_from</span>(
+                <span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>,
+                <span class="kw-2">&amp;</span><span class="ident">sender</span>,
+                <span class="kw-2">&amp;</span><span class="ident">receiver</span>.<span class="ident">account_id</span>,
+                <span class="ident">receiver</span>.<span class="ident">target_amount</span> <span class="op">-</span> <span class="ident">remainder_per_receiver</span>,
+            )
+        })
+    }
+
+    <span class="kw">fn</span> <span class="ident">calculate_adar_commission</span>(<span class="ident">amount</span>: <span class="ident">Balance</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Balance</span>, <span class="ident">DispatchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">adar_commission_ratio</span> <span class="op">=</span> <span class="ident">FixedWrapper::from</span>(<span class="ident">ADAR_COMMISSION_RATIO</span>);
+
+        <span class="kw">let</span> <span class="ident">adar_commission</span> <span class="op">=</span> (<span class="ident">FixedWrapper::from</span>(<span class="ident">amount</span>) <span class="op">*</span> <span class="ident">adar_commission_ratio</span>)
+            .<span class="ident">try_into_balance</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::CalculationError</span>)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="ident">adar_commission</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">inner_swap_batch_transfer</span>(
+        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">T::AccountId</span>,
+        <span class="ident">input_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
+        <span class="ident">swap_batches</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SwapBatchInfo</span><span class="op">&lt;</span><span class="ident">T::AssetId</span>, <span class="ident">T::DEXId</span>, <span class="ident">T::AccountId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">max_input_amount</span>: <span class="ident">Balance</span>,
+        <span class="ident">selected_source_types</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LiquiditySourceType</span><span class="op">&gt;</span>,
+        <span class="ident">filter_mode</span>: <span class="kw-2">&amp;</span><span class="ident">FilterMode</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Balance</span>, <span class="ident">DispatchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unique_asset_ids</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">T::AssetId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">executed_batch_input_amount</span> <span class="op">=</span> <span class="macro">balance!</span>(<span class="number">0</span>);
+
+        <span class="ident">fallible_iterator::convert</span>(<span class="ident">swap_batches</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">val</span>))).<span class="ident">for_each</span>(
+            <span class="op">|</span><span class="ident">swap_batch_info</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">SwapBatchInfo</span> {
+                    <span class="ident">outcome_asset_id</span>: <span class="ident">asset_id</span>,
+                    <span class="ident">dex_id</span>,
+                    <span class="ident">receivers</span>,
+                } <span class="op">=</span> <span class="ident">swap_batch_info</span>;
+
+                <span class="comment">// extrinsic fails if there are duplicate output asset ids</span>
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">unique_asset_ids</span>.<span class="ident">insert</span>(<span class="ident">asset_id</span>.<span class="ident">clone</span>()) {
+                    <span class="macro">fail!</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::AggregationError</span>);
+                }
+
+                <span class="kw">if</span> <span class="ident">receivers</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+                    <span class="macro">fail!</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::InvalidReceiversInfo</span>);
+                }
+
+                <span class="kw">let</span> <span class="ident">out_amount</span> <span class="op">=</span> <span class="ident">receivers</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">recv</span><span class="op">|</span> <span class="ident">recv</span>.<span class="ident">target_amount</span>).<span class="ident">sum</span>();
+
+                <span class="kw">let</span> (<span class="ident">executed_input_amount</span>, <span class="ident">remainder_per_receiver</span>): (<span class="ident">Balance</span>, <span class="ident">Balance</span>) <span class="op">=</span>
+                    <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">asset_id</span> <span class="op">!</span><span class="op">=</span> <span class="ident">input_asset_id</span> {
+                        <span class="ident"><span class="self">Self</span>::exchange_batch_tokens</span>(
+                            <span class="kw-2">&amp;</span><span class="ident">sender</span>,
+                            <span class="ident">receivers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u128</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">asset_id</span>,
+                            <span class="ident">max_input_amount</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">selected_source_types</span>,
+                            <span class="ident">dex_id</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">filter_mode</span>,
+                            <span class="ident">out_amount</span>,
+                        )<span class="question-mark">?</span>
+                    } <span class="kw">else</span> {
+                        (<span class="ident">out_amount</span>, <span class="number">0</span>)
+                    };
+
+                <span class="ident">executed_batch_input_amount</span> <span class="op">=</span> <span class="ident">executed_batch_input_amount</span>
+                    .<span class="ident">checked_add</span>(<span class="ident">executed_input_amount</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::CalculationError</span>)<span class="question-mark">?</span>;
+
+                <span class="ident">max_input_amount</span> <span class="op">=</span> <span class="ident">max_input_amount</span>
+                    .<span class="ident">checked_sub</span>(<span class="ident">executed_input_amount</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::SlippageNotTolerated</span>)<span class="question-mark">?</span>;
+
+                <span class="ident"><span class="self">Self</span>::transfer_batch_tokens_unchecked</span>(
+                    <span class="kw-2">&amp;</span><span class="ident">sender</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">asset_id</span>,
+                    <span class="ident">receivers</span>,
+                    <span class="ident">remainder_per_receiver</span>,
+                )
+            },
+        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">adar_commission</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::calculate_adar_commission</span>(<span class="ident">executed_batch_input_amount</span>)<span class="question-mark">?</span>;
+        <span class="ident">max_input_amount</span>
+            .<span class="ident">checked_sub</span>(<span class="ident">adar_commission</span>)
+            .<span class="ident">ok_or</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::SlippageNotTolerated</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">adar_commission</span>)
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Config</span><span class="op">&gt;</span> <span class="ident">LiquidityProxyTrait</span><span class="op">&lt;</span><span class="ident">T::DEXId</span>, <span class="ident">T::AccountId</span>, <span class="ident">T::AssetId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Pallet</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
@@ -3644,6 +3939,7 @@
         <span class="kw">type</span> <span class="ident">PrimaryMarketXST</span>: <span class="ident">GetMarketInfo</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::AssetId</span><span class="op">&gt;</span>;
         <span class="kw">type</span> <span class="ident">SecondaryMarket</span>: <span class="ident">GetPoolReserves</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::AssetId</span><span class="op">&gt;</span>;
         <span class="kw">type</span> <span class="ident">VestedRewardsPallet</span>: <span class="ident">VestedRewardsPallet</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::AccountId</span>, <span class="ident"><span class="self">Self</span>::AssetId</span><span class="op">&gt;</span>;
+        <span class="kw">type</span> <span class="ident">GetADARAccountId</span>: <span class="ident">Get</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::AccountId</span><span class="op">&gt;</span>;
         <span class="doccomment">/// Weight information for the extrinsics in this Pallet.</span>
         <span class="kw">type</span> <span class="ident">WeightInfo</span>: <span class="ident">WeightInfo</span>;
     }
@@ -3755,104 +4051,29 @@
             <span class="ident">origin</span>: <span class="ident">OriginFor</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
             <span class="ident">swap_batches</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SwapBatchInfo</span><span class="op">&lt;</span><span class="ident">T::AssetId</span>, <span class="ident">T::DEXId</span>, <span class="ident">T::AccountId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
             <span class="ident">input_asset_id</span>: <span class="ident">T::AssetId</span>,
-            <span class="kw-2">mut</span> <span class="ident">max_input_amount</span>: <span class="ident">Balance</span>,
+            <span class="ident">max_input_amount</span>: <span class="ident">Balance</span>,
             <span class="ident">selected_source_types</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LiquiditySourceType</span><span class="op">&gt;</span>,
             <span class="ident">filter_mode</span>: <span class="ident">FilterMode</span>,
         ) -&gt; <span class="ident">DispatchResultWithPostInfo</span> {
             <span class="kw">let</span> <span class="ident">who</span> <span class="op">=</span> <span class="ident">ensure_signed</span>(<span class="ident">origin</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unique_asset_ids</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">T::AssetId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-            <span class="ident">fallible_iterator::convert</span>(<span class="ident">swap_batches</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">val</span>))).<span class="ident">for_each</span>(
-                <span class="op">|</span><span class="ident">swap_batch_info</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">SwapBatchInfo</span> {
-                        <span class="ident">outcome_asset_id</span>: <span class="ident">asset_id</span>,
-                        <span class="ident">dex_id</span>,
-                        <span class="ident">receivers</span>,
-                    } <span class="op">=</span> <span class="ident">swap_batch_info</span>;
-
-                    <span class="comment">// extrinsic fails if there are duplicate output asset ids</span>
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">unique_asset_ids</span>.<span class="ident">insert</span>(<span class="ident">asset_id</span>.<span class="ident">clone</span>()) {
-                        <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::AggregationError</span>)<span class="question-mark">?</span>
-                    }
-
-                    <span class="kw">if</span> <span class="ident">receivers</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::InvalidReceiversInfo</span>)<span class="question-mark">?</span>
-                    }
-
-                    <span class="kw">let</span> <span class="ident">out_amount</span> <span class="op">=</span> <span class="ident">receivers</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">recv</span><span class="op">|</span> <span class="ident">recv</span>.<span class="ident">target_amount</span>).<span class="ident">sum</span>();
-                    <span class="kw">let</span> (<span class="ident">executed_input_amount</span>, <span class="ident">remainder_per_receiver</span>): (<span class="ident">Balance</span>, <span class="ident">Balance</span>) <span class="op">=</span>
-                        <span class="kw">if</span> <span class="ident">asset_id</span> <span class="op">!</span><span class="op">=</span> <span class="ident">input_asset_id</span> {
-                            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">LiquiditySourceFilter::with_mode</span>(
-                                <span class="ident">dex_id</span>,
-                                <span class="ident">filter_mode</span>.<span class="ident">clone</span>(),
-                                <span class="ident">selected_source_types</span>.<span class="ident">clone</span>(),
-                            );
-
-                            <span class="kw">if</span> <span class="ident"><span class="self">Self</span>::is_forbidden_filter</span>(
-                                <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">asset_id</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">selected_source_types</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">filter_mode</span>,
-                            ) {
-                                <span class="macro">fail!</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::ForbiddenFilter</span>);
-                            }
-
-                            <span class="kw">let</span> (
-                                <span class="ident">SwapOutcome</span> {
-                                    <span class="ident">amount</span>: <span class="ident">executed_input_amount</span>,
-                                    ..
-                                },
-                                <span class="kw">_</span>,
-                            ) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::inner_exchange</span>(
-                                <span class="ident">dex_id</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">who</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">who</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">asset_id</span>,
-                                <span class="ident">SwapAmount::WithDesiredOutput</span> {
-                                    <span class="ident">desired_amount_out</span>: <span class="ident">out_amount</span>,
-                                    <span class="ident">max_amount_in</span>: <span class="ident">max_input_amount</span>,
-                                },
-                                <span class="ident">filter</span>.<span class="ident">clone</span>(),
-                            )<span class="question-mark">?</span>;
-
-                            <span class="kw">let</span> <span class="ident">caller_output_asset_balance</span> <span class="op">=</span>
-                                <span class="ident">assets::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::total_balance</span>(<span class="kw-2">&amp;</span><span class="ident">asset_id</span>, <span class="kw-2">&amp;</span><span class="ident">who</span>)<span class="question-mark">?</span>;
-                            <span class="kw">let</span> <span class="ident">remainder_per_receiver</span>: <span class="ident">Balance</span> <span class="op">=</span>
-                                <span class="kw">if</span> <span class="ident">caller_output_asset_balance</span> <span class="op">&lt;</span> <span class="ident">out_amount</span> {
-                                    <span class="kw">let</span> <span class="ident">remainder</span> <span class="op">=</span>
-                                        <span class="ident">out_amount</span>.<span class="ident">saturating_sub</span>(<span class="ident">caller_output_asset_balance</span>);
-                                    <span class="ident">remainder</span> <span class="op">/</span> (<span class="ident">receivers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u128</span>)
-                                        <span class="op">+</span> <span class="ident">remainder</span> <span class="op">%</span> (<span class="ident">receivers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u128</span>)
-                                } <span class="kw">else</span> {
-                                    <span class="number">0</span>
-                                };
-                            (<span class="ident">executed_input_amount</span>, <span class="ident">remainder_per_receiver</span>)
-                        } <span class="kw">else</span> {
-                            (<span class="ident">out_amount</span>, <span class="number">0</span>)
-                        };
-
-                    <span class="ident">max_input_amount</span> <span class="op">=</span> <span class="ident">max_input_amount</span>
-                        .<span class="ident">checked_sub</span>(<span class="ident">executed_input_amount</span>)
-                        .<span class="ident">ok_or</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::SlippageNotTolerated</span>)<span class="question-mark">?</span>;
-
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unique_batch_receivers</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">T::AccountId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-                    <span class="ident">fallible_iterator::convert</span>(<span class="ident">receivers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">val</span>))).<span class="ident">for_each</span>(
-                        <span class="op">|</span><span class="ident">receiver</span><span class="op">|</span> {
-                            <span class="comment">// extrinsic fails if there are duplicate account ids in the same output asset id</span>
-                            <span class="kw">if</span> <span class="op">!</span><span class="ident">unique_batch_receivers</span>.<span class="ident">insert</span>(<span class="ident">receiver</span>.<span class="ident">account_id</span>.<span class="ident">clone</span>()) {
-                                <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::AggregationError</span>)<span class="question-mark">?</span>
-                            }
-                            <span class="ident">assets::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::transfer_from</span>(
-                                <span class="kw-2">&amp;</span><span class="ident">asset_id</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">who</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">receiver</span>.<span class="ident">account_id</span>,
-                                <span class="ident">receiver</span>.<span class="ident">target_amount</span> <span class="op">-</span> <span class="ident">remainder_per_receiver</span>,
-                            )
-                        },
-                    )
-                },
+            <span class="kw">let</span> <span class="ident">adar_commission</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::inner_swap_batch_transfer</span>(
+                <span class="kw-2">&amp;</span><span class="ident">who</span>,
+                <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
+                <span class="ident">swap_batches</span>,
+                <span class="ident">max_input_amount</span>,
+                <span class="kw-2">&amp;</span><span class="ident">selected_source_types</span>,
+                <span class="kw-2">&amp;</span><span class="ident">filter_mode</span>,
             )<span class="question-mark">?</span>;
+
+            <span class="ident">assets::Pallet</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::transfer_from</span>(
+                <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>,
+                <span class="kw-2">&amp;</span><span class="ident">who</span>,
+                <span class="kw-2">&amp;</span><span class="ident">T::GetADARAccountId::get</span>(),
+                <span class="ident">adar_commission</span>,
+            )
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::FailedToTransferAdarCommission</span>)<span class="question-mark">?</span>;
+
             <span class="prelude-val">Ok</span>(().<span class="ident">into</span>())
         }
 
@@ -3963,6 +4184,8 @@
         <span class="ident">LiquiditySourceAlreadyDisabled</span>,
         <span class="comment">// Information about swap batch receivers is invalid</span>
         <span class="ident">InvalidReceiversInfo</span>,
+        <span class="comment">// Failure while transferring commission to ADAR account</span>
+        <span class="ident">FailedToTransferAdarCommission</span>,
     }
 }
 </code></pre></div>

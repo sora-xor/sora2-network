@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/xst/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../xst/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../xst/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../xst/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -812,6 +827,89 @@
 <span id="807">807</span>
 <span id="808">808</span>
 <span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -1244,10 +1342,9 @@
                 <span class="ident">desired_amount_in</span>: <span class="ident">quantity_main</span>,
             } =&gt; {
                 <span class="kw">let</span> <span class="ident">output_synthetic</span> <span class="op">=</span> <span class="ident">quantity_main</span> <span class="op">*</span> <span class="ident">main_asset_price_per_reference_unit</span>;
-                <span class="kw">let</span> <span class="ident">output_synthetic_unwrapped</span> <span class="op">=</span> <span class="ident">output_synthetic</span>
+                <span class="ident">output_synthetic</span>
                     .<span class="ident">get</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::PriceCalculationFailed</span>)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="ident">output_synthetic_unwrapped</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::PriceCalculationFailed</span>.<span class="ident">into</span>())
             }
             <span class="comment">// Sell some amount of XST for desired amount of XST(USD)</span>
             <span class="ident">QuoteAmount::WithDesiredOutput</span> {
@@ -1263,6 +1360,13 @@
 
     <span class="doccomment">/// Decompose SwapAmount into particular buy quotation query.</span>
     <span class="doccomment">///</span>
+    <span class="doccomment">/// &quot;Buy quotation&quot; means that we give `synthetic_asset_id` to buy/get</span>
+    <span class="doccomment">/// `main_asset_id`. It means that `input_amount` is in `synthetic_asset_id`</span>
+    <span class="doccomment">/// and `output_amount` is in main currency.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// In other words, swap direction is</span>
+    <span class="doccomment">/// `synthetic_asset_id -&gt; main_asset_id`</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// Returns ordered pair: (input_amount, output_amount, fee_amount).</span>
     <span class="kw">fn</span> <span class="ident">decide_buy_amounts</span>(
         <span class="ident">main_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
@@ -1272,6 +1376,8 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Balance</span>, <span class="ident">Balance</span>, <span class="ident">Balance</span>), <span class="ident">DispatchError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">amount</span> {
             <span class="ident">QuoteAmount::WithDesiredInput</span> { <span class="ident">desired_amount_in</span> } =&gt; {
+                <span class="comment">// Calculate how much `main_asset_id` we will buy (get)</span>
+                <span class="comment">// if we give `desired_amount_in` of `synthetic_asset_id`</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_amount</span>: <span class="ident">Balance</span> <span class="op">=</span> <span class="ident">FixedWrapper::from</span>(<span class="ident"><span class="self">Self</span>::buy_price</span>(
                     <span class="ident">main_asset_id</span>,
                     <span class="ident">synthetic_asset_id</span>,
@@ -1291,6 +1397,8 @@
             }
 
             <span class="ident">QuoteAmount::WithDesiredOutput</span> { <span class="ident">desired_amount_out</span> } =&gt; {
+                <span class="comment">// Calculate how much `synthetic_asset_id` we need to give to buy (get)</span>
+                <span class="comment">// `desired_amount_out` of `main_asset_id`</span>
                 <span class="kw">let</span> <span class="ident">desired_amount_out_with_fee</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">deduce_fee</span> {
                     (<span class="ident">FixedWrapper::from</span>(<span class="ident">desired_amount_out</span>)
                         <span class="op">/</span> (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) <span class="op">-</span> <span class="ident">BaseFee</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get</span>()))
@@ -1319,15 +1427,24 @@
 
     <span class="doccomment">/// Decompose SwapAmount into particular sell quotation query.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns ordered pair: (input_amount, output_amount, fee_amount).</span>
+    <span class="doccomment">/// &quot;Sell quotation&quot; means that we sell/give `main_asset_id` to get</span>
+    <span class="doccomment">/// `synthetic_asset_id`. It means that `input_amount` is in main</span>
+    <span class="doccomment">/// currency and `output_amount` is in `synthetic_asset_id`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// In other words, swap direction is</span>
+    <span class="doccomment">/// `main_asset_id -&gt; synthetic_asset_id`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns ordered pair: `(input_amount, output_amount, fee_amount)`.</span>
     <span class="kw">fn</span> <span class="ident">decide_sell_amounts</span>(
         <span class="ident">main_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
-        <span class="ident">collateral_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
+        <span class="ident">synthetic_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
         <span class="ident">amount</span>: <span class="ident">QuoteAmount</span><span class="op">&lt;</span><span class="ident">Balance</span><span class="op">&gt;</span>,
         <span class="ident">deduce_fee</span>: <span class="ident">bool</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Balance</span>, <span class="ident">Balance</span>, <span class="ident">Balance</span>), <span class="ident">DispatchError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">amount</span> {
             <span class="ident">QuoteAmount::WithDesiredInput</span> { <span class="ident">desired_amount_in</span> } =&gt; {
+                <span class="comment">// Calculate how much `synthetic_asset_id` we will get</span>
+                <span class="comment">// if we sell `desired_amount_in` of `main_asset_id`</span>
                 <span class="kw">let</span> <span class="ident">fee_amount</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">deduce_fee</span> {
                     <span class="kw">let</span> <span class="ident">fee_ratio</span> <span class="op">=</span> <span class="ident">FixedWrapper::from</span>(<span class="ident">BaseFee</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::get</span>());
                     (<span class="ident">fee_ratio</span> <span class="op">*</span> <span class="ident">FixedWrapper::from</span>(<span class="ident">desired_amount_in</span>))
@@ -1338,7 +1455,7 @@
                 };
                 <span class="kw">let</span> <span class="ident">output_amount</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sell_price</span>(
                     <span class="ident">main_asset_id</span>,
-                    <span class="ident">collateral_asset_id</span>,
+                    <span class="ident">synthetic_asset_id</span>,
                     <span class="ident">QuoteAmount::with_desired_input</span>(
                         <span class="ident">desired_amount_in</span>.<span class="ident">saturating_sub</span>(<span class="ident">fee_amount</span>.<span class="ident">clone</span>()),
                     ),
@@ -1350,9 +1467,11 @@
                 (<span class="ident">desired_amount_in</span>, <span class="ident">output_amount</span>, <span class="ident">fee_amount</span>)
             }
             <span class="ident">QuoteAmount::WithDesiredOutput</span> { <span class="ident">desired_amount_out</span> } =&gt; {
+                <span class="comment">// Calculate how much `main_asset_id` we need to sell to get</span>
+                <span class="comment">// `desired_amount_out` of `synthetic_asset_id`</span>
                 <span class="kw">let</span> <span class="ident">input_amount</span>: <span class="ident">Balance</span> <span class="op">=</span> <span class="ident">FixedWrapper::from</span>(<span class="ident"><span class="self">Self</span>::sell_price</span>(
                     <span class="ident">main_asset_id</span>,
-                    <span class="ident">collateral_asset_id</span>,
+                    <span class="ident">synthetic_asset_id</span>,
                     <span class="ident">QuoteAmount::with_desired_output</span>(<span class="ident">desired_amount_out</span>),
                 )<span class="question-mark">?</span>)
                 .<span class="ident">try_into_balance</span>()
@@ -1518,6 +1637,48 @@
         }
     }
 
+    <span class="doccomment">/// Get spot price of tokens based on desired amount.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ## How it works</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The implementation of this method might be quite confusing, so</span>
+    <span class="doccomment">/// let&#39;s review it in details.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// We have `input_asset_id` and `output_asset_id`. Let&#39;s call them $Id_{in}$ and $Id_{out}$ respectively.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Also in the pallet there is a base synthetic asset ($b$, for example XST) and some other synthetic ($s$, XSTUSD or other similar assets).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// There are 2 cases:</span>
+    <span class="doccomment">/// 1. $Id_{in}=b$ and $Id_{out}=s$, we are **sell**ing (giving) base asset $b$ to get some other synthetic asset $s$.</span>
+    <span class="doccomment">/// 1. $Id_{in}=s$ and $Id_{out}=b$, we are **buy**ing (getting) base asset $b$ by giving some other synthetic asset $s$.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// For each of them we have 2 cases:</span>
+    <span class="doccomment">/// 1. `WithDesiredInput`</span>
+    <span class="doccomment">/// 1. `WithDesiredOutput`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Also there are corresponding asset amount calculation funcitons:</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// | name                 | direc-tion | description                                                                                                                  | in-code representation                               |</span>
+    <span class="doccomment">/// |----------------------|------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|</span>
+    <span class="doccomment">/// | $sell_{out}(x_{in})$ | $b$ -&gt; $s$ | Calculate how much $s$ (secondary synthetic asset) we will get if we sell $x_{in}$ amount of $b$ (base/main synthetic asset) | `Self::decide_sell_amounts()`, `WithDesiredInput`  |</span>
+    <span class="doccomment">/// | $sell_{in}(x_{out})$ | $b$ -&gt; $s$ | Calculate how much $b$ we need to sell to get $x_{out}$ amount of $s$                                                        | `Self::decide_sell_amounts()`, `WithDesiredOutput` |</span>
+    <span class="doccomment">/// | $buy_{out}(x_{in})$  | $s$ -&gt; $b$ | Calculate how much $b$ we will buy (get) if we give $x_{in}$ amount of $s$                                                   | `Self::decide_buy_amounts()`, `WithDesiredInput`   |</span>
+    <span class="doccomment">/// | $buy_{in}(x_{out})$  | $s$ -&gt; $b$ | Calculate how much $s$ we need to give to buy (get) $x_{out}$ amount of $b$                                                  | `Self::decide_buy_amounts()`, `WithDesiredOutput`  |</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Let&#39;s list the formulae for each combination:</span>
+    <span class="doccomment">/// * $fee_\\%$ is fee percentage that is set up in the pallet</span>
+    <span class="doccomment">/// * $fee$ calculated fee</span>
+    <span class="doccomment">/// * $A_{in}$ calculated input</span>
+    <span class="doccomment">/// * $A_{out}$ calculated output</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// | quote direction   | *given*            | $fee$                                                      | $A_{in}$                              | $A_{out}$                            |</span>
+    <span class="doccomment">/// |-------------------|--------------------|------------------------------------------------------------|---------------------------------------|--------------------------------------|</span>
+    <span class="doccomment">/// | $b \rightarrow s$ | $A_{in}$ (in $b$)  | $A_{in} \cdot fee_\\%$                                      | $A_{in}$                              | $sell_{out}(A_{in}(1-fee_\\%))$       |</span>
+    <span class="doccomment">/// | $b \rightarrow s$ | $A_{out}$ (in $s$) | $\frac{sell_{in}(A_{out})}{1-fee_\\%} - sell_{in}(A_{out})$ | $\frac{sell_{in}(A_{out})}{1-fee_\\%}$ | $A_{out}$                            |</span>
+    <span class="doccomment">/// | $s \rightarrow b$ | $A_{in}$  (in $s$) | $fee_\\% \cdot buy_{out}(A_{in})$                           | $A_{in}$                              | $(1-fee_\\%) \cdot buy_{out}(A_{in})$ |</span>
+    <span class="doccomment">/// | $s \rightarrow b$ | $A_{out}$ (in $b$) | $\frac{A_{out}}{1-fee_\\%} - A_{out}$                       | $buy_{in}(\frac{A_{out}}{1-fee_\\%})$  | $A_{out}$                            |</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// [here is a rendered version in case the docs above are unreadable](https://hackmd.io/@jTXlKyDTTYuWUChtsJYcCg/SJ5ItHw12)</span>
     <span class="kw">fn</span> <span class="ident">quote</span>(
         <span class="ident">dex_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::DEXId</span>,
         <span class="ident">input_asset_id</span>: <span class="kw-2">&amp;</span><span class="ident">T::AssetId</span>,
@@ -1534,6 +1695,26 @@
             <span class="ident"><span class="self">Self</span>::decide_sell_amounts</span>(<span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>, <span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>, <span class="ident">amount</span>, <span class="ident">deduce_fee</span>)<span class="question-mark">?</span>
         } <span class="kw">else</span> {
             <span class="ident"><span class="self">Self</span>::decide_buy_amounts</span>(<span class="kw-2">&amp;</span><span class="ident">output_asset_id</span>, <span class="kw-2">&amp;</span><span class="ident">input_asset_id</span>, <span class="ident">amount</span>, <span class="ident">deduce_fee</span>)<span class="question-mark">?</span>
+        };
+        <span class="kw">let</span> <span class="ident">fee_amount</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">deduce_fee</span> {
+            <span class="comment">// `fee_amount` is always computed to be in `main_asset_id`, which is</span>
+            <span class="comment">// `SyntheticBaseAssetId` (e.g. XST), but `SwapOutcome` assumes XOR</span>
+            <span class="comment">// (`BaseAssetId`), so we convert.</span>
+            <span class="kw">let</span> <span class="ident">output_to_base</span>: <span class="ident">FixedWrapper</span> <span class="op">=</span>
+                <span class="op">&lt;</span><span class="ident">T</span> <span class="kw">as</span> <span class="ident">pallet::Config</span><span class="op">&gt;</span><span class="ident">::PriceToolsPallet::get_average_price</span>(
+                    <span class="ident">synthetic_base_asset_id</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">T::GetBaseAssetId::get</span>(),
+                    <span class="comment">// Since `Buy` is more expensive, it seems logical to</span>
+                    <span class="comment">// show this amount in order to not accidentally lie</span>
+                    <span class="comment">// about the price.</span>
+                    <span class="ident">PriceVariant::Buy</span>,
+                )<span class="question-mark">?</span>
+                .<span class="ident">into</span>();
+            (<span class="ident">fee_amount</span> <span class="op">*</span> <span class="ident">output_to_base</span>)
+                .<span class="ident">try_into_balance</span>()
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="ident">::PriceCalculationFailed</span>)<span class="question-mark">?</span>
+        } <span class="kw">else</span> {
+            <span class="ident">fee_amount</span>
         };
         <span class="kw">match</span> <span class="ident">amount</span> {
             <span class="ident">QuoteAmount::WithDesiredInput</span> { .. } =&gt; <span class="prelude-val">Ok</span>(<span class="ident">SwapOutcome::new</span>(<span class="ident">output_amount</span>, <span class="ident">fee_amount</span>)),

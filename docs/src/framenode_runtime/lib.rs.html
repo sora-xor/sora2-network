@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `runtime/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../framenode_runtime/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../framenode_runtime/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../framenode_runtime/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -2761,6 +2776,8 @@
 <span id="2756">2756</span>
 <span id="2757">2757</span>
 <span id="2758">2758</span>
+<span id="2759">2759</span>
+<span id="2760">2760</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -2996,10 +3013,10 @@
     <span class="ident">spec_name</span>: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     <span class="ident">impl_name</span>: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     <span class="ident">authoring_version</span>: <span class="number">1</span>,
-    <span class="ident">spec_version</span>: <span class="number">49</span>,
+    <span class="ident">spec_version</span>: <span class="number">50</span>,
     <span class="ident">impl_version</span>: <span class="number">1</span>,
     <span class="ident">apis</span>: <span class="ident">RUNTIME_API_VERSIONS</span>,
-    <span class="ident">transaction_version</span>: <span class="number">49</span>,
+    <span class="ident">transaction_version</span>: <span class="number">50</span>,
     <span class="ident">state_version</span>: <span class="number">0</span>,
 };
 
@@ -3590,6 +3607,7 @@
     <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GetBuyBackAccountId</span>: <span class="ident">AccountId</span> <span class="op">=</span> <span class="ident">AccountId::new</span>(<span class="macro">hex!</span>(<span class="string">&quot;feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71&quot;</span>));
     <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GetBuyBackDexId</span>: <span class="ident">DEXId</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GetSyntheticBaseAssetId</span>: <span class="ident">AssetId</span> <span class="op">=</span> <span class="ident">GetXstAssetId::get</span>();
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GetADARAccountId</span>: <span class="ident">AccountId</span> <span class="op">=</span> <span class="ident">AccountId::new</span>(<span class="macro">hex!</span>(<span class="string">&quot;dc5201cda01113be2ca9093c49a92763c95c708dd61df70c945df749c365da5d&quot;</span>));
 }
 
 <span class="kw">impl</span> <span class="ident">currencies::Config</span> <span class="kw">for</span> <span class="ident">Runtime</span> {
@@ -3720,6 +3738,7 @@
     <span class="kw">type</span> <span class="ident">SecondaryMarket</span> <span class="op">=</span> <span class="ident">pool_xyk::Pallet</span><span class="op">&lt;</span><span class="ident">Runtime</span><span class="op">&gt;</span>;
     <span class="kw">type</span> <span class="ident">WeightInfo</span> <span class="op">=</span> <span class="ident">liquidity_proxy::weights::WeightInfo</span><span class="op">&lt;</span><span class="ident">Runtime</span><span class="op">&gt;</span>;
     <span class="kw">type</span> <span class="ident">VestedRewardsPallet</span> <span class="op">=</span> <span class="ident">VestedRewards</span>;
+    <span class="kw">type</span> <span class="ident">GetADARAccountId</span> <span class="op">=</span> <span class="ident">GetADARAccountId</span>;
 }
 
 <span class="kw">impl</span> <span class="ident">mock_liquidity_source::Config</span><span class="op">&lt;</span><span class="ident">mock_liquidity_source::Instance1</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Runtime</span> {

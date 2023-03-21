@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `pallets/liquidity-proxy/rpc/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../liquidity_proxy_rpc/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><!-- https://github.com/KaTeX/KaTeX/blob/main/docs/browser.md#starter-template -->
+<!-- instructions on how to use it can be found here: https://docs.rs/rustdoc-katex-demo/0.1.5/rustdoc_katex_demo/ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css" integrity="sha384-vKruj+a13U8yHIkAyGgK1J3ArTLzrFGBbBc0tDp4ad/EyewESeXE/Iv67Aj8gKZ0" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js" integrity="sha384-PwRUT/YqbnEjkZO0zZxNqcxACrXe+j766U2amXcgMg5457rve2Y7I6ZJSm2A0mS4" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.10.0/dist/katex.min.js"                  integrity="sha384-K3vbOmF2BtaVai+Qk37uypf7VrgBubhQreNQe9aGsz9lB63dIFiQVlJbr92dw2Lx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"
+        onload='renderMathInElement(document.body, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ]
+        });'></script>
+
+</head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../liquidity_proxy_rpc/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../liquidity_proxy_rpc/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -201,6 +216,42 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.</span>
 
 <span class="comment">// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.</span>
@@ -238,7 +289,7 @@
     <span class="ident">proc_macros::rpc</span>,
     <span class="ident">types::error::CallError</span>,
 };
-<span class="kw">use</span> <span class="ident">sp_api::ProvideRuntimeApi</span>;
+<span class="kw">use</span> <span class="ident">sp_api</span>::{<span class="ident">ApiExt</span>, <span class="ident">ProvideRuntimeApi</span>};
 <span class="kw">use</span> <span class="ident">sp_blockchain::HeaderBackend</span>;
 <span class="kw">use</span> <span class="ident">sp_runtime::generic::BlockId</span>;
 <span class="kw">use</span> <span class="ident">sp_runtime::traits</span>::{<span class="ident">Block</span> <span class="kw">as</span> <span class="ident">BlockT</span>, <span class="ident">MaybeDisplay</span>, <span class="ident">MaybeFromStr</span>};
@@ -333,7 +384,7 @@
     <span class="op">&gt;</span>,
     <span class="ident">DEXId</span>: <span class="ident">Codec</span>,
     <span class="ident">AssetId</span>: <span class="ident">Codec</span> <span class="op">+</span> <span class="ident">MaybeFromStr</span> <span class="op">+</span> <span class="ident">MaybeDisplay</span>,
-    <span class="ident">Balance</span>: <span class="ident">Codec</span> <span class="op">+</span> <span class="ident">MaybeFromStr</span> <span class="op">+</span> <span class="ident">MaybeDisplay</span>,
+    <span class="ident">Balance</span>: <span class="ident">Codec</span> <span class="op">+</span> <span class="ident">MaybeFromStr</span> <span class="op">+</span> <span class="ident">MaybeDisplay</span> <span class="op">+</span> <span class="ident">Default</span>,
     <span class="ident">SwapVariant</span>: <span class="ident">Codec</span>,
     <span class="ident">LiquiditySourceType</span>: <span class="ident">Codec</span>,
     <span class="ident">FilterMode</span>: <span class="ident">Codec</span>,
@@ -354,17 +405,53 @@
             <span class="comment">// If the block hash is not supplied assume the best block.</span>
             <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">info</span>().<span class="ident">best_hash</span>,
         ));
-        <span class="ident">api</span>.<span class="ident">quote</span>(
-            <span class="kw-2">&amp;</span><span class="ident">at</span>,
-            <span class="ident">dex_id</span>,
-            <span class="ident">input_asset_id</span>,
-            <span class="ident">output_asset_id</span>,
-            <span class="ident">amount</span>,
-            <span class="ident">swap_variant</span>,
-            <span class="ident">selected_source_types</span>,
-            <span class="ident">filter_mode</span>,
-        )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Call</span>(<span class="ident">CallError::Failed</span>(<span class="ident">e</span>.<span class="ident">into</span>())))
+
+        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">api</span>
+            .<span class="ident">api_version</span>::<span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">LiquidityProxyRuntimeAPI</span><span class="op">&lt;</span>
+                <span class="ident">Block</span>,
+                <span class="ident">DEXId</span>,
+                <span class="ident">AssetId</span>,
+                <span class="ident">Balance</span>,
+                <span class="ident">SwapVariant</span>,
+                <span class="ident">LiquiditySourceType</span>,
+                <span class="ident">FilterMode</span>,
+            <span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">at</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Custom</span>(<span class="macro">format!</span>(<span class="string">&quot;Runtime API error: {}&quot;</span>, <span class="ident">e</span>)))<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">outcome</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">version</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="number">1</span>) {
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">deprecated</span>)]</span>
+            {
+                <span class="ident">api</span>.<span class="ident">quote_before_version_2</span>(
+                    <span class="kw-2">&amp;</span><span class="ident">at</span>,
+                    <span class="ident">dex_id</span>,
+                    <span class="ident">input_asset_id</span>,
+                    <span class="ident">output_asset_id</span>,
+                    <span class="ident">amount</span>,
+                    <span class="ident">swap_variant</span>,
+                    <span class="ident">selected_source_types</span>,
+                    <span class="ident">filter_mode</span>,
+                )
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Call</span>(<span class="ident">CallError::Failed</span>(<span class="ident">e</span>.<span class="ident">into</span>())))<span class="question-mark">?</span>
+                .<span class="ident">map</span>(<span class="ident">Into::into</span>)
+            }
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">version</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="number">2</span>) {
+            <span class="ident">api</span>.<span class="ident">quote</span>(
+                <span class="kw-2">&amp;</span><span class="ident">at</span>,
+                <span class="ident">dex_id</span>,
+                <span class="ident">input_asset_id</span>,
+                <span class="ident">output_asset_id</span>,
+                <span class="ident">amount</span>,
+                <span class="ident">swap_variant</span>,
+                <span class="ident">selected_source_types</span>,
+                <span class="ident">filter_mode</span>,
+            )
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Call</span>(<span class="ident">CallError::Failed</span>(<span class="ident">e</span>.<span class="ident">into</span>())))<span class="question-mark">?</span>
+        } <span class="kw">else</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RpcError::Custom</span>(
+                <span class="string">&quot;Unsupported or invalid LiquidityProxyApi version&quot;</span>.<span class="ident">to_string</span>(),
+            ));
+        };
+        <span class="prelude-val">Ok</span>(<span class="ident">outcome</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">is_path_available</span>(
