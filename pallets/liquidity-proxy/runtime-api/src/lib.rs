@@ -81,6 +81,48 @@ pub struct SwapOutcomeInfo<Balance, AssetId: MaybeDisplay + MaybeFromStr> {
     pub route: Vec<AssetId>,
 }
 
+impl<Balance: Default, AssetId: MaybeDisplay + MaybeFromStr>
+    From<SwapOutcomeInfoV1<Balance, AssetId>> for SwapOutcomeInfo<Balance, AssetId>
+{
+    fn from(value: SwapOutcomeInfoV1<Balance, AssetId>) -> Self {
+        Self {
+            amount: value.amount,
+            amount_without_impact: Default::default(),
+            fee: value.fee,
+            rewards: value.rewards,
+            route: Default::default(),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct SwapOutcomeInfoV1<Balance, AssetId: MaybeDisplay + MaybeFromStr> {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub amount: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub fee: Balance,
+    pub rewards: Vec<RewardsInfo<Balance, AssetId>>,
+}
+
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct RewardsInfo<Balance, AssetId> {
@@ -110,6 +152,7 @@ pub struct RewardsInfo<Balance, AssetId> {
 }
 
 sp_api::decl_runtime_apis! {
+    #[api_version(2)]
     pub trait LiquidityProxyAPI<DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode> where
         DEXId: Codec,
         AssetId: Codec + MaybeFromStr + MaybeDisplay,
@@ -127,6 +170,17 @@ sp_api::decl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<SwapOutcomeInfo<Balance, AssetId>>;
+
+        #[changed_in(2)]
+        fn quote(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+            amount: BalanceWrapper,
+            swap_variant: SwapVariant,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> Option<SwapOutcomeInfoV1<Balance, AssetId>>;
 
         fn is_path_available(
             dex_id: DEXId,

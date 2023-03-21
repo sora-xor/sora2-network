@@ -29,7 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
+use crate::test_utils::calculate_swap_batch_input_amount_with_adar_commission;
+use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
@@ -40,14 +41,7 @@ use common::{
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError;
-
-#[inline]
-fn mcbc_excluding_filter(dex: DEXId) -> LiquiditySourceFilter<DEXId, LiquiditySourceType> {
-    LiquiditySourceFilter::with_forbidden(
-        dex,
-        [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-    )
-}
+use test_utils::mcbc_excluding_filter;
 
 #[test]
 #[ignore] // dependency on sampling which is removed
@@ -3271,83 +3265,96 @@ fn test_disable_enable_liquidity_source() {
 }
 
 #[test]
-fn test_batch_swap_successful() {
-    let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
-
-        assert_ok!(LiquidityProxy::swap_transfer_batch(
-            Origin::signed(alice()),
-            Vec::from([
-                SwapBatchInfo {
-                    outcome_asset_id: USDT,
-                    dex_id: DEX_C_ID,
-                    receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                },
-                SwapBatchInfo {
-                    outcome_asset_id: KSM,
-                    dex_id: DEX_A_ID,
-                    receivers: vec![
-                        BatchReceiverInfo::new(charlie(), balance!(10)),
-                        BatchReceiverInfo::new(dave(), balance!(10)),
-                    ]
-                },
-            ]),
-            XOR,
-            balance!(100),
-            [LiquiditySourceType::XYKPool].to_vec(),
-            FilterMode::AllowSelected,
-        ));
-
-        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
-        assert_eq!(
-            Assets::free_balance(&KSM, &charlie()).unwrap(),
-            balance!(10)
-        );
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
-    })
-}
-
-#[test]
 fn test_batch_swap_desired_input_successful() {
     let mut ext = ExtBuilder::default().with_xyk_pool().build();
     ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
         assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
+        let swap_batches = Vec::from([
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_C_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            },
+            SwapBatchInfo {
+                outcome_asset_id: KSM,
+                dex_id: DEX_A_ID,
+                receivers: vec![
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                ],
+            },
+        ]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let max_input_amount =
+            calculate_swap_batch_input_amount_with_adar_commission(&swap_batches, sources.clone())
+                + balance!(1);
+
         assert_ok!(LiquidityProxy::swap_transfer_batch(
             Origin::signed(alice()),
-            Vec::from([
-                SwapBatchInfo {
-                    outcome_asset_id: USDT,
-                    dex_id: DEX_C_ID,
-                    receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                },
-                SwapBatchInfo {
-                    outcome_asset_id: KSM,
-                    dex_id: DEX_A_ID,
-                    receivers: vec![
-                        BatchReceiverInfo::new(charlie(), balance!(10)),
-                        BatchReceiverInfo::new(dave(), balance!(10)),
-                    ]
-                },
-            ]),
+            swap_batches.clone(),
             XOR,
-            balance!(32),
-            [LiquiditySourceType::XYKPool].to_vec(),
-            FilterMode::AllowSelected,
+            max_input_amount,
+            sources.clone(),
+            filter_mode,
         ));
 
-        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(10));
-        assert_eq!(
-            Assets::free_balance(&KSM, &charlie()).unwrap(),
-            balance!(10)
-        );
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(10));
+        test_utils::check_adar_commission(&swap_batches, sources);
+        test_utils::check_swap_batch_executed_amount(swap_batches);
     });
+}
+
+#[test]
+fn test_batch_swap_duplicate_receivers_successful() {
+    let mut ext = ExtBuilder::default().with_xyk_pool().build();
+    ext.execute_with(|| {
+        assert_eq!(Assets::free_balance(&XOR, &adar()).unwrap(), balance!(0));
+
+        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+
+        let swap_batches = Vec::from([
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_C_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            },
+            SwapBatchInfo {
+                outcome_asset_id: KSM,
+                dex_id: DEX_A_ID,
+                receivers: vec![
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                ],
+            },
+        ]);
+
+        let filter_mode = FilterMode::AllowSelected;
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+        let max_input_amount =
+            calculate_swap_batch_input_amount_with_adar_commission(&swap_batches, sources.clone())
+                + balance!(1);
+
+        assert_ok!(LiquidityProxy::swap_transfer_batch(
+            Origin::signed(alice()),
+            swap_batches.clone(),
+            XOR,
+            max_input_amount,
+            sources.clone(),
+            filter_mode,
+        ));
+
+        test_utils::check_adar_commission(&swap_batches, sources);
+        test_utils::check_swap_batch_executed_amount(swap_batches);
+    })
 }
 
 #[test]
@@ -3358,27 +3365,34 @@ fn test_batch_swap_desired_input_too_low() {
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
+        let swap_batches = Vec::from([
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_C_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            },
+            SwapBatchInfo {
+                outcome_asset_id: KSM,
+                dex_id: DEX_A_ID,
+                receivers: vec![
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                ],
+            },
+        ]);
+        let sources = [LiquiditySourceType::XYKPool].to_vec();
+
+        let max_input_amount =
+            calculate_swap_batch_input_amount_with_adar_commission(&swap_batches, sources.clone())
+                - balance!(1);
+
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 Origin::signed(alice()),
-                Vec::from([
-                    SwapBatchInfo {
-                        outcome_asset_id: USDT,
-                        dex_id: DEX_C_ID,
-                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                    },
-                    SwapBatchInfo {
-                        outcome_asset_id: KSM,
-                        dex_id: DEX_A_ID,
-                        receivers: vec![
-                            BatchReceiverInfo::new(charlie(), balance!(10)),
-                            BatchReceiverInfo::new(dave(), balance!(10)),
-                        ]
-                    },
-                ]),
+                swap_batches,
                 XOR,
-                balance!(1),
-                [LiquiditySourceType::XYKPool].to_vec(),
+                max_input_amount,
+                sources,
                 FilterMode::AllowSelected,
             ),
             Error::<Runtime>::SlippageNotTolerated
@@ -3394,66 +3408,31 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
         assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
 
-        assert_noop!(
-            LiquidityProxy::swap_transfer_batch(
-                Origin::signed(alice()),
-                Vec::from([
-                    SwapBatchInfo {
-                        outcome_asset_id: USDT,
-                        dex_id: DEX_C_ID,
-                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                    },
-                    SwapBatchInfo {
-                        outcome_asset_id: USDT,
-                        dex_id: DEX_A_ID,
-                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                    },
-                    SwapBatchInfo {
-                        outcome_asset_id: KSM,
-                        dex_id: DEX_A_ID,
-                        receivers: vec![
-                            BatchReceiverInfo::new(charlie(), balance!(10)),
-                            BatchReceiverInfo::new(dave(), balance!(10)),
-                        ]
-                    },
-                ]),
-                XOR,
-                balance!(100),
-                [LiquiditySourceType::XYKPool].to_vec(),
-                FilterMode::AllowSelected,
-            ),
-            Error::<Runtime>::AggregationError
-        );
-    });
-}
-
-#[test]
-fn test_batch_swap_fail_with_duplicate_receivers_within_asset_id() {
-    let mut ext = ExtBuilder::default().with_xyk_pool().build();
-    ext.execute_with(|| {
-        assert_eq!(Assets::free_balance(&USDT, &bob()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &charlie()).unwrap(), balance!(0));
-        assert_eq!(Assets::free_balance(&KSM, &dave()).unwrap(), balance!(0));
+        let swap_batches = Vec::from([
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_C_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            },
+            SwapBatchInfo {
+                outcome_asset_id: USDT,
+                dex_id: DEX_A_ID,
+                receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))],
+            },
+            SwapBatchInfo {
+                outcome_asset_id: KSM,
+                dex_id: DEX_A_ID,
+                receivers: vec![
+                    BatchReceiverInfo::new(charlie(), balance!(10)),
+                    BatchReceiverInfo::new(dave(), balance!(10)),
+                ],
+            },
+        ]);
 
         assert_noop!(
             LiquidityProxy::swap_transfer_batch(
                 Origin::signed(alice()),
-                Vec::from([
-                    SwapBatchInfo {
-                        outcome_asset_id: USDT,
-                        dex_id: DEX_C_ID,
-                        receivers: vec![BatchReceiverInfo::new(bob(), balance!(10))]
-                    },
-                    SwapBatchInfo {
-                        outcome_asset_id: KSM,
-                        dex_id: DEX_A_ID,
-                        receivers: vec![
-                            BatchReceiverInfo::new(charlie(), balance!(10)),
-                            BatchReceiverInfo::new(dave(), balance!(10)),
-                            BatchReceiverInfo::new(dave(), balance!(10)),
-                        ]
-                    },
-                ]),
+                swap_batches,
                 XOR,
                 balance!(100),
                 [LiquiditySourceType::XYKPool].to_vec(),
