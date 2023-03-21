@@ -579,12 +579,23 @@ impl pallet_staking::Config for Runtime {
     type Slash = ();
     type SessionsPerEra = ();
     type SlashDeferDuration = ();
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type BondingDuration = BondingDuration;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type ElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
-    type GenesisElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
+    type ElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
+    type GenesisElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
     type OnStakerSlash = ();
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
