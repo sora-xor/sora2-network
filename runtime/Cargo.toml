@@ -292,6 +292,10 @@ wip = [
     "framenode-chain-spec/wip",
 ]
 
+ready-to-test = [
+    "framenode-chain-spec/ready-to-test",
+]
+
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "band/runtime-benchmarks",
