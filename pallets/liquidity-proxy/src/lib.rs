@@ -1685,6 +1685,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
         pub fn swap(
             origin: OriginFor<T>,
@@ -1719,6 +1720,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
         pub fn swap_transfer(
             origin: OriginFor<T>,
@@ -1758,6 +1760,7 @@ pub mod pallet {
         ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::swap_transfer_batch(
                 swap_batches.len() as u32,
                 swap_batches.iter()
@@ -1873,6 +1876,7 @@ pub mod pallet {
         /// Enables XST or TBC liquidity source.
         ///
         /// - `liquidity_source`: the liquidity source to be enabled.
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
         pub fn enable_liquidity_source(
             origin: OriginFor<T>,
@@ -1902,6 +1906,7 @@ pub mod pallet {
         /// Disables XST or TBC liquidity source. The liquidity source becomes unavailable for swap.
         ///
         /// - `liquidity_source`: the liquidity source to be disabled.
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
         pub fn disable_liquidity_source(
             origin: OriginFor<T>,

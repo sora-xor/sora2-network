@@ -153,6 +153,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Enable exchange path on the pool for pair BaseAsset-SyntheticAsset.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,
@@ -168,6 +169,7 @@ pub mod pallet {
         }
 
         /// Change reference asset which is used to determine collateral assets value. Intended to be e.g., stablecoin DAI.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -179,6 +181,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
@@ -194,6 +197,7 @@ pub mod pallet {
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
         pub fn set_synthetic_base_asset_floor_price(
             origin: OriginFor<T>,
