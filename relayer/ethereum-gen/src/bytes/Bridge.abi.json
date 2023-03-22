@@ -7,6 +7,21 @@
         "type": "address[]"
       },
       {
+        "internalType": "address[]",
+        "name": "sidechainTokenAddresses",
+        "type": "address[]"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "sidechainAssetIds",
+        "type": "bytes32[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "erc20Addresses",
+        "type": "address[]"
+      },
+      {
         "internalType": "address",
         "name": "addressVAL",
         "type": "address"
@@ -86,12 +101,6 @@
       }
     ],
     "name": "Migrated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "PreparedForMigration",
     "type": "event"
   },
   {
@@ -415,11 +424,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "thisContractAddress",
-        "type": "address"
-      },
-      {
         "internalType": "bytes32",
         "name": "salt",
         "type": "bytes32"
@@ -625,11 +629,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "address",
-        "name": "thisContractAddress",
-        "type": "address"
-      },
       {
         "internalType": "bytes32",
         "name": "salt",

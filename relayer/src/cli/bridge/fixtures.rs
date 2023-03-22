@@ -72,9 +72,9 @@ impl ValidatorSet {
     fn sign_commitment<R: Rng>(
         &self,
         rng: &mut R,
-        commitment: beefy_primitives::Commitment<u32>,
+        commitment: sp_beefy::Commitment<u32>,
         count: Option<usize>,
-    ) -> beefy_primitives::SignedCommitment<u32, sp_core::ecdsa::Signature> {
+    ) -> sp_beefy::SignedCommitment<u32, sp_core::ecdsa::Signature> {
         let commitment_hash = sp_runtime::traits::Keccak256::hash_of(&commitment);
         let validators_threshold = threshold(self.validators.len());
         let signed_count = count.unwrap_or_else(|| {
@@ -93,7 +93,7 @@ impl ValidatorSet {
             signatures[i] = Some(signature);
         }
 
-        beefy_primitives::SignedCommitment {
+        sp_beefy::SignedCommitment {
             commitment,
             signatures,
         }
@@ -131,8 +131,8 @@ impl ValidatorSet {
         root
     }
 
-    fn authority_set(&self) -> beefy_primitives::mmr::BeefyAuthoritySet<H256> {
-        beefy_primitives::mmr::BeefyAuthoritySet {
+    fn authority_set(&self) -> sp_beefy::mmr::BeefyAuthoritySet<H256> {
+        sp_beefy::mmr::BeefyAuthoritySet {
             id: self.id,
             len: self.validators.len() as u32,
             root: self.root(),
@@ -141,7 +141,7 @@ impl ValidatorSet {
 }
 
 pub type MMRLeaf =
-    beefy_primitives::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
+    sp_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
 
 struct FakeMMR {
     // leaves: BTreeMap<u64, MMRLeaf>,
@@ -170,7 +170,7 @@ impl FakeMMR {
         let size = Self::size(at);
         let pos = mmr_lib::leaf_index_to_pos(leaf);
         let mmr = mmr_lib::MMR::<MMRNode, MMRNode, _>::new(size, &self.mem);
-        let proof = mmr.gen_proof(vec![pos])?;
+        let proof = mmr.gen_proof(vec![pos]).unwrap();
         let proof = proof
             .proof_items()
             .iter()
@@ -230,12 +230,15 @@ impl MMRNode {
 impl mmr_lib::Merge for MMRNode {
     type Item = MMRNode;
 
-    fn merge(left: &Self::Item, right: &Self::Item) -> Self::Item {
+    fn merge(
+        left: &Self::Item,
+        right: &Self::Item,
+    ) -> core::result::Result<Self::Item, mmr_lib::Error> {
         let res = MMRNode::Hash(sp_runtime::traits::Keccak256::hash_of(&(
             left.hash(),
             right.hash(),
         )));
-        res
+        Ok(res)
     }
 }
 
@@ -286,7 +289,7 @@ impl Command {
         let mut mmr = FakeMMR::new();
         for i in 0..self.tree_size + 1 {
             mmr.add_leaf(MMRLeaf {
-                version: beefy_primitives::mmr::MmrLeafVersion::new(0, 0),
+                version: sp_beefy::mmr::MmrLeafVersion::new(0, 0),
                 parent_number_and_hash: (i, H256::random_using(&mut rng)),
                 beefy_next_authority_set: next_validator_set.authority_set(),
                 leaf_extra: bridge_types::types::LeafExtraData {
@@ -297,9 +300,9 @@ impl Command {
         }
         let mmr_root = mmr.root(self.tree_size as u64)?;
 
-        let commitment = beefy_primitives::Commitment::<u32> {
-            payload: beefy_primitives::Payload::from_single_entry(
-                beefy_primitives::known_payloads::MMR_ROOT_ID,
+        let commitment = sp_beefy::Commitment::<u32> {
+            payload: sp_beefy::Payload::from_single_entry(
+                sp_beefy::known_payloads::MMR_ROOT_ID,
                 mmr_root.encode(),
             ),
             block_number: self.tree_size as u32,

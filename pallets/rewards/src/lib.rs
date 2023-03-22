@@ -336,8 +336,8 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim the reward with signature.
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(WeightInfoOf::<T>::claim())]
-
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
             let account_id = ensure_signed(origin)?;
             ensure!(
@@ -404,8 +404,8 @@ pub mod pallet {
         /// Finalize the update of unclaimed VAL data in storage
         /// Add addresses, who will receive UMI NFT rewards.
         #[transactional]
+        #[pallet::call_index(1)]
         #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
-
         pub fn add_umi_nft_receivers(
             origin: OriginFor<T>,
             receivers: Vec<EthAddress>,

@@ -2,9 +2,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::{prelude::*, relay::justification::BeefyJustification};
-use beefy_primitives::VersionedFinalityProof;
 use futures::Stream;
 use futures::StreamExt;
+use sp_beefy::VersionedFinalityProof;
 use sp_runtime::traits::UniqueSaturatedInto;
 
 use super::BlockNumber;
