@@ -35,7 +35,7 @@ use jsonrpsee::{
     proc_macros::rpc,
     types::error::CallError,
 };
-use sp_api::ProvideRuntimeApi;
+use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
@@ -130,7 +130,7 @@ where
     >,
     DEXId: Codec,
     AssetId: Codec + MaybeFromStr + MaybeDisplay,
-    Balance: Codec + MaybeFromStr + MaybeDisplay,
+    Balance: Codec + MaybeFromStr + MaybeDisplay + Default,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
     FilterMode: Codec,
@@ -151,17 +151,53 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.quote(
-            &at,
-            dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            swap_variant,
-            selected_source_types,
-            filter_mode,
-        )
-        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+
+        let version = api
+            .api_version::<dyn LiquidityProxyRuntimeAPI<
+                Block,
+                DEXId,
+                AssetId,
+                Balance,
+                SwapVariant,
+                LiquiditySourceType,
+                FilterMode,
+            >>(&at)
+            .map_err(|e| RpcError::Custom(format!("Runtime API error: {}", e)))?;
+
+        let outcome = if version == Some(1) {
+            #[allow(deprecated)]
+            {
+                api.quote_before_version_2(
+                    &at,
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                    swap_variant,
+                    selected_source_types,
+                    filter_mode,
+                )
+                .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+                .map(Into::into)
+            }
+        } else if version == Some(2) {
+            api.quote(
+                &at,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                amount,
+                swap_variant,
+                selected_source_types,
+                filter_mode,
+            )
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+        } else {
+            return Err(RpcError::Custom(
+                "Unsupported or invalid LiquidityProxyApi version".to_string(),
+            ));
+        };
+        Ok(outcome)
     }
 
     fn is_path_available(
