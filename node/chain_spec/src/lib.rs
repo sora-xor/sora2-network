@@ -489,10 +489,6 @@ fn bonding_curve_distribution_accounts(
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
-    let parliament_and_development = DistributionAccountData::new(
-        DistributionAccount::Account(GetParliamentAccountId::get()),
-        projects_parliament_and_development_coeff.get().unwrap(),
-    );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
@@ -511,7 +507,6 @@ fn bonding_curve_distribution_accounts(
         xor_allocation,
         sora_citizens,
         stores_and_shops,
-        parliament_and_development,
         projects,
         val_holders,
     }

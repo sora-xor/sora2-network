@@ -30,7 +30,7 @@
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::{
-    AccountId, AssetId, Assets, Balance, Balances, BuyBackXSTPercent, Call, Currencies,
+    AccountId, AssetId, Assets, Balance, Balances, Call, Currencies, GetBuyBackXSTPercent,
     GetXorFeeAccountId, Origin, PoolXYK, Referrals, ReferrerWeight, Runtime, Staking, System,
     Tokens, Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
@@ -635,7 +635,7 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let buy_back_percent = BuyBackXSTPercent::get();
+        let buy_back_percent = GetBuyBackXSTPercent::get();
         let expected_balance = FixedWrapper::from(buy_back_percent * val_burned);
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(

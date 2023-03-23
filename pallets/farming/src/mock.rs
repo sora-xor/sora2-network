@@ -240,6 +240,7 @@ parameter_types! {
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
     pub const GetBuyBackDexId: DEXId = 0;
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -317,6 +318,8 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
+    type BuyBackHandler = ();
+    type GetBuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
 }
 

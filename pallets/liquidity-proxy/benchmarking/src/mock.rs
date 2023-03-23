@@ -201,6 +201,7 @@ parameter_types! {
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
     pub const GetBuyBackDexId: DEXId = 0;
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -358,8 +359,6 @@ fn bonding_curve_distribution_accounts() -> DistributionAccounts<
     let projects_coefficient = fixed_wrapper!(1) - val_holders_coefficient;
     let projects_sora_citizens_coeff = projects_coefficient.clone() * fixed_wrapper!(0.01);
     let projects_stores_and_shops_coeff = projects_coefficient.clone() * fixed_wrapper!(0.04);
-    let projects_parliament_and_development_coeff =
-        projects_coefficient.clone() * fixed_wrapper!(0.05);
     let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
 
     let xor_allocation = DistributionAccountData::new(
@@ -383,12 +382,6 @@ fn bonding_curve_distribution_accounts() -> DistributionAccounts<
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
-    let parliament_and_development = DistributionAccountData::new(
-        DistributionAccount::Account(
-            hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into(),
-        ),
-        projects_parliament_and_development_coeff.get().unwrap(),
-    );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
             0u32,
@@ -407,7 +400,6 @@ fn bonding_curve_distribution_accounts() -> DistributionAccounts<
         xor_allocation,
         sora_citizens,
         stores_and_shops,
-        parliament_and_development,
         projects,
         val_holders,
     }
@@ -493,6 +485,8 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = MockPriceTools;
     type VestedRewardsPallet = VestedRewards;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type GetBuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
 }
 

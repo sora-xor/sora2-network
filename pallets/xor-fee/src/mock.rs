@@ -89,7 +89,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const GetBuyBackXSTPercent: Percent = Percent::from_percent(10);
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
@@ -661,7 +661,7 @@ impl Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type BuyBackXSTPercent = BuyBackXSTPercent;
+    type GetBuyBackXSTPercent = GetBuyBackXSTPercent;
     type XorId = XorId;
     type ValId = ValId;
     type XstId = GetBuyBackAssetId;

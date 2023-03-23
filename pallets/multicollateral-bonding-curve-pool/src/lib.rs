@@ -49,6 +49,7 @@ use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
     QuoteAmount, SwapAmount, SwapOutcome,
 };
+use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
@@ -136,7 +137,6 @@ pub struct DistributionAccounts<DistributionAccountData> {
     pub val_holders: DistributionAccountData,
     pub sora_citizens: DistributionAccountData,
     pub stores_and_shops: DistributionAccountData,
-    pub parliament_and_development: DistributionAccountData,
     pub projects: DistributionAccountData,
 }
 
@@ -145,33 +145,26 @@ impl<AccountId, TechAccountId>
 {
     pub fn xor_distribution_as_array(
         &self,
-    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 4] {
-        [
-            &self.sora_citizens,
-            &self.stores_and_shops,
-            &self.parliament_and_development,
-            &self.projects,
-        ]
+    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 3] {
+        [&self.sora_citizens, &self.stores_and_shops, &self.projects]
     }
 
     pub fn xor_distribution_accounts_as_array(
         &self,
-    ) -> [&DistributionAccount<AccountId, TechAccountId>; 4] {
+    ) -> [&DistributionAccount<AccountId, TechAccountId>; 3] {
         [
             &self.sora_citizens.account,
             &self.stores_and_shops.account,
-            &self.parliament_and_development.account,
             &self.projects.account,
         ]
     }
 
-    pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 6] {
+    pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 5] {
         [
             &self.xor_allocation.account,
             &self.val_holders.account,
             &self.sora_citizens.account,
             &self.stores_and_shops.account,
-            &self.parliament_and_development.account,
             &self.projects.account,
         ]
     }
@@ -184,7 +177,6 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
             val_holders: Default::default(),
             sora_citizens: Default::default(),
             stores_and_shops: Default::default(),
-            parliament_and_development: Default::default(),
             projects: Default::default(),
         }
     }
@@ -218,6 +210,8 @@ pub mod pallet {
         >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
+        type GetBuyBackXSTPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -827,20 +821,25 @@ impl<T: Config> Pallet<T> {
                 Assets::<T>::mint_to(&base_asset_id, &holder, &account, amount)?;
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
-            Assets::<T>::mint_to(&base_asset_id, &holder, &holder, undistributed_xor_amount)?;
+
+            let amount = fw_swapped_xor_amount * T::GetBuyBackXSTPercent::get();
+            let amount = amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
+            T::BuyBackHandler::mint_buy_back_and_burn(&base_asset_id, &XST.into(), amount)?;
+
             // undistributed_xor_amount includes xor_allocation and val_holders portions
-            let val_amount = <T as pallet::Config>::LiquidityProxy::exchange(
-                DEXId::Polkaswap.into(),
-                holder,
-                holder,
+            T::BuyBackHandler::mint_buy_back_and_burn(
                 &base_asset_id,
                 &VAL.into(),
-                SwapAmount::with_desired_input(undistributed_xor_amount, Balance::zero()),
-                Pallet::<T>::self_excluding_filter(),
-            )?
-            .amount;
-            Assets::<T>::burn_from(&VAL.into(), holder, holder, val_amount)?;
+                undistributed_xor_amount,
+            )?;
             Ok(())
+        })
+        .map_err(|err| {
+            frame_support::log::error!("Reserves distribution failed, will try next time: {err:?}");
+            err
         })
     }
 
