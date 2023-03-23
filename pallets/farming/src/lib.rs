@@ -41,19 +41,22 @@ mod tests;
 mod utils;
 mod weights;
 
+use assets::AssetIdOf;
 use codec::{Decode, Encode};
-use common::RewardReason;
+use common::{RewardReason, TradingPair};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::BlockNumberFor;
 use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
+use sp_runtime::traits::Saturating;
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
 
-use common::prelude::FixedWrapper;
-use common::{balance, AccountIdOf, Balance, DexIdOf, OnPoolCreated};
+use common::prelude::{FixedWrapper, QuoteAmount};
+use common::{balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated};
 
 pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
@@ -94,14 +97,50 @@ impl<T: Config> Pallet<T> {
         total_weight
     }
 
+    fn get_multiplier(asset_id: &AssetIdOf<T>) -> Result<FixedWrapper, DispatchError> {
+        let base_asset = <T as assets::Config>::GetBaseAssetId::get();
+        if asset_id == &base_asset {
+            Ok(balance!(1).into())
+        } else {
+            let outcome = pool_xyk::Pallet::<T>::quote(
+                &common::DEXId::Polkaswap.into(),
+                &base_asset,
+                asset_id,
+                QuoteAmount::with_desired_output(balance!(1)),
+                false,
+            )?;
+            frame_support::log::debug!("{outcome:?}");
+            Ok(FixedWrapper::from(outcome.amount))
+        }
+    }
+
     fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
+        let trading_pair = match pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
+            Ok(trading_pair) => trading_pair,
+            Err(err) => {
+                frame_support::log::warn!("Failed to get trading pair for {pool:?} pool: {err:?}",);
+                return 0;
+            }
+        };
+        let multiplier = match Self::get_multiplier(&trading_pair.base_asset_id) {
+            Ok(multiplier) => multiplier,
+            Err(err) => {
+                frame_support::log::warn!(
+                    "Failed to get farming rewards multiplier for {:?} asset: {err:?}",
+                    trading_pair.base_asset_id
+                );
+                return 0;
+            }
+        };
+        frame_support::log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
         let mut read_count = 0;
         let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
         for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
             read_count += 1;
 
-            let weight = Self::get_account_weight(&pool, pool_tokens);
+            let weight =
+                Self::get_account_weight(&pool, &trading_pair, multiplier.clone(), pool_tokens);
             if weight == 0 {
                 continue;
             }
@@ -130,20 +169,23 @@ impl<T: Config> Pallet<T> {
         read_count
     }
 
-    fn get_account_weight(pool: &T::AccountId, pool_tokens: Balance) -> Balance {
-        let trading_pair =
-            if let Ok(trading_pair) = pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
-                trading_pair
-            } else {
-                return 0;
-            };
-
+    fn get_account_weight(
+        pool: &T::AccountId,
+        trading_pair: &TradingPair<AssetIdOf<T>>,
+        multiplier: FixedWrapper,
+        pool_tokens: Balance,
+    ) -> Balance {
         let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part_from_pool_account(
             pool,
             &trading_pair,
             pool_tokens,
         )
         .unwrap_or(0);
+
+        let base_asset_amt = (FixedWrapper::from(base_asset_amt) * multiplier)
+            .try_into_balance()
+            .unwrap_or(0);
+
         if base_asset_amt < balance!(1) {
             return 0;
         }

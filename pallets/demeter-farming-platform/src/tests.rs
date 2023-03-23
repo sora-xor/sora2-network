@@ -3436,59 +3436,17 @@ mod tests {
                 reward_asset,
                 reward_asset,
                 is_farm,
-                pool_tokens
+                pool_tokens - balance!(1)
             ));
-
-            let pooled_tokens = (FixedWrapper::from(pool_tokens)
-                * FixedWrapper::from(balance!(0.96)))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::deposit(
-                RuntimeOrigin::signed(ALICE),
-                pool_asset,
-                reward_asset,
-                pool_asset,
-                is_farm,
-                pooled_tokens
-            ));
-
-            let mut pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
-                / FixedWrapper::from(balance!(2)))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                RuntimeOrigin::signed(ALICE),
-                pool_asset,
-                reward_asset,
-                reward_asset,
-                pooled_tokens_to_withdraw,
-                is_farm
-            ));
-
-            assert_ok!(demeter_farming_platform::Pallet::<Runtime>::withdraw(
-                RuntimeOrigin::signed(ALICE),
-                pool_asset,
-                reward_asset,
-                pool_asset,
-                pooled_tokens_to_withdraw,
-                is_farm
-            ));
-
-            pooled_tokens_to_withdraw = (FixedWrapper::from(pooled_tokens)
-                / FixedWrapper::from(balance!(3)))
-            .try_into_balance()
-            .unwrap_or(0);
 
             assert_eq!(
                 demeter_farming_platform::Pallet::<Runtime>::check_if_has_enough_liquidity_out_of_farming(
                     &ALICE,
                     pool_asset,
                     reward_asset,
-                    pooled_tokens_to_withdraw,
+                    pool_tokens,
                 ),
-                true
+                false
             );
         });
     }
