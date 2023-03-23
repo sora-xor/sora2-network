@@ -2148,7 +2148,6 @@ impl substrate_bridge_app::Config for Runtime {
     type WeightInfo = ();
 }
 
-#[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2162,7 +2161,6 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
-        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
@@ -2221,9 +2219,6 @@ construct_runtime! {
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
-        // Available only for test net
-        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-
         // Trustless ethereum bridge
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
@@ -2244,102 +2239,14 @@ construct_runtime! {
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
-    }
-}
 
-#[cfg(not(feature = "private-net"))]
-construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = opaque::Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
-        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+        // Dev
+        #[cfg(feature = "private-net")]
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
 
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
-
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-        // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
-        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
-        Referrals: referrals::{Pallet, Call, Storage} = 7,
-        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Pallet, Call, Event} = 11,
-
-        // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Storage} = 16,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-
-        // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
-        // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
-        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
-        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
-        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Storage} = 42,
-        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
-        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
-        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
-        CeresTokenLocker: ceres_token_locker::{Pallet, Call, Storage, Event<T>} = 47,
-        CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>} = 48,
-        CeresLaunchpad: ceres_launchpad::{Pallet, Call, Storage, Event<T>} = 49,
-        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>} = 50,
-        // Provides a semi-sorted list of nominators for staking.
-        BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
-        ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
-        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
-        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
-        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
-
-
-        // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
-        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
-
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
-        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
-        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        // Available only for test net
+        #[cfg(feature = "private-net")]
+        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
     }
 }
 
