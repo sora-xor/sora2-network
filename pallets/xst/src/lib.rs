@@ -209,9 +209,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            let reference_symbol = EnabledSynthetics::<T>::try_get(synthetic_asset)
-                .map_err(|_| Error::<T>::SyntheticIsNotEnabled)?
-                .expect("Synthetic tables always store `Some`")
+            let reference_symbol = EnabledSynthetics::<T>::get(synthetic_asset)
+                .ok_or_else(|| Error::<T>::SyntheticIsNotEnabled)?
                 .reference_symbol;
 
             EnabledSynthetics::<T>::remove(synthetic_asset);
@@ -330,7 +329,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn enabled_synthetics)]
     pub type EnabledSynthetics<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AssetId, Option<SyntheticInfo<T::Symbol>>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::AssetId, SyntheticInfo<T::Symbol>, OptionQuery>;
 
     /// Reference symbols and their synthetic assets.
     ///
@@ -338,7 +337,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn enabled_symbols)]
     pub type EnabledSymbols<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::Symbol, Option<T::AssetId>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::Symbol, T::AssetId, OptionQuery>;
 
     /// Asset that is used to compare collateral assets by value, e.g., DAI.
     #[pallet::storage]
@@ -368,6 +367,7 @@ pub mod pallet {
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
+        /// TODO: replace with Vec<T::AssetId> and make corresponding changes to build() function
         pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol, Fixed)>,
     }
 
@@ -447,12 +447,12 @@ impl<T: Config> Pallet<T> {
 
             EnabledSynthetics::<T>::insert(
                 synthetic_asset_id,
-                Some(SyntheticInfo {
+                SyntheticInfo {
                     reference_symbol: reference_symbol.clone(),
                     fee_ratio,
-                }),
+                },
             );
-            EnabledSymbols::<T>::insert(reference_symbol.clone(), Some(synthetic_asset_id));
+            EnabledSymbols::<T>::insert(reference_symbol.clone(), synthetic_asset_id);
 
             Self::deposit_event(Event::SyntheticAssetEnabled(
                 synthetic_asset_id,

@@ -55,12 +55,12 @@ pub fn migrate<T: Config>() -> Weight {
 
     EnabledSynthetics::<T>::insert(
         T::AssetId::from(XSTUSD),
-        Some(SyntheticInfo {
+        SyntheticInfo {
             reference_symbol: xstusd_symbol.clone(),
             fee_ratio: fixed!(0.00666),
-        }),
+        },
     );
-    EnabledSymbols::<T>::insert(xstusd_symbol, Some(T::AssetId::from(XSTUSD)));
+    EnabledSymbols::<T>::insert(xstusd_symbol, T::AssetId::from(XSTUSD));
 
     StorageVersion::new(2).put::<Pallet<T>>();
     T::DbWeight::get().reads_writes(0, 2)
