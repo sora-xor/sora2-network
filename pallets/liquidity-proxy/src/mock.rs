@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as liquidity_proxy, Config};
+use crate::{self as liquidity_proxy, Config, LiquidityProxyBuyBackHandler};
 use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
@@ -232,7 +232,7 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!(
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
-    pub const GetBuyBackDexId: DEXId = 0;
+    pub const GetBuyBackDexId: DEXId = DEX_A_ID;
 }
 
 impl assets::Config for Runtime {
@@ -334,6 +334,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -344,6 +345,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type BuyBackHandler = LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
 }
 
 impl demeter_farming_platform::Config for Runtime {
