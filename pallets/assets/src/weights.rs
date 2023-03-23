@@ -110,14 +110,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn update_balance() -> Weight {
         Weight::zero()
     }
-    // Storage: Tokens Accounts (r:1 w:1)
-    // Storage: Tokens TotalIssuance (r:1 w:1)
-    // Storage: System Account (r:1 w:1)
-    fn update_balance() -> Weight {
-        (41_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(3 as Weight))
-    }
 }
 
 impl crate::WeightInfo for () {
