@@ -92,7 +92,7 @@ pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
@@ -105,7 +105,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
@@ -130,7 +130,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
+#[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
@@ -217,7 +217,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]

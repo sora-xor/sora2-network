@@ -16,4 +16,7 @@ impl Get<Vec<(AccountId, BlockNumber)>> for GetPoolsWithBlock {
     }
 }
 
-pub type Migrations = (farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,);
+pub type Migrations = (
+    farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,
+    multicollateral_bonding_curve_pool::migrations::v3::MigrateToV3<Runtime>,
+);
