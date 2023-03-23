@@ -1,7 +1,13 @@
 use crate::*;
 
-pub struct GetPoolsWithBlock;
+pub struct StakingMigrationV11OldPallet;
+impl Get<&'static str> for StakingMigrationV11OldPallet {
+    fn get() -> &'static str {
+        "BagsList"
+    }
+}
 
+pub struct GetPoolsWithBlock;
 impl Get<Vec<(AccountId, BlockNumber)>> for GetPoolsWithBlock {
     fn get() -> Vec<(AccountId, BlockNumber)> {
         let mut res = vec![];
@@ -16,4 +22,13 @@ impl Get<Vec<(AccountId, BlockNumber)>> for GetPoolsWithBlock {
     }
 }
 
-pub type Migrations = (farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,);
+pub type Migrations = (
+    farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,
+    pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+    pallet_staking::migrations::v11::MigrateToV11<Runtime, BagsList, StakingMigrationV11OldPallet>,
+    pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+    pallet_preimage::migration::v1::Migration<Runtime>,
+    pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+    pallet_democracy::migrations::v1::Migration<Runtime>,
+    pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+);
