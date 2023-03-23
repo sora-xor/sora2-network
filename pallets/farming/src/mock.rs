@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, VAL, XOR, XST,
+    PSWAP, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
@@ -102,6 +102,7 @@ pub fn FERDIE() -> AccountId {
 }
 
 pub const DEX_A_ID: DEXId = 0;
+pub const DEX_B_ID: DEXId = 1;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -407,28 +408,32 @@ impl Default for ExtBuilder {
             CLAIM_FROM_FARM,
         ];
         Self {
-            initial_dex_list: vec![(
-                DEX_A_ID,
-                DEXInfo {
-                    base_asset_id: XOR,
-                    synthetic_base_asset_id: XST,
-                    is_public: true,
-                },
-            )],
-            endowed_accounts: vec![
-                (ALICE(), DOT, balance!(2000000)),
-                (ALICE(), PSWAP, balance!(2000000)),
-                (BOB(), DOT, balance!(2000000)),
-                (BOB(), PSWAP, balance!(2000000)),
-                (CHARLIE(), DOT, balance!(2000000)),
-                (CHARLIE(), PSWAP, balance!(2000000)),
-                (DAVE(), DOT, balance!(2000000)),
-                (DAVE(), PSWAP, balance!(2000000)),
-                (EVE(), DOT, balance!(2000000)),
-                (EVE(), PSWAP, balance!(2000000)),
-                (FERDIE(), DOT, balance!(2000000)),
-                (FERDIE(), PSWAP, balance!(2000000)),
+            initial_dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: XOR,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: XSTUSD,
+                        synthetic_base_asset_id: XST,
+                        is_public: true,
+                    },
+                ),
             ],
+            endowed_accounts: [DOT, PSWAP, VAL, XSTUSD]
+                .into_iter()
+                .flat_map(|asset| {
+                    [ALICE(), BOB(), CHARLIE(), DAVE(), EVE(), FERDIE()]
+                        .into_iter()
+                        .map(move |account| (account, asset, balance!(2000000)))
+                })
+                .collect(),
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
                 (CREATE_FARM, Scope::Unlimited, vec![ALICE()]),
@@ -510,6 +515,28 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    VAL.into(),
+                    ALICE(),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"VAL".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    0,
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XSTUSD.into(),
+                    ALICE(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XSTUSD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
