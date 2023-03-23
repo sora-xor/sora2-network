@@ -30,29 +30,29 @@
 
 use frame_support::assert_ok;
 
-use common::{balance, RewardReason, DOT, PSWAP, XOR};
+use common::{balance, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
 use frame_support::log::debug;
 use pool_xyk::Properties;
 use vested_rewards::Rewards;
 
 use crate::mock::{
-    self, run_to_block, AssetId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE, DEX_A_ID,
-    REFRESH_FREQUENCY, VESTING_FREQUENCY,
+    self, run_to_block, AssetId, DEXId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE,
+    DAVE, DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
 };
 use crate::{PoolFarmer, PoolFarmers};
 
-fn init_pool(other_asset: AssetId) {
+fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
     assert_ok!(trading_pair::Pallet::<Runtime>::register(
         RuntimeOrigin::signed(BOB()),
-        DEX_A_ID,
-        XOR,
+        dex_id,
+        base_asset,
         other_asset
     ));
 
     assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
         RuntimeOrigin::signed(BOB()),
-        DEX_A_ID,
-        XOR,
+        dex_id,
+        base_asset,
         other_asset,
     ));
 }
@@ -66,23 +66,56 @@ fn test() {
 
     let dex_id = DEX_A_ID;
     ExtBuilder::default().build().execute_with(|| {
-        init_pool(DOT);
-        init_pool(PSWAP);
+        init_pool(DEX_A_ID, XOR, DOT);
+        init_pool(DEX_A_ID, XOR, PSWAP);
+        init_pool(DEX_A_ID, XOR, XSTUSD);
+        init_pool(DEX_B_ID, XSTUSD, VAL);
+        init_pool(DEX_B_ID, XSTUSD, PSWAP);
 
-        let dot_pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
-        debug!("dot_pool: {}", dot_pool);
-        let pswap_pool = Properties::<Runtime>::get(XOR, PSWAP).unwrap().0;
-        debug!("pswap_pool: {}", pswap_pool);
+        let xor_dot_pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
+        debug!("xor_dot_pool: {}", xor_dot_pool);
+        let xor_pswap_pool = Properties::<Runtime>::get(XOR, PSWAP).unwrap().0;
+        debug!("xor_pswap_pool: {}", xor_pswap_pool);
+        let xor_xstusd_pool = Properties::<Runtime>::get(XOR, XSTUSD).unwrap().0;
+        debug!("xor_xstusd_pool: {}", xor_xstusd_pool);
+        let xstusd_val_pool = Properties::<Runtime>::get(XSTUSD, VAL).unwrap().0;
+        debug!("xstusd_val_pool: {}", xstusd_val_pool);
+        let xstusd_pswap_pool = Properties::<Runtime>::get(XSTUSD, PSWAP).unwrap().0;
+        debug!("xstusd_pswap_pool: {}", xstusd_pswap_pool);
 
         debug!("alice: {}", ALICE());
         debug!("bob: {}", BOB());
         debug!("charlie: {}", CHARLIE());
+        debug!("dave: {}", DAVE());
+        debug!("eve: {}", EVE());
 
         // Add liquidity before the first refresh
         {
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                RuntimeOrigin::signed(EVE()),
+                DEX_A_ID,
+                XOR,
+                XSTUSD,
+                balance!(10),
+                balance!(30),
+                balance!(10),
+                balance!(30),
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                RuntimeOrigin::signed(EVE()),
+                DEX_B_ID,
+                XSTUSD,
+                VAL,
+                balance!(3.3),
+                balance!(0.5),
+                balance!(3.3),
+                balance!(0.5),
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 RuntimeOrigin::signed(ALICE()),
-                dex_id,
+                DEX_A_ID,
                 XOR,
                 DOT,
                 balance!(1.1),
@@ -93,7 +126,7 @@ fn test() {
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 RuntimeOrigin::signed(BOB()),
-                dex_id,
+                DEX_A_ID,
                 XOR,
                 DOT,
                 balance!(1.1),
@@ -104,7 +137,7 @@ fn test() {
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
                 RuntimeOrigin::signed(ALICE()),
-                dex_id,
+                DEX_A_ID,
                 XOR,
                 PSWAP,
                 balance!(1.1),
@@ -112,13 +145,35 @@ fn test() {
                 balance!(1.1),
                 balance!(4.4),
             ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_B_ID,
+                XSTUSD,
+                VAL,
+                balance!(3.3),
+                balance!(0.5),
+                balance!(3.3),
+                balance!(0.5),
+            ));
+
+            assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+                RuntimeOrigin::signed(DAVE()),
+                DEX_B_ID,
+                XSTUSD,
+                PSWAP,
+                balance!(3.3),
+                balance!(20),
+                balance!(3.3),
+                balance!(20),
+            ));
         }
 
         mock::run_to_block(REFRESH_FREQUENCY);
 
         // Check that after the first refresh both Alice and Bob are farmers
         {
-            let farmers = PoolFarmers::<Runtime>::get(&dot_pool);
+            let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
             assert_eq!(
                 farmers,
                 vec![
@@ -135,21 +190,51 @@ fn test() {
                 ]
             );
 
-            let farmers = PoolFarmers::<Runtime>::get(&pswap_pool);
+            let farmers = PoolFarmers::<Runtime>::get(&xor_pswap_pool);
+            assert_eq!(
+                farmers,
+                vec![PoolFarmer {
+                    account: ALICE(),
+                    block: REFRESH_FREQUENCY,
+                    weight: balance!(2.199999999999999000),
+                },]
+            );
+
+            let farmers = PoolFarmers::<Runtime>::get(&xstusd_pswap_pool);
+            assert_eq!(
+                farmers,
+                vec![PoolFarmer {
+                    account: DAVE(),
+                    block: REFRESH_FREQUENCY,
+                    weight: balance!(2.275862068965516962),
+                }]
+            );
+
+            let farmers = PoolFarmers::<Runtime>::get(&xstusd_val_pool);
             assert_eq!(
                 farmers,
                 vec![
                     PoolFarmer {
                         account: ALICE(),
                         block: REFRESH_FREQUENCY,
-                        weight: balance!(2.199999999999999000),
+                        weight: balance!(2.275862068965517238),
                     },
-                    // PoolFarmer {
-                    //     account: CHARLIE(),
-                    //     block: 200,
-                    //     weight: balance!(2.199999999999999996),
-                    // }
+                    PoolFarmer {
+                        account: EVE(),
+                        block: REFRESH_FREQUENCY,
+                        weight: balance!(2.275862068965515470),
+                    },
                 ]
+            );
+
+            let farmers = PoolFarmers::<Runtime>::get(&xor_xstusd_pool);
+            assert_eq!(
+                farmers,
+                vec![PoolFarmer {
+                    account: EVE(),
+                    block: REFRESH_FREQUENCY,
+                    weight: balance!(9.999999999999999430),
+                },]
             );
         }
 
@@ -178,7 +263,7 @@ fn test() {
 
         // Check that after the second refresh Alice, Bob and Charlie are farmers
         {
-            let farmers = PoolFarmers::<Runtime>::get(&dot_pool);
+            let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
             assert_eq!(
                 farmers,
                 vec![
@@ -195,14 +280,14 @@ fn test() {
                 ]
             );
 
-            let farmers = PoolFarmers::<Runtime>::get(&pswap_pool);
+            let farmers = PoolFarmers::<Runtime>::get(&xor_pswap_pool);
             assert_eq!(
                 farmers,
                 vec![PoolFarmer {
                     account: CHARLIE(),
                     block: REFRESH_FREQUENCY * 2,
                     weight: balance!(19.999999999999999962),
-                }]
+                },]
             );
         }
 
@@ -224,19 +309,31 @@ fn test() {
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(alice_reward, balance!(209032.304821357676566095));
+        assert_eq!(alice_reward, balance!(147095.556665051128722662));
 
         let bob_reward = *Rewards::<Runtime>::get(&BOB())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(bob_reward, balance!(40181.660719889115194405));
+        assert_eq!(bob_reward, balance!(20230.033841899841271451));
 
         let charlie_reward = *Rewards::<Runtime>::get(&CHARLIE())
             .rewards
             .get(&RewardReason::LiquidityProvisionFarming)
             .unwrap();
-        assert_eq!(charlie_reward, balance!(374054.732519695035739499));
+        assert_eq!(charlie_reward, balance!(188323.224128231249527342));
+
+        let dave_reward = *Rewards::<Runtime>::get(&DAVE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(dave_reward, balance!(41855.242431516907913566));
+
+        let eve_reward = *Rewards::<Runtime>::get(&EVE())
+            .rewards
+            .get(&RewardReason::LiquidityProvisionFarming)
+            .unwrap();
+        assert_eq!(eve_reward, balance!(225764.640994242700064977));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             RuntimeOrigin::signed(ALICE()),
@@ -261,7 +358,7 @@ fn test() {
 
         run_to_block(VESTING_FREQUENCY + REFRESH_FREQUENCY);
 
-        let farmers = PoolFarmers::<Runtime>::get(&dot_pool);
+        let farmers = PoolFarmers::<Runtime>::get(&xor_dot_pool);
         assert_eq!(
             farmers,
             vec![PoolFarmer {
@@ -276,13 +373,12 @@ fn test() {
         run_to_block(VESTING_FREQUENCY + VESTING_FREQUENCY);
 
         let info = Rewards::<Runtime>::get(&ALICE());
-        // ALICE received all PSWAP from DOT pool and some from PSWAP pool
         assert_eq!(
             *info
                 .rewards
                 .get(&RewardReason::LiquidityProvisionFarming)
                 .unwrap(),
-            balance!(501919.134744340071031008)
+            balance!(362281.956723538535819602)
         );
 
         let info = Rewards::<Runtime>::get(&BOB());
@@ -292,7 +388,7 @@ fn test() {
                 .rewards
                 .get(&RewardReason::LiquidityProvisionFarming)
                 .unwrap(),
-            balance!(40181.660719889115194405)
+            balance!(20230.033841899841271451)
         );
 
         let info = Rewards::<Runtime>::get(&CHARLIE());
@@ -301,7 +397,25 @@ fn test() {
                 .rewards
                 .get(&RewardReason::LiquidityProvisionFarming)
                 .unwrap(),
-            balance!(704436.600657654468774585)
+            balance!(395638.161949291391006768)
+        );
+
+        let info = Rewards::<Runtime>::get(&DAVE());
+        assert_eq!(
+            *info
+                .rewards
+                .get(&RewardReason::LiquidityProvisionFarming)
+                .unwrap(),
+            balance!(73254.876962256299307236)
+        );
+
+        let info = Rewards::<Runtime>::get(&EVE());
+        assert_eq!(
+            *info
+                .rewards
+                .get(&RewardReason::LiquidityProvisionFarming)
+                .unwrap(),
+            balance!(395132.366644897587594938)
         );
     });
 }

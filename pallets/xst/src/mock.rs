@@ -464,6 +464,7 @@ impl MockDEXApi {
 pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     let direct = vec![
         ((XOR, VAL), balance!(2.0)),
+        ((XOR, XST), balance!(425.71)),
         // USDT
         ((XOR, USDT), balance!(100.0)),
         ((VAL, USDT), balance!(50.0)),
