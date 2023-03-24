@@ -70,8 +70,12 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod test_utils;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0075);
 
 /// Possible exchange paths for two assets.
 pub struct ExchangePath<T: Config>(Vec<T::AssetId>);
@@ -1784,6 +1788,178 @@ impl<T: Config> Pallet<T> {
             }
         }
     }
+
+    /// Swaps tokens for the following batch distribution and calculates a remainder.
+    /// Remainder is used due to inaccuracy of the quote calculation.
+    fn exchange_batch_tokens(
+        sender: &T::AccountId,
+        num_of_receivers: u128,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        max_input_amount: Balance,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        dex_id: T::DEXId,
+        filter_mode: &FilterMode,
+        out_amount: Balance,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        let filter = LiquiditySourceFilter::with_mode(
+            dex_id,
+            filter_mode.clone(),
+            selected_source_types.clone(),
+        );
+
+        if Self::is_forbidden_filter(
+            &input_asset_id,
+            &output_asset_id,
+            &selected_source_types,
+            &filter_mode,
+        ) {
+            fail!(Error::<T>::ForbiddenFilter);
+        }
+
+        ensure!(
+            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
+                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
+            Error::<T>::UnableToSwapIndivisibleAssets
+        );
+
+        let (
+            SwapOutcome {
+                amount: executed_input_amount,
+                fee: fee_amount,
+            },
+            sources,
+        ) = Self::inner_exchange(
+            dex_id,
+            &sender,
+            &sender,
+            &input_asset_id,
+            &output_asset_id,
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out: out_amount,
+                max_amount_in: max_input_amount,
+            },
+            filter.clone(),
+        )?;
+
+        Self::deposit_event(Event::<T>::Exchange(
+            sender.clone(),
+            dex_id,
+            input_asset_id.clone(),
+            output_asset_id.clone(),
+            executed_input_amount,
+            out_amount,
+            fee_amount,
+            sources,
+        ));
+
+        let caller_output_asset_balance =
+            assets::Pallet::<T>::total_balance(&output_asset_id, &sender)?;
+        let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
+            let remainder = out_amount.saturating_sub(caller_output_asset_balance);
+            remainder / num_of_receivers + remainder % num_of_receivers
+        } else {
+            0
+        };
+        Ok((executed_input_amount, remainder_per_receiver))
+    }
+
+    fn transfer_batch_tokens_unchecked(
+        sender: &T::AccountId,
+        output_asset_id: &T::AssetId,
+        receivers: Vec<BatchReceiverInfo<T::AccountId>>,
+        remainder_per_receiver: Balance,
+    ) -> Result<(), DispatchError> {
+        fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(|receiver| {
+            assets::Pallet::<T>::transfer_from(
+                &output_asset_id,
+                &sender,
+                &receiver.account_id,
+                receiver.target_amount - remainder_per_receiver,
+            )
+        })
+    }
+
+    fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
+        let adar_commission_ratio = FixedWrapper::from(ADAR_COMMISSION_RATIO);
+
+        let adar_commission = (FixedWrapper::from(amount) * adar_commission_ratio)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+
+        Ok(adar_commission)
+    }
+
+    fn inner_swap_batch_transfer(
+        sender: &T::AccountId,
+        input_asset_id: &T::AssetId,
+        swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
+        mut max_input_amount: Balance,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
+    ) -> Result<Balance, DispatchError> {
+        let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
+
+        let mut executed_batch_input_amount = balance!(0);
+
+        fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
+            |swap_batch_info| {
+                let SwapBatchInfo {
+                    outcome_asset_id: asset_id,
+                    dex_id,
+                    receivers,
+                } = swap_batch_info;
+
+                // extrinsic fails if there are duplicate output asset ids
+                if !unique_asset_ids.insert(asset_id.clone()) {
+                    fail!(Error::<T>::AggregationError);
+                }
+
+                if receivers.len() == 0 {
+                    fail!(Error::<T>::InvalidReceiversInfo);
+                }
+
+                let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
+
+                let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
+                    if &asset_id != input_asset_id {
+                        Self::exchange_batch_tokens(
+                            &sender,
+                            receivers.len() as u128,
+                            &input_asset_id,
+                            &asset_id,
+                            max_input_amount,
+                            &selected_source_types,
+                            dex_id,
+                            &filter_mode,
+                            out_amount,
+                        )?
+                    } else {
+                        (out_amount, 0)
+                    };
+
+                executed_batch_input_amount = executed_batch_input_amount
+                    .checked_add(executed_input_amount)
+                    .ok_or(Error::<T>::CalculationError)?;
+
+                max_input_amount = max_input_amount
+                    .checked_sub(executed_input_amount)
+                    .ok_or(Error::<T>::SlippageNotTolerated)?;
+
+                Self::transfer_batch_tokens_unchecked(
+                    &sender,
+                    &asset_id,
+                    receivers,
+                    remainder_per_receiver,
+                )
+            },
+        )?;
+        let adar_commission = Self::calculate_adar_commission(executed_batch_input_amount)?;
+        max_input_amount
+            .checked_sub(adar_commission)
+            .ok_or(Error::<T>::SlippageNotTolerated)?;
+        Ok(adar_commission)
+    }
 }
 
 impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pallet<T> {
@@ -1897,6 +2073,7 @@ pub mod pallet {
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
+        type GetADARAccountId: Get<Self::AccountId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -1924,6 +2101,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::call_index(0)]
         #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into()))]
         pub fn swap(
             origin: OriginFor<T>,
@@ -1961,6 +2139,7 @@ pub mod pallet {
         /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::call_index(1)]
         #[pallet::weight(Pallet::<T>::swap_weight(dex_id, input_asset_id, output_asset_id, (*swap_amount).into()))]
         pub fn swap_transfer(
             origin: OriginFor<T>,
@@ -2005,12 +2184,13 @@ pub mod pallet {
 
         // todo remake weights
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id))]
         pub fn swap_transfer_batch(
             origin: OriginFor<T>,
             swap_batches: Vec<SwapBatchInfo<T::AssetId, T::DEXId, T::AccountId>>,
             input_asset_id: T::AssetId,
-            mut max_input_amount: Balance,
+            max_input_amount: Balance,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
@@ -2018,133 +2198,30 @@ pub mod pallet {
 
             let mut total_weight = Weight::zero();
 
-            let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
-            fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
-                |swap_batch_info| {
-                    let SwapBatchInfo {
-                        outcome_asset_id: asset_id,
-                        dex_id,
-                        receivers,
-                    } = swap_batch_info;
-
-                    // extrinsic fails if there are duplicate output asset ids
-                    if !unique_asset_ids.insert(asset_id.clone()) {
-                        Err(Error::<T>::AggregationError)?
-                    }
-
-                    if receivers.len() == 0 {
-                        Err(Error::<T>::InvalidReceiversInfo)?
-                    }
-
-                    let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
-                    let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
-                        if asset_id != input_asset_id {
-                            let filter = LiquiditySourceFilter::with_mode(
-                                dex_id,
-                                filter_mode.clone(),
-                                selected_source_types.clone(),
-                            );
-
-                            Self::check_indivisible_assets(input_asset_id, asset_id)?;
-                            total_weight = total_weight.saturating_add(
-                                <T as Config>::WeightInfo::check_indivisible_assets(),
-                            );
-
-                            if Self::is_forbidden_filter(
-                                &input_asset_id,
-                                &asset_id,
-                                &selected_source_types,
-                                &filter_mode,
-                            ) {
-                                fail!(Error::<T>::ForbiddenFilter);
-                            }
-                            total_weight = total_weight
-                                .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
-
-                            let (
-                                SwapOutcome {
-                                    amount: executed_input_amount,
-                                    fee: fee_amount,
-                                },
-                                sources,
-                                weight,
-                            ) = Self::inner_exchange(
-                                dex_id,
-                                &who,
-                                &who,
-                                &input_asset_id,
-                                &asset_id,
-                                SwapAmount::WithDesiredOutput {
-                                    desired_amount_out: out_amount,
-                                    max_amount_in: max_input_amount,
-                                },
-                                filter.clone(),
-                            )?;
-                            total_weight = total_weight.saturating_add(weight);
-
-                            Self::deposit_event(Event::<T>::Exchange(
-                                who.clone(),
-                                dex_id,
-                                input_asset_id,
-                                asset_id,
-                                executed_input_amount,
-                                out_amount,
-                                fee_amount,
-                                sources,
-                            ));
-
-                            let caller_output_asset_balance =
-                                assets::Pallet::<T>::total_balance(&asset_id, &who)?;
-                            let remainder_per_receiver: Balance =
-                                if caller_output_asset_balance < out_amount {
-                                    let remainder =
-                                        out_amount.saturating_sub(caller_output_asset_balance);
-                                    remainder / (receivers.len() as u128)
-                                        + remainder % (receivers.len() as u128)
-                                } else {
-                                    0
-                                };
-                            (executed_input_amount, remainder_per_receiver)
-                        } else {
-                            (out_amount, 0)
-                        };
-
-                    max_input_amount = max_input_amount
-                        .checked_sub(executed_input_amount)
-                        .ok_or(Error::<T>::SlippageNotTolerated)?;
-
-                    total_weight = total_weight.saturating_add(
-                        assets::weights::WeightInfo::<T>::transfer()
-                            .saturating_mul(receivers.len() as u64),
-                    );
-
-                    let mut unique_batch_receivers: BTreeSet<T::AccountId> = BTreeSet::new();
-                    fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
-                        |receiver| {
-                            // extrinsic fails if there are duplicate account ids in the same output asset id
-                            if !unique_batch_receivers.insert(receiver.account_id.clone()) {
-                                Err(Error::<T>::AggregationError)?
-                            }
-
-                            assets::Pallet::<T>::transfer_from(
-                                &asset_id,
-                                &who,
-                                &receiver.account_id,
-                                receiver.target_amount - remainder_per_receiver,
-                            )
-                        },
-                    )
-                },
+            let adar_commission = Self::inner_swap_batch_transfer(
+                &who,
+                &input_asset_id,
+                swap_batches,
+                max_input_amount,
+                &selected_source_types,
+                &filter_mode,
             )?;
-            Ok(PostDispatchInfo {
-                actual_weight: Some(total_weight),
-                pays_fee: Pays::Yes,
-            })
+
+            assets::Pallet::<T>::transfer_from(
+                &input_asset_id,
+                &who,
+                &T::GetADARAccountId::get(),
+                adar_commission,
+            )
+            .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+
+            Ok(().into())
         }
 
         /// Enables XST or TBC liquidity source.
         ///
         /// - `liquidity_source`: the liquidity source to be enabled.
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
         pub fn enable_liquidity_source(
             origin: OriginFor<T>,
@@ -2174,6 +2251,7 @@ pub mod pallet {
         /// Disables XST or TBC liquidity source. The liquidity source becomes unavailable for swap.
         ///
         /// - `liquidity_source`: the liquidity source to be disabled.
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
         pub fn disable_liquidity_source(
             origin: OriginFor<T>,
@@ -2249,5 +2327,7 @@ pub mod pallet {
         LiquiditySourceAlreadyDisabled,
         // Information about swap batch receivers is invalid
         InvalidReceiversInfo,
+        // Failure while transferring commission to ADAR account
+        FailedToTransferAdarCommission,
     }
 }

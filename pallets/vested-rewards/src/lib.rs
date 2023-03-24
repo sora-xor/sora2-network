@@ -387,6 +387,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
 
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
@@ -396,6 +397,7 @@ pub mod pallet {
         }
 
         #[transactional]
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
@@ -420,6 +422,7 @@ pub mod pallet {
         }
 
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
         pub fn update_rewards(
             origin: OriginFor<T>,

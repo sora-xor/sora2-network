@@ -167,6 +167,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock tokens
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::lock_tokens())]
         pub fn lock_tokens(
             origin: OriginFor<T>,
@@ -220,6 +221,7 @@ pub mod pallet {
         }
 
         /// Withdraw tokens
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_tokens())]
         pub fn withdraw_tokens(
             origin: OriginFor<T>,
@@ -272,6 +274,7 @@ pub mod pallet {
         }
 
         /// Change fee
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::change_fee())]
         pub fn change_fee(origin: OriginFor<T>, new_fee: Balance) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;

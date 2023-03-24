@@ -68,7 +68,7 @@ pub mod prelude {
     };
     pub use crate::substrate::types::{mainnet_runtime, parachain_runtime};
     pub use crate::substrate::{
-        event_to_string as sub_event_to_string, log_tx_events as sub_log_tx_events,
+        event_to_string as sub_event_to_string, log_extrinsic_events as sub_log_extrinsic_events,
         SignedClient as SubSignedClient, UnsignedClient as SubUnsignedClient,
     };
     pub use anyhow::{Context, Result as AnyResult};

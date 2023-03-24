@@ -186,6 +186,7 @@ pub mod pallet {
         /// - `dex_id`: ID of the exchange.
         /// - `base_asset_id`: base asset ID.
         /// - `target_asset_id`: target asset ID.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,

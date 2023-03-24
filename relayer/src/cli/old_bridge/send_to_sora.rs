@@ -62,7 +62,7 @@ pub struct Command {
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let eth = self.eth.get_signed_ethereum().await?;
-        let contract = ethereum_gen::eth_bridge::Bridge::new(self.contract, eth.inner());
+        let contract = ethereum_gen::Bridge::new(self.contract, eth.inner());
         let to: &[u8] = self.to.as_ref();
         let to: [u8; 32] = to.to_vec().try_into().unwrap();
         let token = if let Some(asset_id) = self.asset_id {
@@ -88,7 +88,7 @@ impl Command {
                 info!("Minted: {:?}", res);
             }
             if self.approval {
-                let ierc20 = ethereum_gen::ierc20::IERC20Metadata::new(token, eth.inner());
+                let ierc20 = ethereum_gen::IERC20Metadata::new(token, eth.inner());
                 let call = ierc20.approve(self.contract, self.amount.into()).legacy();
                 let res = call.send().await?.confirmations(1).await?;
                 info!("Approved: {:?}", res);
