@@ -296,6 +296,7 @@ impl<T: Config> Pallet<T> {
         filter_mode: FilterMode,
     ) -> Result<Weight, DispatchError> {
         Self::check_indivisible_assets(&input_asset_id, &output_asset_id)?;
+        let mut total_weight = <T as Config>::WeightInfo::check_indivisible_assets();
 
         if Self::is_forbidden_filter(
             &input_asset_id,
@@ -305,6 +306,8 @@ impl<T: Config> Pallet<T> {
         ) {
             fail!(Error::<T>::ForbiddenFilter);
         }
+        total_weight =
+            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (outcome, sources, weight) = Self::inner_exchange(
             dex_id,
@@ -315,6 +318,7 @@ impl<T: Config> Pallet<T> {
             swap_amount,
             LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
         )?;
+        total_weight = total_weight.saturating_add(weight);
 
         let (input_amount, output_amount, fee_amount) = match swap_amount {
             SwapAmount::WithDesiredInput {
@@ -335,10 +339,7 @@ impl<T: Config> Pallet<T> {
             sources,
         ));
 
-        let weight = weight
-            .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
-            .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
-        Ok(weight)
+        Ok(total_weight)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -363,16 +364,13 @@ impl<T: Config> Pallet<T> {
             let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
             let maybe_path =
                 ExchangePath::<T>::new_trivial(&dex_info, *input_asset_id, *output_asset_id);
+            let total_weight = <T as Config>::WeightInfo::new_trivial();
             maybe_path
                 .map_or(Err(Error::<T>::UnavailableExchangePath.into()), |paths| {
                     Self::exchange_sequence(&dex_info, sender, receiver, paths, amount, &filter)
                 })
                 .map(|(outcome, sources, weight)| {
-                    (
-                        outcome,
-                        sources,
-                        weight.saturating_add(<T as Config>::WeightInfo::new_trivial()),
-                    )
+                    (outcome, sources, total_weight.saturating_add(weight))
                 })
         })
     }
@@ -1807,11 +1805,8 @@ impl<T: Config> Pallet<T> {
         filter_mode: &FilterMode,
         out_amount: Balance,
     ) -> Result<(Balance, Balance, Weight), DispatchError> {
-        let mut total_weight = Weight::zero();
-
         Self::check_indivisible_assets(input_asset_id, output_asset_id)?;
-        total_weight =
-            total_weight.saturating_add(<T as Config>::WeightInfo::check_indivisible_assets());
+        let mut total_weight = <T as Config>::WeightInfo::check_indivisible_assets();
 
         let filter = LiquiditySourceFilter::with_mode(
             dex_id,
