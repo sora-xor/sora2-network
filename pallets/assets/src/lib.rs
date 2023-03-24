@@ -51,9 +51,6 @@ pub mod weights;
 mod benchmarking;
 
 #[cfg(test)]
-mod mock;
-
-#[cfg(test)]
 mod tests;
 
 use codec::{Decode, Encode};

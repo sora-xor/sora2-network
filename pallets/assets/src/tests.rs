@@ -30,36 +30,57 @@
 
 mod tests {
 
-    use crate::mock::*;
-    use crate::Error;
     use common::balance;
     use common::prelude::{AssetName, AssetSymbol, Balance};
-    use common::PSWAP;
-    use common::XST;
     use common::{
         AssetId32, ContentSource, Description, IsValid, ASSET_CONTENT_SOURCE_MAX_LENGTH,
-        ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, DOT, VAL, XOR,
+        ASSET_DESCRIPTION_MAX_LENGTH, DEFAULT_BALANCE_PRECISION, PSWAP, XOR,
     };
     use frame_support::assert_noop;
     use frame_support::error::BadOrigin;
     use frame_support::{assert_err, assert_ok};
+    use framenode_chain_spec::ext;
+    use framenode_runtime::{
+        assets, frame_system, AccountId, AssetId, Assets, Origin, Runtime, Tokens,
+    };
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
 
+    // pub const ALICE: AccountId = AccountId::new([1;32]);
+    fn alice() -> AccountId {
+        let account = AccountId::new([1; 32]);
+        frame_system::Pallet::<Runtime>::inc_providers(&account);
+        account
+    }
+
+    fn mock_liquidity_proxy_tech_account() -> AccountId {
+        let account = AccountId::new([24; 32]);
+        frame_system::Pallet::<Runtime>::inc_providers(&account);
+        account
+    }
+
+    pub const BOB: AccountId = AccountId::new([2; 32]);
+    pub const BUY_BACK_ACCOUNT: AccountId = AccountId::new([3; 32]);
+    pub const MOCK_XOR: AssetId = AssetId32::from_bytes([100; 32]);
+    pub const MOCK_VAL: AssetId = AssetId32::from_bytes([101; 32]);
+    pub const MOCK_DOT: AssetId = AssetId32::from_bytes([102; 32]);
+    pub const MOCK_XST: AssetId = AssetId32::from_bytes([103; 32]);
+
+    type E = assets::Error<Runtime>;
+
     #[test]
     fn should_gen_and_register_asset() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let next_asset_id = Assets::gen_asset_id(&ALICE);
+        ext().execute_with(|| {
+            let next_asset_id = Assets::gen_asset_id(&alice());
             assert_eq!(
                 next_asset_id,
                 AssetId32::from_bytes(hex!(
-                    "00770dfe3392f9bb8ab977ce23d11c92e25140c39a9d8115714168d6e484ea41"
+                    "00ce7f334a5f1fbad2ab64bedaa9b85072968f6d7598f60bf4012dff66b16aa2"
                 ))
             );
             assert!(Assets::ensure_asset_exists(&next_asset_id).is_err());
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                Origin::signed(alice()),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
@@ -69,18 +90,17 @@ mod tests {
                 None,
             ));
             assert_ok!(Assets::ensure_asset_exists(&next_asset_id));
-            assert_ne!(Assets::gen_asset_id(&ALICE), next_asset_id);
+            assert_ne!(Assets::gen_asset_id(&alice()), next_asset_id);
         });
     }
 
     #[test]
     fn should_register_asset() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            assert!(Assets::ensure_asset_exists(&XOR).is_err());
+        ext().execute_with(|| {
+            assert!(Assets::ensure_asset_exists(&MOCK_XOR).is_err());
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -89,17 +109,16 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::ensure_asset_exists(&XOR));
+            assert_ok!(Assets::ensure_asset_exists(&MOCK_XOR));
         });
     }
 
     #[test]
     fn should_not_register_duplicated_asset() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -108,10 +127,10 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
+            assert_eq!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -120,19 +139,18 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::AssetIdAlreadyExists
+                Err(E::AssetIdAlreadyExists.into())
             );
         });
     }
 
     #[test]
     fn should_not_register_invalid_asset_name() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"This is a name with length over thirty three".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -141,13 +159,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetName
+                E::InvalidAssetName
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -156,13 +174,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetName
+                E::InvalidAssetName
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    VAL,
+                    alice(),
+                    MOCK_VAL,
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"This is a name with $ymbols".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -171,13 +189,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetName
+                E::InvalidAssetName
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    DOT,
+                    alice(),
+                    MOCK_DOT,
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"This is a name with _".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -186,19 +204,18 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetName
+                E::InvalidAssetName
             );
         });
     }
 
     #[test]
     fn should_not_register_invalid_asset_symbol() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"xor".to_vec()),
                     AssetName(b"Super Sora".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -207,13 +224,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetSymbol
+                E::InvalidAssetSymbol
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"".to_vec()),
                     AssetName(b"Super Sora".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -222,13 +239,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetSymbol
+                E::InvalidAssetSymbol
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    VAL,
+                    alice(),
+                    MOCK_VAL,
                     AssetSymbol(b"VAL IS SUPER LONG".to_vec()),
                     AssetName(b"Validator".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -237,13 +254,13 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetSymbol
+                E::InvalidAssetSymbol
             );
 
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    DOT,
+                    alice(),
+                    MOCK_DOT,
                     AssetSymbol(b"D_OT".to_vec()),
                     AssetName(b"Bad Symbol".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -252,18 +269,17 @@ mod tests {
                     None,
                     None,
                 ),
-                Error::<Runtime>::InvalidAssetSymbol
+                E::InvalidAssetSymbol
             );
         });
     }
 
     #[test]
     fn should_allow_operation() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -272,19 +288,28 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, 100u32.into()));
-            assert_ok!(Assets::burn_from(&XOR, &ALICE, &ALICE, 100u32.into()));
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 100.into()));
+            assert_ok!(Assets::mint_to(
+                &MOCK_XOR,
+                &alice(),
+                &alice(),
+                100u32.into()
+            ));
+            assert_ok!(Assets::burn_from(
+                &MOCK_XOR,
+                &alice(),
+                &alice(),
+                100u32.into()
+            ));
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), 100.into()));
         });
     }
 
     #[test]
     fn should_not_allow_operation() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -294,11 +319,11 @@ mod tests {
                 None,
             ));
             assert_noop!(
-                Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
+                Assets::mint_to(&MOCK_XOR, &BOB, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
-                Assets::update_own_balance(&XOR, &BOB, 100u32.into()),
+                Assets::update_own_balance(&MOCK_XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
         });
@@ -306,8 +331,7 @@ mod tests {
 
     #[test]
     fn should_check_symbols_correctly() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert!(AssetSymbol(b"XOR".to_vec()).is_valid());
             assert!(AssetSymbol(b"DOT".to_vec()).is_valid());
             assert!(AssetSymbol(b"KSM".to_vec()).is_valid());
@@ -326,8 +350,7 @@ mod tests {
 
     #[test]
     fn should_check_names_correctly() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert!(AssetName(b"XOR".to_vec()).is_valid());
             assert!(AssetName(b"DOT".to_vec()).is_valid());
             assert!(AssetName(b"KSM".to_vec()).is_valid());
@@ -349,11 +372,10 @@ mod tests {
 
     #[test]
     fn should_mint_initial_supply_for_owner() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -363,12 +385,12 @@ mod tests {
                 None,
             ));
             assert_eq!(
-                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_XOR, &alice()).expect("Failed to query free balance."),
                 Balance::from(123u32),
             );
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                VAL,
+                alice(),
+                MOCK_VAL,
                 AssetSymbol(b"VAL".to_vec()),
                 AssetName(b"SORA Validator Token".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -378,7 +400,7 @@ mod tests {
                 None,
             ));
             assert_eq!(
-                Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_VAL, &alice()).expect("Failed to query free balance."),
                 Balance::from(321u32),
             );
         })
@@ -386,12 +408,11 @@ mod tests {
 
     #[test]
     fn should_not_allow_dead_asset() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_eq!(
                 Assets::register_asset_id(
-                    ALICE,
-                    DOT,
+                    alice(),
+                    MOCK_DOT,
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -400,18 +421,17 @@ mod tests {
                     None,
                     None,
                 ),
-                Err(Error::<Runtime>::DeadAsset.into())
+                Err(E::DeadAsset.into())
             );
         })
     }
 
     #[test]
     fn should_fail_with_non_mintable_asset_supply() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -420,30 +440,29 @@ mod tests {
                 None,
                 None,
             ));
-            assert_noop!(
-                Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::mint_to(&MOCK_XOR, &alice(), &alice(), Balance::from(10u32)),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_noop!(
-                Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::mint_to(&MOCK_XOR, &alice(), &BOB, Balance::from(10u32)),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_noop!(
-                Assets::update_own_balance(&XOR, &ALICE, 1i128),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::update_own_balance(&MOCK_XOR, &alice(), 1i128),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), 0i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), -1i128),);
         })
     }
 
     #[test]
     fn should_mint_for_mintable_asset() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -452,42 +471,51 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),);
-            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),);
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 1i128),);
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::mint_to(
+                &MOCK_XOR,
+                &alice(),
+                &alice(),
+                Balance::from(10u32)
+            ),);
+            assert_ok!(Assets::mint_to(
+                &MOCK_XOR,
+                &alice(),
+                &BOB,
+                Balance::from(10u32)
+            ),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), 1i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), 0i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), -1i128),);
 
-            assert_noop!(
-                Assets::set_non_mintable_from(&XOR, &BOB),
-                Error::<Runtime>::InvalidAssetOwner
+            assert_eq!(
+                Assets::set_non_mintable_from(&MOCK_XOR, &BOB),
+                Err(E::InvalidAssetOwner.into())
             );
-            assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
+            assert_ok!(Assets::set_non_mintable_from(&MOCK_XOR, &alice()));
 
-            assert_noop!(
-                Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::mint_to(&MOCK_XOR, &alice(), &alice(), Balance::from(10u32)),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_noop!(
-                Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::mint_to(&MOCK_XOR, &alice(), &BOB, Balance::from(10u32)),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_noop!(
-                Assets::update_own_balance(&XOR, &ALICE, 1i128),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_eq!(
+                Assets::update_own_balance(&MOCK_XOR, &alice(), 1i128),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, 0i128),);
-            assert_ok!(Assets::update_own_balance(&XOR, &ALICE, -1i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), 0i128),);
+            assert_ok!(Assets::update_own_balance(&MOCK_XOR, &alice(), -1i128),);
         })
     }
 
     #[test]
     fn should_not_allow_duplicate_set_non_mintable() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -496,21 +524,20 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
-            assert_noop!(
-                Assets::set_non_mintable_from(&XOR, &ALICE),
-                Error::<Runtime>::AssetSupplyIsNotMintable
+            assert_ok!(Assets::set_non_mintable_from(&MOCK_XOR, &alice()));
+            assert_eq!(
+                Assets::set_non_mintable_from(&MOCK_XOR, &alice()),
+                Err(E::AssetSupplyIsNotMintable.into())
             );
         })
     }
 
     #[test]
     fn should_burn_from() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -520,17 +547,17 @@ mod tests {
                 None,
             ));
             assert_eq!(
-                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_XOR, &alice()).expect("Failed to query free balance."),
                 Balance::from(10u32),
             );
             assert_ok!(Assets::burn_from(
-                &XOR,
-                &ALICE,
-                &ALICE,
+                &MOCK_XOR,
+                &alice(),
+                &alice(),
                 Balance::from(10u32)
             ));
             assert_eq!(
-                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_XOR, &alice()).expect("Failed to query free balance."),
                 Balance::from(0u32),
             );
         })
@@ -538,11 +565,10 @@ mod tests {
 
     #[test]
     fn should_not_allow_burn_from_due_to_permissions() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -552,7 +578,7 @@ mod tests {
                 None,
             ));
             assert_noop!(
-                Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
+                Assets::burn_from(&MOCK_XOR, &BOB, &alice(), Balance::from(10u32)),
                 permissions::Error::<Runtime>::Forbidden
             );
         })
@@ -560,11 +586,10 @@ mod tests {
 
     #[test]
     fn should_allow_burn_from_self_without_a_permissions() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -573,14 +598,24 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
+            assert_ok!(Assets::mint_to(
+                &MOCK_XOR,
+                &alice(),
+                &BOB,
+                Balance::from(10u32)
+            ));
             assert_eq!(
-                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(10u32)
             );
-            assert_ok!(Assets::burn_from(&XOR, &BOB, &BOB, Balance::from(10u32)));
+            assert_ok!(Assets::burn_from(
+                &MOCK_XOR,
+                &BOB,
+                &BOB,
+                Balance::from(10u32)
+            ));
             assert_eq!(
-                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Assets::free_balance(&MOCK_XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(0u32)
             );
         })
@@ -588,10 +623,9 @@ mod tests {
 
     #[test]
     fn should_update_balance_correctly() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
+                alice(),
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
@@ -600,7 +634,8 @@ mod tests {
                 true,
                 None,
                 None,
-            ));
+            )
+            .or_else(|_| Assets::ensure_asset_exists(&XOR)));
             assert_ok!(Assets::update_balance(Origin::root(), BOB, XOR, 100));
             assert_eq!(
                 Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
@@ -614,7 +649,7 @@ mod tests {
             );
 
             assert_err!(
-                Assets::update_balance(Origin::signed(ALICE), BOB, XOR, -10),
+                Assets::update_balance(Origin::signed(alice()), BOB, XOR, -10),
                 BadOrigin
             );
             assert_eq!(
@@ -635,11 +670,10 @@ mod tests {
 
     #[test]
     fn should_register_indivisible() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
-            let next_asset_id = Assets::gen_asset_id(&ALICE);
+        ext().execute_with(|| {
+            let next_asset_id = Assets::gen_asset_id(&alice());
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                Origin::signed(alice()),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 5,
@@ -655,12 +689,11 @@ mod tests {
 
     #[test]
     fn should_associate_content_source() {
-        let mut ext = ExtBuilder::default().build();
         let content_src = ContentSource(b"https://imgur.com/gallery/24O4LUX".to_vec());
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -669,20 +702,19 @@ mod tests {
                 Some(content_src.clone()),
                 None,
             ));
-            assert_eq!(Assets::get_asset_content_src(&XOR), Some(content_src));
+            assert_eq!(Assets::get_asset_content_src(&MOCK_XOR), Some(content_src));
         })
     }
 
     #[test]
     fn should_fail_content_source() {
-        let mut ext = ExtBuilder::default().build();
         let source: Vec<u8> = vec![0; ASSET_CONTENT_SOURCE_MAX_LENGTH + 1];
         let content_src = ContentSource(source);
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -691,19 +723,18 @@ mod tests {
                     Some(content_src.clone()),
                     None,
                 ),
-                Error::<Runtime>::InvalidContentSource
+                E::InvalidContentSource
             );
         })
     }
 
     #[test]
     fn should_associate_desciption() {
-        let mut ext = ExtBuilder::default().build();
         let desc = Description(b"Lorem ipsum".to_vec());
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_ok!(Assets::register_asset_id(
-                ALICE,
-                XOR,
+                alice(),
+                MOCK_XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -712,20 +743,19 @@ mod tests {
                 None,
                 Some(desc.clone()),
             ));
-            assert_eq!(Assets::get_asset_description(&XOR), Some(desc));
+            assert_eq!(Assets::get_asset_description(&MOCK_XOR), Some(desc));
         })
     }
 
     #[test]
     fn should_fail_description() {
-        let mut ext = ExtBuilder::default().build();
         let text: Vec<u8> = vec![0; ASSET_DESCRIPTION_MAX_LENGTH + 1];
         let desc = Description(text);
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             assert_err!(
                 Assets::register_asset_id(
-                    ALICE,
-                    XOR,
+                    alice(),
+                    MOCK_XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -734,19 +764,18 @@ mod tests {
                     None,
                     Some(desc.clone()),
                 ),
-                Error::<Runtime>::InvalidDescription
+                E::InvalidDescription
             );
         })
     }
 
     #[test]
     fn buy_back_and_burn_should_be_performed() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        ext().execute_with(|| {
             let xst_balance = balance!(1000);
             Assets::register_asset_id(
-                MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
-                XST,
+                mock_liquidity_proxy_tech_account(),
+                MOCK_XST,
                 AssetSymbol(b"XST".to_vec()),
                 AssetName(b"Sora Synthetics".to_vec()),
                 DEFAULT_BALANCE_PRECISION,
@@ -757,13 +786,14 @@ mod tests {
             )
             .expect("Failed to register XST asset");
 
-            let xst_total = Tokens::total_issuance(XST);
+            let xst_total = Tokens::total_issuance(MOCK_XST);
             // Just a sanity check, not a real test
             assert_eq!(xst_total, xst_balance);
 
             let pswap_balance = balance!(10);
+
             Assets::register_asset_id(
-                ALICE,
+                alice(),
                 PSWAP,
                 AssetSymbol(b"PSWAP".to_vec()),
                 AssetName(b"Polkaswap".to_vec()),
@@ -773,22 +803,23 @@ mod tests {
                 None,
                 None,
             )
+            .or_else(|_| Assets::ensure_asset_exists(&PSWAP))
             .expect("Failed to register PSWAP asset");
 
             let amount_to_mint = balance!(100);
-            Assets::force_mint(Origin::root(), PSWAP, ALICE, amount_to_mint)
+            Assets::force_mint(Origin::root(), PSWAP, alice(), amount_to_mint)
                 .expect("Failed to mint PSWAP");
 
-            let pswap_balance_after = Assets::free_balance(&PSWAP, &ALICE)
+            let pswap_balance_after = Assets::free_balance(&PSWAP, &alice())
                 .expect("Failed to query PSWAP free balance after mint.");
             assert_eq!(
                 pswap_balance_after,
                 pswap_balance + (amount_to_mint * 9 / 10)
             );
 
-            // Same as `Assets::free_balance(&XST, &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT)`,
+            // Same as `Assets::free_balance(&MOCK_XST, &mock_liquidity_proxy_tech_account())`,
             // but it better represents the meaning of buy-back and burning
-            let xst_total_after = Tokens::total_issuance(XST);
+            let xst_total_after = Tokens::total_issuance(MOCK_XST);
 
             // Since `MockLiquidityProxy` exchanges 1 to 1
             // there is no need to calculate PSWAP-XST swap-rate

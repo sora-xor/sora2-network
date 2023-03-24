@@ -39,6 +39,10 @@ sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkado
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
 
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
+framenode-runtime = { path = "../../runtime" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
+
 [features]
 default = ["std"]
 
