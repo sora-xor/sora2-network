@@ -100,6 +100,7 @@ pub struct DEXInfo<AssetId> {
     RuntimeDebug,
     Hash,
     scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {

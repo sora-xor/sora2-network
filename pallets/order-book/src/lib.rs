@@ -16,36 +16,61 @@ mod benchmarking;
 
 type FixedPrice<P> = FixedPoint<FixedInner, P>;
 
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum LimitOrder<Timestamp> {
-    Buy(OrderData<Timestamp>),
-    Sell(OrderData<Timestamp>),
+mod book {
+    use codec::{Decode, Encode, MaxEncodedLen};
+    use common::{Balance, FixedInner};
+    use frame_support::{traits::Get, BoundedBTreeMap};
+    use scale_info::TypeInfo;
+    use std::collections::VecDeque;
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
+    pub struct OrderId(u128);
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
+    pub struct OrderData<Timestamp> {
+        id: OrderId,
+        expires_at: Timestamp,
+        amount: Balance,
+    }
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
+    pub struct BuyLimitOrder<Timestamp>(OrderData<Timestamp>);
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
+    pub struct SellLimitOrder<Timestamp>(OrderData<Timestamp>);
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
+    pub enum OrderList<Timestamp> {
+        Buy(VecDeque<BuyLimitOrder<Timestamp>>),
+        Sell(VecDeque<SellLimitOrder<Timestamp>>),
+    }
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
+    pub struct PricePoint<Timestamp> {
+        cumulative_amount: Balance,
+        orders: OrderList<Timestamp>,
+    }
+
+    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
+    pub struct OrderBook<Timestamp, PriceCountLimit: Get<u32>> {
+        pub prices: BoundedBTreeMap<FixedInner, PricePoint<Timestamp>, PriceCountLimit>,
+        some_price_limit: FixedInner,
+    }
 }
-
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
-pub struct OrderId(u128);
-
-#[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
-pub struct OrderData<Timestamp> {
-    id: OrderId,
-    expires_at: Timestamp,
-    amount: Balance,
-}
-
-// pub struct
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use common::fixnum::typenum::Integer;
+    use common::{fixnum::typenum::Integer, TradingPair};
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
-        Twox64Concat,
+        Blake2_128Concat, Twox64Concat,
     };
     use frame_system::pallet_prelude::*;
 
     use super::*;
+    use book::{OrderBook, OrderData, OrderId};
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -56,24 +81,27 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PricePrecision: Integer;
+        type PriceCountLimitPerBook: Get<u32> + TypeInfo;
     }
 
     pub type Timestamp<T: Config> = T::BlockNumber;
 
-    // TODO: figure out how to store orders in an optimal way, maybe implement b-tree on top of storage.
+    // TODO: figure out how to store orders in an optimal way
     #[pallet::storage]
-    #[pallet::getter(fn order)]
-    pub type Orders<T: Config> = StorageMap<_, Twox64Concat, FixedInner, LimitOrder<Timestamp<T>>>;
+    #[pallet::getter(fn order_book)]
+    pub type OrderBooks<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        TradingPair<T::AssetId>,
+        OrderBook<Timestamp<T>, T::PriceCountLimitPerBook>,
+        OptionQuery,
+    >;
 
-    /// Asset Id -> Owner Account Id
+    // to find order in `OrderBooks` by id (e.g. for revoking the order).
     #[pallet::storage]
-    #[pallet::getter(fn asset_owner)]
-    pub type AssetOwners<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
-
-    // #[pallet::storage]
-    // #[pallet::getter(fn trade_pair)]
-    // pub type TradingPairs<T: Config> = StorageDoubleMap<_, Twox64Concat, T::AssetId, Twox64Concat, T::AssetId, LimitOrder<Timestamp<T>>, OptionQuery>;
+    #[pallet::getter(fn order_lookup)]
+    pub type OrderInfo<T: Config> =
+        StorageMap<_, Blake2_128Concat, OrderId, (TradingPair<T::AssetId>, FixedInner)>;
 
     // Pallets use events to inform users when important changes are made.
     // https://docs.substrate.io/main-docs/build/events-errors/
@@ -101,10 +129,10 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn place_order(origin: OriginFor<T>, something: u32) -> DispatchResult {
-            // Check that the extrinsic was signed and get the signer.
-            // This function will return an error if the extrinsic is not signed.
-            // https://docs.substrate.io/main-docs/build/origins/
+        pub fn place_limit_order(
+            origin: OriginFor<T>,
+            order: OrderData<Timestamp<T>>,
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             // Update storage.

@@ -233,7 +233,8 @@ pub mod pallet {
             + From<common::AssetId32<common::PredefinedAssetId>>
             + From<H256>
             + Into<H256>
-            + Into<<Self as tokens::Config>::CurrencyId>;
+            + Into<<Self as tokens::Config>::CurrencyId>
+            + MaxEncodedLen;
 
         /// The base asset as the core asset in all trading pairs
         type GetBaseAssetId: Get<Self::AssetId>;
