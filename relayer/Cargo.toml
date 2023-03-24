@@ -9,21 +9,22 @@ edition = "2021"
 ethereum-gen = { path = "./ethereum-gen" }
 substrate-gen = { path = "./substrate-gen" }
 parachain-gen = { path = "./parachain-gen" }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
-bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" }
-ethers = { git = "https://github.com/sora-xor/ethers-rs", branch = "sora-v1.6.0", features = [
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
+bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
+ethers = { version = "2.0.0", features = [
   "ws",
   "rustls",
 ] }
+ethers-core = "=2.0.0"
 common = { path = "../common" }
-subxt = "0.24.0"
+subxt = { version = "0.25.0" }
 tokio = { version = "1.14.0", features = ["full"] }
 url = "2.2.2"
 http = "0.2.6"
 anyhow = "1.0.51"
-jsonrpsee = { version = "0.15.1", features = [
+jsonrpsee = { version = "0.16.2", features = [
   "macros",
   "ws-client",
   "http-client",
@@ -49,25 +50,25 @@ ethereum-types = { version = "0.14.0", features = ["serialize"] }
 rayon = "1.5.1"
 serde = { version = "1.0.131", features = ["derive"] }
 serde_json = "1.0.73"
-beefy-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
   "chain-error",
 ] }
 thiserror = "1.0.30"
 lru = "0.7.2"
-k256 = "0.10.1"
+k256 = "0.11.6"
 assets-rpc = { path = "../pallets/assets/rpc" }
 assets-runtime-api = { path = "../pallets/assets/runtime-api" }
 eth-bridge = { path = "../pallets/eth-bridge" }
 bridge-channel-rpc = { path = "../pallets/trustless-bridge/bridge-channel-rpc" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false }
+substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38", default-features = false } # 'develop' branch after PR 14
 rand = "0.8.5"
-mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.3.2", default-features = false }
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }

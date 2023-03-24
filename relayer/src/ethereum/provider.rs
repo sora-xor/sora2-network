@@ -56,6 +56,24 @@ impl From<UniversalClientError> for ProviderError {
     }
 }
 
+impl ethers::providers::RpcError for UniversalClientError {
+    fn as_error_response(&self) -> Option<&JsonRpcError> {
+        match self {
+            Self::Ws(err) => err.as_error_response(),
+            Self::Http(err) => err.as_error_response(),
+            Self::InvalidScheme => None,
+        }
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            Self::Ws(err) => err.as_serde_error(),
+            Self::Http(err) => err.as_serde_error(),
+            Self::InvalidScheme => None,
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl JsonRpcClient for UniversalClient {
     type Error = UniversalClientError;
@@ -64,7 +82,7 @@ impl JsonRpcClient for UniversalClient {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned,
+        R: DeserializeOwned + Send,
     {
         match self {
             Self::Ws(client) => JsonRpcClient::request(client, method, params)

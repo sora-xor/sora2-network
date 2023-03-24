@@ -13,7 +13,7 @@ String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml\$|.*pr.sh\$'
 Boolean disableSecretScanner  = false
 int sudoCheckStatus           = 0
-String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
+String featureList            = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
 
 String contractsPath          = 'ethereum-bridge-contracts'
@@ -111,15 +111,15 @@ pipeline {
                         if (getPushVersion(pushTags)) {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
-                                    featureList = 'runtime-benchmarks main-net-coded'
+                                    featureList = 'private-net runtime-benchmarks main-net-coded'
                                     sudoCheckStatus = 101
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
-                                    featureList = 'private-net include-real-files'
+                                    featureList = 'private-net include-real-files ready-to-test'
                                     sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME =~ 'test.*') {
-                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test'
                                     sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME) {
@@ -150,8 +150,8 @@ pipeline {
                                     rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
-                                    cargo test --features private-net
-                                    cargo test --features \"private-net runtime-benchmarks\"
+                                    cargo test --features \"private-net wip ready-to-test\"
+                                    cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                                 '''
                             }
                         }

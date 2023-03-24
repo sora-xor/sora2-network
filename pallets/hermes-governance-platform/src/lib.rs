@@ -217,6 +217,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Vote for some option
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -277,6 +278,7 @@ pub mod pallet {
         }
 
         /// Create poll
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
@@ -353,6 +355,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds voter
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_voter())]
         pub fn withdraw_funds_voter(
             origin: OriginFor<T>,
@@ -398,6 +401,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds creator
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_creator())]
         pub fn withdraw_funds_creator(
             origin: OriginFor<T>,
@@ -445,6 +449,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for voting
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_voting())]
         pub fn change_min_hermes_for_voting(
             origin: OriginFor<T>,
@@ -467,6 +472,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for creating a poll
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_creating_poll())]
         pub fn change_min_hermes_for_creating_poll(
             origin: OriginFor<T>,

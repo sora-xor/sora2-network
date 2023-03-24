@@ -113,16 +113,18 @@ impl SubstrateMessagesRelay {
 
     async fn handle_message_events(&mut self, current_eth_block: u64) -> AnyResult<()> {
         let eth = self.eth.inner();
-        let message_filter = Filter::new()
-            .from_block(self.latest_channel_block)
-            .to_block(current_eth_block)
-            .address(self.outbound_channel);
-        let message_filter =
-            ethereum_gen::outbound_channel::MessageFilter::new(message_filter, &eth);
-        let message_events = message_filter.query_with_meta().await?;
+        let outbound_channel =
+            ethereum_gen::OutboundChannel::new(self.outbound_channel, eth.clone());
+        let events: Vec<(ethereum_gen::outbound_channel::MessageFilter, LogMeta)> =
+            outbound_channel
+                .message_filter()
+                .from_block(self.latest_channel_block)
+                .to_block(current_eth_block)
+                .query_with_meta()
+                .await?;
         debug!(
             "Channel: Found {} Message events from {} to {}",
-            message_events.len(),
+            events.len(),
             self.latest_channel_block,
             current_eth_block
         );
@@ -136,7 +138,7 @@ impl SubstrateMessagesRelay {
             )
             .await?;
 
-        for (event, meta) in message_events {
+        for (event, meta) in events {
             if event.nonce > sub_nonce && meta.address == self.outbound_channel {
                 let tx = eth
                     .get_transaction_receipt(meta.transaction_hash)
@@ -185,18 +187,19 @@ impl SubstrateMessagesRelay {
 
     async fn handle_message_dispatched(&mut self, current_eth_block: u64) -> AnyResult<()> {
         let eth = self.eth.inner();
-        let filter_message_dispatched = Filter::new()
+        let inbound_channel = ethereum_gen::InboundChannel::new(self.inbound_channel, eth.clone());
+        let events: Vec<(
+            ethereum_gen::inbound_channel::MessageDispatchedFilter,
+            LogMeta,
+        )> = inbound_channel
+            .message_dispatched_filter()
             .from_block(self.latest_channel_block)
             .to_block(current_eth_block)
-            .address(self.inbound_channel);
-        let filter_message_dispatched = ethereum_gen::inbound_channel::MessageDispatchedFilter::new(
-            filter_message_dispatched,
-            &eth,
-        );
-        let message_dispatched_events = filter_message_dispatched.query_with_meta().await?;
+            .query_with_meta()
+            .await?;
         debug!(
             "Channel: Found {} MessageDispatched events from {} to {}",
-            message_dispatched_events.len(),
+            events.len(),
             self.latest_channel_block,
             current_eth_block
         );
@@ -211,7 +214,7 @@ impl SubstrateMessagesRelay {
             )
             .await?;
 
-        for (event, meta) in message_dispatched_events {
+        for (event, meta) in events {
             if event.nonce > sub_inbound_nonce && meta.address == self.inbound_channel {
                 let tx = eth
                     .get_transaction_receipt(meta.transaction_hash)

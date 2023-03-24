@@ -111,6 +111,7 @@ pub mod pallet {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
+        #[pallet::call_index(0)]
         #[pallet::weight((WeightInfoOf::<T>::transfer(), Pays::No))]
         pub fn transfer(
             _origin: OriginFor<T>,
@@ -138,6 +139,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]
         pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             common::storage_remove_all!(ValOwners::<T>);
@@ -169,6 +171,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(2)]
         #[pallet::weight((WeightInfoOf::<T>::update_limit(), Pays::No))]
         pub fn update_limit(
             origin: OriginFor<T>,

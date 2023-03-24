@@ -14,7 +14,7 @@ git checkout ${GH_BRANCH}
 rm -rf docs
 git fetch
 git pull origin master
-cargo doc --no-deps --workspace --exclude relayer
+RUSTDOCFLAGS="--html-in-header misc/docs-katex-header.html" cargo doc --no-deps --workspace --exclude relayer
 cargo fmt
 mkdir docs
 echo "<meta http-equiv=\"refresh\" content=\"0; url=assets\">" > target/doc/index.html
