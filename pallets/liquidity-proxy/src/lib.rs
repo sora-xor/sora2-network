@@ -274,8 +274,8 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn check_indivisible_assets(
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
         ensure!(
             assets::AssetInfos::<T>::get(input_asset_id).2 != 0
@@ -295,7 +295,7 @@ impl<T: Config> Pallet<T> {
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
     ) -> Result<Weight, DispatchError> {
-        Self::check_indivisible_assets(input_asset_id, output_asset_id)?;
+        Self::check_indivisible_assets(&input_asset_id, &output_asset_id)?;
 
         if Self::is_forbidden_filter(
             &input_asset_id,
@@ -1220,10 +1220,10 @@ impl<T: Config> Pallet<T> {
     /// The current code map:
     ///
     /// swap()
-    ///    inner_swap()
-    ///        check_indivisible_assets()
-    ///        is_forbidden_filter()
-    ///        inner_exchange()
+    ///     inner_swap()
+    ///         check_indivisible_assets()
+    ///         is_forbidden_filter()
+    ///         inner_exchange()
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_weight() and code map above.
     pub fn swap_weight(
@@ -1248,12 +1248,16 @@ impl<T: Config> Pallet<T> {
     /// The current code map:
     ///
     /// swap_transfer_batch
-    ///     loop - call swap_batches.len() times
-    ///         check_indivisible_assets
-    ///         is_forbidden_filter
-    ///         inner_exchange
-    ///         loop - call swap_batch_info.receivers.len() times
-    ///             transfer_from
+    ///     inner_swap_batch_transfer
+    ///         loop - call swap_batches.len() times
+    ///             exchange_batch_tokens
+    ///                 check_indivisible_assets
+    ///                 is_forbidden_filter
+    ///                 inner_exchange
+    ///             transfer_batch_tokens_unchecked
+    ///                 loop - call swap_batch_info.receivers.len() times
+    ///                     transfer_from
+    ///     transfer_from
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain swap_transfer_batch_weight() and code map above.
     pub fn swap_transfer_batch_weight(
@@ -1280,6 +1284,7 @@ impl<T: Config> Pallet<T> {
                     .saturating_mul(swap_batch_info.receivers.len() as u64),
             );
         }
+        weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
 
         weight
     }
@@ -1801,7 +1806,13 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
         filter_mode: &FilterMode,
         out_amount: Balance,
-    ) -> Result<(Balance, Balance), DispatchError> {
+    ) -> Result<(Balance, Balance, Weight), DispatchError> {
+        let mut total_weight = Weight::zero();
+
+        Self::check_indivisible_assets(input_asset_id, output_asset_id)?;
+        total_weight =
+            total_weight.saturating_add(<T as Config>::WeightInfo::check_indivisible_assets());
+
         let filter = LiquiditySourceFilter::with_mode(
             dex_id,
             filter_mode.clone(),
@@ -1816,12 +1827,8 @@ impl<T: Config> Pallet<T> {
         ) {
             fail!(Error::<T>::ForbiddenFilter);
         }
-
-        ensure!(
-            assets::AssetInfos::<T>::get(input_asset_id).2 != 0
-                && assets::AssetInfos::<T>::get(output_asset_id).2 != 0,
-            Error::<T>::UnableToSwapIndivisibleAssets
-        );
+        total_weight =
+            total_weight.saturating_add(<T as Config>::WeightInfo::is_forbidden_filter());
 
         let (
             SwapOutcome {
@@ -1829,6 +1836,7 @@ impl<T: Config> Pallet<T> {
                 fee: fee_amount,
             },
             sources,
+            weights,
         ) = Self::inner_exchange(
             dex_id,
             &sender,
@@ -1841,6 +1849,7 @@ impl<T: Config> Pallet<T> {
             },
             filter.clone(),
         )?;
+        total_weight = total_weight.saturating_add(weights);
 
         Self::deposit_event(Event::<T>::Exchange(
             sender.clone(),
@@ -1861,7 +1870,7 @@ impl<T: Config> Pallet<T> {
         } else {
             0
         };
-        Ok((executed_input_amount, remainder_per_receiver))
+        Ok((executed_input_amount, remainder_per_receiver, total_weight))
     }
 
     fn transfer_batch_tokens_unchecked(
@@ -1869,15 +1878,19 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         receivers: Vec<BatchReceiverInfo<T::AccountId>>,
         remainder_per_receiver: Balance,
-    ) -> Result<(), DispatchError> {
-        fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(|receiver| {
-            assets::Pallet::<T>::transfer_from(
-                &output_asset_id,
-                &sender,
-                &receiver.account_id,
-                receiver.target_amount - remainder_per_receiver,
-            )
-        })
+    ) -> Result<Weight, DispatchError> {
+        let len = receivers.len();
+        fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
+            |receiver| {
+                assets::Pallet::<T>::transfer_from(
+                    &output_asset_id,
+                    &sender,
+                    &receiver.account_id,
+                    receiver.target_amount - remainder_per_receiver,
+                )
+            },
+        )?;
+        Ok(assets::weights::WeightInfo::<T>::transfer().saturating_mul(len as u64))
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
@@ -1897,10 +1910,12 @@ impl<T: Config> Pallet<T> {
         mut max_input_amount: Balance,
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
-    ) -> Result<Balance, DispatchError> {
+    ) -> Result<(Balance, Weight), DispatchError> {
         let mut unique_asset_ids: BTreeSet<T::AssetId> = BTreeSet::new();
 
         let mut executed_batch_input_amount = balance!(0);
+
+        let mut total_weight = Weight::zero();
 
         fallible_iterator::convert(swap_batches.into_iter().map(|val| Ok(val))).for_each(
             |swap_batch_info| {
@@ -1921,22 +1936,26 @@ impl<T: Config> Pallet<T> {
 
                 let out_amount = receivers.iter().map(|recv| recv.target_amount).sum();
 
-                let (executed_input_amount, remainder_per_receiver): (Balance, Balance) =
-                    if &asset_id != input_asset_id {
-                        Self::exchange_batch_tokens(
-                            &sender,
-                            receivers.len() as u128,
-                            &input_asset_id,
-                            &asset_id,
-                            max_input_amount,
-                            &selected_source_types,
-                            dex_id,
-                            &filter_mode,
-                            out_amount,
-                        )?
-                    } else {
-                        (out_amount, 0)
-                    };
+                let (executed_input_amount, remainder_per_receiver, weight): (
+                    Balance,
+                    Balance,
+                    Weight,
+                ) = if &asset_id != input_asset_id {
+                    Self::exchange_batch_tokens(
+                        &sender,
+                        receivers.len() as u128,
+                        &input_asset_id,
+                        &asset_id,
+                        max_input_amount,
+                        &selected_source_types,
+                        dex_id,
+                        &filter_mode,
+                        out_amount,
+                    )?
+                } else {
+                    (out_amount, 0, Weight::zero())
+                };
+                total_weight = total_weight.saturating_add(weight);
 
                 executed_batch_input_amount = executed_batch_input_amount
                     .checked_add(executed_input_amount)
@@ -1946,19 +1965,21 @@ impl<T: Config> Pallet<T> {
                     .checked_sub(executed_input_amount)
                     .ok_or(Error::<T>::SlippageNotTolerated)?;
 
-                Self::transfer_batch_tokens_unchecked(
+                let transfer_weight = Self::transfer_batch_tokens_unchecked(
                     &sender,
                     &asset_id,
                     receivers,
                     remainder_per_receiver,
-                )
+                )?;
+                total_weight = total_weight.saturating_add(transfer_weight);
+                Result::<_, DispatchError>::Ok(())
             },
         )?;
         let adar_commission = Self::calculate_adar_commission(executed_batch_input_amount)?;
         max_input_amount
             .checked_sub(adar_commission)
             .ok_or(Error::<T>::SlippageNotTolerated)?;
-        Ok(adar_commission)
+        Ok((adar_commission, total_weight))
     }
 }
 
@@ -2198,7 +2219,7 @@ pub mod pallet {
 
             let mut total_weight = Weight::zero();
 
-            let adar_commission = Self::inner_swap_batch_transfer(
+            let (adar_commission, weight) = Self::inner_swap_batch_transfer(
                 &who,
                 &input_asset_id,
                 swap_batches,
@@ -2206,6 +2227,7 @@ pub mod pallet {
                 &selected_source_types,
                 &filter_mode,
             )?;
+            total_weight = total_weight.saturating_add(weight);
 
             assets::Pallet::<T>::transfer_from(
                 &input_asset_id,
@@ -2214,8 +2236,13 @@ pub mod pallet {
                 adar_commission,
             )
             .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
+            total_weight =
+                total_weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
 
-            Ok(().into())
+            Ok(PostDispatchInfo {
+                actual_weight: Some(total_weight),
+                pays_fee: Pays::Yes,
+            })
         }
 
         /// Enables XST or TBC liquidity source.
