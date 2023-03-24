@@ -2212,9 +2212,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin.clone())?;
 
-            let mut total_weight = Weight::zero();
-
-            let (adar_commission, weight) = Self::inner_swap_batch_transfer(
+            let (adar_commission, mut weight) = Self::inner_swap_batch_transfer(
                 &who,
                 &input_asset_id,
                 swap_batches,
@@ -2222,7 +2220,6 @@ pub mod pallet {
                 &selected_source_types,
                 &filter_mode,
             )?;
-            total_weight = total_weight.saturating_add(weight);
 
             assets::Pallet::<T>::transfer_from(
                 &input_asset_id,
@@ -2231,11 +2228,10 @@ pub mod pallet {
                 adar_commission,
             )
             .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
-            total_weight =
-                total_weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
+            weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
 
             Ok(PostDispatchInfo {
-                actual_weight: Some(total_weight),
+                actual_weight: Some(weight),
                 pays_fee: Pays::Yes,
             })
         }

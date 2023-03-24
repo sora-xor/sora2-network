@@ -107,8 +107,8 @@ benchmarks! {
         let to_asset: T::AssetId = VAL.into();
     }: {
         liquidity_proxy::Pallet::<T>::check_indivisible_assets(
-            from_asset,
-            to_asset
+            &from_asset,
+            &to_asset
         ).unwrap();
     }
     verify {

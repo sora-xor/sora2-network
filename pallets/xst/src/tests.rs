@@ -380,7 +380,7 @@ mod tests {
             // mock returns get_average_price with fee, we want no fee for this comparison
             let base_to_output_without_fee = base_to_output / balance!(0.993);
             let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
