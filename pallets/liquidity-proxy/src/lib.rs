@@ -2197,8 +2197,6 @@ pub mod pallet {
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is
         ///                            determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
-
-        // todo remake weights
         #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(Pallet::<T>::swap_transfer_batch_weight(swap_batches, input_asset_id))]
@@ -2210,7 +2208,7 @@ pub mod pallet {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin.clone())?;
+            let who = ensure_signed(origin)?;
 
             let (adar_commission, mut weight) = Self::inner_swap_batch_transfer(
                 &who,
