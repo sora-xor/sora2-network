@@ -223,6 +223,59 @@ pub mod pallet {
             });
             Ok(())
         }
+
+        #[pallet::call_index(1)]
+        // todo: benchmark
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn execute_order(
+            origin: OriginFor<T>,
+            trading_pair: TradingPair<T::AssetId>,
+            price: FixedPoint<FixedInner, T::PricePrecision>,
+            amount: Balance,
+            kind: OrderKind,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            // todo: matching and stuff
+            Ok(())
+        }
+
+        #[pallet::call_index(2)]
+        // todo: benchmark
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn remove_order(origin: OriginFor<T>, id: OrderId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Ok(())
+        }
+
+        #[pallet::call_index(3)]
+        // todo: benchmark
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn create_orderbook(
+            origin: OriginFor<T>,
+            trading_pair: TradingPair<T::AssetId>,
+            price_limit: FixedPoint<FixedInner, T::PricePrecision>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !<OrderBooks<T>>::contains_key(trading_pair),
+                Error::<T>::UnknownTradingPair
+            );
+            <OrderBooks<T>>::insert(trading_pair, OrderBook::new(price_limit));
+            Ok(())
+        }
+
+        #[pallet::call_index(4)]
+        // todo: benchmark
+        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        pub fn remove_orderbook(
+            origin: OriginFor<T>,
+            trading_pair: TradingPair<T::AssetId>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            //todo: clear the book
+            <OrderBooks<T>>::remove(trading_pair);
+            Ok(())
+        }
     }
 }
 
