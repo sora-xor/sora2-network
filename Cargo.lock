@@ -217,7 +217,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "tiny-keccak 2.0.2",
 ]
@@ -235,7 +235,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -249,7 +249,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -508,7 +508,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -609,14 +609,14 @@ dependencies = [
  "sc-network-gossip",
  "sc-utils",
  "sp-api",
- "sp-application-crypto 6.0.0",
- "sp-arithmetic 5.0.0",
+ "sp-application-crypto",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
  "sp-core 6.0.0",
  "sp-keystore 0.12.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
  "wasm-timer",
@@ -638,7 +638,7 @@ dependencies = [
  "sc-utils",
  "serde",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -659,7 +659,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -676,7 +676,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -690,7 +690,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -703,7 +703,7 @@ dependencies = [
  "beefy-primitives",
  "log",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -715,11 +715,11 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -995,7 +995,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-offchain",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -1046,7 +1046,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -1075,7 +1075,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -1105,7 +1105,7 @@ dependencies = [
  "serde_json",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "xcm",
 ]
@@ -1286,7 +1286,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -1319,7 +1319,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -1353,7 +1353,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -1386,7 +1386,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -1411,7 +1411,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -1441,7 +1441,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -1790,10 +1790,10 @@ dependencies = [
  "serde_json",
  "smallvec 1.10.0",
  "sp-api",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "static_assertions",
 ]
@@ -2310,7 +2310,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -2341,10 +2341,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -2408,10 +2408,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -2430,7 +2430,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2451,10 +2451,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2471,7 +2471,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2483,7 +2483,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2496,7 +2496,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2618,7 +2618,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -2921,7 +2921,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -2973,7 +2973,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -3036,7 +3036,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3048,7 +3048,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3190,7 +3190,7 @@ dependencies = [
  "sp-io 6.0.0",
  "sp-keyring",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3498,7 +3498,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -3518,7 +3518,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3531,7 +3531,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3596,10 +3596,10 @@ dependencies = [
  "rustc-hex",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -3615,7 +3615,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -3656,10 +3656,10 @@ dependencies = [
  "rewards",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -3856,10 +3856,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-runtime-interface 6.0.0",
  "sp-std 4.0.0",
  "sp-storage 6.0.0",
@@ -3907,7 +3907,7 @@ dependencies = [
  "sp-externalities 0.12.0",
  "sp-inherents",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-storage 6.0.0",
  "sp-trie 6.0.0",
@@ -3937,9 +3937,9 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-npos-elections",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -3955,7 +3955,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-tracing 5.0.0",
 ]
@@ -3990,17 +3990,17 @@ dependencies = [
  "serde",
  "smallvec 1.10.0",
  "sp-api",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-core-hashing-proc-macro",
  "sp-inherents",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-state-machine 0.12.0",
  "sp-std 4.0.0",
  "sp-tracing 5.0.0",
- "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31)",
+ "sp-weights",
  "tt-call",
 ]
 
@@ -4052,10 +4052,10 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-version",
- "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31)",
+ "sp-weights",
 ]
 
 [[package]]
@@ -4069,7 +4069,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -4090,7 +4090,7 @@ dependencies = [
  "frame-support",
  "parity-scale-codec",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -4163,7 +4163,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -4175,7 +4175,7 @@ dependencies = [
  "sp-io 6.0.0",
  "sp-keystore 0.12.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-timestamp",
  "sp-transaction-pool",
  "sp-trie 6.0.0",
@@ -4216,7 +4216,7 @@ dependencies = [
  "sp-consensus-babe",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "technical",
  "xor-fee",
 ]
@@ -4338,7 +4338,7 @@ dependencies = [
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-staking",
  "sp-std 4.0.0",
@@ -4818,7 +4818,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -5249,7 +5249,7 @@ dependencies = [
  "sha3 0.9.1",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -5264,7 +5264,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -5650,7 +5650,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -5668,7 +5668,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -5682,7 +5682,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -6208,10 +6208,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -6248,7 +6248,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -6268,7 +6268,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -6281,7 +6281,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -6524,7 +6524,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-keyring",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -6580,10 +6580,10 @@ dependencies = [
  "permissions",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -6672,10 +6672,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -7114,7 +7114,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7127,7 +7127,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7140,7 +7140,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7157,7 +7157,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7172,7 +7172,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7189,7 +7189,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "xcm",
 ]
@@ -7204,7 +7204,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7237,9 +7237,9 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-consensus-aura",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7254,7 +7254,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-authorship",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7272,11 +7272,11 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-consensus-babe",
  "sp-consensus-vrf",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-staking",
  "sp-std 4.0.0",
@@ -7293,7 +7293,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7308,7 +7308,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7324,7 +7324,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7347,7 +7347,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7364,7 +7364,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7382,7 +7382,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7397,11 +7397,11 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-npos-elections",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "static_assertions",
 ]
@@ -7420,7 +7420,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-npos-elections",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7437,11 +7437,11 @@ dependencies = [
  "pallet-session",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-finality-grandpa",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-staking",
  "sp-std 4.0.0",
@@ -7459,7 +7459,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7475,10 +7475,10 @@ dependencies = [
  "pallet-authorship",
  "parity-scale-codec",
  "scale-info",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-std 4.0.0",
 ]
@@ -7496,7 +7496,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7514,7 +7514,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7530,7 +7530,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -7545,7 +7545,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7561,7 +7561,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7577,7 +7577,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-std 4.0.0",
 ]
@@ -7595,7 +7595,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7609,7 +7609,7 @@ dependencies = [
  "parity-scale-codec",
  "safe-mix",
  "scale-info",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7625,7 +7625,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7643,7 +7643,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-staking",
  "sp-std 4.0.0",
@@ -7666,9 +7666,9 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-std 4.0.0",
 ]
@@ -7683,7 +7683,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7700,7 +7700,7 @@ dependencies = [
  "scale-info",
  "sp-core 7.0.0",
  "sp-io 7.0.0",
- "sp-runtime 7.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -7716,7 +7716,7 @@ dependencies = [
  "scale-info",
  "sp-inherents",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-timestamp",
 ]
@@ -7733,7 +7733,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7749,7 +7749,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -7760,7 +7760,7 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -7775,7 +7775,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -7795,7 +7795,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "subxt",
 ]
 
@@ -8104,7 +8104,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -8355,7 +8355,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -8387,7 +8387,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -8472,10 +8472,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -8701,10 +8701,10 @@ dependencies = [
  "pool-xyk",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -8736,7 +8736,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -8755,7 +8755,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -8769,7 +8769,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -9153,7 +9153,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -9244,7 +9244,7 @@ dependencies = [
  "sha3 0.10.6",
  "sp-core 6.0.0",
  "sp-mmr-primitives",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-bridge-channel-rpc",
  "substrate-gen",
  "subxt",
@@ -9277,7 +9277,7 @@ dependencies = [
  "serde_json",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-version",
  "thiserror",
  "tokio",
@@ -9296,7 +9296,7 @@ dependencies = [
  "serde_json",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-version",
  "substrate-rpc-client",
 ]
@@ -9384,7 +9384,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
 ]
@@ -9402,7 +9402,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -9415,7 +9415,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -9754,7 +9754,7 @@ dependencies = [
  "sp-consensus",
  "sp-core 6.0.0",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
 ]
 
@@ -9770,7 +9770,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
 ]
 
@@ -9788,7 +9788,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -9835,7 +9835,7 @@ dependencies = [
  "sp-keyring",
  "sp-keystore 0.12.0",
  "sp-panic-handler 4.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-version",
  "thiserror",
  "tiny-bip39 0.8.2",
@@ -9863,7 +9863,7 @@ dependencies = [
  "sp-database",
  "sp-externalities 0.12.0",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-storage 6.0.0",
  "sp-trie 6.0.0",
@@ -9886,11 +9886,11 @@ dependencies = [
  "parking_lot 0.12.1",
  "sc-client-api",
  "sc-state-db",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-database",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-trie 6.0.0",
 ]
@@ -9913,7 +9913,7 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "substrate-prometheus-endpoint",
  "thiserror",
@@ -9934,7 +9934,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-telemetry",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -9943,7 +9943,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-inherents",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -9973,7 +9973,7 @@ dependencies = [
  "schnorrkel",
  "serde",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -9984,7 +9984,7 @@ dependencies = [
  "sp-inherents",
  "sp-io 6.0.0",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-version",
  "substrate-prometheus-endpoint",
  "thiserror",
@@ -10000,7 +10000,7 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -10016,13 +10016,13 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sc-telemetry",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-slots",
  "sp-core 6.0.0",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "thiserror",
 ]
@@ -10134,14 +10134,14 @@ dependencies = [
  "sc-utils",
  "serde_json",
  "sp-api",
- "sp-application-crypto 6.0.0",
- "sp-arithmetic 5.0.0",
+ "sp-application-crypto",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
  "sp-core 6.0.0",
  "sp-finality-grandpa",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10160,7 +10160,7 @@ dependencies = [
  "sc-network-common",
  "sc-transaction-pool-api",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -10172,7 +10172,7 @@ dependencies = [
  "async-trait",
  "parking_lot 0.12.1",
  "serde_json",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-keystore 0.12.0",
  "thiserror",
@@ -10214,11 +10214,11 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec 1.10.0",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
  "unsigned-varint",
@@ -10239,7 +10239,7 @@ dependencies = [
  "sc-client-api",
  "sc-network-common",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
  "unsigned-varint",
  "void",
@@ -10266,7 +10266,7 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-finality-grandpa",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror",
 ]
@@ -10284,7 +10284,7 @@ dependencies = [
  "lru 0.7.8",
  "sc-network-common",
  "sc-peerset",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
  "tracing",
 ]
@@ -10306,7 +10306,7 @@ dependencies = [
  "sc-peerset",
  "sp-blockchain",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -10331,12 +10331,12 @@ dependencies = [
  "sc-peerset",
  "sc-utils",
  "smallvec 1.10.0",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-blockchain",
  "sp-consensus",
  "sp-core 6.0.0",
  "sp-finality-grandpa",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -10355,7 +10355,7 @@ dependencies = [
  "sc-network-common",
  "sc-peerset",
  "sp-consensus",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "substrate-prometheus-endpoint",
 ]
 
@@ -10384,7 +10384,7 @@ dependencies = [
  "sp-api",
  "sp-core 6.0.0",
  "sp-offchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "threadpool",
  "tracing",
 ]
@@ -10436,7 +10436,7 @@ dependencies = [
  "sp-keystore 0.12.0",
  "sp-offchain",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-version",
 ]
@@ -10458,7 +10458,7 @@ dependencies = [
  "serde_json",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-tracing 5.0.0",
  "sp-version",
  "thiserror",
@@ -10492,7 +10492,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -10541,7 +10541,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -10549,7 +10549,7 @@ dependencies = [
  "sp-externalities 0.12.0",
  "sp-inherents",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-session",
  "sp-state-machine 0.12.0",
  "sp-storage 6.0.0",
@@ -10641,7 +10641,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-tracing 5.0.0",
  "thiserror",
  "tracing",
@@ -10680,7 +10680,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-tracing 5.0.0",
  "sp-transaction-pool",
  "substrate-prometheus-endpoint",
@@ -10697,7 +10697,7 @@ dependencies = [
  "log",
  "serde",
  "sp-blockchain",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -11299,7 +11299,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api-proc-macro",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-std 4.0.0",
  "sp-trie 6.0.0",
@@ -11333,19 +11333,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-application-crypto"
-version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.39#1837f423b494254e1d27834b1c9da34b2c0c2375"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-std 5.0.0",
-]
-
-[[package]]
 name = "sp-arithmetic"
 version = "5.0.0"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#a355cf3446f418e8ea84cb29c0975c5ab295cd0d"
@@ -11361,20 +11348,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-arithmetic"
-version = "6.0.0"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.39#1837f423b494254e1d27834b1c9da34b2c0c2375"
-dependencies = [
- "integer-sqrt",
- "num-traits",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-std 5.0.0",
- "static_assertions",
-]
-
-[[package]]
 name = "sp-authorship"
 version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#a355cf3446f418e8ea84cb29c0975c5ab295cd0d"
@@ -11382,7 +11355,7 @@ dependencies = [
  "async-trait",
  "parity-scale-codec",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11394,7 +11367,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11411,7 +11384,7 @@ dependencies = [
  "sp-api",
  "sp-consensus",
  "sp-database",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "thiserror",
 ]
@@ -11428,7 +11401,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-core 6.0.0",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-std 4.0.0",
  "sp-version",
@@ -11444,11 +11417,11 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-consensus",
  "sp-consensus-slots",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-timestamp",
 ]
@@ -11464,14 +11437,14 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-consensus",
  "sp-consensus-slots",
  "sp-consensus-vrf",
  "sp-core 6.0.0",
  "sp-inherents",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-timestamp",
 ]
@@ -11484,8 +11457,8 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
- "sp-runtime 6.0.0",
+ "sp-arithmetic",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-timestamp",
 ]
@@ -11499,7 +11472,7 @@ dependencies = [
  "scale-info",
  "schnorrkel",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11693,10 +11666,10 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-application-crypto 6.0.0",
+ "sp-application-crypto",
  "sp-core 6.0.0",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11709,7 +11682,7 @@ dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "thiserror",
 ]
@@ -11772,7 +11745,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#
 dependencies = [
  "lazy_static",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "strum",
 ]
 
@@ -11830,7 +11803,7 @@ dependencies = [
  "sp-api",
  "sp-core 6.0.0",
  "sp-debug-derive 4.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11842,9 +11815,9 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -11855,7 +11828,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#
 dependencies = [
  "sp-api",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -11903,34 +11876,12 @@ dependencies = [
  "rand 0.7.3",
  "scale-info",
  "serde",
- "sp-application-crypto 6.0.0",
- "sp-arithmetic 5.0.0",
+ "sp-application-crypto",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
  "sp-std 4.0.0",
- "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31)",
-]
-
-[[package]]
-name = "sp-runtime"
-version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.39#1837f423b494254e1d27834b1c9da34b2c0c2375"
-dependencies = [
- "either",
- "hash256-std-hasher",
- "impl-trait-for-tuples",
- "log",
- "parity-scale-codec",
- "paste",
- "rand 0.8.5",
- "scale-info",
- "serde",
- "sp-application-crypto 7.0.0",
- "sp-arithmetic 6.0.0",
- "sp-core 7.0.0",
- "sp-io 7.0.0",
- "sp-std 5.0.0",
- "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.39)",
+ "sp-weights",
 ]
 
 [[package]]
@@ -12016,7 +11967,7 @@ dependencies = [
  "scale-info",
  "sp-api",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-std 4.0.0",
 ]
@@ -12028,7 +11979,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -12134,7 +12085,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "thiserror",
 ]
@@ -12169,7 +12120,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31#a355cf3446f418e8ea84cb29c0975c5ab295cd0d"
 dependencies = [
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -12183,7 +12134,7 @@ dependencies = [
  "scale-info",
  "sp-core 6.0.0",
  "sp-inherents",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-trie 6.0.0",
 ]
@@ -12245,7 +12196,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core-hashing-proc-macro",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "sp-version-proc-macro",
  "thiserror",
@@ -12299,25 +12250,10 @@ dependencies = [
  "scale-info",
  "serde",
  "smallvec 1.10.0",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-debug-derive 4.0.0",
  "sp-std 4.0.0",
-]
-
-[[package]]
-name = "sp-weights"
-version = "4.0.0"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.39#1837f423b494254e1d27834b1c9da34b2c0c2375"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "smallvec 1.10.0",
- "sp-arithmetic 6.0.0",
- "sp-core 7.0.0",
- "sp-debug-derive 5.0.0",
- "sp-std 5.0.0",
 ]
 
 [[package]]
@@ -12477,7 +12413,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -12501,7 +12437,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -12521,7 +12457,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-offchain",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "substrate-bridge-channel",
 ]
@@ -12553,7 +12489,7 @@ dependencies = [
  "sp-block-builder",
  "sp-blockchain",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -12573,7 +12509,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "subxt",
 ]
 
@@ -12600,7 +12536,7 @@ dependencies = [
  "log",
  "sc-rpc-api",
  "serde",
- "sp-runtime 6.0.0",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -12646,7 +12582,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sp-core 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "subxt-macro",
  "subxt-metadata",
  "thiserror",
@@ -12802,7 +12738,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "trading-pair",
  "twox-hash",
@@ -13221,7 +13157,7 @@ dependencies = [
  "serde",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -13237,7 +13173,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "trading-pair-runtime-api",
 ]
@@ -13250,7 +13186,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -13376,10 +13312,10 @@ dependencies = [
  "sp-externalities 0.12.0",
  "sp-io 6.0.0",
  "sp-keystore 0.12.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-state-machine 0.12.0",
  "sp-version",
- "sp-weights 4.0.0 (git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.31)",
+ "sp-weights",
  "substrate-rpc-client",
  "zstd",
 ]
@@ -13622,7 +13558,7 @@ dependencies = [
  "serde_json",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",
@@ -13641,7 +13577,7 @@ dependencies = [
  "sp-blockchain",
  "sp-core 6.0.0",
  "sp-rpc",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "vested-rewards-runtime-api",
 ]
@@ -13655,7 +13591,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-api",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
 ]
 
@@ -14476,7 +14412,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "xcm-procedural",
 ]
 
@@ -14525,10 +14461,10 @@ dependencies = [
  "scale-info",
  "serde",
  "smallvec 1.10.0",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-staking",
  "sp-std 4.0.0",
  "technical",
@@ -14562,10 +14498,10 @@ dependencies = [
  "pswap-distribution",
  "scale-info",
  "serde",
- "sp-arithmetic 5.0.0",
+ "sp-arithmetic",
  "sp-core 6.0.0",
  "sp-io 6.0.0",
- "sp-runtime 6.0.0",
+ "sp-runtime",
  "sp-std 4.0.0",
  "technical",
  "trading-pair",

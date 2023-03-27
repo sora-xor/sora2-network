@@ -4,11 +4,11 @@ use super::*;
 
 #[allow(unused)]
 use crate::Pallet as Template;
-use frame_benchmarking::v1::{benchmarks, whitelisted_caller};
+use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 
 benchmarks! {
-    do_something {
+    place_limit_order {
         let s in 0 .. 100;
         let caller: T::AccountId = whitelisted_caller();
     }: _(RawOrigin::Signed(caller), s)
