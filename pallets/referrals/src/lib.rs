@@ -131,6 +131,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Reserves the balance from the account for a special balance that can be used to pay referrals' fees
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::reserve())]
         pub fn reserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
             let referrer = ensure_signed(origin)?;
@@ -156,6 +157,7 @@ pub mod pallet {
         }
 
         /// Unreserves the balance and transfers it back to the account
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::unreserve())]
         pub fn unreserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
             let referrer = ensure_signed(origin)?;
@@ -186,6 +188,7 @@ pub mod pallet {
         }
 
         /// Sets the referrer for the account
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_referrer())]
         pub fn set_referrer(
             origin: OriginFor<T>,

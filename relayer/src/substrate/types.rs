@@ -60,10 +60,9 @@ pub type OtherParams<T> =
 pub type MmrHash = H256;
 pub type LeafExtra = LeafExtraData<H256, H256>;
 pub type BeefySignedCommitment<T> =
-    beefy_primitives::VersionedFinalityProof<BlockNumber<T>, beefy_primitives::crypto::Signature>;
-pub type BeefyCommitment<T> = beefy_primitives::Commitment<BlockNumber<T>>;
-pub type MmrLeaf<T> =
-    beefy_primitives::mmr::MmrLeaf<BlockNumber<T>, BlockHash<T>, MmrHash, LeafExtra>;
+    sp_beefy::VersionedFinalityProof<BlockNumber<T>, sp_beefy::crypto::Signature>;
+pub type BeefyCommitment<T> = sp_beefy::Commitment<BlockNumber<T>>;
+pub type MmrLeaf<T> = sp_beefy::mmr::MmrLeaf<BlockNumber<T>, BlockHash<T>, MmrHash, LeafExtra>;
 pub type AssetId = AssetId32<PredefinedAssetId>;
 
 pub enum StorageKind {

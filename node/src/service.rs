@@ -566,7 +566,7 @@ pub fn new_full(
             justifications_protocol_name,
             _phantom: core::marker::PhantomData::<Block>,
         };
-        let payload_provider = beefy_primitives::mmr::MmrRootProvider::new(client.clone());
+        let payload_provider = sp_beefy::mmr::MmrRootProvider::new(client.clone());
         let beefy_params = beefy_gadget::BeefyParams {
             client: client.clone(),
             backend: backend.clone(),

@@ -1,0 +1,49 @@
+name: Technical-Task
+description: A clear and comprehensive description of the technical task that needs to be implemented.
+title: "[Tech]: "
+labels: ["tech"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Let us guide you through the creation of the issue that will best set the tech task up for success :)
+    
+  - type: textarea
+    id: tech-problem
+    attributes:
+      label: Problem statement
+      description: What needs to be solved or optimized in the current system ?
+      placeholder: We don't account for X when using functions Y so we need to implement a value check in each of them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tech-description
+    attributes:
+      label: Description
+      description: Can you provide a clear and concise description of the context in which the problem statement happens?
+      placeholder: |
+        - As part of the work on bridge X we realized that Y was not implemented in the best way
+        - ...
+   
+  - type: textarea
+    id: spike-dod
+    attributes:
+      label: Definition of Done
+      description: How can we consider the research complete ?
+      placeholder: |
+        1. We have checked all function Y
+        2. We have documented the result of our investigation on technology X
+        3. We have made a sandbox implementation of technology X to understand how it works in practice
+    validations:
+      required: true
+
+  - type: textarea
+    id: tech-requirements
+    attributes:
+      label: Requirements
+      description: Are there any additional requirements that the tech task implementation should comply with?
+      placeholder: |
+        - Make sure we use a certain set of good practices
+        - Use a specific programming paradigm

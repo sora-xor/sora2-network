@@ -147,6 +147,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account
         /// - `oracle`: oracle variant which should be enabled
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_oracle())]
         pub fn enable_oracle(origin: OriginFor<T>, oracle: Oracle) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -168,6 +169,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account
         /// - `oracle`: oracle variant which should be disabled
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_oracle())]
         pub fn disable_oracle(origin: OriginFor<T>, oracle: Oracle) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;

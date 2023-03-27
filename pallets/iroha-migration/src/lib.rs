@@ -374,6 +374,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(Pallet::<T>::migrate_weight(iroha_address, iroha_public_key, iroha_signature))]
         pub fn migrate(
             origin: OriginFor<T>,

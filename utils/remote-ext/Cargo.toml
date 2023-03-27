@@ -12,7 +12,7 @@ repository = "https://github.com/sora-xor/sora2-network"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 clap = { version = "3.1", features = ["derive", "env"] }
-jsonrpsee = { version = "0.15.1", features = ["ws-client", "macros"] }
+jsonrpsee = { version = "0.16.2", features = ["ws-client", "macros"] }
 log = "0.4.17"
 serde = "1.0.137"
 serde_json = "1.0"
@@ -22,16 +22,16 @@ anyhow = "1.0.51"
 hex = "0.4.3"
 env_logger = "0.9.0"
 
-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31" }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
     "std",

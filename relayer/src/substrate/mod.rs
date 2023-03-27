@@ -39,19 +39,20 @@ use crate::prelude::*;
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::H256;
 use common::{AssetName, AssetSymbol, Balance, ContentSource, Description};
-use pallet_mmr_rpc::MmrApiClient;
+use mmr_rpc::MmrApiClient;
 use sp_core::Bytes;
 use sp_mmr_primitives::{EncodableOpaqueLeaf, Proof};
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use std::sync::RwLock;
 pub use substrate_gen::{runtime, DefaultConfig};
+use subxt::blocks::ExtrinsicEvents;
 use subxt::events::EventDetails;
 use subxt::metadata::DecodeWithMetadata;
 pub use subxt::rpc::Subscription;
-use subxt::rpc::{rpc_params, RpcClientT};
+use subxt::rpc::{rpc_params, ChainBlockResponse, RpcClientT};
 use subxt::storage::address::Yes;
 use subxt::storage::StorageAddress;
-use subxt::tx::{Signer, TxEvents};
+use subxt::tx::Signer;
 pub use types::*;
 
 // Find first occurence of value in storage with increasing values
@@ -91,7 +92,7 @@ pub fn event_to_string<T: ConfigExt>(ev: EventDetails) -> String {
     format!("(Phase: {:?}, Event: {:?})", phase, event)
 }
 
-pub fn log_tx_events<T: ConfigExt>(events: TxEvents<T::Config>) {
+pub fn log_extrinsic_events<T: ConfigExt>(events: ExtrinsicEvents<T::Config>) {
     for ev in events.iter() {
         match ev {
             Ok(ev) => {
@@ -143,7 +144,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .max_notifs_per_subscription(4096)
             .build_with_tokio(sender, receiver);
         let client = ClonableClient(Arc::new(client));
-        let api = ApiInner::<T>::from_rpc_client(client.clone()).await?;
+        let api = ApiInner::<T>::from_rpc_client(client.clone().0).await?;
         Ok(Self { api, client })
     }
 
@@ -151,7 +152,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
         &self.client.0
     }
 
-    pub fn mmr(&self) -> &impl pallet_mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>> {
+    pub fn mmr(&self) -> &impl mmr_rpc::MmrApiClient<BlockHash<T>, BlockNumber<T>, MmrHash> {
         self.rpc()
     }
 
@@ -264,17 +265,23 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn mmr_generate_proof(
         &self,
         block_number: BlockNumber<T>,
-        at: Option<BlockHash<T>>,
+        at: BlockNumber<T>,
     ) -> AnyResult<LeafProof<T>>
     where
         BlockNumber<T>: Serialize,
     {
-        let res = self.mmr().generate_proof(block_number, at).await?;
-        let leaf = MmrLeaf::<T>::decode(
-            &mut &*EncodableOpaqueLeaf::decode(&mut res.leaf.as_ref())?
+        let res = self
+            .mmr()
+            .generate_proof(vec![block_number], Some(at), None)
+            .await?;
+        let leaf = Vec::<MmrLeaf<T>>::decode(
+            &mut &*EncodableOpaqueLeaf::decode(&mut res.leaves.as_ref())?
                 .into_opaque_leaf()
                 .0,
-        )?;
+        )?
+        .first()
+        .cloned()
+        .unwrap();
         let proof = Proof::<MmrHash>::decode(&mut res.proof.as_ref())?;
         Ok(LeafProof {
             leaf,
@@ -329,7 +336,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn block<N: Into<BlockNumberOrHash>>(
         &self,
         at: N,
-    ) -> AnyResult<ChainBlock<T::Config>> {
+    ) -> AnyResult<ChainBlockResponse<T::Config>> {
         let hash = self.block_hash(at).await?;
         let block = self
             .api()
@@ -427,7 +434,7 @@ impl<T: ConfigExt> SignedClient<T> {
             .await?
             .wait_for_success()
             .await?;
-        log_tx_events::<T>(res);
+        log_extrinsic_events::<T>(res);
         Ok(())
     }
 
@@ -473,16 +480,6 @@ impl<T: ConfigExt> DerefMut for SignedClient<T> {
 impl<T: ConfigExt> Signer<T::Config> for SignedClient<T> {
     fn account_id(&self) -> &AccountId<T> {
         self.key.account_id()
-    }
-
-    fn nonce(&self) -> Option<Index<T>> {
-        let res = *self.nonce.read().expect("poisoned");
-        self.nonce
-            .write()
-            .expect("poisoned")
-            .as_mut()
-            .map(|nonce| *nonce += 1u32.into());
-        res
     }
 
     fn sign(&self, extrinsic: &[u8]) -> Signature<T> {

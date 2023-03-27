@@ -246,6 +246,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Enable exchange path on the pool for pair BaseAsset-CollateralAsset.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,
@@ -261,6 +262,7 @@ pub mod pallet {
         }
 
         /// Change reference asset which is used to determine collateral assets value. Inteded to be e.g. stablecoin DAI.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -278,6 +280,7 @@ pub mod pallet {
 
         /// Set multiplier which is applied to rewarded amount when depositing particular collateral assets.
         /// `None` value indicates reward without change, same as Some(1.0).
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_optional_reward_multiplier())]
         pub fn set_optional_reward_multiplier(
             origin: OriginFor<T>,
@@ -305,6 +308,7 @@ pub mod pallet {
         }
 
         /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation
+        #[pallet::call_index(3)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_bias())]
         pub fn set_price_bias(
             origin: OriginFor<T>,
@@ -323,6 +327,7 @@ pub mod pallet {
         }
 
         /// Changes price change rate and step
+        #[pallet::call_index(4)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_change_config())]
         pub fn set_price_change_config(
             origin: OriginFor<T>,

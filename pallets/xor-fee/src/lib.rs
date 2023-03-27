@@ -635,6 +635,7 @@ pub mod pallet {
         // TODO: benchmark on reference hardware
         // 0 is passed because argument is unused and no need to
         // do unnecessary conversions
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::update_multiplier(0))]
         pub fn update_multiplier(
             origin: OriginFor<T>,

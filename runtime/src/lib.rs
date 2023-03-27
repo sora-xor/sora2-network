@@ -62,8 +62,6 @@ use frame_support::weights::ConstantMultiplier;
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use beefy_primitives::crypto::AuthorityId as BeefyId;
-use beefy_primitives::mmr::MmrLeafVersion;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -80,6 +78,8 @@ use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
+pub use sp_beefy::crypto::AuthorityId as BeefyId;
+use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{Encode, OpaqueMetadata, H160, U256};
 use sp_mmr_primitives as mmr;
@@ -120,9 +120,7 @@ pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
-pub use frame_support::weights::constants::{
-    BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND,
-};
+pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
 pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
@@ -197,11 +195,6 @@ type AtLeastTwoThirdsCouncil = EitherOfDiverse<
     EnsureRoot<AccountId>,
 >;
 
-type SlashCancelOrigin = EitherOfDiverse<
-    EnsureRoot<AccountId>,
-    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
->;
-
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -243,10 +236,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 47,
+    spec_version: 49,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 47,
+    transaction_version: 49,
     state_version: 0,
 };
 
@@ -271,7 +264,6 @@ parameter_types! {
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 0;
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
     pub const BondingDuration: sp_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
@@ -506,6 +498,10 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
+}
+
 impl pallet_grandpa::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 
@@ -526,6 +522,7 @@ impl pallet_grandpa::Config for Runtime {
     >;
     type WeightInfo = ();
     type MaxAuthorities = MaxAuthorities;
+    type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
 }
 
 parameter_types! {
@@ -559,8 +556,6 @@ impl pallet_session::historical::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-    type UncleGenerations = UncleGenerations;
-    type FilterUncle = ();
     type EventHandler = (Staking, ImOnline);
 }
 
@@ -576,6 +571,11 @@ parameter_types! {
     pub const MaxNominations: u32 = <NposCompactSolution24 as frame_election_provider_support::NposSolution>::LIMIT as u32;
 }
 
+type StakingAdminOrigin = EitherOfDiverse<
+    EnsureRoot<AccountId>,
+    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
+>;
+
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type MultiCurrency = Tokens;
@@ -589,7 +589,7 @@ impl pallet_staking::Config for Runtime {
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = SlashCancelOrigin;
+    type AdminOrigin = StakingAdminOrigin;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
@@ -599,7 +599,7 @@ impl pallet_staking::Config for Runtime {
     type MaxUnlockingChunks = ConstU32<32>;
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
-    type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type OnStakerSlash = ();
     type HistoryDepth = frame_support::traits::ConstU32<84>;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
@@ -643,6 +643,9 @@ parameter_types! {
     /// ... and all of the validators as electable targets. Whilst this is the case, we cannot and
     /// shall not increase the size of the validator intentions.
     pub const MaxElectableTargets: u16 = u16::MAX;
+    /// Setup election pallet to support maximum winners upto 1200. This will mean Staking Pallet
+    /// cannot have active validators higher than this count.
+    pub const MaxActiveValidators: u32 = 1200;
     pub NposSolutionPriority: TransactionPriority =
         Perbill::from_percent(90) * TransactionPriority::max_value();
 }
@@ -666,6 +669,9 @@ impl onchain::Config for OnChainSeqPhragmen {
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
     type DataProvider = Staking;
     type WeightInfo = ();
+    type MaxWinners = MaxActiveValidators;
+    type VotersBound = MaxElectingVoters;
+    type TargetsBound = MaxElectableTargets;
 }
 
 impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
@@ -712,8 +718,13 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
     type DataProvider = Staking;
-    type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
-    type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type Fallback = frame_election_provider_support::NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        MaxActiveValidators,
+    )>;
+    type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
         AccountId,
         pallet_election_provider_multi_phase::SolutionAccuracyOf<Self>,
@@ -727,6 +738,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type WeightInfo = ();
     type MaxElectingVoters = MaxElectingVoters;
     type MaxElectableTargets = MaxElectableTargets;
+    type MaxWinners = MaxActiveValidators;
 }
 
 parameter_types! {
@@ -827,15 +839,10 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
+    type CurrencyHooks = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -858,6 +865,7 @@ parameter_types! {
     pub const GetBuyBackAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
     pub const GetBuyBackDexId: DEXId = 0;
     pub const GetSyntheticBaseAssetId: AssetId = GetXstAssetId::get();
+    pub const GetADARAccountId: AccountId = AccountId::new(hex!("dc5201cda01113be2ca9093c49a92763c95c708dd61df70c945df749c365da5d"));
 }
 
 impl currencies::Config for Runtime {
@@ -988,6 +996,7 @@ impl liquidity_proxy::Config for Runtime {
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type GetADARAccountId = GetADARAccountId;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -2139,7 +2148,6 @@ impl substrate_bridge_app::Config for Runtime {
     type WeightInfo = ();
 }
 
-#[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2153,7 +2161,6 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
-        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
@@ -2164,7 +2171,7 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
         Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         Historical: pallet_session_historical::{Pallet} = 13,
@@ -2212,9 +2219,6 @@ construct_runtime! {
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
 
-        // Available only for test net
-        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
-
         // Trustless ethereum bridge
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
@@ -2235,102 +2239,14 @@ construct_runtime! {
         SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
-    }
-}
 
-#[cfg(not(feature = "private-net"))]
-construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = opaque::Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
-        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+        // Dev
+        #[cfg(feature = "private-net")]
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
 
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
-
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-        // Balances in native currency - XOR.
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
-        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
-        Referrals: referrals::{Pallet, Call, Storage} = 7,
-        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Pallet, Call, Event} = 11,
-
-        // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-
-        // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
-        // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Pallet, Call} = 19,
-        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>, Storage} = 24,
-        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config} = 30,
-        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
-        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
-        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Storage} = 42,
-        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
-        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
-        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
-        CeresTokenLocker: ceres_token_locker::{Pallet, Call, Storage, Event<T>} = 47,
-        CeresGovernancePlatform: ceres_governance_platform::{Pallet, Call, Storage, Event<T>} = 48,
-        CeresLaunchpad: ceres_launchpad::{Pallet, Call, Storage, Event<T>} = 49,
-        DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>} = 50,
-        // Provides a semi-sorted list of nominators for staking.
-        BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
-        ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
-        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
-        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
-        HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
-
-
-        // Trustless ethereum bridge
-        Mmr: pallet_mmr::{Pallet, Storage} = 90,
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Config, Storage, Event<T>} = 96,
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>} = 97,
-        Dispatch: dispatch::<Instance1>::{Pallet, Storage, Event<T>, Origin<T>} = 98,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 100,
-        ERC20App: erc20_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 101,
-        MigrationApp: migration_app::{Pallet, Call, Storage, Event<T>, Config} = 102,
-        EvmBridgeProxy: evm_bridge_proxy::{Pallet, Call, Storage, Event} = 103,
-
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
-        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 105,
-        SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Config, Storage, Event<T>} = 106,
-        SubstrateBridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>} = 107,
-        SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
-        SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        // Available only for test net
+        #[cfg(feature = "private-net")]
+        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
     }
 }
 
@@ -2479,6 +2395,14 @@ impl_runtime_apis! {
                 _ => TransactionPayment::query_fee_details(uxt, len),
             };
             output
+        }
+
+        fn query_weight_to_fee(weight: Weight) -> Balance {
+            TransactionPayment::weight_to_fee(weight)
+        }
+
+        fn query_length_to_fee(length: u32) -> Balance {
+            TransactionPayment::length_to_fee(length)
         }
     }
 
@@ -2889,63 +2813,39 @@ impl_runtime_apis! {
         }
     }
 
-    impl beefy_primitives::BeefyApi<Block> for Runtime {
-        fn validator_set() -> Option<beefy_primitives::ValidatorSet<BeefyId>> {
+    impl sp_beefy::BeefyApi<Block> for Runtime {
+        fn validator_set() -> Option<sp_beefy::ValidatorSet<BeefyId>> {
                 Beefy::validator_set()
         }
     }
 
     impl mmr::MmrApi<Block, Hash, BlockNumber> for Runtime {
-        fn generate_proof(block_number: BlockNumber)
-            -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
-        {
-            Mmr::generate_batch_proof(vec![block_number])
-                .and_then(|(leaves, proof)| Ok((
-                    mmr::EncodableOpaqueLeaf::from_leaf(&leaves[0]),
-                    mmr::BatchProof::into_single_leaf_proof(proof)?
-                )))
-        }
-
-        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
-            -> Result<(), mmr::Error>
-        {
-            pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
-            let leaf: MmrLeaf = leaf
-                .into_opaque_leaf()
-                .try_decode()
-                .ok_or(mmr::Error::Verify)?;
-            Mmr::verify_leaves(vec![leaf], mmr::Proof::into_batch_proof(proof))
-        }
-
-        fn verify_proof_stateless(
-            root: Hash,
-            leaf: mmr::EncodableOpaqueLeaf,
-            proof: mmr::Proof<Hash>
-        ) -> Result<(), mmr::Error> {
-            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
-            pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, vec![node], mmr::Proof::into_batch_proof(proof))
-        }
-
         fn mmr_root() -> Result<Hash, mmr::Error> {
             Ok(Mmr::mmr_root())
         }
 
-        fn generate_batch_proof(block_numbers: Vec<BlockNumber>)
-            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
-        {
-            Mmr::generate_batch_proof(block_numbers)
-                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+        fn mmr_leaf_count() -> Result<mmr::LeafIndex, mmr::Error> {
+            Ok(Mmr::mmr_leaves())
         }
 
-        fn generate_historical_batch_proof(block_numbers: Vec<BlockNumber>,
-            best_known_block_number: BlockNumber)
-            -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::BatchProof<Hash>), mmr::Error>
-        {
-            Mmr::generate_historical_batch_proof(block_numbers, best_known_block_number)
-                .map(|(leaves, proof)| (leaves.into_iter().map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf)).collect(), proof))
+        fn generate_proof(
+            block_numbers: Vec<BlockNumber>,
+            best_known_block_number: Option<BlockNumber>,
+        ) -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::Proof<Hash>), mmr::Error> {
+            Mmr::generate_proof(block_numbers, best_known_block_number).map(
+                |(leaves, proof)| {
+                    (
+                        leaves
+                            .into_iter()
+                            .map(|leaf| mmr::EncodableOpaqueLeaf::from_leaf(&leaf))
+                            .collect(),
+                        proof,
+                    )
+                },
+            )
         }
 
-        fn verify_batch_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::BatchProof<Hash>)
+        fn verify_proof(leaves: Vec<mmr::EncodableOpaqueLeaf>, proof: mmr::Proof<Hash>)
             -> Result<(), mmr::Error>
         {
             pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
@@ -2956,10 +2856,10 @@ impl_runtime_apis! {
             Mmr::verify_leaves(leaves, proof)
         }
 
-        fn verify_batch_proof_stateless(
+        fn verify_proof_stateless(
             root: Hash,
             leaves: Vec<mmr::EncodableOpaqueLeaf>,
-            proof: mmr::BatchProof<Hash>
+            proof: mmr::Proof<Hash>
         ) -> Result<(), mmr::Error> {
             let nodes = leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
             pallet_mmr::verify_leaves_proof::<MmrHashing, _>(root, nodes, proof)

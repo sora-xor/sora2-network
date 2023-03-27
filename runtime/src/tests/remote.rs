@@ -1,6 +1,8 @@
 use crate::*;
+use frame_remote_externalities::{
+    Builder, Mode, OfflineConfig, OnlineConfig, SnapshotConfig, Transport,
+};
 use frame_try_runtime::runtime_decl_for_TryRuntime::TryRuntime;
-use remote_externalities::{Builder, Mode, OfflineConfig, OnlineConfig, SnapshotConfig, Transport};
 use std::env::var;
 
 #[tokio::test]

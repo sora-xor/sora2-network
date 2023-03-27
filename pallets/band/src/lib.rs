@@ -184,6 +184,7 @@ pub mod pallet {
         /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
         pub fn relay(
             origin: OriginFor<T>,
@@ -216,6 +217,7 @@ pub mod pallet {
         /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
         pub fn force_relay(
             origin: OriginFor<T>,
@@ -246,6 +248,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of new trusted relayers to add.
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::add_relayers())]
         pub fn add_relayers(
             origin: OriginFor<T>,
@@ -284,6 +287,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of relayers to remove.
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::remove_relayers())]
         pub fn remove_relayers(
             origin: OriginFor<T>,

@@ -55,13 +55,14 @@ impl Command {
             self.relay_request(&eth, &sub, hash).await?;
             return Ok(());
         }
-        let mut events = sub
+        let mut blocks = sub
             .api()
-            .events()
+            .blocks()
             .subscribe_finalized()
             .await
             .context("Subscribe")?;
-        while let Some(events) = events.next().await.transpose().context("Events next")? {
+        while let Some(block) = blocks.next().await.transpose().context("Events next")? {
+            let events = sub.api().events().at(Some(block.hash())).await?;
             for event in events.find::<runtime::eth_bridge::events::ApprovalsCollected>() {
                 if let Ok(event) = event {
                     info!("Recieved event: {:?}", event);
@@ -87,7 +88,7 @@ impl Command {
                 (),
             )
             .await?;
-        let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
+        let contract = ethereum_gen::Bridge::new(contract_address, eth.inner());
         let request = sub
             .storage_fetch(
                 &runtime::storage()
@@ -124,19 +125,12 @@ impl Command {
                 match request {
                     eth_bridge::requests::OutgoingRequest::PrepareForMigration(_) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::PrepareForMigration);
-                        let call = contract.prepare_for_migration(
-                            contract_address,
-                            hash.to_fixed_bytes(),
-                            v,
-                            r,
-                            s,
-                        );
+                        let call = contract.prepare_for_migration(hash.to_fixed_bytes(), v, r, s);
                         (call, kind)
                     }
                     eth_bridge::requests::OutgoingRequest::Migrate(request) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::Migrate);
                         let call = contract.shut_down_and_migrate(
-                            contract_address,
                             hash.to_fixed_bytes(),
                             request.new_contract_address,
                             request.erc20_native_tokens,

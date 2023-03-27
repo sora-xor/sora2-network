@@ -186,11 +186,10 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /*
-        Internal calls to be used from Ethereum side.
-        DON'T CHANGE ORDER
-         */
+        // Internal calls to be used from Ethereum side.
+        // DON'T CHANGE ORDER
 
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
             origin: OriginFor<T>,
@@ -250,6 +249,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
         pub fn register_asset_internal(
             origin: OriginFor<T>,
@@ -269,10 +269,9 @@ pub mod pallet {
             Ok(())
         }
 
-        /*
-        Common exstrinsics
-         */
+        // Common exstrinsics
 
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
@@ -288,8 +287,8 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-
         pub fn register_erc20_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -334,6 +333,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn register_existing_erc20_asset(
             origin: OriginFor<T>,
@@ -365,6 +365,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
         pub fn register_native_asset(
             origin: OriginFor<T>,
@@ -398,6 +399,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
         pub fn register_native_app(
             origin: OriginFor<T>,
@@ -414,6 +416,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_app())]
         pub fn register_erc20_app(
             origin: OriginFor<T>,

@@ -332,13 +332,13 @@ mod test {
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_ref_time(257_591_000), "u32::MIN");
-        t(1, Weight::from_ref_time(257_592_680), "1");
-        t(500_000, Weight::from_ref_time(1_097_591_000), "500_000");
-        t(1_000_000, Weight::from_ref_time(1_937_591_000), "1_000_000");
+        t(u32::MIN, Weight::from_ref_time(248_828_000), "u32::MIN");
+        t(1, Weight::from_ref_time(248_829_705), "1");
+        t(500_000, Weight::from_ref_time(1_101_328_000), "500_000");
+        t(1_000_000, Weight::from_ref_time(1_953_828_000), "1_000_000");
         t(
             5 * MEBIBYTE,
-            Weight::from_ref_time(9_065_629_400),
+            Weight::from_ref_time(9_187_938_400),
             "5 * MEBIBYTE",
         );
     }
@@ -347,7 +347,7 @@ mod test {
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
             let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), 1_459_913_702_001_u64);
+            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
             assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 

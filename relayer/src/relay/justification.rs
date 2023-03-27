@@ -30,12 +30,12 @@
 
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, BlockHash, LeafProof};
-use beefy_primitives::crypto::Signature;
-use beefy_primitives::SignedCommitment;
 use bridge_common::bitfield::BitField;
 use codec::Encode;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
+use sp_beefy::crypto::Signature;
+use sp_beefy::SignedCommitment;
 use sp_runtime::traits::{AtLeast32Bit, Keccak256, UniqueSaturatedInto};
 use sp_runtime::traits::{Convert, Hash as HashTrait};
 use sp_runtime::Saturating;
@@ -124,14 +124,11 @@ where
     ) -> AnyResult<(LeafProof<T>, Proof<H256>)> {
         for block_number in 0u32..=6u32 {
             let block_number = commitment.block_number.saturating_sub(block_number.into());
-            let block_hash = sub.block_hash(block_number).await?;
-            let leaf_proof = sub
-                .mmr_generate_proof(block_number, Some(block_hash))
-                .await?;
+            let leaf_proof = sub.mmr_generate_proof(block_number, block_number).await?;
             let hashed_leaf = leaf_proof.leaf.using_encoded(Keccak256::hash);
             debug!("Hashed leaf: {:?}", hashed_leaf);
             let proof = convert_to_simplified_mmr_proof(
-                leaf_proof.proof.leaf_index,
+                leaf_proof.proof.leaf_indices[0],
                 leaf_proof.proof.leaf_count,
                 &leaf_proof.proof.items,
             );
@@ -154,16 +151,12 @@ where
     pub fn get_payload(commitment: &BeefyCommitment<T>) -> Option<MmrPayload> {
         commitment
             .payload
-            .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
+            .get_raw(&sp_beefy::known_payloads::MMR_ROOT_ID)
             .and_then(|x| x.clone().try_into().ok())
             .and_then(|mmr_root: [u8; 32]| {
                 let payload = hex::encode(commitment.payload.encode());
                 let mmr_root_with_id = hex::encode(
-                    (
-                        beefy_primitives::known_payloads::MMR_ROOT_ID,
-                        mmr_root.to_vec(),
-                    )
-                        .encode(),
+                    (sp_beefy::known_payloads::MMR_ROOT_ID, mmr_root.to_vec()).encode(),
                 );
                 let (prefix, suffix) = if let Some(x) = payload.strip_suffix(&mmr_root_with_id) {
                     (x, "")

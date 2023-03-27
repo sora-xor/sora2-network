@@ -35,14 +35,6 @@
 pub mod parachain_runtime {
     #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
     use ::beefy_light_client::ProvedSubstrateBridgeMessage;
-    #[subxt(substitute_type = "beefy_primitives::crypto::Public")]
-    use ::beefy_primitives::crypto::Public;
-    #[subxt(substitute_type = "beefy_primitives::mmr::BeefyAuthoritySet")]
-    use ::beefy_primitives::mmr::BeefyAuthoritySet;
-    #[subxt(substitute_type = "beefy_primitives::mmr::MmrLeaf")]
-    use ::beefy_primitives::mmr::MmrLeaf;
-    #[subxt(substitute_type = "beefy_primitives::commitment::Commitment")]
-    use ::beefy_primitives::Commitment;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -75,6 +67,14 @@ pub mod parachain_runtime {
     use ::bridge_types::HeaderId;
     #[subxt(substitute_type = "bridge_types::SubNetworkId")]
     use ::bridge_types::SubNetworkId;
+    #[subxt(substitute_type = "sp_beefy::crypto::Public")]
+    use ::sp_beefy::crypto::Public;
+    #[subxt(substitute_type = "sp_beefy::mmr::BeefyAuthoritySet")]
+    use ::sp_beefy::mmr::BeefyAuthoritySet;
+    #[subxt(substitute_type = "sp_beefy::mmr::MmrLeaf")]
+    use ::sp_beefy::mmr::MmrLeaf;
+    #[subxt(substitute_type = "sp_beefy::commitment::Commitment")]
+    use ::sp_beefy::Commitment;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
     #[subxt(substitute_type = "primitive_types::H160")]
@@ -108,12 +108,11 @@ pub mod config {
         type BlockNumber = u32;
         type Hash = sp_core::H256;
         type Hashing = sp_runtime::traits::BlakeTwo256;
-        type Signature = sp_runtime::MultiSignature;
         type AccountId = <<Self::Signature as sp_runtime::traits::Verify>::Signer as sp_runtime::traits::IdentifyAccount>::AccountId;
         type Address = sp_runtime::MultiAddress<Self::AccountId, ()>;
         type Header =
             sp_runtime::generic::Header<Self::BlockNumber, sp_runtime::traits::BlakeTwo256>;
-        type Extrinsic = sp_runtime::OpaqueExtrinsic;
+        type Signature = sp_runtime::MultiSignature;
         type ExtrinsicParams = SoraExtrinsicParams;
     }
 }

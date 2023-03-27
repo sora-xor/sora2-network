@@ -178,6 +178,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock liquidity
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::lock_liquidity())]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
@@ -300,6 +301,7 @@ pub mod pallet {
         }
 
         /// Change CERES fee
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_fee())]
         pub fn change_ceres_fee(
             origin: OriginFor<T>,

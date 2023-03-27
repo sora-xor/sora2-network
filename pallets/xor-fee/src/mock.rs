@@ -466,15 +466,10 @@ impl tokens::Config for Runtime {
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
-    type OnSlash = ();
-    type OnDeposit = ();
-    type OnTransfer = ();
+    type CurrencyHooks = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -584,13 +579,23 @@ impl pallet_staking::Config for Runtime {
     type Slash = ();
     type SessionsPerEra = ();
     type SlashDeferDuration = ();
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type BondingDuration = BondingDuration;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type ElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
-    type GenesisElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
+    type ElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
+    type GenesisElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
     type OnStakerSlash = ();
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
@@ -702,6 +707,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(0)]
         pub fn swap(
             _origin: OriginFor<T>,
