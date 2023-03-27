@@ -77,6 +77,8 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0075);
 
+const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
+
 /// Possible exchange paths for two assets.
 pub struct ExchangePath<T: Config>(Vec<T::AssetId>);
 
@@ -1173,8 +1175,15 @@ impl<T: Config> Pallet<T> {
         output: &T::AssetId,
         swap_variant: SwapVariant,
     ) -> Weight {
-        let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id).unwrap();
-        let tp = ExchangePath::<T>::new_trivial(&dex_info, *input, *output).unwrap();
+        // Get DEX info or return weight that will be rejected
+        let Ok(dex_info) = dex_manager::Pallet::<T>::get_dex_info(dex_id) else {
+            return REJECTION_WEIGHT;
+        };
+
+        // Get trivial path or return weight that will be rejected
+        let Some(trivial_path) = ExchangePath::<T>::new_trivial(&dex_info, *input, *output) else {
+            return REJECTION_WEIGHT;
+        };
 
         let quote_weight = T::LiquidityRegistry::quote_weight();
         let exchange_weight = T::LiquidityRegistry::exchange_weight();
@@ -1187,7 +1196,8 @@ impl<T: Config> Pallet<T> {
         let mut weight = <T as Config>::WeightInfo::new_trivial();
 
         // in quote_pairs_with_flexible_amount()
-        weight = weight.saturating_add(quote_single_weight.saturating_mul(tp.len() as u64));
+        weight =
+            weight.saturating_add(quote_single_weight.saturating_mul(trivial_path.len() as u64));
 
         // in calculate_input_amount()
         weight = weight.saturating_add(match swap_variant {
@@ -1197,7 +1207,7 @@ impl<T: Config> Pallet<T> {
 
         let mut weights = Vec::new();
 
-        for path in tp {
+        for path in trivial_path {
             if path.0.len() > 0 {
                 let total_exchange_weight = exchange_weight.saturating_mul(path.0.len() as u64 - 1);
                 weights.push(
