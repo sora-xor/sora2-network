@@ -140,7 +140,7 @@ fn test_quote_base_to_target_should_pass() {
             fixed!(7000),
         )
         .expect("Failed to set reserve.");
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -149,7 +149,7 @@ fn test_quote_base_to_target_should_pass() {
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(136.851187324744592819));
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -173,7 +173,7 @@ fn test_quote_target_to_base_should_pass() {
             fixed!(7000),
         )
         .expect("Failed to set reserve.");
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &DOT,
             &GetBaseAssetId::get(),
@@ -182,7 +182,7 @@ fn test_quote_target_to_base_should_pass() {
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(70.211267605633802817));
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &DOT,
             &GetBaseAssetId::get(),
@@ -214,7 +214,7 @@ fn test_quote_target_to_target_should_pass() {
             fixed!(3000),
         )
         .expect("Failed to set reserve.");
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &KSM,
             &DOT,
@@ -223,7 +223,7 @@ fn test_quote_target_to_target_should_pass() {
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(238.487257161165663484));
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &KSM,
             &DOT,
@@ -255,7 +255,7 @@ fn test_quote_different_modules_should_pass() {
             fixed!(3000),
         )
         .expect("Failed to set reserve.");
-        let outcome = MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
@@ -264,7 +264,7 @@ fn test_quote_different_modules_should_pass() {
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(136.851187324744592819));
-        let outcome = MockLiquiditySource2::quote(
+        let (outcome, _) = MockLiquiditySource2::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,

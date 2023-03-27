@@ -101,7 +101,7 @@ impl<T: Config> Pallet<T> {
         if asset_id == &base_asset {
             Ok(balance!(1).into())
         } else {
-            let outcome = pool_xyk::Pallet::<T>::quote(
+            let (outcome, _) = pool_xyk::Pallet::<T>::quote(
                 &common::DEXId::Polkaswap.into(),
                 &base_asset,
                 asset_id,
