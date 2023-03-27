@@ -1,13 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use book::{OrderData, OrderId};
-use codec::{Decode, Encode, MaxEncodedLen};
 use common::fixnum::FixedPoint;
 use common::{Balance, FixedInner};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
-use scale_info::TypeInfo;
 use sp_runtime::traits::Zero;
 
 #[cfg(test)]
@@ -111,7 +109,7 @@ pub mod pallet {
     use common::{fixnum::typenum::Unsigned, TradingPair};
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
-        Blake2_128Concat, Twox64Concat,
+        Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
 
@@ -212,7 +210,7 @@ pub mod pallet {
             lifespan: Timestamp<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let order_book =
+            let mut order_book =
                 <OrderBooks<T>>::get(trading_pair).ok_or(Error::<T>::UnknownTradingPair)?;
             let order = Self::construct_order_data(amount, lifespan)?;
             order_book
