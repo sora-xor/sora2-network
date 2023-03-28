@@ -33,7 +33,7 @@
 use super::*;
 
 use frame_benchmarking::benchmarks;
-use frame_support::sp_runtime::{FixedPointNumber, FixedU128};
+use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
 use crate::{Config, Pallet};
@@ -44,11 +44,10 @@ benchmarks! {
     }
 
     update_multiplier {
-        let m in 0 .. 100;
-        let m = FixedU128::checked_from_integer(m).unwrap();
-    }: _(RawOrigin::Root, m)
+        let new_multiplier = FixedU128::from(1);
+    }: _(RawOrigin::Root, new_multiplier)
     verify {
-        assert_eq!(crate::Multiplier::<T>::get(), m);
+        assert_eq!(crate::Multiplier::<T>::get(), new_multiplier);
     }
 
     impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::build(), crate::mock::Runtime);
