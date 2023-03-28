@@ -28,17 +28,17 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{migrations::OldBaseFee, mock::*, pallet::Pallet, EnabledSynthetics};
+use crate::{migrations::BaseFee, mock::*, pallet::Pallet, EnabledSynthetics};
 use common::{fixed, Fixed, XSTUSD};
-use frame_support::traits::{GetStorageVersion as _, StorageVersion};
+use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
 
 #[test]
 fn test() {
     ExtBuilder::default().build().execute_with(|| {
         StorageVersion::new(1).put::<Pallet<Runtime>>();
-        OldBaseFee::put::<Fixed>(fixed!(0.00666));
+        BaseFee::<Runtime>::put::<Fixed>(fixed!(0.00666));
 
-        super::migrate::<Runtime>();
+        super::CustomSyntheticsUpgrade::<Runtime>::on_runtime_upgrade();
 
         let info = EnabledSynthetics::<Runtime>::get(XSTUSD)
             .expect("XSTUSD synthetic should be enabled after migration");

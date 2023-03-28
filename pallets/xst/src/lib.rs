@@ -177,20 +177,33 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
-            asset_symbol: AssetSymbol,
-            asset_name: AssetName,
+            asset_id: T::AssetId,
             reference_symbol: T::Symbol,
             fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            Self::enable_synthetic_asset_unchecked(
-                asset_symbol,
-                asset_name,
-                reference_symbol,
-                fee_ratio,
-                true,
-            )?;
+            Self::enable_synthetic_asset_unchecked(asset_id, reference_symbol, fee_ratio, true)?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(10_000_000)]
+        pub fn register_synthetic_asset(
+            origin: OriginFor<T>,
+            asset_symbol: AssetSymbol,
+            asset_name: AssetName,
+            reference_symbol: T::Symbol,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            let synthetic_asset_id: T::AssetId =
+                AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
+                    &reference_symbol,
+                )
+                .into();
+
+            Self::register_synthetic_asset_unchecked(synthetic_asset_id, asset_symbol, asset_name)?;
+
             Ok(().into())
         }
 
@@ -368,7 +381,7 @@ pub mod pallet {
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
         /// TODO: replace with Vec<T::AssetId> and make corresponding changes to build() function
-        pub initial_synthetic_assets: Vec<(AssetSymbol, AssetName, T::Symbol, Fixed)>,
+        pub initial_synthetic_assets: Vec<(T::AssetId, T::Symbol, Fixed)>,
     }
 
     #[cfg(feature = "std")]
@@ -378,8 +391,7 @@ pub mod pallet {
                 tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
                 initial_synthetic_assets: [(
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
+                    XSTUSD.into(),
                     common::SymbolName::usd().into(),
                     common::fixed!(0.00666),
                 )]
@@ -398,10 +410,9 @@ pub mod pallet {
                 .expect("Failed to register technical account");
 
             self.initial_synthetic_assets.iter().cloned().for_each(
-                |(asset_symbol, asset_name, reference_symbol, fee_ratio)| {
+                |(asset_id, reference_symbol, fee_ratio)| {
                     Pallet::<T>::enable_synthetic_asset_unchecked(
-                        asset_symbol,
-                        asset_name,
+                        asset_id,
                         reference_symbol,
                         fee_ratio,
                         false,
@@ -425,8 +436,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn enable_synthetic_asset_unchecked(
-        asset_symbol: AssetSymbol,
-        asset_name: AssetName,
+        synthetic_asset_id: T::AssetId,
         reference_symbol: T::Symbol,
         fee_ratio: Fixed,
         transactional: bool,
@@ -437,13 +447,9 @@ impl<T: Config> Pallet<T> {
             }
             Self::ensure_symbol_exists(&reference_symbol)?;
 
-            let synthetic_asset_id: T::AssetId =
-                AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
-                    &reference_symbol,
-                )
-                .into();
-            Self::register_synthetic_asset(synthetic_asset_id, asset_symbol, asset_name)?;
-            Self::enable_synthetic_pair(synthetic_asset_id)?;
+            Assets::<T>::ensure_asset_exists(&synthetic_asset_id)?;
+
+            Self::enable_synthetic_trading_pair(synthetic_asset_id)?;
 
             EnabledSynthetics::<T>::insert(
                 synthetic_asset_id,
@@ -468,7 +474,15 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    fn enable_synthetic_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
+    fn enable_synthetic_trading_pair(synthetic_asset_id: T::AssetId) -> sp_runtime::DispatchResult {
+        if trading_pair::Pallet::<T>::is_trading_pair_enabled(
+            &DEXId::Polkaswap.into(),
+            &T::GetSyntheticBaseAssetId::get(),
+            &synthetic_asset_id,
+        )? {
+            return Ok(());
+        }
+
         trading_pair::Pallet::<T>::register_pair(
             DEXId::Polkaswap.into(),
             T::GetSyntheticBaseAssetId::get(),
@@ -857,7 +871,7 @@ impl<T: Config> Pallet<T> {
             .ok_or_else(|| Error::<T>::SymbolDoesNotExist.into())
     }
 
-    fn register_synthetic_asset(
+    fn register_synthetic_asset_unchecked(
         synthetic_asset: T::AssetId,
         asset_symbol: AssetSymbol,
         asset_name: AssetName,

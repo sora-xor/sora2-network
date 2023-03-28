@@ -33,37 +33,46 @@ use common::generate_storage_instance;
 use common::{fixed, Fixed, XSTUSD};
 use frame_support::pallet_prelude::{Get, StorageVersion};
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
+use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
 use crate::{EnabledSymbols, EnabledSynthetics, SyntheticInfo};
 
-generate_storage_instance!(PoolXST, BaseFee);
-type OldBaseFee = StorageValue<BaseFeeOldInstance, Fixed, ValueQuery>;
+#[frame_support::storage_alias]
+type BaseFee<T: Config> = StorageValue<Pallet<T>, Fixed, ValueQuery>;
+
+pub struct CustomSyntheticsUpgrade<T>(core::marker::PhantomData<T>);
 
 /// Migration which migrates `XSTUSD` synthetic to the new format.
-pub fn migrate<T: Config>() -> Weight {
-    if Pallet::<T>::on_chain_storage_version() >= 2 {
-        info!("Migration to version 2 has already been applied");
-        return 0;
+impl<T> OnRuntimeUpgrade for CustomSyntheticsUpgrade<T>
+where
+    T: crate::Config,
+    <T as frame_system::Config>::AccountId: From<[u8; 32]>,
+{
+    fn on_runtime_upgrade() -> Weight {
+        if Pallet::<T>::on_chain_storage_version() >= 2 {
+            info!("Migration to version 2 has already been applied");
+            return 0;
+        }
+
+        if BaseFee::<T>::exists() {
+            BaseFee::<T>::kill();
+        }
+
+        let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
+
+        EnabledSynthetics::<T>::insert(
+            T::AssetId::from(XSTUSD),
+            SyntheticInfo {
+                reference_symbol: xstusd_symbol.clone(),
+                fee_ratio: fixed!(0.00666),
+            },
+        );
+        EnabledSymbols::<T>::insert(xstusd_symbol, T::AssetId::from(XSTUSD));
+
+        StorageVersion::new(2).put::<Pallet<T>>();
+        T::DbWeight::get().reads_writes(0, 2)
     }
-
-    if OldBaseFee::exists() {
-        OldBaseFee::kill();
-    }
-
-    let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
-
-    EnabledSynthetics::<T>::insert(
-        T::AssetId::from(XSTUSD),
-        SyntheticInfo {
-            reference_symbol: xstusd_symbol.clone(),
-            fee_ratio: fixed!(0.00666),
-        },
-    );
-    EnabledSymbols::<T>::insert(xstusd_symbol, T::AssetId::from(XSTUSD));
-
-    StorageVersion::new(2).put::<Pallet<T>>();
-    T::DbWeight::get().reads_writes(0, 2)
 }
 
 #[cfg(test)]

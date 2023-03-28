@@ -34,7 +34,7 @@
 
 use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
-use common::{balance, fixed, AssetName, AssetSymbol, Oracle, DAI};
+use common::{balance, fixed, AssetName, AssetSymbol, Oracle, DAI, XSTUSD};
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
 use frame_system::{EventRecord, RawOrigin};
@@ -47,6 +47,8 @@ use xst::{Call, Event, Pallet as XSTPool};
 mod mock;
 
 mod utils {
+    use common::AssetId32;
+    use common::PredefinedAssetId::XSTUSD;
     use frame_support::{dispatch::DispatchErrorWithPostInfo, Parameter};
 
     use super::*;
@@ -84,11 +86,12 @@ mod utils {
 
     pub fn enable_synthetic_asset<T: Config>() -> Result<T::AssetId, DispatchErrorWithPostInfo> {
         relay_symbol::<T>()?;
+        let asset_id =
+            AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(&symbol());
 
         XSTPool::<T>::enable_synthetic_asset(
             RawOrigin::Root.into(),
-            AssetSymbol(b"XSTEURO".to_vec()),
-            AssetName(b"Sora Synthetic EURO".to_vec()),
+            asset_id,
             symbol(),
             fixed!(0),
         )?;
@@ -116,8 +119,7 @@ benchmarks! {
         utils::relay_symbol::<T>()?;
     }: _(
         RawOrigin::Root,
-        AssetSymbol(b"XSTEURO".to_vec()),
-        AssetName(b"Sora Synthetic EURO".to_vec()),
+        XSTUSD.into(),
         utils::symbol(),
         fixed!(0)
     )
@@ -138,6 +140,20 @@ benchmarks! {
     )
     verify {
         utils::assert_last_event::<T>(Event::SyntheticAssetDisabled(asset_id).into())
+    }
+
+    register_synthetic_asset {
+        let asset_id = AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
+                    &reference_symbol,
+                ).into();
+    }: _(
+        RawOrigin::Root,
+        AssetSymbol(b"XSTEURO".to_vec()),
+        AssetName(b"Sora Synthetic EURO".to_vec()),
+        utils::symbol(),
+    )
+    verify {
+        utils::assert_last_event::<T>(Event::AssetRegistered(asset_id, RawOrigin::Root.into()).into())
     }
 
     set_synthetic_asset_fee {

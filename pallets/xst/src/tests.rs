@@ -33,7 +33,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
@@ -642,10 +642,11 @@ mod tests {
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
 
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro).expect("Failed to get asset id");
+
             XSTPool::enable_synthetic_asset(
                 Origin::root(),
-                AssetSymbol(b"XSTEURO".to_vec()),
-                AssetName(b"Sora Synthetic Euro".to_vec()),
+                asset_id,
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to enable synthetic asset");
