@@ -45,7 +45,7 @@ fn test() {
 
         assert_eq!(info.reference_symbol, common::SymbolName::usd().into());
         assert_eq!(info.fee_ratio, fixed!(0.00666));
-        assert!(!OldBaseFee::exists());
+        assert!(!BaseFee::<Runtime>::exists());
 
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });

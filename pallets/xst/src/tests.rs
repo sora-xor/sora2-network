@@ -642,7 +642,7 @@ mod tests {
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
 
-            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro).expect("Failed to get asset id");
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
             XSTPool::enable_synthetic_asset(
                 Origin::root(),
@@ -683,11 +683,10 @@ mod tests {
                 .expect("Failed to add relayers");
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
-
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
             XSTPool::enable_synthetic_asset(
                 Origin::root(),
-                AssetSymbol(b"XSTEURO".to_vec()),
-                AssetName(b"Sora Synthetic Euro".to_vec()),
+                asset_id,
                 euro.clone(),
                 fixed!(0),
             ).expect("Failed to enable synthetic asset");
