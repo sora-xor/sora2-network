@@ -29,10 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::pallet::{Config, Pallet};
-use common::generate_storage_instance;
 use common::{fixed, Fixed, XSTUSD};
-use frame_support::pallet_prelude::{Get, StorageVersion};
-use frame_support::pallet_prelude::{StorageValue, ValueQuery};
+use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 
