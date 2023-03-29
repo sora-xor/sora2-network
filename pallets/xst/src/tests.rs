@@ -644,6 +644,13 @@ mod tests {
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
+            XSTPool::register_synthetic_asset(
+                Origin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+            ).expect("Failed to register synthetic asset");
+
             XSTPool::enable_synthetic_asset(
                 Origin::root(),
                 asset_id,
@@ -665,6 +672,22 @@ mod tests {
 
             assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
             assert!(XSTPool::enabled_symbols(&euro).is_none());
+
+            XSTPool::enable_synthetic_asset(
+                Origin::root(),
+                asset_id,
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let opt_xsteuro = XSTPool::enabled_symbols(&euro);
+            assert!(opt_xsteuro.is_some());
+
+            let xsteuro = opt_xsteuro.unwrap();
+            assert_eq!(
+                XSTPool::enabled_synthetics(&xsteuro).expect("Failed to get synthetic asset").reference_symbol,
+                euro
+            );
         });
     }
 
@@ -683,7 +706,16 @@ mod tests {
                 .expect("Failed to add relayers");
             Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
+
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
+
+            XSTPool::register_synthetic_asset(
+                Origin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+            ).expect("Failed to register synthetic asset");
+
             XSTPool::enable_synthetic_asset(
                 Origin::root(),
                 asset_id,
