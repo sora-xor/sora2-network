@@ -41,6 +41,10 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
+#[cfg(not(test))]
+use price_tools::AVG_BLOCK_SPAN;
+
+use common::prelude::SwapAmount;
 use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
 use crate::Pallet as MBCPool;
@@ -48,6 +52,9 @@ use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 use trading_pair::Pallet as TradingPair;
+
+#[cfg(not(test))]
+use price_tools::Pallet as PriceTools;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -144,6 +151,10 @@ fn add_pending<T: Config>(n: u32) {
 }
 
 benchmarks! {
+    where_clause {
+        where T: price_tools::Config
+    }
+
     initialize_pool {
         let caller = alice::<T>();
         frame_system::Pallet::<T>::inc_providers(&caller);
@@ -299,30 +310,227 @@ benchmarks! {
         assert_eq!(InitialPrice::<T>::get(), FixedWrapper::from(balance!(253)).get().unwrap());
     }
 
+    quote {
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"TESTUSD".to_vec()),
+            AssetName(b"USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            balance!(50000000),
+            true,
+            None,
+            None,
+        )
+        .unwrap();
+        TradingPair::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            USDT.into(),
+        )
+        .unwrap();
+        Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+        }
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        Pallet::<T>::quote(&dex_id, &USDT.into(), &XOR.into(), amount.into(), true).unwrap();
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
+    exchange {
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"TESTUSD".to_vec()),
+            AssetName(b"USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            balance!(50000000),
+            true,
+            None,
+            None,
+        )
+        .unwrap();
+        Assets::<T>::mint_to(
+            &USDT.into(),
+            &caller.clone(),
+            &caller.clone(),
+            balance!(50000000),
+        )
+        .unwrap();
+        TradingPair::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            USDT.into(),
+        )
+        .unwrap();
+        Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+        }
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+        let initial_base_balance = Assets::<T>::free_balance(&USDT.into(), &caller).unwrap();
+    }: {
+        // run only for benchmarks, not for tests
+        // TODO: remake when unit tests use chainspec
+        #[cfg(not(test))]
+        Pallet::<T>::exchange(&caller, &caller, &dex_id, &USDT.into(), &XOR.into(), amount.into()).unwrap();
+    }
+    verify {
+        #[cfg(not(test))]
+        assert_eq!(
+            Into::<u128>::into(Assets::<T>::free_balance(&USDT.into(), &caller).unwrap()),
+            Into::<u128>::into(initial_base_balance) - balance!(100)
+        );
+    }
+
+    can_exchange {
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"TESTUSD".to_vec()),
+            AssetName(b"USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None
+        ).unwrap();
+        TradingPair::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            USDT.into()
+        ).unwrap();
+        Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+    }: {
+        assert!(MBCPool::<T>::can_exchange(
+            &dex_id,
+            &XOR.into(),
+            &USDT.into(),
+        ));
+    }
+    verify {
+    }
+
+    check_rewards {
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"TESTUSD".to_vec()),
+            AssetName(b"USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        )
+        .unwrap();
+        Assets::<T>::mint_to(
+            &USDT.into(),
+            &caller.clone(),
+            &caller.clone(),
+            balance!(50000000),
+        )
+        .unwrap();
+        TradingPair::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            USDT.into(),
+        )
+        .unwrap();
+        Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Buy).unwrap();
+            PriceTools::<T>::incoming_spot_price(&USDT.into(), balance!(1), PriceVariant::Sell).unwrap();
+        }
+    }: {
+        let (rewards, _) = MBCPool::<T>::check_rewards(&dex_id, &USDT.into(), &XOR.into(), balance!(1000), balance!(10)).unwrap();
+        assert!(!rewards.is_empty());
+    }
+    verify {
+    }
+
     impl_benchmark_test_suite!(
         Pallet,
         crate::mock::ExtBuilder::bench_init().build_for_benchmarks(),
         crate::mock::Runtime
     );
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::mock::{ExtBuilder, Runtime};
-//     use frame_support::assert_ok;
-
-//     #[test]
-//     fn test_benchmarks() {
-//         ExtBuilder::bench_init()
-//             .build_for_benchmarks()
-//             .execute_with(|| {
-//                 assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-//                 assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
-//                 assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
-//                 assert_ok!(test_benchmark_set_price_bias::<Runtime>());
-//                 assert_ok!(test_benchmark_set_price_change_config::<Runtime>());
-//                 assert_ok!(test_benchmark_on_initialize::<Runtime>());
-//             });
-//     }
-// }

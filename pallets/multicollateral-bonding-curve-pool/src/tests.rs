@@ -413,7 +413,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -426,7 +426,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(2.100439516374830873),
                     balance!(0.093)
@@ -458,7 +458,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(101.003009027081243711), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -471,7 +471,7 @@ mod tests {
                     &TBCD,
                     SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(38.370385852073146860),
                     balance!(0.093)
@@ -514,7 +514,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
                 balance!(0.0001)
             );
@@ -533,7 +533,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4365.335149368998667748),
                     balance!(3.000000000000000000)
@@ -577,7 +577,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
                 balance!(0.0001)
             );
@@ -596,7 +596,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4365.335415603766574971),
                     balance!(3.000000000000000000)
@@ -706,11 +706,11 @@ mod tests {
                 .fold(
                     SwapOutcome::new(Balance::zero(), Balance::zero()),
                     |acc, x| SwapOutcome {
-                        amount: acc.amount + x.amount,
-                        fee: acc.fee + x.fee,
+                        amount: acc.amount + x.0.amount,
+                        fee: acc.fee + x.0.fee,
                     },
                 );
-            assert_swap_outcome(whole_outcome.unwrap(), cumulative_outcome, balance!(0.001)); 
+            assert_swap_outcome(whole_outcome.unwrap().0, cumulative_outcome, balance!(0.001)); 
             // TODO: improve precision if possible
         });
     }
@@ -857,7 +857,7 @@ mod tests {
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let amount: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -869,7 +869,7 @@ mod tests {
             assert_eq!(quote_outcome_a.amount, balance!(361.549938632002690452));
             assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705186));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -881,7 +881,7 @@ mod tests {
             assert_eq!(quote_outcome_b.amount, quote_outcome_a.amount + quote_outcome_a.fee);
             assert_eq!(quote_outcome_b.fee, balance!(0));
 
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -893,7 +893,7 @@ mod tests {
             assert_eq!(quote_outcome_a.amount, balance!(11088.209839932824950839));
             assert_eq!(quote_outcome_a.fee, balance!(6.018054162487462387));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -925,7 +925,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -933,7 +933,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_a = MBCPool::exchange(
+            let (exchange_outcome_a, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -950,7 +950,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -958,7 +958,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_b = MBCPool::exchange(
+            let (exchange_outcome_b, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -975,7 +975,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(300);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -983,7 +983,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_c = MBCPool::exchange(
+            let (exchange_outcome_c, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1000,7 +1000,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1008,7 +1008,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = MBCPool::exchange(
+            let (exchange_outcome_d, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1040,7 +1040,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1048,7 +1048,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_a = MBCPool::exchange(
+            let (exchange_outcome_a, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1065,7 +1065,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(10);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1073,7 +1073,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_b = MBCPool::exchange(
+            let (exchange_outcome_b, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1090,7 +1090,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(10);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &TBCD,
@@ -1098,7 +1098,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_c = MBCPool::exchange(
+            let (exchange_outcome_c, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1115,7 +1115,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(10);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1123,7 +1123,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = MBCPool::exchange(
+            let (exchange_outcome_d, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1308,7 +1308,7 @@ mod tests {
             .unwrap();
 
             // Buy
-            let price_a = MBCPool::quote(
+            let (price_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1316,7 +1316,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_b = MBCPool::quote(
+            let (price_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1328,7 +1328,7 @@ mod tests {
             assert_eq!(price_a.fee, balance!(0.054394410184082514));
 
             // Sell
-            let price_c = MBCPool::quote(
+            let (price_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1336,7 +1336,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_d = MBCPool::quote(
+            let (price_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1401,7 +1401,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(100724.916324262414168899));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1424,7 +1424,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(107896.889465954935399866));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1447,7 +1447,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(114934.359190755661026458));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1470,7 +1470,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(128633.975165230400000080));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1493,7 +1493,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(151530.994236602104619871));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1627,7 +1627,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.621555395065931189), balance!(0.003009027081243731))
             );
 
@@ -1685,7 +1685,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1774,7 +1774,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1787,7 +1787,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1800,7 +1800,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1854,7 +1854,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074)),
                 balance!(0.0001)
             );
@@ -1880,7 +1880,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119)),
                 balance!(0.0001)
             );
@@ -1927,7 +1927,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074)),
                 balance!(0.0001)
             );
@@ -1942,7 +1942,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119)),
                 balance!(0.0001)
             );
@@ -1998,7 +1998,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -2035,7 +2035,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -2130,7 +2130,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2161,7 +2161,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2192,7 +2192,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2223,7 +2223,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2273,7 +2273,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(70000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2304,7 +2304,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(14000);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2335,7 +2335,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(7000);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2366,7 +2366,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(7000);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,

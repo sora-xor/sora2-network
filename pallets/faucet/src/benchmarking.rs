@@ -40,9 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::eth::EthAddress;
 use common::{balance, AssetName, AssetSymbol, Balance, XOR};
-use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
 use assets::Pallet as Assets;
 
@@ -73,16 +71,6 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Adds `n` of rewards
-fn add_rewards<T: Config>(n: u32) {
-    let unaccessible_eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
-    for _i in 0..n {
-        ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
-        PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
-        PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
-    }
-}
-
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
@@ -93,7 +81,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     transfer {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {
@@ -109,7 +97,7 @@ benchmarks! {
     }
 
     reset_rewards {
-        let n in 1 .. 1000 => add_rewards::<T>(n);
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {

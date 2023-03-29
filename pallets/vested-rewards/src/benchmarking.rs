@@ -42,7 +42,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use common::{FromGenericPair, PSWAP, XOR};
+use common::{fixed, fixed_wrapper, FromGenericPair, PSWAP, XOR};
 
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -59,12 +59,28 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
-fn prepare_pending_accounts<T: Config>(n: u128) {
+fn prepare_crowdloan_rewards<T: Config>(n: u128) {
     for i in 0..n {
         let user_account = create_account::<T>(b"user".to_vec(), i);
-        T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::add_tbc_reward(&user_account, balance!(1))
-            .expect("Failed to add reward.");
+        let reward = CrowdloanReward {
+            id: user_account.encode(),
+            address: user_account.encode(),
+            contribution: Default::default(),
+            xor_reward: Default::default(),
+            val_reward: Default::default(),
+            pswap_reward: fixed!(1),
+            xstusd_reward: Default::default(),
+            percent: Default::default(),
+        };
+        CrowdloanRewards::<T>::insert(&user_account, reward);
+        T::Currency::deposit(XOR.into(), &user_account, balance!(1))
+            .expect("Failed to deposit XOR"); // to prevent inc ref error
+        T::Currency::deposit(
+            PSWAP.into(),
+            &T::GetCrowdloanRewardsAccountId::get(),
+            balance!(1),
+        )
+        .expect("Failed to deposit PSWAP to CrowdloanRewards tech acc");
     }
 }
 
@@ -105,15 +121,19 @@ benchmarks! {
         );
     }
 
-    distribute_limits {
-        let n in 0 .. 100 => prepare_pending_accounts::<T>(n.into());
-    }: {
-        Pallet::<T>::distribute_limits(balance!(n))
-    }
+    claim_crowdloan_rewards {
+        prepare_crowdloan_rewards::<T>(1000);
+        let caller = create_account::<T>(b"user".to_vec(), 0);
+        frame_system::Pallet::<T>::set_block_number((BLOCKS_PER_DAY as u32).into());
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        T::AssetId::from(PSWAP)
+    )
     verify {
+        let amount = fixed_wrapper!(1) / Fixed::try_from(LEASE_TOTAL_DAYS).expect("Failed to convert to fixed");
         assert_eq!(
-            TotalRewards::<T>::get(),
-            balance!(n)
+            T::Currency::free_balance(T::AssetId::from(PSWAP), &caller),
+            amount.try_into_balance().unwrap()
         );
     }
 
@@ -129,20 +149,6 @@ benchmarks! {
             balance!(n) * 2
         );
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_rewards());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_limits());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_update_rewards());
-        });
-    }
+    impl_benchmark_test_suite!(VestedRewards, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
 }
