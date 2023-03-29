@@ -1086,6 +1086,17 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+                (
+                    XSTUSD,
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetics USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
             ],
         },
         permissions: PermissionsConfig {
@@ -1277,8 +1288,7 @@ fn testnet_genesis(
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
-                AssetSymbol(b"XSTUSD".to_vec()),
-                AssetName(b"SORA Synthetic USD".to_vec()),
+                XSTUSD.into(),
                 common::SymbolName::usd().into(),
                 fixed!(0.00666),
             )],
