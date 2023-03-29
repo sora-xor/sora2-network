@@ -595,6 +595,7 @@ impl ExtBuilder {
                 .endowed_accounts
                 .iter()
                 .cloned()
+                .chain(self.endowed_accounts_with_synthetics.iter().cloned())
                 .map(|(account_id, asset_id, _, symbol, name, precision)| {
                     (
                         asset_id,

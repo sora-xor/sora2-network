@@ -68,6 +68,7 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
     fn disable_synthetic_asset() -> Weight;
+    fn register_synthetic_asset() -> Weight;
     fn set_synthetic_asset_fee() -> Weight;
     fn set_synthetic_base_asset_floor_price() -> Weight;
 }
@@ -187,7 +188,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(10_000_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_synthetic_asset())]
         pub fn register_synthetic_asset(
             origin: OriginFor<T>,
             asset_symbol: AssetSymbol,

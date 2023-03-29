@@ -32,6 +32,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use assets::Event as AssetsEvent;
 use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::{balance, fixed, AssetName, AssetSymbol, Oracle, DAI, XSTUSD};
@@ -41,6 +42,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use oracle_proxy::Pallet as OracleProxy;
 use sp_std::prelude::*;
+use technical::Pallet as Technical;
 use xst::{Call, Event, Pallet as XSTPool};
 
 #[cfg(test)]
@@ -48,7 +50,6 @@ mod mock;
 
 mod utils {
     use common::AssetId32;
-    use common::PredefinedAssetId::XSTUSD;
     use frame_support::{dispatch::DispatchErrorWithPostInfo, Parameter};
 
     use super::*;
@@ -60,12 +61,27 @@ mod utils {
         Symbol::decode(&mut &bytes[..]).expect("Failed to decode symbol")
     }
 
+    pub fn symbol_asset_id<T: Config>() -> T::AssetId {
+        AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(&symbol::<
+            <T as xst::Config>::Symbol,
+        >())
+        .into()
+    }
+
     pub fn alice<T: Config>() -> T::AccountId {
         let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
         T::AccountId::decode(&mut &bytes[..]).unwrap()
     }
 
     pub fn assert_last_event<T: Config>(generic_event: <T as xst::Config>::Event) {
+        let events = frame_system::Pallet::<T>::events();
+        let system_event: <T as frame_system::Config>::Event = generic_event.into();
+        // compare to the last event record
+        let EventRecord { event, .. } = &events[events.len() - 1];
+        assert_eq!(event, &system_event);
+    }
+
+    pub fn assert_last_assets_event<T: Config>(generic_event: <T as assets::Config>::Event) {
         let events = frame_system::Pallet::<T>::events();
         let system_event: <T as frame_system::Config>::Event = generic_event.into();
         // compare to the last event record
@@ -86,8 +102,14 @@ mod utils {
 
     pub fn enable_synthetic_asset<T: Config>() -> Result<T::AssetId, DispatchErrorWithPostInfo> {
         relay_symbol::<T>()?;
-        let asset_id =
-            AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(&symbol());
+        let asset_id = symbol_asset_id::<T>();
+
+        XSTPool::<T>::register_synthetic_asset(
+            RawOrigin::Root.into(),
+            AssetSymbol(b"XSTEURO".to_vec()),
+            AssetName(b"Sora Synthetic EURO".to_vec()),
+            symbol::<<T as xst::Config>::Symbol>(),
+        )?;
 
         XSTPool::<T>::enable_synthetic_asset(
             RawOrigin::Root.into(),
@@ -143,17 +165,24 @@ benchmarks! {
     }
 
     register_synthetic_asset {
-        let asset_id = AssetId32::<common::PredefinedAssetId>::from_synthetic_reference_symbol(
-                    &reference_symbol,
-                ).into();
+        let permissioned_tech_account_id = XSTPool::<T>::permissioned_tech_account();
+        let permissioned_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)
+            .expect("Expected to generate account id from technical");
+        let reference_symbol = utils::symbol::<<T as xst::Config>::Symbol>();
     }: _(
         RawOrigin::Root,
         AssetSymbol(b"XSTEURO".to_vec()),
         AssetName(b"Sora Synthetic EURO".to_vec()),
-        utils::symbol(),
+        reference_symbol
     )
     verify {
-        utils::assert_last_event::<T>(Event::AssetRegistered(asset_id, RawOrigin::Root.into()).into())
+        utils::assert_last_assets_event::<T>(
+            AssetsEvent::AssetRegistered(
+                utils::symbol_asset_id::<T>(),
+                permissioned_account_id
+            ).into()
+        );
     }
 
     set_synthetic_asset_fee {
