@@ -40,13 +40,13 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 /// Weight functions for fee_multiplier.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn update_multiplier(_m: u32) -> Weight {
+    fn update_multiplier() -> Weight {
         Weight::zero()
     }
 }
 
 impl crate::WeightInfo for () {
-    fn update_multiplier(_m: u32) -> Weight {
+    fn update_multiplier() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

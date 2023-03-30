@@ -61,7 +61,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     transfer_to_sidechain {
-        let u in 0 .. 1000;
         let caller = alice::<T>();
         let asset_id: T::AssetId = XOR.into();
         let net_id = 0u32.into();
@@ -83,7 +82,6 @@ benchmarks! {
     }
 
     request_from_sidechain {
-        let u in 0 .. 1000;
         let caller = alice::<T>();
         let asset_id: T::AssetId = XOR.into();
         let net_id = 0u32.into();
@@ -102,7 +100,6 @@ benchmarks! {
     }
 
     register_incoming_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -130,7 +127,6 @@ benchmarks! {
     }
 
     finalize_incoming_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -164,7 +160,6 @@ benchmarks! {
     }
 
     approve_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -200,7 +195,6 @@ benchmarks! {
     }
 
     approve_request_finalize {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -244,7 +238,6 @@ benchmarks! {
     }
 
     abort_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
