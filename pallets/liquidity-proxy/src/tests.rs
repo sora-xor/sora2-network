@@ -3458,10 +3458,10 @@ fn test_mint_buy_back_and_burn() {
         assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(Assets::total_issuance(&KSM).unwrap(), balance!(4000));
 
-        assert_ok!(crate::LiquidityProxyBuyBackHandler::<
+        assert_eq!(crate::LiquidityProxyBuyBackHandler::<
             Runtime,
             GetBuyBackDexId,
-        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)));
+        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)).unwrap(), balance!(1.984061762988045965));
 
         assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24001));
         assert_eq!(
@@ -3496,12 +3496,16 @@ fn test_buy_back_handler() {
             balance!(12000)
         );
 
-        assert_ok!(crate::LiquidityProxyBuyBackHandler::<
-            Runtime,
-            GetBuyBackDexId,
-        >::buy_back_and_burn(
-            &alice(), &USDT, &KSM, balance!(1)
-        ));
+        assert_eq!(
+            crate::LiquidityProxyBuyBackHandler::<Runtime, GetBuyBackDexId>::buy_back_and_burn(
+                &alice(),
+                &USDT,
+                &KSM,
+                balance!(1)
+            )
+            .unwrap(),
+            balance!(1.984061762988045965)
+        );
 
         assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
         assert_eq!(
