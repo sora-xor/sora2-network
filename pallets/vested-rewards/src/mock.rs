@@ -313,7 +313,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type PriceToolsPallet = ();
     type BuyBackHandler = ();
-    type GetBuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
 }
 

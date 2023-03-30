@@ -211,7 +211,7 @@ pub mod pallet {
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
-        type GetBuyBackXSTPercent: Get<Fixed>;
+        type BuyBackXSTPercent: Get<Fixed>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -822,7 +822,7 @@ impl<T: Config> Pallet<T> {
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
 
-            let amount = fw_swapped_xor_amount * T::GetBuyBackXSTPercent::get();
+            let amount = fw_swapped_xor_amount * T::BuyBackXSTPercent::get();
             let amount = amount
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;

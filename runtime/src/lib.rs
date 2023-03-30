@@ -1289,7 +1289,7 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type GetBuyBackXSTPercent = GetBuyBackXSTPercent;
+    type BuyBackXSTPercent = BuyBackXSTPercent;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type XstId = GetXstAssetId;
@@ -1678,7 +1678,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
-    type GetBuyBackXSTPercent = GetTBCBuyBackXSTPercent;
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
 }
 
 parameter_types! {
@@ -1830,7 +1830,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const GetBuyBackXSTPercent: Percent = Percent::from_percent(10);
+    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
 }
 
 #[cfg(feature = "private-net")]
