@@ -278,13 +278,13 @@ impl<T: ConfigExt> UnsignedClient<T> {
         let enc_opaque_leaf = match Vec::<EncodableOpaqueLeaf>::decode(&mut res.leaves.as_ref()) {
             Ok(mut v) => {
                 if v.len() == 0 {
-                    error!("Opaque Leafs count is zero");
-                    Err(anyhow::anyhow!("Opaque leafs count error"))?;
+                    error!("Opaque leaves count is zero");
+                    Err(anyhow::anyhow!("Opaque leaves count error"))?;
                 }
                 v.remove(0)
             }
             Err(e) => {
-                error!("Error decoding opaque mmr leafs");
+                error!("Error decoding opaque mmr leaves");
                 Err(e)?
             }
         };
