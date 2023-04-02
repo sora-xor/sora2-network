@@ -40,6 +40,7 @@ use framenode_runtime::eth_bridge::{
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
+use mmr_gadget::MmrGadget;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
@@ -57,7 +58,6 @@ use std::fs::File;
 use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
-use mmr_gadget::MmrGadget;
 
 type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
@@ -588,18 +588,17 @@ pub fn new_full(
             .spawn_essential_handle() // FIXME: use `spawn_handle` in non-test case
             .spawn_blocking("beefy-gadget", Some("beefy-gadget"), gadget);
 
-
-		if is_offchain_indexing_enabled {
-			task_manager.spawn_handle().spawn_blocking(
-				"mmr-gadget",
-				None,
-				MmrGadget::start(
-					client.clone(),
-					backend.clone(),
-					sp_mmr_primitives::INDEXING_PREFIX.to_vec(),
-				),
-			);
-		}
+        if is_offchain_indexing_enabled {
+            task_manager.spawn_handle().spawn_blocking(
+                "mmr-gadget",
+                None,
+                MmrGadget::start(
+                    client.clone(),
+                    backend.clone(),
+                    sp_mmr_primitives::INDEXING_PREFIX.to_vec(),
+                ),
+            );
+        }
     }
 
     let grandpa_config = sc_finality_grandpa::Config {
