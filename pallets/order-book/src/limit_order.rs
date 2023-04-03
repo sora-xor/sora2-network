@@ -28,5 +28,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, Event};
-use frame_support::{assert_noop, assert_ok};
+use codec::{Decode, Encode, MaxEncodedLen};
+use common::PriceVariant;
+use core::fmt::Debug;
+
+/// GTC Limit Order
+#[derive(Encode, Decode, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct LimitOrder<T>
+where
+    T: crate::Config + frame_system::Config + assets::Config + pallet_timestamp::Config,
+{
+    pub id: T::OrderId,
+    pub owner: T::AccountId,
+    pub side: PriceVariant,
+    pub price: T::Balance,
+    pub original_amount: T::Balance,
+    pub executed_amount: T::Balance,
+    pub time: T::Moment,
+    pub lifespan: T::Moment,
+}

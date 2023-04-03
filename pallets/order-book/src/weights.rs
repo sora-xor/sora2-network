@@ -28,5 +28,30 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, Event};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::weights::Weight;
+use sp_std::marker::PhantomData;
+
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+    fn create_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn delete_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn update_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn place_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn cancel_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
+}

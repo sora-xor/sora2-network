@@ -1,12 +1,44 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use book::{OrderData, OrderId};
-use common::fixnum::FixedPoint;
-use common::{Balance, FixedInner};
-use frame_support::ensure;
+use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
+use common::{Balance, LiquiditySource, PriceVariant, RewardReason};
+use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Get;
-use sp_runtime::traits::Zero;
+use frame_support::weights::Weight;
+use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -17,88 +49,45 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-type FixedPrice<P> = FixedPoint<FixedInner, P>;
+mod limit_order;
+mod market_order;
+mod order_book;
 
-mod book {
-    use codec::{Decode, Encode, MaxEncodedLen};
-    use common::{
-        fixnum::{typenum::Unsigned, FixedPoint},
-        Balance, FixedInner,
-    };
-    use core::marker::PhantomData;
-    use frame_support::{traits::Get, BoundedBTreeMap};
-    use scale_info::TypeInfo;
-    use std::collections::VecDeque;
+use limit_order::LimitOrder;
+use market_order::MarketOrder;
+use order_book::OrderBook;
 
-    use crate::OrderKind;
+pub trait WeightInfo {
+    fn create_orderbook() -> Weight;
+    fn delete_orderbook() -> Weight;
+    fn update_orderbook() -> Weight;
+    fn place_limit_order() -> Weight;
+    fn cancel_limit_order() -> Weight;
+    fn quote() -> Weight;
+    fn exchange() -> Weight;
+}
 
-    // todo: need to consider how they're assigned
-    // in special cases, such as partial order execution.
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
-    pub struct OrderId(pub u128);
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, PartialEq, Eq, Debug)]
-    pub struct OrderData<Timestamp> {
-        pub id: OrderId,
-        pub expires_at: Timestamp,
-        pub amount: Balance,
+impl crate::WeightInfo for () {
+    fn create_orderbook() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
-    pub struct BuyLimitOrder<Timestamp>(OrderData<Timestamp>);
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
-    pub struct SellLimitOrder<Timestamp>(OrderData<Timestamp>);
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
-    pub enum OrderList<Timestamp> {
-        // todo: use something bounded
-        Buy(VecDeque<BuyLimitOrder<Timestamp>>),
-        Sell(VecDeque<SellLimitOrder<Timestamp>>),
+    fn delete_orderbook() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
-    pub struct PricePoint<Timestamp> {
-        cumulative_amount: Balance,
-        orders: OrderList<Timestamp>,
+    fn update_orderbook() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
-
-    #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Clone, Debug)]
-    pub struct OrderBook<Timestamp, PriceCountLimit: Get<u32>, PricePrecision: Unsigned> {
-        // todo: maybe it'll be cleaner to have FixedPoint<_, _> as parameter, then "extract" inner and precision from them
-        prices: BoundedBTreeMap<FixedInner, PricePoint<Timestamp>, PriceCountLimit>,
-        lowest_sell_price: Option<FixedInner>,
-        highest_buy_price: Option<FixedInner>,
-        some_price_limit: FixedInner,
-        // so we can verify it statically when interacting
-        price_precision: PhantomData<PricePrecision>,
+    fn place_limit_order() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
-
-    pub struct CrossedOrder;
-
-    impl<Timestamp, PriceCountLimit, PricePrecision>
-        OrderBook<Timestamp, PriceCountLimit, PricePrecision>
-    where
-        PriceCountLimit: Get<u32>,
-        PricePrecision: Unsigned,
-    {
-        pub fn new(some_price_limit: FixedPoint<FixedInner, PricePrecision>) -> Self {
-            Self {
-                prices: BoundedBTreeMap::new(),
-                lowest_sell_price: None,
-                highest_buy_price: None,
-                some_price_limit: some_price_limit.into_bits(),
-                price_precision: PhantomData,
-            }
-        }
-
-        pub fn try_place(
-            &mut self,
-            price: FixedPoint<FixedInner, PricePrecision>,
-            data: OrderData<Timestamp>,
-        ) -> Result<(), CrossedOrder> {
-            Ok(())
-        }
+    fn cancel_limit_order() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn quote() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn exchange() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
 }
 
@@ -106,7 +95,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use common::{fixnum::typenum::Unsigned, TradingPair};
+    use common::TradingPair;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
         Blake2_128Concat,
@@ -114,61 +103,89 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use super::*;
-    use book::{OrderBook, OrderData, OrderId};
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
+        const MAX_ORDER_LIFETIME: Self::Moment;
+        const MAX_OPENED_LIMIT_ORDERS_COUNT: u32;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type PricePrecision: Unsigned + Eq + TypeInfo;
-        type PriceCountLimitPerBook: Get<u32> + TypeInfo;
-        type OrderLifetimeLimit: Get<Self::BlockNumber>;
+        type OrderId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy
+            + Ord
+            + PartialEq
+            + Eq
+            + MaxEncodedLen
+            + scale_info::TypeInfo;
+        type WeightInfo: WeightInfo;
     }
 
-    pub type Timestamp<T: Config> = T::BlockNumber;
+    pub type OrderBookId<T> = TradingPair<<T as assets::Config>::AssetId>;
 
-    // TODO: figure out how to store orders in an optimal way
+    // todo (m.tagirov): remove unbounded
+
     #[pallet::storage]
-    // todo: remove unbounded
     #[pallet::unbounded]
-    #[pallet::getter(fn order_book)]
-    pub type OrderBooks<T: Config> = StorageMap<
+    #[pallet::getter(fn order_books)]
+    pub type OrderBooks<T: Config> =
+        StorageMap<_, Blake2_128Concat, OrderBookId<T>, OrderBook<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::unbounded]
+    #[pallet::getter(fn limit_orders)]
+    pub type LimitOrders<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        TradingPair<T::AssetId>,
-        OrderBook<Timestamp<T>, T::PriceCountLimitPerBook, T::PricePrecision>,
+        OrderBookId<T>,
+        Blake2_128Concat,
+        T::OrderId,
+        LimitOrder<T>,
         OptionQuery,
     >;
 
-    // to find order in `OrderBooks` by id (e.g. for revoking the order).
     #[pallet::storage]
-    #[pallet::getter(fn order_lookup)]
-    pub type OrderInfo<T: Config> =
-        StorageMap<_, Blake2_128Concat, OrderId, (TradingPair<T::AssetId>, FixedInner)>;
-
-    #[pallet::type_value]
-    pub(super) fn DefaultForNextOrderId<T: Config>() -> OrderId {
-        OrderId(0)
-    }
+    #[pallet::unbounded]
+    #[pallet::getter(fn prices)]
+    pub type Prices<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<T>,
+        Blake2_128Concat,
+        T::Balance,
+        Vec<T::OrderId>,
+        OptionQuery,
+    >;
 
     #[pallet::storage]
-    pub type NextOrderId<T: Config> =
-        StorageValue<_, OrderId, ValueQuery, DefaultForNextOrderId<T>>;
+    #[pallet::unbounded]
+    #[pallet::getter(fn user_limit_orders)]
+    pub type UserLimitOrders<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        OrderBookId<T>,
+        Vec<T::OrderId>,
+        OptionQuery,
+    >;
 
-    // Pallets use events to inform users when important changes are made.
-    // https://docs.substrate.io/main-docs/build/events-errors/
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Event documentation should end with an array that provides descriptive names for event
-        /// parameters. [something, who]
         OrderPlaced {
-            trading_pair: TradingPair<T::AssetId>,
-            order: OrderData<Timestamp<T>>,
+            order_book_id: OrderBookId<T>,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
         },
     }
 
@@ -181,121 +198,203 @@ pub mod pallet {
         /// Lifespan exceeds defined limits
         InvalidLifespan,
         /// Order book does not exist for this trading pair
-        UnknownTradingPair,
-        /// Price for the order crosses the order book
-        CrossingOrder,
-        // ...
+        UnknownOrderBook,
+        /// Order book already exists for this trading pair
+        OrderBookAlreadyExists,
+        /// Cannot delete the limit order
+        DeleteLimitOrderError,
     }
 
-    #[derive(Encode, Decode, PartialEq, Eq, Debug, Clone, TypeInfo)]
-    pub enum OrderKind {
-        Buy,
-        Sell,
-    }
-
-    // Dispatchable functions allows users to interact with the pallet and invoke state changes.
-    // These functions materialize as "extrinsics", which are often compared to transactions.
-    // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        // todo: benchmark
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(2).ref_time() + T::DbWeight::get().reads(2).ref_time())]
-        pub fn place_limit_order(
-            origin: OriginFor<T>,
-            trading_pair: TradingPair<T::AssetId>,
-            price: FixedPoint<FixedInner, T::PricePrecision>,
-            amount: Balance,
-            kind: OrderKind,
-            lifespan: Timestamp<T>,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let mut order_book =
-                <OrderBooks<T>>::get(trading_pair).ok_or(Error::<T>::UnknownTradingPair)?;
-            let order = Self::construct_order_data(amount, lifespan)?;
-            order_book
-                .try_place(price, order.clone())
-                .map_err(|_| Error::<T>::CrossingOrder)?;
-            <OrderInfo<T>>::insert(order.id, (trading_pair, price.into_bits()));
-            Self::deposit_event(Event::OrderPlaced {
-                trading_pair,
-                order,
-            });
-            Ok(())
-        }
-
-        #[pallet::call_index(1)]
-        // todo: benchmark
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn execute_order(
-            origin: OriginFor<T>,
-            trading_pair: TradingPair<T::AssetId>,
-            price: FixedPoint<FixedInner, T::PricePrecision>,
-            amount: Balance,
-            kind: OrderKind,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            // todo: matching and stuff
-            Ok(())
-        }
-
-        #[pallet::call_index(2)]
-        // todo: benchmark
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn remove_order(origin: OriginFor<T>, id: OrderId) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Ok(())
-        }
-
-        #[pallet::call_index(3)]
-        // todo: benchmark
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
+        #[pallet::weight(<T as Config>::WeightInfo::create_orderbook())]
         pub fn create_orderbook(
             origin: OriginFor<T>,
-            trading_pair: TradingPair<T::AssetId>,
-            price_limit: FixedPoint<FixedInner, T::PricePrecision>,
+            dex_id: T::DEXId,
+            order_book_id: OrderBookId<T>,
+            tick_size: T::Balance,
+            step_lot_size: T::Balance,
+            min_lot_size: T::Balance,
+            max_lot_size: T::Balance,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
-                !<OrderBooks<T>>::contains_key(trading_pair),
-                Error::<T>::UnknownTradingPair
+                !<OrderBooks<T>>::contains_key(order_book_id),
+                Error::<T>::OrderBookAlreadyExists
             );
-            <OrderBooks<T>>::insert(trading_pair, OrderBook::new(price_limit));
-            Ok(())
+            // todo (m.tagirov)
+            todo!()
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
+        pub fn delete_orderbook(
+            origin: OriginFor<T>,
+            order_book_id: OrderBookId<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            // todo (m.tagirov)
+            todo!()
+        }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_orderbook())]
+        pub fn update_orderbook(
+            origin: OriginFor<T>,
+            order_book_id: OrderBookId<T>,
+            tick_size: T::Balance,
+            step_lot_size: T::Balance,
+            min_lot_size: T::Balance,
+            max_lot_size: T::Balance,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                <OrderBooks<T>>::contains_key(order_book_id),
+                Error::<T>::UnknownOrderBook
+            );
+            // todo (m.tagirov)
+            todo!()
+        }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
+        pub fn place_limit_order(
+            origin: OriginFor<T>,
+            order_book_id: OrderBookId<T>,
+            price: Balance,
+            amount: Balance,
+            side: PriceVariant,
+            lifespan: T::Moment,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            // todo (m.tagirov)
+            todo!()
         }
 
         #[pallet::call_index(4)]
-        // todo: benchmark
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1).ref_time())]
-        pub fn remove_orderbook(
+        #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
+        pub fn cancel_limit_order(
             origin: OriginFor<T>,
-            trading_pair: TradingPair<T::AssetId>,
+            order_book_id: OrderBookId<T>,
+            order_id: T::OrderId,
         ) -> DispatchResult {
-            ensure_root(origin)?;
-            //todo: clear the book
-            <OrderBooks<T>>::remove(trading_pair);
-            Ok(())
+            let who = ensure_signed(origin)?;
+            // todo (m.tagirov)
+            todo!()
         }
     }
 }
 
 impl<T: Config> Pallet<T> {
-    fn construct_order_data(
-        amount: Balance,
-        lifespan: Timestamp<T>,
-    ) -> Result<OrderData<T::BlockNumber>, DispatchError> {
-        let id = <NextOrderId<T>>::get();
-        <NextOrderId<T>>::put(OrderId(id.0 + 1));
-        let current_block_number = <frame_system::Pallet<T>>::block_number();
-        ensure!(
-            lifespan > T::BlockNumber::zero() && lifespan < T::OrderLifetimeLimit::get(),
-            Error::<T>::InvalidLifespan
-        );
-        let expires_at = current_block_number + lifespan;
-        Ok(OrderData {
-            id,
-            expires_at,
-            amount,
-        })
+    fn insert_limit_order(order_book_id: &OrderBookId<T>, order: &LimitOrder<T>) {
+        <LimitOrders<T>>::insert(order_book_id, order.id, order);
+
+        let mut prices = <Prices<T>>::try_get(order_book_id, order.price).unwrap_or_default();
+        prices.push(order.id);
+        <Prices<T>>::set(order_book_id, order.price, Some(prices));
+
+        let mut user_orders =
+            <UserLimitOrders<T>>::try_get(&order.owner, order_book_id).unwrap_or_default();
+        user_orders.push(order.id);
+        <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
+    }
+
+    fn delete_limit_order(
+        order_book_id: &OrderBookId<T>,
+        order_id: T::OrderId,
+    ) -> Result<(), DispatchError> {
+        let order = <LimitOrders<T>>::take(order_book_id, order_id)
+            .ok_or(Error::<T>::DeleteLimitOrderError)?;
+
+        let mut user_orders = <UserLimitOrders<T>>::try_get(&order.owner, order_book_id)
+            .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+        user_orders.retain(|x| *x != order.id);
+        if (user_orders.is_empty()) {
+            <UserLimitOrders<T>>::remove(&order.owner, order_book_id)
+        } else {
+            <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
+        }
+
+        let mut prices = <Prices<T>>::try_get(order_book_id, order.price)
+            .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+        prices.retain(|x| *x != order.id);
+        if (prices.is_empty()) {
+            <Prices<T>>::remove(order_book_id, order.price);
+        } else {
+            <Prices<T>>::set(order_book_id, order.price, Some(prices));
+        }
+        Ok(())
+    }
+}
+
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, DispatchError>
+    for Pallet<T>
+{
+    fn can_exchange(
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+    ) -> bool {
+        // todo (m.tagirov)
+        todo!()
+    }
+
+    fn quote(
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _amount: QuoteAmount<T::Balance>,
+        _deduce_fee: bool,
+    ) -> Result<(SwapOutcome<T::Balance>, Weight), DispatchError> {
+        // todo (m.tagirov)
+        todo!()
+    }
+
+    fn exchange(
+        _sender: &T::AccountId,
+        _receiver: &T::AccountId,
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _desired_amount: SwapAmount<T::Balance>,
+    ) -> Result<(SwapOutcome<T::Balance>, Weight), DispatchError> {
+        // todo (m.tagirov)
+        todo!()
+    }
+
+    fn check_rewards(
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: T::Balance,
+        _output_amount: T::Balance,
+    ) -> Result<(Vec<(T::Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for Order Book
+    }
+
+    fn quote_without_impact(
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _amount: QuoteAmount<T::Balance>,
+        _deduce_fee: bool,
+    ) -> Result<SwapOutcome<T::Balance>, DispatchError> {
+        // todo (m.tagirov)
+        todo!()
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }

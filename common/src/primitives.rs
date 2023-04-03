@@ -964,7 +964,9 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum PriceVariant {
     Buy,
     Sell,

@@ -28,5 +28,31 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, Event};
-use frame_support::{assert_noop, assert_ok};
+use codec::{Decode, Encode, MaxEncodedLen};
+use core::fmt::Debug;
+
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+)]
+pub enum OrderBookStatus {
+    Trade,
+    PlaceAndCancel,
+    OnlyCancel,
+    Stop,
+}
+
+#[derive(Encode, Decode, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
+#[scale_info(skip_type_params(T))]
+pub struct OrderBook<T>
+where
+    T: crate::Config + frame_system::Config + assets::Config + pallet_timestamp::Config,
+{
+    pub order_book_id: crate::OrderBookId<T>,
+    pub dex_id: T::DEXId,
+    pub status: OrderBookStatus,
+    pub last_order_id: T::OrderId,
+    pub tick_size: T::Balance,     // price precision
+    pub step_lot_size: T::Balance, // amount precision
+    pub min_lot_size: T::Balance,
+    pub max_lot_size: T::Balance,
+}
