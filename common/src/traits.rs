@@ -743,12 +743,18 @@ pub trait IsValid {
 }
 
 pub trait BuyBackHandler<AccountId, AssetId> {
+    /// Mint `amount` of `mint_asset_id`, exchange to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
     fn mint_buy_back_and_burn(
         mint_asset_id: &AssetId,
         buy_back_asset_id: &AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError>;
 
+    /// Exchange `amount` of `asset_id` from `account_id` to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
     fn buy_back_and_burn(
         account_id: &AccountId,
         asset_id: &AssetId,
