@@ -34,9 +34,9 @@ use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
-    assert_approx_eq, balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, DAI, DOT, ETH,
-    KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    assert_approx_eq, balance, fixed, fixed_wrapper, BuyBackHandler, FilterMode, Fixed,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
@@ -3439,6 +3439,89 @@ fn test_batch_swap_fail_with_duplicate_asset_ids() {
                 FilterMode::AllowSelected,
             ),
             Error::<Runtime>::AggregationError
+        );
+    });
+}
+
+#[test]
+fn test_mint_buy_back_and_burn() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .with_xyk_pool()
+    .build();
+    ext.execute_with(|| {
+        let transit = <Runtime as crate::Config>::GetTechnicalAccountId::get();
+        assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
+        assert_eq!(Assets::total_issuance(&KSM).unwrap(), balance!(4000));
+
+        assert_eq!(crate::LiquidityProxyBuyBackHandler::<
+            Runtime,
+            GetBuyBackDexId,
+        >::mint_buy_back_and_burn(&USDT, &KSM, balance!(1)).unwrap(), balance!(1.984061762988045965));
+
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24001));
+        assert_eq!(
+            Assets::total_issuance(&KSM).unwrap(),
+            balance!(3998.015938237011954035)
+        );
+        assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+    });
+}
+
+#[test]
+fn test_buy_back_handler() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+        LiquiditySourceType::XSTPool,
+    ])
+    .with_xyk_pool()
+    .build();
+    ext.execute_with(|| {
+        let transit = <Runtime as crate::Config>::GetTechnicalAccountId::get();
+        assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
+        assert_eq!(Assets::total_issuance(&KSM).unwrap(), balance!(4000));
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            balance!(2000)
+        );
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(12000)
+        );
+
+        assert_eq!(
+            crate::LiquidityProxyBuyBackHandler::<Runtime, GetBuyBackDexId>::buy_back_and_burn(
+                &alice(),
+                &USDT,
+                &KSM,
+                balance!(1)
+            )
+            .unwrap(),
+            balance!(1.984061762988045965)
+        );
+
+        assert_eq!(Assets::total_issuance(&USDT).unwrap(), balance!(24000));
+        assert_eq!(
+            Assets::total_issuance(&KSM).unwrap(),
+            balance!(3998.015938237011954035)
+        );
+        assert_eq!(Assets::free_balance(&KSM, &transit).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&USDT, &transit).unwrap(), balance!(0));
+
+        assert_eq!(
+            Assets::free_balance(&KSM, &alice()).unwrap(),
+            balance!(2000)
+        );
+        assert_eq!(
+            Assets::free_balance(&USDT, &alice()).unwrap(),
+            balance!(11999)
         );
     });
 }

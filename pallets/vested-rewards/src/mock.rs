@@ -267,6 +267,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = MockLiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -277,6 +278,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type BuyBackHandler = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
