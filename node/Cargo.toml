@@ -102,6 +102,7 @@ sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch 
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+mmr-gadget = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
 leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 bridge-channel-rpc = { path = "../pallets/trustless-bridge/bridge-channel-rpc" }

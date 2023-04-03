@@ -274,14 +274,23 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .mmr()
             .generate_proof(vec![block_number], Some(at), None)
             .await?;
-        let leaf = Vec::<MmrLeaf<T>>::decode(
-            &mut &*EncodableOpaqueLeaf::decode(&mut res.leaves.as_ref())?
-                .into_opaque_leaf()
-                .0,
-        )?
-        .first()
-        .cloned()
-        .unwrap();
+
+        let enc_opaque_leaf = match Vec::<EncodableOpaqueLeaf>::decode(&mut res.leaves.as_ref()) {
+            Ok(mut v) => {
+                if v.len() == 0 {
+                    error!("Opaque leaves count is zero");
+                    Err(anyhow::anyhow!("Opaque leaves count error"))?;
+                }
+                v.remove(0)
+            }
+            Err(e) => {
+                error!("Error decoding opaque mmr leaves");
+                Err(e)?
+            }
+        };
+
+        let leaf = MmrLeaf::<T>::decode(&mut &*enc_opaque_leaf.into_opaque_leaf().0)?;
+
         let proof = Proof::<MmrHash>::decode(&mut res.proof.as_ref())?;
         Ok(LeafProof {
             leaf,
