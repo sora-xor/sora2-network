@@ -7712,6 +7712,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "framenode-chain-spec",
+ "framenode-runtime",
  "hex-literal",
  "liquidity-proxy",
  "orml-currencies",

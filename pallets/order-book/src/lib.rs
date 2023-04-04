@@ -41,9 +41,6 @@ use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
 pub mod weights;
 
 #[cfg(test)]
-mod mock;
-
-#[cfg(test)]
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -53,9 +50,9 @@ mod limit_order;
 mod market_order;
 mod order_book;
 
+use crate::order_book::OrderBook;
 use limit_order::LimitOrder;
 use market_order::MarketOrder;
-use order_book::OrderBook;
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
@@ -211,12 +208,12 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_orderbook())]
         pub fn create_orderbook(
             origin: OriginFor<T>,
-            dex_id: T::DEXId,
+            _dex_id: T::DEXId,
             order_book_id: OrderBookId<T>,
-            tick_size: T::Balance,
-            step_lot_size: T::Balance,
-            min_lot_size: T::Balance,
-            max_lot_size: T::Balance,
+            _tick_size: T::Balance,
+            _step_lot_size: T::Balance,
+            _min_lot_size: T::Balance,
+            _max_lot_size: T::Balance,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -231,7 +228,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
             origin: OriginFor<T>,
-            order_book_id: OrderBookId<T>,
+            _order_book_id: OrderBookId<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             // todo (m.tagirov)
@@ -243,10 +240,10 @@ pub mod pallet {
         pub fn update_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            tick_size: T::Balance,
-            step_lot_size: T::Balance,
-            min_lot_size: T::Balance,
-            max_lot_size: T::Balance,
+            _tick_size: T::Balance,
+            _step_lot_size: T::Balance,
+            _min_lot_size: T::Balance,
+            _max_lot_size: T::Balance,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -257,31 +254,33 @@ pub mod pallet {
             todo!()
         }
 
-        #[pallet::call_index(3)]
+        // todo change_orderbook_status
+
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            price: Balance,
-            amount: Balance,
-            side: PriceVariant,
-            lifespan: T::Moment,
+            _price: Balance,
+            _amount: Balance,
+            _side: PriceVariant,
+            _lifespan: T::Moment,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let order_book =
+            let _who = ensure_signed(origin)?;
+            let _order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             // todo (m.tagirov)
             todo!()
         }
 
-        #[pallet::call_index(4)]
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
         pub fn cancel_limit_order(
             origin: OriginFor<T>,
-            order_book_id: OrderBookId<T>,
-            order_id: T::OrderId,
+            _order_book_id: OrderBookId<T>,
+            _order_id: T::OrderId,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
+            let _who = ensure_signed(origin)?;
             // todo (m.tagirov)
             todo!()
         }
@@ -312,7 +311,7 @@ impl<T: Config> Pallet<T> {
         let mut user_orders = <UserLimitOrders<T>>::try_get(&order.owner, order_book_id)
             .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
         user_orders.retain(|x| *x != order.id);
-        if (user_orders.is_empty()) {
+        if user_orders.is_empty() {
             <UserLimitOrders<T>>::remove(&order.owner, order_book_id)
         } else {
             <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
@@ -321,7 +320,7 @@ impl<T: Config> Pallet<T> {
         let mut prices = <Prices<T>>::try_get(order_book_id, order.price)
             .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
         prices.retain(|x| *x != order.id);
-        if (prices.is_empty()) {
+        if prices.is_empty() {
             <Prices<T>>::remove(order_book_id, order.price);
         } else {
             <Prices<T>>::set(order_book_id, order.price, Some(prices));

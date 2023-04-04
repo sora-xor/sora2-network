@@ -30,6 +30,8 @@
 
 //! Benchmarking setup for order-book
 
+#![cfg(feature = "runtime-benchmarks")]
+
 use super::*;
 
 #[allow(unused)]
@@ -38,13 +40,15 @@ use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 
 benchmarks! {
-    place_limit_order {
-        let s in 0 .. 100;
-        let caller: T::AccountId = whitelisted_caller();
-    }: _(RawOrigin::Signed(caller), s)
+    fail {
+        // todo
+    }: {
+        #[cfg(feature = "wip")] // order-book
+        assert_eq!(0, 1);
+    }
     verify {
-        assert_eq!(Something::<T>::get(), Some(s));
+        // todo
     }
 
-    impl_benchmark_test_suite!(Template, crate::mock::new_test_ext(), crate::mock::Test);
+    impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
 }

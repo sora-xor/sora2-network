@@ -38,6 +38,13 @@ pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = 
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 hex-literal = "0.3.1"
+framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
+framenode-runtime = { path = "../../runtime", default-features = false, features = [
+    "std",
+    "private-net",
+    "wip",
+    "ready-to-test",
+] }
 
 [features]
 default = ["std"]
@@ -52,3 +59,4 @@ std = [
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks", "hex-literal"]
 try-runtime = ["frame-support/try-runtime"]
+private-net = ["framenode-chain-spec/private-net"]
