@@ -32,7 +32,7 @@
 mod tests {
     use core::str::FromStr;
 
-    use crate::{Error, Pallet, mock::*};
+    use crate::{Error, Pallet, mock::*, ORACLE_RATE_STALE_PERIOD};
     use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
@@ -763,5 +763,66 @@ mod tests {
             assert_eq!(swap_outcome_after.amount, swap_outcome_before.amount / 2);
             assert_eq!(swap_outcome_after.fee, expected_fee_amount.into_balance());
         });
+    }
+
+    #[test]
+    fn reference_price_for_bad_oracle_rate_should_fail() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+
+            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
+            let alice = alice();
+
+            OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
+            Band::add_relayers(Origin::root(), vec![alice.clone()])
+                .expect("Failed to add relayers");
+            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+                .expect("Failed to relay");
+
+            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
+
+            XSTPool::register_synthetic_asset(
+                Origin::root(),
+                AssetSymbol("XSTEUR".into()),
+                AssetName("XST Euro".into()),
+                euro.clone(),
+            ).expect("Failed to register synthetic asset");
+
+            XSTPool::enable_synthetic_asset(
+                Origin::root(),
+                asset_id,
+                euro.clone(),
+                fixed!(0),
+            ).expect("Failed to enable synthetic asset");
+
+            let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
+
+            Timestamp::set_timestamp(ORACLE_RATE_STALE_PERIOD + 1);
+
+            assert_eq!(
+                XSTPool::reference_price(&xsteuro, PriceVariant::Buy),
+                Err(Error::<Runtime>::OracleRateIsOutdated.into())
+            );
+
+            assert_eq!(
+                XSTPool::reference_price(&xsteuro, PriceVariant::Sell),
+                Err(Error::<Runtime>::OracleRateIsOutdated.into())
+            );
+
+            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], ORACLE_RATE_STALE_PERIOD + 2, 0)
+                .expect("Failed to relay");
+
+            assert_eq!(
+                XSTPool::reference_price(&xsteuro, PriceVariant::Buy),
+                Err(Error::<Runtime>::OracleRateHasInvalidTimestamp.into())
+            );
+
+            assert_eq!(
+                XSTPool::reference_price(&xsteuro, PriceVariant::Sell),
+                Err(Error::<Runtime>::OracleRateHasInvalidTimestamp.into())
+            );
+        })
     }
 }
