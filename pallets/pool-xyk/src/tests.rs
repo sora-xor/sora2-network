@@ -290,7 +290,7 @@ impl<'a> crate::Pallet<Runtime> {
 macro_rules! simplify_swap_outcome(
  ($a: expr) => ({
      match $a {
-         SwapOutcome { amount, fee } => (amount.into(), fee.into())
+         (SwapOutcome { amount, fee }, _) => (amount.into(), fee.into())
      }
  })
 );
@@ -1055,7 +1055,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
                 assets::Pallet::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
                 balance!(440000),
             );
-            let quote_outcome = crate::Pallet::<Runtime>::quote(
+            let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
@@ -1065,7 +1065,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
                 true,
             )
             .expect("Failed to quote.");
-            let outcome = crate::Pallet::<Runtime>::exchange(
+            let (outcome, _) = crate::Pallet::<Runtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
@@ -1115,7 +1115,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
                 assets::Pallet::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
                 balance!(1756000),
             );
-            let quote_outcome = crate::Pallet::<Runtime>::quote(
+            let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -1125,7 +1125,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
                 true,
             )
             .expect("Failed to quote.");
-            let outcome = crate::Pallet::<Runtime>::exchange(
+            let (outcome, _) = crate::Pallet::<Runtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
@@ -1176,7 +1176,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 balance!(440000),
             );
             let desired_out = balance!(31230.802697411355231672);
-            let quote_outcome = crate::Pallet::<Runtime>::quote(
+            let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
@@ -1186,7 +1186,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 true,
             )
             .expect("Failed to quote.");
-            let outcome = crate::Pallet::<Runtime>::exchange(
+            let (outcome, _) = crate::Pallet::<Runtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
@@ -1231,7 +1231,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
                 balance!(1756000),
             );
             let desired_out = balance!(147098.360655737704918032);
-            let quote_outcome = crate::Pallet::<Runtime>::quote(
+            let (quote_outcome, _) = crate::Pallet::<Runtime>::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -1241,7 +1241,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
                 true,
             )
             .expect("Failed to quote.");
-            let outcome = crate::Pallet::<Runtime>::exchange(
+            let (outcome, _) = crate::Pallet::<Runtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
@@ -1478,7 +1478,8 @@ fn swapping_should_not_affect_k_1() {
                     max_amount_in: expected_in,
                 }
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             SwapOutcome {
                 amount: expected_in,
                 fee: expected_fee,
@@ -1538,7 +1539,8 @@ fn swapping_should_not_affect_k_2() {
                     max_amount_in: expected_in,
                 }
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             SwapOutcome {
                 amount: expected_in,
                 fee: expected_fee,
@@ -1599,7 +1601,8 @@ fn swapping_should_not_affect_k_3() {
                     min_amount_out: expected_out,
                 }
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             SwapOutcome {
                 amount: expected_out,
                 fee: expected_fee,
@@ -1660,7 +1663,8 @@ fn swapping_should_not_affect_k_4() {
                     min_amount_out: expected_out,
                 }
             )
-            .unwrap(),
+            .unwrap()
+            .0,
             SwapOutcome {
                 amount: expected_out,
                 fee: expected_fee,
@@ -2015,7 +2019,7 @@ fn price_without_impact_small_amount() {
         |dex_id, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             let amount = balance!(1);
             // Buy base asset with desired input
-            let quote_outcome_a = PoolXYK::quote(
+            let (quote_outcome_a, _) = PoolXYK::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -2039,7 +2043,7 @@ fn price_without_impact_small_amount() {
             assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
             // Buy base asset with desired output
-            let quote_outcome_b = PoolXYK::quote(
+            let (quote_outcome_b, _) = PoolXYK::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -2063,7 +2067,7 @@ fn price_without_impact_small_amount() {
             assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
             // Sell base asset with desired input
-            let quote_outcome_c = PoolXYK::quote(
+            let (quote_outcome_c, _) = PoolXYK::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
@@ -2087,7 +2091,7 @@ fn price_without_impact_small_amount() {
             assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
             // Sell base asset with desired input
-            let quote_outcome_d = PoolXYK::quote(
+            let (quote_outcome_d, _) = PoolXYK::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
@@ -2119,7 +2123,7 @@ fn price_without_impact_large_amount() {
         |dex_id, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             let amount = balance!(100000);
             // Buy base asset with desired input
-            let quote_outcome_a = PoolXYK::quote(
+            let (quote_outcome_a, _) = PoolXYK::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -2143,7 +2147,7 @@ fn price_without_impact_large_amount() {
             assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
 
             // Buy base asset with desired output
-            let quote_outcome_b = PoolXYK::quote(
+            let (quote_outcome_b, _) = PoolXYK::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
@@ -2167,7 +2171,7 @@ fn price_without_impact_large_amount() {
             assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
 
             // Sell base asset with desired input
-            let quote_outcome_c = PoolXYK::quote(
+            let (quote_outcome_c, _) = PoolXYK::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
@@ -2191,7 +2195,7 @@ fn price_without_impact_large_amount() {
             assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
 
             // Sell base asset with desired input
-            let quote_outcome_d = PoolXYK::quote(
+            let (quote_outcome_d, _) = PoolXYK::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),

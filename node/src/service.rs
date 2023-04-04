@@ -40,6 +40,7 @@ use framenode_runtime::eth_bridge::{
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
+use mmr_gadget::MmrGadget;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
@@ -473,6 +474,7 @@ pub fn new_full(
         .expect("failed to build offchain workers");
     }
 
+    let is_offchain_indexing_enabled = config.offchain_worker.indexing_enabled;
     let role = config.role.clone();
     let force_authoring = config.force_authoring;
     let name = config.network.node_name.clone();
@@ -585,6 +587,18 @@ pub fn new_full(
         task_manager
             .spawn_essential_handle() // FIXME: use `spawn_handle` in non-test case
             .spawn_blocking("beefy-gadget", Some("beefy-gadget"), gadget);
+
+        if is_offchain_indexing_enabled {
+            task_manager.spawn_handle().spawn_blocking(
+                "mmr-gadget",
+                None,
+                MmrGadget::start(
+                    client.clone(),
+                    backend.clone(),
+                    sp_mmr_primitives::INDEXING_PREFIX.to_vec(),
+                ),
+            );
+        }
     }
 
     let grandpa_config = sc_finality_grandpa::Config {

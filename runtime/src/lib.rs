@@ -1035,7 +1035,6 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
-    type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -2437,7 +2436,7 @@ impl_runtime_apis! {
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                     true,
-                ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+                ).ok().map(|(sa, _)| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
             {
@@ -2675,7 +2674,7 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
                 true,
-            ).ok().map(|quote_info| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(quote_info, _)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: quote_info.outcome.amount,
                 amount_without_impact: quote_info.amount_without_impact.unwrap_or(0),
                 fee: quote_info.outcome.fee,
@@ -2930,6 +2929,7 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
+            use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -2953,10 +2953,23 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, hermes_governance_platform, HermesGovernancePlatform);
             list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            list_benchmark!(list, extra, ceres_token_locker, CeresTokenLocker);
+            list_benchmark!(list, extra, ceres_governance_platform, CeresGovernancePlatform);
+            list_benchmark!(list, extra, ceres_launchpad, CeresLaunchpad);
+            list_benchmark!(list, extra, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPool);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
+
+            // Trustless bridge
+            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
+            list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
+            list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
+            list_benchmark!(list, extra, eth_app, EthApp);
+            list_benchmark!(list, extra, erc20_app, ERC20App);
+            list_benchmark!(list, extra, migration_app, MigrationApp);
+            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -3025,6 +3038,15 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPool);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+
+            // Trustless bridge
+            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
+            add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
+            add_benchmark!(params, batches, eth_app, EthApp);
+            add_benchmark!(params, batches, erc20_app, ERC20App);
+            add_benchmark!(params, batches, migration_app, MigrationApp);
+            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

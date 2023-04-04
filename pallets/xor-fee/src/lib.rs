@@ -573,7 +573,7 @@ impl<T: Config> Pallet<T> {
 pub use pallet::*;
 
 pub trait WeightInfo {
-    fn update_multiplier(_m: u32) -> Weight;
+    fn update_multiplier() -> Weight;
 }
 
 #[frame_support::pallet]
@@ -636,7 +636,7 @@ pub mod pallet {
         // 0 is passed because argument is unused and no need to
         // do unnecessary conversions
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_multiplier(0))]
+        #[pallet::weight(<T as Config>::WeightInfo::update_multiplier())]
         pub fn update_multiplier(
             origin: OriginFor<T>,
             new_multiplier: FixedU128,

@@ -47,6 +47,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn set_synthetic_base_asset_floor_price() -> Weight {
         Weight::zero()
     }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -60,6 +66,12 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn set_synthetic_base_asset_floor_price() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn quote() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn exchange() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

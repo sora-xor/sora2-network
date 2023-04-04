@@ -745,14 +745,15 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::exchange(
+        let (outcome, _) = MockLiquiditySource::exchange(
             &sender,
             &receiver,
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
-        )
+        )?;
+        Ok(outcome)
     }
 
     fn quote(
@@ -763,13 +764,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
             deduce_fee,
-        )
+        )?;
+        Ok(outcome)
     }
 }
 

@@ -37,12 +37,11 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim_incentive() -> Weight {
         Weight::zero()
     }
-    fn on_initialize(is_distributing: bool) -> Weight {
-        if is_distributing {
-            Weight::zero()
-        } else {
-            Weight::zero()
-        }
+    fn on_initialize_intensive() -> Weight {
+        Weight::zero()
+    }
+    fn on_initialize_regular() -> Weight {
+        Weight::zero()
     }
 }
 
@@ -50,7 +49,10 @@ impl crate::WeightInfo for () {
     fn claim_incentive() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn on_initialize(_is_distributing: bool) -> Weight {
+    fn on_initialize_intensive() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn on_initialize_regular() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
