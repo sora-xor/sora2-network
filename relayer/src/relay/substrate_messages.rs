@@ -163,12 +163,7 @@ where
         debug!("Digest: {}", digest_hex);
 
         let proof = beefy_light_client::SimplifiedMMRProof {
-            merkle_proof_items: commitment
-                .proof
-                .items
-                .iter()
-                .map(|x| x.0)
-                .collect(),
+            merkle_proof_items: commitment.proof.items.iter().map(|x| x.0).collect(),
             merkle_proof_order_bit_field: commitment.proof.order,
         };
 

@@ -7,9 +7,9 @@ use common::Balance;
 use futures::Stream;
 use futures::StreamExt;
 
-use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::{binary_search_first_occurence, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
+use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
 
 pub enum MessageCommitment {

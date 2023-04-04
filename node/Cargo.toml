@@ -47,9 +47,9 @@ eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 farming-rpc = { path = "../pallets/farming/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" } 
-beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" } 
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" } 
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
+substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
 oracle-proxy-rpc = { path = "../pallets/oracle-proxy/rpc" }
 
 # Parachain dependencies
@@ -103,7 +103,7 @@ prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https:
 beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 mmr-gadget = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common", branch = "develop" } 
+leaf-provider-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop" }
 sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 bridge-channel-rpc = { path = "../pallets/trustless-bridge/bridge-channel-rpc" }
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }

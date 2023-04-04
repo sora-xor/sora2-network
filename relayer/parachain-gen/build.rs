@@ -38,7 +38,8 @@ fn main() {
         .unwrap()
         .join("src/bytes");
 
-    let branch = &std::env::var("PARACHAIN_METADATA_BRANCH").unwrap_or("polkadot-v0.9.38".to_string()); // TODO: Change to develop when #82 is done
+    let branch =
+        &std::env::var("PARACHAIN_METADATA_BRANCH").unwrap_or("polkadot-v0.9.38".to_string()); // TODO: Change to develop when #82 is done
     let target = format!("https://github.com/sora-xor/sora2-parachain/raw/{}/parachain-gen/src/bytes/parachain_metadata.scale", branch);
     let response = reqwest::blocking::get(target).unwrap().bytes().unwrap();
     std::fs::create_dir_all(&out_dir).unwrap();

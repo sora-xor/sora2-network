@@ -29,22 +29,22 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false } 
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false } 
+beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 
 ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false }
-dispatch = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 bridge-inbound-channel = { path = "../pallets/trustless-bridge/bridge-inbound-channel", default-features = false }
 bridge-outbound-channel = { path = "../pallets/trustless-bridge/bridge-outbound-channel", default-features = false }
 eth-app = { path = "../pallets/trustless-bridge/eth-app", default-features = false }
 migration-app = { path = "../pallets/trustless-bridge/migration-app", default-features = false }
 erc20-app = { path = "../pallets/trustless-bridge/erc20-app", default-features = false }
-leaf-provider = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
+leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 evm-bridge-proxy = { path = "../pallets/trustless-bridge/evm-bridge-proxy", default-features = false }
 evm-bridge-proxy-runtime-api = { path = "../pallets/trustless-bridge/evm-bridge-proxy/runtime-api", default-features = false }
-substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
-substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -156,7 +156,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "develop", default-features = false } 
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"

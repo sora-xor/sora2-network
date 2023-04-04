@@ -30,7 +30,10 @@
 
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, BlockHash, LeafProof};
-use bridge_common::{bitfield::BitField, simplified_proof::{convert_to_simplified_mmr_proof, Proof}};
+use bridge_common::{
+    bitfield::BitField,
+    simplified_proof::{convert_to_simplified_mmr_proof, Proof},
+};
 use codec::Encode;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
