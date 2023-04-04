@@ -165,11 +165,11 @@ where
         let proof = beefy_light_client::SimplifiedMMRProof {
             merkle_proof_items: commitment
                 .proof
-                .merkle_proof_items
+                .items
                 .iter()
                 .map(|x| x.0)
                 .collect(),
-            merkle_proof_order_bit_field: commitment.proof.merkle_proof_order_bit_field,
+            merkle_proof_order_bit_field: commitment.proof.order,
         };
 
         let delimiter = (self.chain_id, commitment_hash).encode();

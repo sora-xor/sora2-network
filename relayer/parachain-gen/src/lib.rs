@@ -43,8 +43,8 @@ pub mod parachain_runtime {
     use ::bridge_common::beefy_types::ValidatorProof;
     #[subxt(substitute_type = "bridge_common::beefy_types::ValidatorSet")]
     use ::bridge_common::beefy_types::ValidatorSet;
-    #[subxt(substitute_type = "bridge_common::simplified_mmr_proof::SimplifiedMMRProof")]
-    use ::bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
+    #[subxt(substitute_type = "bridge_common::simplified_proof::Proof")]
+    use ::bridge_common::simplified_proof::Proof;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]

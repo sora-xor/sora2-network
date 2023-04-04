@@ -7,7 +7,7 @@ use common::Balance;
 use futures::Stream;
 use futures::StreamExt;
 
-use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
+use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::{binary_search_first_occurence, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
@@ -34,7 +34,7 @@ pub struct MessageCommitmentWithProof<S: SenderConfig> {
     pub commitment: MessageCommitment,
     pub digest: AuxiliaryDigest,
     pub leaf: bridge_common::beefy_types::BeefyMMRLeaf,
-    pub proof: bridge_common::simplified_mmr_proof::SimplifiedMMRProof,
+    pub proof: bridge_common::simplified_proof::Proof<H256>,
 }
 
 pub async fn load_commitment_with_proof<S: SenderConfig>(
@@ -100,10 +100,6 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
 
     let proof =
         convert_to_simplified_mmr_proof(proof.leaf_indices[0], proof.leaf_count, &proof.items);
-    let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-        merkle_proof_items: proof.items,
-        merkle_proof_order_bit_field: proof.order,
-    };
 
     Ok(MessageCommitmentWithProof {
         commitment,

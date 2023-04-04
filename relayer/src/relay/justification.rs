@@ -30,7 +30,7 @@
 
 use crate::prelude::*;
 use crate::substrate::{BeefyCommitment, BeefySignedCommitment, BlockHash, LeafProof};
-use bridge_common::bitfield::BitField;
+use bridge_common::{bitfield::BitField, simplified_proof::{convert_to_simplified_mmr_proof, Proof}};
 use codec::Encode;
 use ethers::prelude::*;
 use ethers::utils::keccak256;
@@ -39,8 +39,6 @@ use sp_beefy::SignedCommitment;
 use sp_runtime::traits::{AtLeast32Bit, Keccak256, UniqueSaturatedInto};
 use sp_runtime::traits::{Convert, Hash as HashTrait};
 use sp_runtime::Saturating;
-
-use super::simplified_proof::{convert_to_simplified_mmr_proof, Proof};
 
 #[derive(Debug)]
 pub struct MmrPayload {
@@ -284,7 +282,7 @@ where
         &self,
     ) -> AnyResult<(
         bridge_common::beefy_types::BeefyMMRLeaf,
-        bridge_common::simplified_mmr_proof::SimplifiedMMRProof,
+        bridge_common::simplified_proof::Proof<H256>,
     )> {
         let LeafProof { leaf, .. } = self.leaf_proof.clone();
         let parent_hash: [u8; 32] = leaf.parent_number_and_hash.1.as_ref().try_into().unwrap();
@@ -298,9 +296,9 @@ where
             leaf_extra: leaf.leaf_extra,
         };
 
-        let proof = bridge_common::simplified_mmr_proof::SimplifiedMMRProof {
-            merkle_proof_items: self.simplified_proof.items.clone(),
-            merkle_proof_order_bit_field: self.simplified_proof.order,
+        let proof = bridge_common::simplified_proof::Proof::<H256> {
+            items: self.simplified_proof.items.clone(),
+            order: self.simplified_proof.order,
         };
         Ok((mmr_leaf, proof))
     }
