@@ -57,7 +57,6 @@ use common::{
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
-use pallet_timestamp::Pallet as Timestamp;
 use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -79,7 +78,6 @@ type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
-pub const ORACLE_RATE_STALE_PERIOD: u64 = 60 * 5; // 5 minutes
 
 pub use pallet::*;
 
@@ -137,9 +135,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + technical::Config + dex_api::Config + pallet_timestamp::Config
-    {
+    pub trait Config: frame_system::Config + technical::Config + dex_api::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
@@ -333,10 +329,6 @@ pub mod pallet {
         SyntheticIsNotEnabled,
         /// Error quoting price from oracle.
         OracleQuoteError,
-        /// Oracle quote is outdated.
-        OracleRateIsOutdated,
-        /// Oracle quote's timestamp exceeds current time.
-        OracleRateHasInvalidTimestamp,
     }
 
     // TODO: better by replaced with Get<>
@@ -854,23 +846,9 @@ impl<T: Config> Pallet<T> {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-
-                let oracle_quote =
-                    T::Oracle::quote(&symbol)?.ok_or(Error::<T>::OracleQuoteError)?;
-
-                let current_timestamp: u64 =
-                    Self::convert_timestamp_to_number(Timestamp::<T>::get());
-
-                let time_passed: u64 = current_timestamp
-                    .checked_sub(oracle_quote.last_updated)
-                    .ok_or(Error::<T>::OracleRateHasInvalidTimestamp)?;
-
-                ensure!(
-                    time_passed <= ORACLE_RATE_STALE_PERIOD,
-                    Error::<T>::OracleRateIsOutdated
-                );
-
-                let price = FixedWrapper::from(balance!(oracle_quote.value));
+                let price = FixedWrapper::from(balance!(T::Oracle::quote(&symbol)?
+                    .map(|rate| rate.value)
+                    .ok_or(Error::<T>::OracleQuoteError)?));
                 // Just for convenience. Right now will always return 1.
                 let reference_asset_price =
                     FixedWrapper::from(Self::reference_price(&reference_asset_id, price_variant)?);
@@ -878,14 +856,6 @@ impl<T: Config> Pallet<T> {
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
-        }
-    }
-
-    fn convert_timestamp_to_number(timestamp: T::Moment) -> u64 {
-        if let Ok(timestamp) = TryInto::<u64>::try_into(timestamp) {
-            timestamp
-        } else {
-            panic!("Timestamp is too big to fit into u64"); // Should never happen, but if it does, then we have a problem.
         }
     }
 

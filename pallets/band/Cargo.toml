@@ -21,6 +21,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", bran
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 common = { path = "../../common", default-features = false }
 hex-literal = "0.3.1"
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }

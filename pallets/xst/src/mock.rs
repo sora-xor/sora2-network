@@ -94,6 +94,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub const GetBandRateStalePeriod: u64 = 60*5;
 }
 
 construct_runtime! {
@@ -180,6 +181,8 @@ impl band::Config for Runtime {
     type Symbol = common::SymbolName;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type UnixTime = Timestamp;
 }
 
 impl oracle_proxy::Config for Runtime {

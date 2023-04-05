@@ -374,7 +374,7 @@ fn quote_and_list_enabled_symbols_should_work() {
         let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
         let rates = vec![1, 2, 3];
         let relayer = 1;
-        let initial_resolve_time = 100;
+        let initial_resolve_time = 0;
 
         for symbol in &symbols {
             assert_eq!(Band::rates(symbol), None);
@@ -426,4 +426,38 @@ fn quote_and_list_enabled_symbols_should_work() {
 
         assert_eq!(enabled_symbols_res, enabled_symbols)
     });
+}
+
+#[test]
+fn quote_invalid_rate_should_fail() {
+    new_test_ext().execute_with(|| {
+        let relayer = 1;
+
+        assert_eq!(Band::rates("USD".to_owned()), None);
+        assert_eq!(Band::rates("RUB".to_owned()), None);
+
+        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::relay(Origin::signed(relayer), vec![("USD".to_owned(), 1)], 0, 0)
+            .expect("Failed to relay rates");
+
+        Band::relay(
+            Origin::signed(relayer),
+            vec![("RUB".to_owned(), 1)],
+            10000000,
+            0,
+        )
+        .expect("Failed to relay rates");
+
+        Timestamp::set_timestamp(GetRateStalePeriod::get() + 10);
+
+        assert_eq!(
+            <Band as DataFeed<String, Rate, u64>>::quote(&"USD".to_owned()),
+            Err(Error::<Runtime>::RateExpired.into())
+        );
+
+        assert_eq!(
+            <Band as DataFeed<String, Rate, u64>>::quote(&"RUB".to_owned()),
+            Err(Error::<Runtime>::RateHasInvalidTimestamp.into())
+        );
+    })
 }

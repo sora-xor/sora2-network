@@ -34,6 +34,7 @@ use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
+    parameter_types,
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
@@ -51,6 +52,7 @@ frame_support::construct_runtime!(
         System: frame_system,
         Band: band,
         OracleProxy: oracle_proxy,
+        Timestamp: pallet_timestamp,
     }
 );
 
@@ -88,11 +90,25 @@ impl Config for Runtime {
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const GetBandRateStalePeriod: u64 = 5*60;
+    pub const MinimumPeriod: u64 = 5;
+}
+
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl band::Config for Runtime {
     type Symbol = <Runtime as Config>::Symbol;
     type Event = Event;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type UnixTime = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 // Build genesis storage according to the mock runtime.

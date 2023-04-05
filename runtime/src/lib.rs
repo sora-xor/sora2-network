@@ -1800,11 +1800,17 @@ impl oracle_proxy::Config for Runtime {
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const GetBandRateStalePeriod: u64 = 60*5;
+}
+
 impl band::Config for Runtime {
     type Event = Event;
     type Symbol = Symbol;
     type WeightInfo = band::weights::WeightInfo<Runtime>;
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type UnixTime = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 parameter_types! {

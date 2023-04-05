@@ -94,6 +94,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub const GetBandRateStalePeriod: u64 = 60*5;
 }
 
 construct_runtime! {
@@ -180,6 +181,8 @@ impl band::Config for Runtime {
     type Symbol = common::SymbolName;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = ();
+    type UnixTime = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -295,6 +298,8 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type GetXSTAssetId = GetSyntheticBaseAssetId;
+    type BuyBackHandler = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
