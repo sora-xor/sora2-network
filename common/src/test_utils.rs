@@ -52,3 +52,9 @@ macro_rules! assert_noop_msg {
         );
     };
 }
+
+pub fn init_logger() {
+    let _ = env_logger::Builder::from_default_env()
+        .is_test(true)
+        .try_init();
+}

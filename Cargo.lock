@@ -1607,6 +1607,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
+ "env_logger 0.8.4",
  "fixnum",
  "frame-support",
  "frame-system",
