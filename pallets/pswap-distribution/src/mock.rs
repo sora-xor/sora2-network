@@ -182,6 +182,7 @@ impl Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -191,6 +192,7 @@ impl Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type BuyBackHandler = ();
     type PoolXykPallet = PoolXYK;
 }
 

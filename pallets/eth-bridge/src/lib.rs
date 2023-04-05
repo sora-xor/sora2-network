@@ -1453,7 +1453,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForBridgeSignatureVersion() -> BridgeSignatureVersion {
-        BridgeSignatureVersion::V1
+        BridgeSignatureVersion::V3
     }
 
     #[pallet::storage]

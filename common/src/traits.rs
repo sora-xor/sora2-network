@@ -774,3 +774,43 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
 pub trait IsValid {
     fn is_valid(&self) -> bool;
 }
+
+pub trait BuyBackHandler<AccountId, AssetId> {
+    /// Mint `amount` of `mint_asset_id`, exchange to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
+    fn mint_buy_back_and_burn(
+        mint_asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError>;
+
+    /// Exchange `amount` of `asset_id` from `account_id` to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
+    fn buy_back_and_burn(
+        account_id: &AccountId,
+        asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError>;
+}
+
+impl<AssetId, AccountId> BuyBackHandler<AccountId, AssetId> for () {
+    fn mint_buy_back_and_burn(
+        _mint_asset_id: &AssetId,
+        _buy_back_asset_id: &AssetId,
+        _amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
+
+    fn buy_back_and_burn(
+        _account_id: &AccountId,
+        _asset_id: &AssetId,
+        _buy_back_asset_id: &AssetId,
+        _amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
+}
