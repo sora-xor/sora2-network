@@ -1238,7 +1238,7 @@ fn testnet_genesis(
                     },
                     AssetConfig::Sidechain {
                         id: DAI.into(),
-                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        sidechain_id: hex!("34273F3a534dF490437F0deFFcb0549B40fb3Db6").into(),
                         owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
