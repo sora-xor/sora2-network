@@ -86,22 +86,31 @@ pub struct RewardInfo {
     pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
+/// Store information about crowdloan
 #[derive(
     Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
 )]
 pub struct CrowdloanInfo<AssetId, BlockNumber, AccountId> {
+    /// Total amount of DOT, KSM, etc. contributed
     pub total_contribution: Balance,
+    /// Asset id and total rewards amount pairs
     pub rewards: Vec<(AssetId, Balance)>,
+    /// Rewards distribution start block
     pub start_block: BlockNumber,
+    /// Length of rewards distribution in blocks
     pub length: BlockNumber,
+    /// Account with crowdloan rewards
     pub account: AccountId,
 }
 
+/// Information about user participation in crowdloan
 #[derive(
     Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
 )]
 pub struct CrowdloanUserInfo<AssetId> {
+    /// Amount of DOT, KSM, etc. contributed by user
     contribution: Balance,
+    /// Amount of rewards which is already taken by user
     rewarded: Vec<(AssetId, Balance)>,
 }
 
@@ -228,6 +237,7 @@ impl<T: Config> Pallet<T> {
         };
     }
 
+    /// Helper function for runtime api
     pub fn get_claimable_crowdloan_reward(
         tag: &CrowdloanTag,
         user: &T::AccountId,
@@ -260,6 +270,7 @@ impl<T: Config> Pallet<T> {
         Some(claimable)
     }
 
+    /// Calculate amount of tokens to send to user
     pub fn calculate_claimable_crowdloan_reward(
         now: &T::BlockNumber,
         info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
