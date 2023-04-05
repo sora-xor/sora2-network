@@ -1289,18 +1289,19 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type SoraParliamentShare = SoraParliamentShare;
+    type BuyBackXSTPercent = BuyBackXSTPercent;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
+    type XstId = GetXstAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = XorFee;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
     type WeightInfo = xor_fee::weights::WeightInfo<Runtime>;
     type WithdrawFee = WithdrawFee;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1566,6 +1567,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type Event = Event;
     type GetIncentiveAssetId = GetPswapAssetId;
+    type GetXSTAssetId = GetXstAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -1576,6 +1578,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = pswap_distribution::weights::WeightInfo<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
 }
 
 parameter_types! {
@@ -1663,6 +1666,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1673,6 +1677,8 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
 }
 
 parameter_types! {
@@ -1824,7 +1830,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
+    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
 }
 
 #[cfg(feature = "private-net")]

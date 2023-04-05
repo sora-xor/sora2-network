@@ -241,6 +241,7 @@ parameter_types! {
             "0000000000000000000000000000000000000000000000000000000000000023"
     ));
     pub const GetBuyBackDexId: DEXId = 0;
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 impl assets::Config for Runtime {
@@ -297,6 +298,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -307,6 +309,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -316,6 +319,8 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
+    type BuyBackHandler = ();
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
 }
 

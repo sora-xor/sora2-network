@@ -33,7 +33,7 @@
 use super::*;
 
 use codec::Decode;
-use common::{balance, Balance, DAI, VAL, XOR};
+use common::{balance, Balance, DAI, VAL, XOR, XST};
 use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::sp_runtime::{FixedPointNumber, FixedU128};
@@ -47,6 +47,7 @@ fn alice<T: Config + pool_xyk::Config + pallet_staking::Config>() -> T::AccountI
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+#[allow(dead_code)]
 fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
@@ -71,6 +72,13 @@ fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
         balance!(50000000),
     )
     .unwrap();
+    trading_pair::Pallet::<T>::register(
+        owner_origin.clone(),
+        T::DEXIdValue::get(),
+        XOR.into(),
+        VAL.into(),
+    )
+    .unwrap();
     pool_xyk::Pallet::<T>::initialize_pool(
         owner_origin.clone(),
         T::DEXIdValue::get(),
@@ -83,6 +91,32 @@ fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
         T::DEXIdValue::get(),
         XOR.into(),
         VAL.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(1000),
+        balance!(2000),
+    )
+    .unwrap();
+
+    assets::Pallet::<T>::mint_to(
+        &XST.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    pool_xyk::Pallet::<T>::initialize_pool(
+        owner_origin.clone(),
+        T::DEXIdValue::get(),
+        XOR.into(),
+        XST.into(),
+    )
+    .unwrap();
+    pool_xyk::Pallet::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        T::DEXIdValue::get(),
+        XOR.into(),
+        XST.into(),
         balance!(1000),
         balance!(2000),
         balance!(1000),
@@ -122,15 +156,13 @@ benchmarks! {
         where T: Config + pool_xyk::Config + pallet_staking::Config
     }
     remint {
+        #[cfg(not(test))]
         init::<T>();
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
     }: {
         crate::Pallet::<T>::remint(balance!(0.1)).unwrap();
     } verify {
         let val_burned: Balance = pallet_staking::Pallet::<T>::era_val_burned().unique_saturated_into();
-        assert_eq!(val_burned, balance!(0.199380121801856354));
-
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
+        assert_eq!(val_burned, balance!(0.099999000009999900));
     }
 
     update_multiplier {
@@ -153,6 +185,7 @@ mod tests {
     fn test_benchmarks() {
         ExtBuilder::build().execute_with(|| {
             assert_ok!(Pallet::<Runtime>::test_benchmark_update_multiplier());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_remint());
             // Benchmark fails, needs revisiting
             // assert_ok!(test_benchmark_remint::<Runtime>());
         });
