@@ -148,5 +148,6 @@ runtime-benchmarks = [
 
 try-runtime = [
     "try-runtime-cli",
+    "try-runtime-cli/try-runtime",
     "framenode-runtime/try-runtime",
 ]
