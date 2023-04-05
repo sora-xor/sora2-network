@@ -34,11 +34,13 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, ContentSource,
-    DEXInfo, Description, Fixed, FromGenericPair, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION, XST,
+    balance, fixed, fixed_from_basis_points, hash, Amount, AssetId32, AssetName, AssetSymbol,
+    BalancePrecision, ContentSource, DEXInfo, Description, Fixed, FromGenericPair,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet,
+    PriceVariant, TechPurpose, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
+use hex_literal::hex;
 
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{construct_runtime, parameter_types};
@@ -91,7 +93,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
-    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetIncentiveAssetId: AssetId = PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
@@ -283,7 +285,6 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
-    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
@@ -498,6 +499,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -508,6 +510,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl price_tools::Config for Runtime {
@@ -582,7 +585,7 @@ impl Default for ExtBuilder {
             ],
             endowed_assets: vec![
                 (
-                    common::XOR.into(),
+                    XOR.into(),
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
@@ -593,7 +596,7 @@ impl Default for ExtBuilder {
                     None,
                 ),
                 (
-                    common::DOT.into(),
+                    DOT.into(),
                     alice(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
@@ -604,7 +607,7 @@ impl Default for ExtBuilder {
                     None,
                 ),
                 (
-                    common::VAL.into(),
+                    VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
@@ -615,7 +618,7 @@ impl Default for ExtBuilder {
                     None,
                 ),
                 (
-                    common::USDT.into(),
+                    USDT.into(),
                     alice(),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
@@ -626,7 +629,7 @@ impl Default for ExtBuilder {
                     None,
                 ),
                 (
-                    common::PSWAP.into(),
+                    PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),

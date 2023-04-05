@@ -33,58 +33,49 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
 
-use common::prelude::SwapVariant;
-
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn swap(variant: SwapVariant) -> Weight {
-        // Todo: Use all 6 weight formulas defined in benchmarks
-        match variant {
-            // swap_exact_input_multiple
-            SwapVariant::WithDesiredInput => Weight::zero(),
-            //swap_exact_output_multiple
-            SwapVariant::WithDesiredOutput => Weight::zero(),
-        }
-    }
     fn enable_liquidity_source() -> Weight {
-        Weight::from_ref_time(21_575_000)
+        Weight::from_parts(21_575_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
     fn disable_liquidity_source() -> Weight {
-        Weight::from_ref_time(20_003_000)
+        Weight::from_parts(20_003_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
-    // Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
-    // Storage: DEXManager DEXInfos (r:1 w:0)
-    // Storage: XSTPool EnabledSynthetics (r:1 w:0)
-    // Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
-    // Storage: PoolXYK Properties (r:1 w:0)
-    // Storage: TradingPair LockedLiquiditySources (r:1 w:0)
-    // Storage: System Account (r:103 w:103)
-    // Storage: Tokens Accounts (r:102 w:102)
-    // Storage: Technical TechAccounts (r:2 w:0)
-    // Storage: PriceTools PriceInfos (r:1 w:0)
-    // Storage: PoolXYK Reserves (r:0 w:1)
-    /// The range of component `n` is `[1, 10]`.
-    /// The range of component `m` is `[10, 100]`.
-    fn swap_transfer_batch(_n: u32, _m: u32) -> Weight {
+    fn check_indivisible_assets() -> Weight {
+        Weight::zero()
+    }
+    fn new_trivial() -> Weight {
+        Weight::zero()
+    }
+    fn is_forbidden_filter() -> Weight {
+        Weight::zero()
+    }
+    fn list_liquidity_sources() -> Weight {
         Weight::zero()
     }
 }
 
 impl crate::WeightInfo for () {
-    fn swap(_variant: SwapVariant) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
     fn enable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn swap_transfer_batch(_: u32, _: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    fn check_indivisible_assets() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn new_trivial() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn is_forbidden_filter() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn list_liquidity_sources() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(4)
     }
 }

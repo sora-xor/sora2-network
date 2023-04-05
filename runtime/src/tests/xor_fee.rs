@@ -31,8 +31,8 @@
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, GetXorFeeAccountId, PoolXYK,
-    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, SoraParliamentShare, Staking,
-    System, Tokens, Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
+    Referrals, ReferrerWeight, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens,
+    Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -59,7 +59,7 @@ type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
 type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 
-const MOCK_WEIGHT: Weight = Weight::from_ref_time(600_000_000);
+const MOCK_WEIGHT: Weight = Weight::from_parts(600_000_000, 0);
 
 const INITIAL_BALANCE: Balance = balance!(1000);
 const INITIAL_RESERVES: Balance = balance!(10000);
@@ -288,7 +288,7 @@ fn custom_fees_work() {
         let base_fee = WeightToFee::weight_to_fee(
             &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
         );
-        let len_fee = LengthToFee::weight_to_fee(&Weight::from_ref_time(len as u64));
+        let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
 
         // A ten-fold extrinsic; fee is 0.007 XOR
@@ -475,7 +475,7 @@ fn normal_fees_multiplied() {
         let base_fee = WeightToFee::weight_to_fee(
             &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
         );
-        let len_fee = len as u128 * LengthToFee::weight_to_fee(&Weight::from_ref_time(len as u64));
+        let len_fee = len as u128 * LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
 
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
@@ -637,8 +637,8 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let sora_parliament_share = SoraParliamentShare::get();
-        let expected_balance = FixedWrapper::from(sora_parliament_share * val_burned);
+        let buy_back_percent = crate::BuyBackXSTPercent::get();
+        let expected_balance = FixedWrapper::from(buy_back_percent * val_burned);
 
         <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
             0,
@@ -660,7 +660,7 @@ fn fee_payment_regular_swap() {
     ext().execute_with(|| {
         give_xor_initial_balance(alice());
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
 
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
             dex_id: 0,
@@ -706,7 +706,7 @@ fn fee_payment_postponed_swap() {
 
         fill_spot_price();
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
 
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
             dex_id: 0,
@@ -753,7 +753,7 @@ fn fee_payment_postponed_swap_transfer() {
 
         fill_spot_price();
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
 
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer {
             receiver: bob(),
@@ -780,7 +780,7 @@ fn fee_payment_postponed_swap_transfer() {
 #[test]
 fn fee_payment_should_not_postpone() {
     ext().execute_with(|| {
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
 
         let call = RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
             dex_id: 0,
@@ -809,7 +809,7 @@ fn withdraw_fee_set_referrer() {
 
         Referrals::reserve(RuntimeOrigin::signed(bob()), SMALL_FEE).unwrap();
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
@@ -837,7 +837,7 @@ fn withdraw_fee_set_referrer_already() {
 
         Referrals::reserve(RuntimeOrigin::signed(bob()), SMALL_FEE).unwrap();
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
@@ -861,7 +861,7 @@ fn withdraw_fee_set_referrer_already2() {
 
         Referrals::reserve(RuntimeOrigin::signed(bob()), SMALL_FEE).unwrap();
 
-        let dispatch_info = info_from_weight(Weight::from_ref_time(100_000_000));
+        let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(

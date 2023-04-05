@@ -34,7 +34,7 @@ use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
-    PSWAP, USDT, VAL, XOR, XST,
+    ETH, PSWAP, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -78,7 +78,7 @@ pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetDefaultFee: u16 = 30;
@@ -254,6 +254,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -264,6 +265,7 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type BuyBackHandler = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -322,12 +324,21 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn quote(
         _dex_id: DEXId,
         _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
+        output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Err(DispatchError::CannotLookup)
+        let assets = vec![ETH, DAI, VAL, PSWAP, XOR, USDT];
+        if assets.contains(output_asset_id) {
+            // return error if output asset is predefined asset
+            // it is necessary for unit tests
+            Err(DispatchError::CannotLookup)
+        } else {
+            // return some price for any custom asset
+            // it is necessary for benchmark tests
+            Ok(SwapOutcome::new(balance!(2), 0))
+        }
     }
 }
 

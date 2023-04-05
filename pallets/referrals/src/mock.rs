@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP,
-    VAL, XST,
+    VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, Everything, GenesisBuild};
@@ -50,7 +50,6 @@ type BlockNumber = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const MINTING_ACCOUNT: AccountId = 4;
@@ -59,10 +58,10 @@ pub const BUY_BACK_ACCOUNT: AccountId = 23;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
+    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
     pub const ExistentialDeposit: u128 = 0;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
@@ -204,17 +203,30 @@ pub fn test_ext() -> sp_io::TestExternalities {
     .unwrap();
 
     assets::GenesisConfig::<Runtime> {
-        endowed_assets: vec![(
-            VAL,
-            ALICE,
-            AssetSymbol(b"VAL".to_vec()),
-            AssetName(b"SORA Validator Token".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::from(0u32),
-            true,
-            None,
-            None,
-        )],
+        endowed_assets: vec![
+            (
+                VAL,
+                ALICE,
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ),
+            (
+                XOR,
+                ALICE,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"XOR".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();

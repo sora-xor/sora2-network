@@ -214,7 +214,6 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
-    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {
@@ -253,6 +252,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -263,6 +263,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl pallet_timestamp::Config for Runtime {

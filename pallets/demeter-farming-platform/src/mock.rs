@@ -63,7 +63,7 @@ pub const DEX_B_ID: DEXId = DEXId::PolkaswapXSTUSD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetXykFee: Fixed = fixed!(0.003);
@@ -220,6 +220,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -230,6 +231,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl technical::Config for Runtime {

@@ -79,7 +79,7 @@ pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetDefaultFee: u16 = 30;
@@ -123,6 +123,7 @@ construct_runtime! {
         DEXApi: dex_api::{Pallet, Storage},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
 
@@ -239,7 +240,6 @@ impl dex_api::Config for Runtime {
     type XYKPool = MockLiquiditySource;
     type XSTPool = XSTPool;
     type MulticollateralBondingCurvePool = ();
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -271,6 +271,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -281,6 +282,13 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
+}
+
+impl price_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type LiquidityProxy = ();
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {

@@ -32,9 +32,9 @@ use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, BlockLength, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    PSWAP, VAL, XOR, XST,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
+    Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, PSWAP, VAL, XOR, XST,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -88,7 +88,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
+    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
@@ -107,7 +107,7 @@ parameter_types! {
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
     };
-    pub OffchainSolutionWeightLimit: Weight = Weight::from_ref_time(600_000_000);
+    pub OffchainSolutionWeightLimit: Weight = Weight::from_parts(600_000_000, 0);
     pub GetXorFeeTechAccountId: TechAccountId = {
         TechAccountId::Generic(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -124,7 +124,7 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub RemoveTemporaryPeerAccountId: Vec<(AccountId, H160)> = Vec::new();
-    pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -484,6 +484,7 @@ impl pswap_distribution::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = ();
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = ();
@@ -494,6 +495,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -668,17 +670,18 @@ impl Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type SoraParliamentShare = SoraParliamentShare;
+    type BuyBackXSTPercent = BuyBackXSTPercent;
     type XorId = XorId;
     type ValId = ValId;
+    type XstId = GetBuyBackAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
     type WithdrawFee = WithdrawFee;
+    type BuyBackHandler = ();
     type WeightInfo = ();
 }
 
@@ -745,14 +748,15 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::exchange(
+        let (outcome, _) = MockLiquiditySource::exchange(
             &sender,
             &receiver,
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
-        )
+        )?;
+        Ok(outcome)
     }
 
     fn quote(
@@ -763,13 +767,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
             deduce_fee,
-        )
+        )?;
+        Ok(outcome)
     }
 }
 
@@ -828,6 +833,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
@@ -842,6 +848,19 @@ impl ExtBuilder {
                 (STASH_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT2, initial_balance),
             ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: vec![(
+                DEXId::Polkaswap,
+                DEXInfo {
+                    base_asset_id: XOR.into(),
+                    synthetic_base_asset_id: XST.into(),
+                    is_public: true,
+                },
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -896,6 +915,17 @@ impl ExtBuilder {
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XST,
+                    xor_fee_account_id,
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
+                    18,
+                    balance!(100),
                     true,
                     None,
                     None,
@@ -958,11 +988,18 @@ impl ExtBuilder {
 
         let initial_reserves: Fixed = Fixed::from_bits(initial_reserves() as i128);
         mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance1> {
-            reserves: vec![(
-                common::DEXId::Polkaswap,
-                VAL,
-                (initial_reserves, initial_reserves),
-            )],
+            reserves: vec![
+                (
+                    common::DEXId::Polkaswap,
+                    VAL,
+                    (initial_reserves, initial_reserves),
+                ),
+                (
+                    common::DEXId::Polkaswap,
+                    XST,
+                    (initial_reserves, initial_reserves),
+                ),
+            ],
             phantom: Default::default(),
         }
         .assimilate_storage(&mut t)
