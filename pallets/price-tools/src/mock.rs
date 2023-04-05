@@ -34,7 +34,7 @@ use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION,
-    PSWAP, USDT, VAL, XOR, XST,
+    ETH, PSWAP, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -322,12 +322,21 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
     fn quote(
         _dex_id: DEXId,
         _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
+        output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Err(DispatchError::CannotLookup)
+        let assets = vec![ETH, DAI, VAL, PSWAP, XOR, USDT];
+        if assets.contains(output_asset_id) {
+            // return error if output asset is predefined asset
+            // it is necessary for unit tests
+            Err(DispatchError::CannotLookup)
+        } else {
+            // return some price for any custom asset
+            // it is necessary for benchmark tests
+            Ok(SwapOutcome::new(balance!(2), 0))
+        }
     }
 }
 

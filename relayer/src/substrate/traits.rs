@@ -4,7 +4,7 @@ use crate::prelude::*;
 use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_common::{
     beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet},
-    simplified_mmr_proof::SimplifiedMMRProof,
+    simplified_proof::Proof,
 };
 use bridge_types::{types::ParachainMessage, GenericNetworkId, SubNetworkId, H256};
 use common::Balance;
@@ -83,7 +83,7 @@ pub trait ReceiverConfig: ConfigExt {
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
-        proof: SimplifiedMMRProof,
+        proof: Proof<H256>,
     ) -> StaticTxPayload<Self::SubmitSignatureCommitment>;
 
     fn submit_messages_commitment(
@@ -218,7 +218,7 @@ impl ReceiverConfig for MainnetConfig {
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
-        proof: SimplifiedMMRProof,
+        proof: Proof<H256>,
     ) -> StaticTxPayload<Self::SubmitSignatureCommitment> {
         mainnet_runtime::tx()
             .beefy_light_client()
@@ -291,7 +291,7 @@ impl ReceiverConfig for ParachainConfig {
         commitment: Commitment,
         validator_proof: ValidatorProof,
         latest_mmr_leaf: BeefyMMRLeaf,
-        proof: SimplifiedMMRProof,
+        proof: Proof<H256>,
     ) -> StaticTxPayload<Self::SubmitSignatureCommitment> {
         parachain_runtime::tx()
             .beefy_light_client()

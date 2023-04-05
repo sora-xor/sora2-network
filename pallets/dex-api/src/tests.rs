@@ -123,7 +123,7 @@ fn test_different_reserves_should_pass() {
             true,
         );
         assert_eq!(
-            res1.unwrap().amount,
+            res1.unwrap().0.amount,
             balance!(136.851187324744592819) // for reserves: 5000 XOR, 7000 DOT, 30bp fee
         );
         let res2 = crate::Pallet::<Runtime>::quote(
@@ -134,7 +134,7 @@ fn test_different_reserves_should_pass() {
             true,
         );
         assert_eq!(
-            res2.unwrap().amount,
+            res2.unwrap().0.amount,
             balance!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
         );
     })

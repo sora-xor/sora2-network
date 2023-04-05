@@ -69,6 +69,8 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
     fn enable_synthetic_asset() -> Weight;
     fn set_synthetic_base_asset_floor_price() -> Weight;
+    fn quote() -> Weight;
+    fn exchange() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -777,7 +779,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -809,8 +811,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fee_amount
         };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(output_amount, fee_amount),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(input_amount, fee_amount),
+                Self::quote_weight(),
+            )),
         }
     }
 
@@ -821,7 +829,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -834,7 +842,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             sender,
             receiver,
         );
-        outcome
+        outcome.map(|res| (res, Self::exchange_weight()))
     }
 
     fn check_rewards(
@@ -843,8 +851,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new()) // no rewards for XST
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
@@ -857,6 +865,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+            .map(|(outcome, _)| outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 

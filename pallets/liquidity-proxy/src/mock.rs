@@ -319,7 +319,6 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
-    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
@@ -606,7 +605,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -704,8 +703,14 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             }
         };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(output_amount, fee_amount),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(input_amount, fee_amount),
+                Self::quote_weight(),
+            )),
         }
     }
 
@@ -716,7 +721,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         unimplemented!()
     }
 
@@ -726,14 +731,17 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         _input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
         // for mock just return like in input
         if output_asset_id == &GetBaseAssetId::get() {
-            Ok(vec![(
-                output_amount,
-                output_asset_id.clone(),
-                RewardReason::BuyOnBondingCurve,
-            )])
+            Ok((
+                vec![(
+                    output_amount,
+                    output_asset_id.clone(),
+                    RewardReason::BuyOnBondingCurve,
+                )],
+                Weight::zero(),
+            ))
         } else {
             fail!(crate::Error::<Runtime>::UnavailableExchangePath);
         }
@@ -748,6 +756,19 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+            .map(|(outcome, _)| outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 
@@ -1023,7 +1044,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
@@ -1038,16 +1059,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let output_amount = desired_amount_in * input_asset_price / output_asset_price;
-                Ok(SwapOutcome::new(
-                    output_amount.try_into_balance().unwrap(),
-                    0,
+                Ok((
+                    SwapOutcome::new(output_amount.try_into_balance().unwrap(), 0),
+                    Self::quote_weight(),
                 ))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let input_amount = desired_amount_out * output_asset_price / input_asset_price;
-                Ok(SwapOutcome::new(
-                    input_amount.try_into_balance().unwrap(),
-                    0,
+                Ok((
+                    SwapOutcome::new(input_amount.try_into_balance().unwrap(), 0),
+                    Self::quote_weight(),
                 ))
             }
         }
@@ -1060,7 +1081,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         unimplemented!()
     }
 
@@ -1070,8 +1091,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _output_asset_id: &AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new()) // no rewards for XST
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
@@ -1083,6 +1104,19 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+            .map(|(outcome, _)| outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 

@@ -127,7 +127,7 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
-                                    cargo test  --release --features runtime-benchmarks
+                                    cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .

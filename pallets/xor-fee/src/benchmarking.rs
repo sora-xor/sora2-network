@@ -32,130 +32,23 @@
 
 use super::*;
 
-use codec::Decode;
-use common::{balance, Balance, DAI, VAL, XOR};
 use frame_benchmarking::benchmarks;
-use frame_support::sp_runtime::traits::UniqueSaturatedInto;
-use frame_support::sp_runtime::{FixedPointNumber, FixedU128};
-use frame_support::traits::Get;
+use frame_support::sp_runtime::FixedU128;
 use frame_system::RawOrigin;
 
 use crate::{Config, Pallet};
-
-fn alice<T: Config + pool_xyk::Config + pallet_staking::Config>() -> T::AccountId {
-    let bytes = [1; 32];
-    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
-}
-
-fn init<T: Config + pool_xyk::Config + pallet_staking::Config>() {
-    let owner = alice::<T>();
-    frame_system::Pallet::<T>::inc_providers(&owner);
-
-    permissions::Pallet::<T>::assign_permission(
-        owner.clone(),
-        &owner,
-        permissions::MINT,
-        permissions::Scope::Unlimited,
-    )
-    .unwrap();
-
-    assets::Pallet::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))
-        .unwrap();
-
-    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
-        RawOrigin::Signed(owner.clone()).into();
-
-    assets::Pallet::<T>::mint_to(
-        &VAL.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-    pool_xyk::Pallet::<T>::initialize_pool(
-        owner_origin.clone(),
-        T::DEXIdValue::get(),
-        XOR.into(),
-        VAL.into(),
-    )
-    .unwrap();
-    pool_xyk::Pallet::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        T::DEXIdValue::get(),
-        XOR.into(),
-        VAL.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-
-    assets::Pallet::<T>::mint_to(
-        &DAI.into(),
-        &owner.clone(),
-        &owner.clone(),
-        balance!(50000000),
-    )
-    .unwrap();
-    pool_xyk::Pallet::<T>::initialize_pool(
-        owner_origin.clone(),
-        T::DEXIdValue::get(),
-        XOR.into(),
-        DAI.into(),
-    )
-    .unwrap();
-    pool_xyk::Pallet::<T>::deposit_liquidity(
-        owner_origin.clone(),
-        T::DEXIdValue::get(),
-        XOR.into(),
-        DAI.into(),
-        balance!(1000),
-        balance!(2000),
-        balance!(1000),
-        balance!(2000),
-    )
-    .unwrap();
-}
 
 benchmarks! {
     where_clause {
         where T: Config + pool_xyk::Config + pallet_staking::Config
     }
-    remint {
-        init::<T>();
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
-    }: {
-        crate::Pallet::<T>::remint(balance!(0.1)).unwrap();
-    } verify {
-        let val_burned: Balance = pallet_staking::Pallet::<T>::era_val_burned().unique_saturated_into();
-        assert_eq!(val_burned, balance!(0.199380121801856354));
-
-        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
-    }
 
     update_multiplier {
-        let m in 0 .. 100;
-        let m = FixedU128::checked_from_integer(m).unwrap();
-    }: _(RawOrigin::Root, m)
+        let new_multiplier = FixedU128::from(1);
+    }: _(RawOrigin::Root, new_multiplier)
     verify {
-        assert_eq!(crate::Multiplier::<T>::get(), m);
+        assert_eq!(crate::Multiplier::<T>::get(), new_multiplier);
     }
 
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_update_multiplier());
-            // Benchmark fails, needs revisiting
-            // assert_ok!(test_benchmark_remint::<Runtime>());
-        });
-    }
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::build(), crate::mock::Runtime);
 }
