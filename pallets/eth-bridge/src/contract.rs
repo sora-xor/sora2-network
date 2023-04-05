@@ -36,6 +36,7 @@ use once_cell::race::OnceBox;
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
 
+/// Avoid of Contract struct never used warning
 #[allow(dead_code)]
 pub mod eth_bridge_contract {
     use alloc::string::String;

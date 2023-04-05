@@ -50,19 +50,19 @@ fn weight_to_fee_works() {
     ext.execute_with(|| {
         set_weight_to_fee_multiplier(1);
         assert_eq!(
-            XorFee::weight_to_fee(&Weight::from_ref_time(100_000_000_000)),
+            XorFee::weight_to_fee(&Weight::from_parts(100_000_000_000, 0)),
             balance!(0.7)
         );
         assert_eq!(
-            XorFee::weight_to_fee(&Weight::from_ref_time(500_000_000)),
+            XorFee::weight_to_fee(&Weight::from_parts(500_000_000, 0)),
             balance!(0.0035)
         );
         assert_eq!(
-            XorFee::weight_to_fee(&Weight::from_ref_time(72_000_000)),
+            XorFee::weight_to_fee(&Weight::from_parts(72_000_000, 0)),
             balance!(0.000504)
         );
         assert_eq!(
-            XorFee::weight_to_fee(&Weight::from_ref_time(210_200_000_000)),
+            XorFee::weight_to_fee(&Weight::from_parts(210_200_000_000, 0)),
             balance!(1.4714)
         );
     });
