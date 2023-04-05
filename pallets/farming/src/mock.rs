@@ -106,7 +106,7 @@ pub const DEX_B_ID: DEXId = 1;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
@@ -122,7 +122,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([13; 32]);
     pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([14; 32]);
     pub GetCrowdloanRewardsAccountId: AccountId = AccountId32::from([15; 32]);
-    pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const MinimumPeriod: u64 = 5;
 }
 

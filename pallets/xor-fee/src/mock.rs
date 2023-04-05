@@ -107,7 +107,7 @@ parameter_types! {
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
     };
-    pub OffchainSolutionWeightLimit: Weight = Weight::from_ref_time(600_000_000);
+    pub OffchainSolutionWeightLimit: Weight = Weight::from_parts(600_000_000, 0);
     pub GetXorFeeTechAccountId: TechAccountId = {
         TechAccountId::Generic(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -124,7 +124,7 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub RemoveTemporaryPeerAccountId: Vec<(AccountId, H160)> = Vec::new();
-    pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;

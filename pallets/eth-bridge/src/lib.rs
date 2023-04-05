@@ -191,7 +191,7 @@ pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
 pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: Weight =
-    Weight::from_ref_time(10_000_000_000_000_000u64);
+    Weight::from_parts(10_000_000_000_000_000u64, 0);
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
 /// Minimum peers required to start bridge migration
