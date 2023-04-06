@@ -36,12 +36,12 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn enable_liquidity_source() -> Weight {
-        Weight::from_ref_time(21_575_000)
+        Weight::from_parts(21_575_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
     fn disable_liquidity_source() -> Weight {
-        Weight::from_ref_time(20_003_000)
+        Weight::from_parts(20_003_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }

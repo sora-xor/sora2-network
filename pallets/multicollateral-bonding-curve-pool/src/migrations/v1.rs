@@ -7,6 +7,8 @@ use frame_support::{
     pallet_prelude::StorageVersion,
     traits::GetStorageVersion as _,
 };
+#[cfg(feature = "try-runtime")]
+use sp_std::prelude::*;
 
 pub struct InitializeXSTPool<T>(core::marker::PhantomData<T>);
 
@@ -36,16 +38,16 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<(), &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 0,
             "must upgrade linearly"
         );
-        Ok(())
+        Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade() -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 1,
             "should be upgraded to version 1"

@@ -1881,6 +1881,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
+ "env_logger 0.9.3",
  "fixnum",
  "frame-support",
  "frame-system",
@@ -13682,6 +13683,7 @@ source = "git+https://github.com/sora-xor/substrate.git?branch=polkadot-v0.9.38#
 dependencies = [
  "clap 4.2.1",
  "frame-remote-externalities",
+ "frame-try-runtime",
  "hex",
  "log",
  "parity-scale-codec",

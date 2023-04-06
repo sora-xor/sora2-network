@@ -32,6 +32,8 @@
 
 extern crate core;
 
+use core::marker::PhantomData;
+
 use codec::{Decode, Encode};
 
 use assets::AssetIdOf;
@@ -39,8 +41,8 @@ use assets::WeightInfo as _;
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    balance, fixed_wrapper, AccountIdOf, DEXInfo, DexIdOf, FilterMode, Fixed, GetMarketInfo,
-    GetPoolReserves, LiquidityProxyTrait, LiquidityRegistry, LiquiditySource,
+    balance, fixed_wrapper, AccountIdOf, BuyBackHandler, DEXInfo, DexIdOf, FilterMode, Fixed,
+    GetMarketInfo, GetPoolReserves, LiquidityProxyTrait, LiquidityRegistry, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
     VestedRewardsPallet, XSTUSD,
 };
@@ -2070,6 +2072,48 @@ pub struct SwapBatchInfo<AssetId, DEXId, AccountId> {
 impl<AssetId, DEXId, AccountId> SwapBatchInfo<AssetId, DEXId, AccountId> {
     pub fn len(&self) -> usize {
         self.receivers.len()
+    }
+}
+
+pub struct LiquidityProxyBuyBackHandler<T, GetDEXId>(PhantomData<(T, GetDEXId)>);
+
+impl<T: Config, GetDEXId: Get<T::DEXId>> BuyBackHandler<T::AccountId, T::AssetId>
+    for LiquidityProxyBuyBackHandler<T, GetDEXId>
+{
+    fn mint_buy_back_and_burn(
+        mint_asset_id: &T::AssetId,
+        buy_back_asset_id: &T::AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let owner = assets::Pallet::<T>::asset_owner(&mint_asset_id)
+            .ok_or(assets::Error::<T>::AssetIdNotExists)?;
+        let transit = T::GetTechnicalAccountId::get();
+        assets::Pallet::<T>::mint_to(mint_asset_id, &owner, &transit, amount)?;
+        let amount = Self::buy_back_and_burn(&transit, mint_asset_id, buy_back_asset_id, amount)?;
+        Ok(amount)
+    }
+
+    fn buy_back_and_burn(
+        account_id: &T::AccountId,
+        asset_id: &T::AssetId,
+        buy_back_asset_id: &T::AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let dex_id = GetDEXId::get();
+        let outcome = Pallet::<T>::exchange(
+            dex_id,
+            account_id,
+            account_id,
+            asset_id,
+            buy_back_asset_id,
+            SwapAmount::with_desired_input(amount, 0),
+            LiquiditySourceFilter::with_forbidden(
+                dex_id,
+                vec![LiquiditySourceType::MulticollateralBondingCurvePool],
+            ),
+        )?;
+        assets::Pallet::<T>::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
+        Ok(outcome.amount)
     }
 }
 
