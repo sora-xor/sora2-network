@@ -30,7 +30,183 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use common::{balance, PriceVariant, VAL, XOR};
+use frame_support::{assert_err, assert_ok};
+use framenode_chain_spec::ext;
+use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::{order_book, Runtime};
+
+type OrderBook = Pallet<Runtime>;
+
+fn alice() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
+}
+
+type E = order_book::Error<Runtime>;
+
 #[test]
-fn fail() {
-    assert_eq!(0, 1);
+fn insert_limit_order_success() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_id = 1;
+        let owner = alice();
+        let price = balance!(12);
+
+        let order = LimitOrder::<Runtime> {
+            id: order_id,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            order
+        );
+        assert_eq!(
+            OrderBook::prices(order_book_id, price).unwrap(),
+            vec![order_id]
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            vec![order_id]
+        );
+    });
+}
+
+#[test]
+fn insert_limit_order_fail() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_id = 1;
+        let owner = alice();
+        let price = balance!(12);
+
+        let order = LimitOrder::<Runtime> {
+            id: order_id,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        // Take actual values from `impl order_book::Config for Runtime`
+        // =min(MaxOpenedLimitOrdersForAllOrderBooksPerUser, MaxLimitOrdersForPrice)
+        let max = 10000;
+
+        for _ in 0..max {
+            assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));
+        }
+
+        // Error if storage overflow
+        assert_err!(
+            OrderBook::insert_limit_order(&order_book_id, &order),
+            E::InsertLimitOrderError
+        );
+    });
+}
+
+#[test]
+fn delete_limit_order_success() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_id1 = 1;
+        let order_id2 = 2;
+        let owner = alice();
+        let price = balance!(12);
+
+        let order1 = LimitOrder::<Runtime> {
+            id: order_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order2 = LimitOrder::<Runtime> {
+            id: order_id2,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order1));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order2));
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_id1).unwrap(),
+            order1
+        );
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_id2).unwrap(),
+            order2
+        );
+        assert_eq!(
+            OrderBook::prices(order_book_id, price).unwrap(),
+            vec![order_id1, order_id2]
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_id1, order_id2]
+        );
+
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id1));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_id1), None);
+        assert_eq!(
+            OrderBook::prices(order_book_id, price).unwrap(),
+            vec![order_id2]
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_id2]
+        );
+
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id2));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_id2), None);
+        assert_eq!(OrderBook::prices(order_book_id, price), None);
+        assert_eq!(OrderBook::user_limit_orders(&owner, order_book_id), None);
+    });
+}
+
+#[test]
+fn delete_limit_order_fail() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_id = 1;
+
+        assert_err!(
+            OrderBook::delete_limit_order(&order_book_id, order_id),
+            E::DeleteLimitOrderError
+        );
+    });
 }

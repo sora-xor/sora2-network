@@ -33,7 +33,7 @@ use common::PriceVariant;
 use core::fmt::Debug;
 
 /// GTC Limit Order
-#[derive(Encode, Decode, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct LimitOrder<T>
 where

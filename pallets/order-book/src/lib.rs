@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-//#![cfg(feature = "wip")] // order-book // todo (m.tagirov)
 
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
@@ -52,9 +51,9 @@ mod limit_order;
 mod market_order;
 mod order_book;
 
-use crate::order_book::{OrderBook, OrderBookStatus};
-use limit_order::LimitOrder;
-use market_order::MarketOrder;
+pub use crate::order_book::{OrderBook, OrderBookStatus};
+pub use limit_order::LimitOrder;
+pub use market_order::MarketOrder;
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
@@ -303,7 +302,7 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn insert_limit_order(
+    pub fn insert_limit_order(
         order_book_id: &OrderBookId<T>,
         order: &LimitOrder<T>,
     ) -> Result<(), DispatchError> {
@@ -324,7 +323,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn delete_limit_order(
+    pub fn delete_limit_order(
         order_book_id: &OrderBookId<T>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
