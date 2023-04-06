@@ -42,6 +42,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn update_orderbook() -> Weight {
         Weight::zero()
     }
+    fn change_orderbook_status() -> Weight {
+        Weight::zero()
+    }
     fn place_limit_order() -> Weight {
         Weight::zero()
     }

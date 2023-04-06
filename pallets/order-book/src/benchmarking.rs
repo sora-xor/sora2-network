@@ -31,24 +31,21 @@
 //! Benchmarking setup for order-book
 
 #![cfg(feature = "runtime-benchmarks")]
+#![cfg(feature = "wip")] // order-book
 
 use super::*;
+use crate::Pallet as OrderBook;
 
-#[allow(unused)]
-use crate::Pallet as Template;
-use frame_benchmarking::{benchmarks, whitelisted_caller};
-use frame_system::RawOrigin;
+use frame_benchmarking::benchmarks;
 
 benchmarks! {
-    fail {
-        // todo
+
+    abcd {
     }: {
-        #[cfg(feature = "wip")] // order-book
         assert_eq!(0, 1);
     }
     verify {
-        // todo
     }
 
-    impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
+    impl_benchmark_test_suite!(OrderBook, framenode_chain_spec::ext(), framenode_runtime::Runtime);
 }

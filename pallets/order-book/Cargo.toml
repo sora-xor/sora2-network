@@ -14,49 +14,52 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
 	"derive",
 ] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = { version = "0.3.1", optional = true }
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-dex-api = { path = "../dex-api", default-features = false }
-liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
-permissions = { path = "../permissions", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
-price-tools = { path = "../price-tools", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = "0.3.1"
-framenode-chain-spec = { path = "../../node/chain_spec", features = ["test"] }
+framenode-chain-spec = { path = "../../node/chain_spec", features = [
+	"test",
+	"wip",
+] }
 framenode-runtime = { path = "../../runtime", default-features = false, features = [
-    "std",
-    "private-net",
-    "wip",
-    "ready-to-test",
+	"std",
+	"wip",
 ] }
 
 [features]
 default = ["std"]
 std = [
+	"assets/std",
+	"common/std",
 	"codec/std",
-	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-timestamp/std",
 	"scale-info/std",
 	"sp-runtime/std",
-	'sp-std/std',
+	"sp-std/std",
+	"technical/std",
+	"trading-pair/std",
 ]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks", "hex-literal"]
+
+runtime-benchmarks = [
+	"frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]
+
 try-runtime = ["frame-support/try-runtime"]
-private-net = ["framenode-chain-spec/private-net"]
+
+wip = []

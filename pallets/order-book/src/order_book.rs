@@ -45,7 +45,7 @@ pub enum OrderBookStatus {
 #[scale_info(skip_type_params(T))]
 pub struct OrderBook<T>
 where
-    T: crate::Config + frame_system::Config + assets::Config + pallet_timestamp::Config,
+    T: crate::Config,
 {
     pub order_book_id: crate::OrderBookId<T>,
     pub dex_id: T::DEXId,

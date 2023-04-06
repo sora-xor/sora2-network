@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+//#![cfg(feature = "wip")] // order-book // todo (m.tagirov)
 
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
@@ -37,6 +38,7 @@ use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+use sp_std::vec::Vec;
 
 pub mod weights;
 
@@ -50,7 +52,7 @@ mod limit_order;
 mod market_order;
 mod order_book;
 
-use crate::order_book::OrderBook;
+use crate::order_book::{OrderBook, OrderBookStatus};
 use limit_order::LimitOrder;
 use market_order::MarketOrder;
 
@@ -58,6 +60,7 @@ pub trait WeightInfo {
     fn create_orderbook() -> Weight;
     fn delete_orderbook() -> Weight;
     fn update_orderbook() -> Weight;
+    fn change_orderbook_status() -> Weight;
     fn place_limit_order() -> Weight;
     fn cancel_limit_order() -> Weight;
     fn quote() -> Weight;
@@ -72,6 +75,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn update_orderbook() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn change_orderbook_status() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn place_limit_order() -> Weight {
@@ -92,6 +98,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+    use super::*;
     use common::TradingPair;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
@@ -99,11 +106,9 @@ pub mod pallet {
     };
     use frame_system::pallet_prelude::*;
 
-    use super::*;
-
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(_);
+    pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
@@ -124,21 +129,19 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
+        type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
+        type MaxLimitOrdersForPrice: Get<u32>;
         type WeightInfo: WeightInfo;
     }
 
     pub type OrderBookId<T> = TradingPair<<T as assets::Config>::AssetId>;
 
-    // todo (m.tagirov): remove unbounded
-
     #[pallet::storage]
-    #[pallet::unbounded]
     #[pallet::getter(fn order_books)]
     pub type OrderBooks<T: Config> =
         StorageMap<_, Blake2_128Concat, OrderBookId<T>, OrderBook<T>, OptionQuery>;
 
     #[pallet::storage]
-    #[pallet::unbounded]
     #[pallet::getter(fn limit_orders)]
     pub type LimitOrders<T: Config> = StorageDoubleMap<
         _,
@@ -151,7 +154,6 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    #[pallet::unbounded]
     #[pallet::getter(fn prices)]
     pub type Prices<T: Config> = StorageDoubleMap<
         _,
@@ -159,12 +161,11 @@ pub mod pallet {
         OrderBookId<T>,
         Blake2_128Concat,
         T::Balance,
-        Vec<T::OrderId>,
+        BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
 
     #[pallet::storage]
-    #[pallet::unbounded]
     #[pallet::getter(fn user_limit_orders)]
     pub type UserLimitOrders<T: Config> = StorageDoubleMap<
         _,
@@ -172,7 +173,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_128Concat,
         OrderBookId<T>,
-        Vec<T::OrderId>,
+        BoundedVec<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
         OptionQuery,
     >;
 
@@ -198,8 +199,12 @@ pub mod pallet {
         UnknownOrderBook,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
+        /// Cannot insert the limit order
+        InsertLimitOrderError,
         /// Cannot delete the limit order
         DeleteLimitOrderError,
+        /// There is not enough liquidity in the order book to cover the deal
+        NotEnoughLiquidity,
     }
 
     #[pallet::call]
@@ -254,7 +259,17 @@ pub mod pallet {
             todo!()
         }
 
-        // todo change_orderbook_status
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
+        pub fn change_orderbook_status(
+            origin: OriginFor<T>,
+            _order_book_id: OrderBookId<T>,
+            _status: OrderBookStatus,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            // todo (m.tagirov)
+            todo!()
+        }
 
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
@@ -288,17 +303,25 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn insert_limit_order(order_book_id: &OrderBookId<T>, order: &LimitOrder<T>) {
+    fn insert_limit_order(
+        order_book_id: &OrderBookId<T>,
+        order: &LimitOrder<T>,
+    ) -> Result<(), DispatchError> {
         <LimitOrders<T>>::insert(order_book_id, order.id, order);
 
         let mut prices = <Prices<T>>::try_get(order_book_id, order.price).unwrap_or_default();
-        prices.push(order.id);
+        prices
+            .try_push(order.id)
+            .map_err(|_| Error::<T>::InsertLimitOrderError)?;
         <Prices<T>>::set(order_book_id, order.price, Some(prices));
 
         let mut user_orders =
             <UserLimitOrders<T>>::try_get(&order.owner, order_book_id).unwrap_or_default();
-        user_orders.push(order.id);
+        user_orders
+            .try_push(order.id)
+            .map_err(|_| Error::<T>::InsertLimitOrderError)?;
         <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
+        Ok(())
     }
 
     fn delete_limit_order(
@@ -326,6 +349,24 @@ impl<T: Config> Pallet<T> {
             <Prices<T>>::set(order_book_id, order.price, Some(prices));
         }
         Ok(())
+    }
+
+    fn lock_liquidity(
+        _account: &T::AccountId,
+        _asset: &T::AssetId,
+        _amount: T::Balance,
+    ) -> Result<(), DispatchError> {
+        // todo (m.tagirov)
+        todo!()
+    }
+
+    fn unlock_liquidity(
+        _account: &T::AccountId,
+        _asset: &T::AssetId,
+        _amount: T::Balance,
+    ) -> Result<(), DispatchError> {
+        // todo (m.tagirov)
+        todo!()
     }
 }
 

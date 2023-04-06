@@ -1943,6 +1943,17 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
 }
 
+#[cfg(feature = "wip")] // order-book
+impl order_book::Config for Runtime {
+    const MAX_ORDER_LIFETIME: Moment = 2_592_000_000; // 30 days
+    const MAX_OPENED_LIMIT_ORDERS_COUNT: u32 = 100;
+    type RuntimeEvent = RuntimeEvent;
+    type OrderId = u128;
+    type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>;
+    type MaxLimitOrdersForPrice = ConstU32<10000>;
+    type WeightInfo = order_book::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
@@ -2217,6 +2228,9 @@ construct_runtime! {
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
+
+        #[cfg(feature = "wip")] // order-book
+        OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 56,
 
         // Trustless ethereum bridge
         Mmr: pallet_mmr::{Pallet, Storage} = 90,
@@ -2962,6 +2976,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPool);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
+            #[cfg(feature = "wip")] // order-book
+            list_benchmark!(list, extra, order_book, OrderBook);
+
             // Trustless bridge
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
@@ -3038,6 +3055,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xst, XSTPool);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
+
+            #[cfg(feature = "wip")] // order-book
+            add_benchmark!(params, batches, order_book, OrderBook);
 
             // Trustless bridge
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);

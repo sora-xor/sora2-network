@@ -35,7 +35,7 @@ use core::fmt::Debug;
 #[derive(Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Clone, Debug)]
 pub struct MarketOrder<T>
 where
-    T: crate::Config + frame_system::Config + assets::Config + pallet_timestamp::Config,
+    T: crate::Config,
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
