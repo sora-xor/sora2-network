@@ -4509,6 +4509,7 @@ dependencies = [
  "framenode-runtime",
  "hex-literal",
  "iroha-migration",
+ "order-book",
  "pallet-multisig 3.2.3",
  "parity-scale-codec",
  "permissions",

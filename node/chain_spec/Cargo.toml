@@ -30,6 +30,7 @@ common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
 framenode-runtime = { path = "../../runtime" }
 iroha-migration = { path = "../../pallets/iroha-migration" }
+order-book = { path = "../../pallets/order-book" }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }

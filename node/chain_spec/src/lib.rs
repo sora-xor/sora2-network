@@ -932,6 +932,15 @@ fn testnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    let order_book_lock_tech_account_id = TechAccountId::Generic(
+        order_book::TECH_ACCOUNT_PREFIX.to_vec(),
+        order_book::TECH_ACCOUNT_LOCK.to_vec(),
+    );
+    let order_book_lock_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+        &order_book_lock_tech_account_id,
+    )
+    .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -986,6 +995,10 @@ fn testnet_genesis(
         (
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
+        ),
+        (
+            order_book_lock_account_id.clone(),
+            order_book_lock_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
