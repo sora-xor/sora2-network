@@ -94,22 +94,21 @@ pub use pallet::*;
 
 impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
-        let option_rate = Self::rates(symbol);
-        if let Some(rate) = option_rate {
-            let current_time = T::UnixTime::now().as_millis().saturated_into::<u64>();
-            let stale_period = T::GetBandRateStalePeriod::get();
-            let current_period = current_time
-                .checked_sub(rate.last_updated)
-                .ok_or(Error::<T, I>::RateHasInvalidTimestamp)?;
-            sp_std::if_std! {
-                println!("current_time: {}; current_period: {}", current_time, current_period);
-            }
-            ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
-
-            Ok(Some(rate.into()))
+        let rate = if let Some(rate) = Self::rates(symbol) {
+            rate
         } else {
-            Ok(None)
+            return Ok(None);
+        };
+        let current_time = T::UnixTime::now().as_millis().saturated_into::<u64>();
+        let stale_period = T::GetBandRateStalePeriod::get();
+        let current_period = current_time
+            .checked_sub(rate.last_updated)
+            .ok_or(Error::<T, I>::RateHasInvalidTimestamp)?;
+        sp_std::if_std! {
+            println!("current_time: {}; current_period: {}", current_time, current_period);
         }
+        ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
+        Ok(Some(rate.into()))
     }
 
     fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
