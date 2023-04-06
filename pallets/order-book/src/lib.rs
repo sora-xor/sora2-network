@@ -36,6 +36,7 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{Balance, LiquiditySource, PriceVariant, RewardReason};
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
 use sp_std::vec::Vec;
@@ -55,6 +56,9 @@ mod order_book;
 use crate::order_book::{OrderBook, OrderBookStatus};
 use limit_order::LimitOrder;
 use market_order::MarketOrder;
+
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"order-book";
+pub const TECH_ACCOUNT_LOCK: &[u8] = b"lock";
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
@@ -111,7 +115,9 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+    {
         const MAX_ORDER_LIFETIME: Self::Moment;
         const MAX_OPENED_LIMIT_ORDERS_COUNT: u32;
 
@@ -131,6 +137,7 @@ pub mod pallet {
             + scale_info::TypeInfo;
         type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
+        type LockTechAccountId: Get<Self::TechAccountId>;
         type WeightInfo: WeightInfo;
     }
 
@@ -352,21 +359,19 @@ impl<T: Config> Pallet<T> {
     }
 
     fn lock_liquidity(
-        _account: &T::AccountId,
-        _asset: &T::AssetId,
-        _amount: T::Balance,
+        account: &T::AccountId,
+        asset: &T::AssetId,
+        amount: Balance,
     ) -> Result<(), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        technical::Pallet::<T>::transfer_in(asset, account, &T::LockTechAccountId::get(), amount)
     }
 
     fn unlock_liquidity(
-        _account: &T::AccountId,
-        _asset: &T::AssetId,
-        _amount: T::Balance,
+        account: &T::AccountId,
+        asset: &T::AssetId,
+        amount: Balance,
     ) -> Result<(), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        technical::Pallet::<T>::transfer_out(asset, &T::LockTechAccountId::get(), account, amount)
     }
 }
 
