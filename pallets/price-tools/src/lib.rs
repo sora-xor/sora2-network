@@ -149,7 +149,7 @@ pub mod pallet {
         + pool_xyk::Config
         + trading_pair::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type WeightInfo: WeightInfo;
     }

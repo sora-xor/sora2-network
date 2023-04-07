@@ -9,7 +9,10 @@ import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-solhint";
 import "hardhat-deploy";
+import "hardhat-deploy-ethers";
+import '@typechain/hardhat';
 import { HardhatUserConfig, task } from "hardhat/config";
 
 const getenv = (name: string) => {
@@ -29,6 +32,21 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       throwOnTransactionFailures: true,
+      mining: {
+        auto: true,
+        interval: 1000,
+      }
+    },
+    docker: {
+      url: "http://bridge-geth:8545",
+      chainId: 4224,
+      accounts: ["21754896455c7e745e7f14d4f7782bbdf7769a0539b2fe8682fa0a2e13f37075"],
+      verify: {
+        etherscan: {
+          apiUrl: "http://bridge-blockscout:4000",
+          apiKey: "a"
+        }
+      }
     },
     ganache: {
       url: "http://127.0.0.1:8545",
@@ -46,10 +64,10 @@ const config: HardhatUserConfig = {
       chainId: 3,
       url: `https://ropsten.infura.io/v3/${infuraKey}`,
       accounts: [ropstenPrivateKey],
-    }
+    },
   },
   solidity: {
-    version: "0.8.13"
+    version: "0.8.15"
   },
   paths: {
     sources: "contracts",
@@ -62,8 +80,13 @@ const config: HardhatUserConfig = {
     timeout: 60000
   },
   etherscan: {
-    apiKey: etherscanKey
-  }
+    apiKey: {"mainnet": etherscanKey},
+  },
+  typechain: {
+    outDir: './typechain',
+    target: 'ethers-v5',
+    dontOverrideCompile: false,
+  },
 };
 
 task("contracts", "List of contracts").setAction(contracts.main);

@@ -963,7 +963,7 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum PriceVariant {
     Buy,
     Sell,

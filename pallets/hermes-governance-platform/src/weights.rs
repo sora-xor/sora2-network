@@ -42,9 +42,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	// Storage: HermesGovernancePlatform HermesVotings (r:1 w:1)
 	// Storage: System Account (r:2 w:1)
 	fn vote() -> Weight {
-		(92_900_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+		Weight::zero()
 	}
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: HermesGovernancePlatform MinimumHermesAmountForCreatingPoll (r:1 w:0)
@@ -52,9 +50,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	// Storage: System Account (r:2 w:1)
 	// Storage: HermesGovernancePlatform HermesPollData (r:0 w:1)
 	fn create_poll() -> Weight {
-		(85_200_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+		Weight::zero()
 	}
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: HermesGovernancePlatform HermesPollData (r:1 w:0)
@@ -62,32 +58,24 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_funds_voter() -> Weight {
-		(69_900_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::zero()
 	}
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: HermesGovernancePlatform HermesPollData (r:1 w:1)
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_funds_creator() -> Weight {
-		(56_700_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::zero()
 	}
 	// Storage: HermesGovernancePlatform AuthorityAccount (r:1 w:0)
 	// Storage: HermesGovernancePlatform MinimumHermesVotingAmount (r:0 w:1)
 	fn change_min_hermes_for_voting() -> Weight {
-		(18_100_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::zero()
 	}
 	// Storage: HermesGovernancePlatform AuthorityAccount (r:1 w:0)
 	// Storage: HermesGovernancePlatform MinimumHermesAmountForCreatingPoll (r:0 w:1)
 	fn change_min_hermes_for_creating_poll() -> Weight {
-		(18_300_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::zero()
 	}
 }
 

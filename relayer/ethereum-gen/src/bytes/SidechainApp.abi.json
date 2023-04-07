@@ -2,38 +2,14 @@
   {
     "inputs": [
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SidechainApp.Channel",
-        "name": "_basic",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "inboundChannel",
+        "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "inbound",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "outbound",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SidechainApp.Channel",
-        "name": "_incentivized",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "outboundChannel",
+        "type": "address"
       },
       {
         "internalType": "address",
@@ -210,25 +186,37 @@
   {
     "inputs": [
       {
-        "internalType": "enum ChannelId",
-        "name": "",
-        "type": "uint8"
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
       }
     ],
-    "name": "channels",
-    "outputs": [
+    "name": "addTokenToWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
-        "internalType": "address",
-        "name": "inbound",
-        "type": "address"
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
       },
       {
-        "internalType": "address",
-        "name": "outbound",
-        "type": "address"
+        "internalType": "string",
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "sidechainAssetId",
+        "type": "bytes32"
       }
     ],
-    "stateMutability": "view",
+    "name": "createNewToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -293,54 +281,16 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "inbound",
+    "outputs": [
       {
         "internalType": "address",
-        "name": "_token",
+        "name": "",
         "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_recipient",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum ChannelId",
-        "name": "_channelId",
-        "type": "uint8"
       }
     ],
-    "name": "lock",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "sidechainAssetId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registerAsset",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -349,11 +299,34 @@
         "internalType": "address",
         "name": "token",
         "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "recipient",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       }
     ],
-    "name": "registerExistingAsset",
+    "name": "lock",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "outbound",
+    "outputs": [
+      {
+        "internalType": "contract IOutboundChannel",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -434,22 +407,22 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_token",
+        "name": "token",
         "type": "address"
       },
       {
         "internalType": "bytes32",
-        "name": "_sender",
+        "name": "sender",
         "type": "bytes32"
       },
       {
         "internalType": "address",
-        "name": "_recipient",
+        "name": "recipient",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "_amount",
+        "name": "amount",
         "type": "uint256"
       }
     ],

@@ -56,7 +56,6 @@
 
 use core::marker::PhantomData;
 
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
@@ -65,14 +64,10 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn migrate() -> Weight {
-        (719_816_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+        Weight::zero()
     }
     fn on_initialize() -> Weight {
-        (147_492_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(11 as Weight))
-            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+        Weight::zero()
     }
 }
 

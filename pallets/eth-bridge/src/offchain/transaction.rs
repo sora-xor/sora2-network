@@ -56,7 +56,7 @@ use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
-type Call<T> = <T as Config>::Call;
+type Call<T> = <T as Config>::RuntimeCall;
 
 /// Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in
 /// finalized blocks.
@@ -177,7 +177,7 @@ impl<T: Config> Pallet<T> {
     pub(crate) fn send_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<LocalCall>,
-        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
+        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
     {
         let signer = Self::get_signer()?;
         debug!("Sending signed transaction: {}", call.get_call_name());
@@ -214,11 +214,11 @@ impl<T: Config> Pallet<T> {
         let call = if threshold == 1 {
             bridge_multisig::Call::as_multi_threshold_1 {
                 id: bridge_account,
-                call: Box::new(<<T as Config>::Call>::from(call)),
+                call: Box::new(<<T as Config>::RuntimeCall>::from(call)),
                 timepoint,
             }
         } else {
-            let vec = <<T as Config>::Call>::from(call).encode();
+            let vec = <<T as Config>::RuntimeCall>::from(call).encode();
             bridge_multisig::Call::as_multi {
                 id: bridge_account,
                 maybe_timepoint: Some(timepoint),
@@ -285,7 +285,7 @@ impl<T: Config> Pallet<T> {
         added_to_pool: bool,
     ) where
         T: CreateSignedTransaction<LocalCall>,
-        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
+        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
     {
         let s_signed_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
         let mut transactions = s_signed_txs

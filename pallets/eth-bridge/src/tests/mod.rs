@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::offchain::SignatureParams;
 use crate::requests::{
     IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, RequestStatus,
@@ -5,9 +35,8 @@ use crate::requests::{
 use crate::tests::mock::*;
 use crate::util::majority;
 use common::eth;
-use frame_support::dispatch::DispatchErrorWithPostInfo;
-use frame_support::weights::Pays;
-use frame_support::{assert_err, assert_ok, ensure};
+use frame_support::dispatch::{Pays, PostDispatchInfo};
+use frame_support::{assert_ok, ensure};
 
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};
@@ -15,6 +44,7 @@ use std::collections::BTreeSet;
 
 mod asset;
 mod cancel;
+mod ethabi;
 mod incoming_transfer;
 pub mod mock;
 mod ocw;
@@ -25,6 +55,16 @@ pub(crate) type Error = crate::Error<Runtime>;
 pub(crate) type Assets = assets::Pallet<Runtime>;
 
 pub const ETH_NETWORK_ID: u32 = 0;
+
+pub(crate) fn assert_last_event<T: crate::Config>(
+    generic_event: <T as crate::Config>::RuntimeEvent,
+) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
+    // compare to the last event record
+    let frame_system::EventRecord { event, .. } = &events.last().expect("Event expected");
+    assert_eq!(event, &system_event);
+}
 
 fn get_signature_params(
     signature: &(secp256k1::Signature, secp256k1::RecoveryId),
@@ -38,7 +78,7 @@ fn get_signature_params(
     params
 }
 
-pub fn last_event() -> Option<Event> {
+pub fn last_event() -> Option<RuntimeEvent> {
     frame_system::Pallet::<Runtime>::events()
         .pop()
         .map(|x| x.event)
@@ -52,7 +92,7 @@ pub fn approve_request(
     state: &State,
     request: OutgoingRequest<Runtime>,
     request_hash: H256,
-) -> Result<(), Option<Event>> {
+) -> Result<(), Option<RuntimeEvent>> {
     let encoded = request.to_eth_abi(request_hash).unwrap();
     System::reset_events();
     let net_id = request.network_id();
@@ -74,7 +114,7 @@ pub fn approve_request(
         let current_status = crate::RequestStatuses::<Runtime>::get(net_id, &request_hash).unwrap();
         ensure!(
             EthBridge::approve_request(
-                Origin::signed(account_id.clone()),
+                RuntimeOrigin::signed(account_id.clone()),
                 ecdsa::Public::from_raw(public.serialize_compressed()),
                 request_hash,
                 signature_params,
@@ -85,7 +125,7 @@ pub fn approve_request(
         );
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
-                Event::EthBridge(bridge_event) => match bridge_event {
+                RuntimeEvent::EthBridge(bridge_event) => match bridge_event {
                     crate::Event::ApprovalsCollected(h) => {
                         assert_eq!(h, request_hash);
                     }
@@ -94,7 +134,7 @@ pub fn approve_request(
                             crate::RequestsQueue::<Runtime>::get(net_id).last(),
                             Some(&request_hash)
                         );
-                        return Err(Some(Event::EthBridge(e)));
+                        return Err(Some(RuntimeEvent::EthBridge(e)));
                     }
                 },
                 e => panic!("Unexpected event: {:?}", e),
@@ -129,7 +169,7 @@ pub fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H
 pub fn approve_last_request(
     state: &State,
     net_id: u32,
-) -> Result<(OutgoingRequest<Runtime>, H256), Option<Event>> {
+) -> Result<(OutgoingRequest<Runtime>, H256), Option<RuntimeEvent>> {
     let (outgoing_request, hash) = last_outgoing_request(net_id).ok_or(None)?;
     approve_request(state, outgoing_request.clone(), hash)?;
     Ok((outgoing_request, hash))
@@ -138,7 +178,7 @@ pub fn approve_last_request(
 pub fn approve_next_request(
     state: &State,
     net_id: u32,
-) -> Result<(OutgoingRequest<Runtime>, H256), Option<Event>> {
+) -> Result<(OutgoingRequest<Runtime>, H256), Option<RuntimeEvent>> {
     let request_hash = crate::RequestsQueue::<Runtime>::get(net_id).remove(0);
     let (outgoing_request, hash) = crate::Requests::<Runtime>::get(net_id, request_hash)
         .ok_or(None)?
@@ -153,9 +193,9 @@ pub fn request_incoming(
     tx_hash: H256,
     kind: IncomingRequestKind,
     net_id: u32,
-) -> Result<H256, Event> {
+) -> Result<H256, RuntimeEvent> {
     assert_ok!(EthBridge::request_from_sidechain(
-        Origin::signed(account_id),
+        RuntimeOrigin::signed(account_id),
         tx_hash,
         kind,
         net_id
@@ -176,7 +216,7 @@ pub fn request_incoming(
 pub fn assert_incoming_request_done(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
-) -> Result<(), Option<Event>> {
+) -> Result<(), Option<RuntimeEvent>> {
     let net_id = incoming_request.network_id();
     let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
     let sidechain_req_hash = incoming_request.hash();
@@ -188,7 +228,7 @@ pub fn assert_incoming_request_done(
         sidechain_req_hash.0
     );
     assert_ok!(EthBridge::register_incoming_request(
-        Origin::signed(bridge_acc_id.clone()),
+        RuntimeOrigin::signed(bridge_acc_id.clone()),
         incoming_request.clone(),
     ));
     let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, sidechain_req_hash);
@@ -208,7 +248,7 @@ pub fn assert_incoming_request_done(
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
-        Origin::signed(bridge_acc_id.clone()),
+        RuntimeOrigin::signed(bridge_acc_id.clone()),
         req_hash,
         net_id,
     ));
@@ -224,7 +264,7 @@ pub fn assert_incoming_request_registration_failed(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
     error: crate::Error<Runtime>,
-) -> Result<(), Event> {
+) -> Result<(), RuntimeEvent> {
     let net_id = incoming_request.network_id();
     let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
     assert_eq!(
@@ -234,15 +274,20 @@ pub fn assert_incoming_request_registration_failed(
             .0,
         incoming_request.hash().0
     );
-    assert_err!(
+    assert_ok!(
         EthBridge::register_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_request.clone(),
         ),
-        DispatchErrorWithPostInfo {
-            post_info: Pays::No.into(),
-            error: error.into()
+        PostDispatchInfo {
+            pays_fee: Pays::No.into(),
+            actual_weight: None
         }
+    );
+    let req_hash =
+        crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, incoming_request.hash());
+    assert_last_event::<Runtime>(
+        crate::Event::RegisterRequestFailed(req_hash, error.into()).into(),
     );
     Ok(())
 }

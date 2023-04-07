@@ -35,23 +35,97 @@
 use super::*;
 
 use codec::Encode;
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, XOR};
 use frame_benchmarking::benchmarks;
+use frame_system::RawOrigin;
+use hex_literal::hex;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 
 use crate::Pallet as PriceTools;
+
+const UPDATE_SHIFT: u32 = 1000;
+
+fn alice<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
 
 fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
     let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
     T::AssetId::from(H256(entropy))
 }
 
-fn prepare_secondary_market<T: Config>(n: u32) {
-    for i in 0..n {
-        let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+fn register_asset<T: Config>(owner: T::AccountId, asset: T::AssetId) {
+    PriceTools::<T>::register_asset(&asset).unwrap();
 
-        PriceTools::<T>::register_asset(&asset).unwrap();
+    assets::Pallet::<T>::register_asset_id(
+        owner,
+        asset,
+        AssetSymbol(b"ASSET".to_vec()),
+        AssetName(b"Asset".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        balance!(1000000),
+        true,
+        None,
+        None,
+    )
+    .unwrap();
+}
+
+fn create_pair_with_xor<T: Config>(
+    owner: T::AccountId,
+    origin: T::RuntimeOrigin,
+    asset: T::AssetId,
+) {
+    assets::Pallet::<T>::mint(origin.clone(), asset, owner, balance!(1000000)).unwrap();
+
+    trading_pair::Pallet::<T>::register(origin.clone(), DEXId::Polkaswap.into(), XOR.into(), asset)
+        .unwrap();
+
+    pool_xyk::Pallet::<T>::initialize_pool(
+        origin.clone(),
+        DEXId::Polkaswap.into(),
+        XOR.into(),
+        asset,
+    )
+    .unwrap();
+
+    pool_xyk::Pallet::<T>::deposit_liquidity(
+        origin.clone(),
+        DEXId::Polkaswap.into(),
+        XOR.into(),
+        asset,
+        balance!(1000),
+        balance!(2000),
+        balance!(1000),
+        balance!(2000),
+    )
+    .unwrap();
+}
+
+fn prepare_secondary_market<T: Config>(elems_active: u32, elems_updated: u32) {
+    let owner = alice::<T>();
+    frame_system::Pallet::<T>::inc_providers(&owner);
+
+    let xor_id = T::AssetId::from(XOR);
+    let xor_owner = assets::Pallet::<T>::asset_owner(&xor_id).unwrap();
+
+    assets::Pallet::<T>::mint(
+        RawOrigin::Signed(xor_owner.clone()).into(),
+        XOR.into(),
+        owner.clone(),
+        balance!(1000000),
+    )
+    .unwrap();
+
+    // Create assets don't need to be updated
+    for i in 0..elems_active {
+        let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+        register_asset::<T>(owner.clone(), asset);
+
         for m in 1..crate::AVG_BLOCK_SPAN {
             crate::PriceInfos::<T>::mutate(asset, |val| {
                 let val = val.as_mut().unwrap();
@@ -67,16 +141,47 @@ fn prepare_secondary_market<T: Config>(n: u32) {
             });
         }
     }
+
+    // Create assets need to be updated
+    for i in UPDATE_SHIFT..(UPDATE_SHIFT + elems_updated) {
+        let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+        register_asset::<T>(owner.clone(), asset);
+        create_pair_with_xor::<T>(
+            owner.clone(),
+            RawOrigin::Signed(owner.clone()).into(),
+            asset,
+        );
+
+        for m in 1..crate::AVG_BLOCK_SPAN {
+            crate::PriceInfos::<T>::mutate(asset, |val| {
+                let val = val.as_mut().unwrap();
+                let price = balance!(m + i);
+                val.buy.spot_prices.push_back(price);
+                val.sell.spot_prices.push_back(price);
+
+                val.buy.needs_update = true;
+                val.sell.needs_update = true;
+            });
+        }
+    }
 }
 
 benchmarks! {
     on_initialize {
-        let n in 0 .. 10 => prepare_secondary_market::<T>(n);
-        let mut infos_before = Vec::new();
-        for i in 0..n {
+        let a in 0..10;
+        let b in 0..10;
+        prepare_secondary_market::<T>(a, b);
+        let mut infos_before = BTreeMap::new();
+
+        let mut range = (0..a).collect::<Vec<_>>();
+        let mut to_update = (UPDATE_SHIFT..UPDATE_SHIFT + b).collect::<Vec<_>>();
+        range.append(&mut to_update);
+
+        for i in range.clone() {
             let asset = create_asset::<T>(b"asset".to_vec(), i.into());
             assert!(crate::PriceInfos::<T>::get(&asset).is_some());
-            infos_before.push((
+            infos_before.insert(
+                i, (
                 crate::PriceInfos::<T>::get(&asset)
                     .unwrap()
                     .buy
@@ -92,10 +197,10 @@ benchmarks! {
         PriceTools::<T>::average_prices_calculation_routine(PriceVariant::Sell);
     }
     verify {
-        for i in 0..n {
+        for i in range {
             let asset = create_asset::<T>(b"asset".to_vec(), i.into());
             assert_ne!(
-                infos_before.get(i as usize).unwrap(),
+                infos_before.get(&i.into()).unwrap(),
                 &(
                     crate::PriceInfos::<T>::get(&asset)
                         .unwrap()

@@ -47,11 +47,13 @@ use std::sync::Arc;
 /// A type representing all RPC extensions.
 pub type RpcExtension = RpcModule<()>;
 
-use beefy_gadget::notification::{BeefyBestBlockStream, BeefySignedCommitmentStream};
+use beefy_gadget::communication::notification::{
+    BeefyBestBlockStream, BeefyVersionedFinalityProofStream,
+};
 /// Dependencies for BEEFY
 pub struct BeefyDeps {
-    /// Receives notifications about signed commitment events from BEEFY.
-    pub beefy_commitment_stream: BeefySignedCommitmentStream<Block>,
+    /// Receives notifications about finality proof events from BEEFY.
+    pub beefy_finality_proof_stream: BeefyVersionedFinalityProofStream<Block>,
     /// Receives notifications about best block events from BEEFY.
     pub beefy_best_block_stream: BeefyBestBlockStream<Block>,
     /// Executor to drive the subscription manager in the BEEFY RPC handler.
@@ -73,7 +75,7 @@ pub struct FullDeps<C, P> {
 /// Instantiate full RPC extensions.
 pub fn create_full<C, P, B>(
     deps: FullDeps<C, P>,
-    _backend: Arc<B>,
+    backend: Arc<B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
@@ -138,8 +140,15 @@ where
     C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
-    C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
-    C::Api: beefy_primitives::BeefyApi<Block>,
+    C::Api: mmr_rpc::MmrRuntimeApi<
+        Block,
+        <Block as sp_runtime::traits::Block>::Hash,
+        <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
+    >,
+    C::Api: sp_beefy::BeefyApi<Block>,
+    C::Api: beefy_light_client_rpc::BeefyLightClientRuntimeAPI<Block, beefy_light_client::BitField>,
+    C::Api: leaf_provider_rpc::LeafProviderRuntimeAPI<Block>,
+    C::Api: evm_bridge_proxy_rpc::EvmBridgeProxyRuntimeAPI<Block, AssetId>,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     P: TransactionPool + Send + Sync + 'static,
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
@@ -147,17 +156,25 @@ where
 {
     use assets_rpc::{AssetsAPIServer, AssetsClient};
     use beefy_gadget_rpc::{Beefy, BeefyApiServer};
+    use beefy_light_client_rpc::{BeefyLightClientAPIServer, BeefyLightClientClient};
+    use bridge_channel_rpc::{BridgeChannelAPIServer, BridgeChannelClient};
     use dex_api_rpc::{DEXAPIServer, DEX};
     use dex_manager_rpc::{DEXManager, DEXManagerAPIServer};
     use eth_bridge_rpc::{EthBridgeApiServer, EthBridgeRpc};
+    use evm_bridge_proxy_rpc::{EvmBridgeProxyAPIServer, EvmBridgeProxyClient};
     use farming_rpc::{FarmingApiServer, FarmingClient};
     use iroha_migration_rpc::{IrohaMigrationAPIServer, IrohaMigrationClient};
+    use leaf_provider_rpc::{LeafProviderAPIServer, LeafProviderClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPIServer, LiquidityProxyClient};
+    use mmr_rpc::{Mmr, MmrApiServer};
     use oracle_proxy_rpc::{OracleProxyApiServer, OracleProxyClient};
-    use pallet_mmr_rpc::{Mmr, MmrApiServer};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
+    use substrate_bridge_channel_rpc::{
+        BridgeChannelAPIServer as SubstrateBridgeChannelAPIServer,
+        BridgeChannelClient as SubstrateBridgeChannelClient,
+    };
     use substrate_frame_rpc_system::{System, SystemApiServer};
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
@@ -176,7 +193,7 @@ where
 
     io.merge(
         Beefy::<Block>::new(
-            beefy.beefy_commitment_stream,
+            beefy.beefy_finality_proof_stream,
             beefy.beefy_best_block_stream,
             beefy.subscription_executor,
         )?
@@ -192,7 +209,18 @@ where
     io.merge(IrohaMigrationClient::new(client.clone()).into_rpc())?;
     io.merge(PswapDistributionClient::new(client.clone()).into_rpc())?;
     io.merge(RewardsClient::new(client.clone()).into_rpc())?;
+    io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
+    io.merge(EvmBridgeProxyClient::new(client.clone()).into_rpc())?;
+    if let Some(storage) = backend.offchain_storage() {
+        io.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
+        io.merge(
+            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer<Balance>>::into_rpc(
+                SubstrateBridgeChannelClient::new(storage),
+            ),
+        )?;
+    }
     io.merge(VestedRewardsClient::new(client.clone()).into_rpc())?;
-    io.merge(FarmingClient::new(client).into_rpc())?;
+    io.merge(FarmingClient::new(client.clone()).into_rpc())?;
+    io.merge(BeefyLightClientClient::new(client).into_rpc())?;
     Ok(io)
 }

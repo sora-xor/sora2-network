@@ -1,0 +1,3 @@
+FROM ethereum/client-go:latest
+
+ADD geth-config /configs

@@ -26,9 +26,9 @@ fn alice<T: frame_system::Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -83,7 +83,7 @@ benchmarks! {
         balance!(0.2)
     )
     verify {
-        assert_last_event::<T>(Event::ILOCreated(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::ILOCreated(caller.clone(), CERES_ASSET_ID.into()).into());
     }
 
     contribute {
@@ -149,7 +149,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(current_timestamp + 7u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), funds_to_contribute)
     verify {
-        assert_last_event::<T>(Event::Contributed(caller, CERES_ASSET_ID.into(), funds_to_contribute).into());
+        assert_last_event::<T>(Event::<T>::Contributed(caller, CERES_ASSET_ID.into(), funds_to_contribute).into());
     }
 
     emergency_withdraw {
@@ -222,7 +222,7 @@ benchmarks! {
         ).unwrap();
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::EmergencyWithdrawn(caller, CERES_ASSET_ID.into(), funds_to_contribute).into());
+        assert_last_event::<T>(Event::<T>::EmergencyWithdrawn(caller, CERES_ASSET_ID.into(), funds_to_contribute).into());
     }
 
     finish_ilo {
@@ -298,7 +298,7 @@ benchmarks! {
 
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::ILOFinished(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::ILOFinished(caller.clone(), CERES_ASSET_ID.into()).into());
     }
 
     claim_lp_tokens {
@@ -383,7 +383,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(unlocking_timestamp + 1u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::ClaimedLP(caller, CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::ClaimedLP(caller, CERES_ASSET_ID.into()).into());
     }
 
     claim {
@@ -464,7 +464,7 @@ benchmarks! {
         pallet_timestamp::Now::<T>::put(current_timestamp + 44u32.into());
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into())
     verify {
-        assert_last_event::<T>(Event::Claimed(caller.clone(), CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::Claimed(caller.clone(), CERES_ASSET_ID.into()).into());
     }
 
     change_ceres_burn_fee {
@@ -472,7 +472,7 @@ benchmarks! {
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
-        assert_last_event::<T>(Event::FeeChanged(fee).into());
+        assert_last_event::<T>(Event::<T>::FeeChanged(fee).into());
     }
 
     change_ceres_contribution_fee {
@@ -480,7 +480,7 @@ benchmarks! {
         let fee = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), fee)
     verify {
-        assert_last_event::<T>(Event::FeeChanged(fee).into());
+        assert_last_event::<T>(Event::<T>::FeeChanged(fee).into());
     }
 
     claim_pswap_rewards {
@@ -576,7 +576,7 @@ benchmarks! {
         ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
     }: _(RawOrigin::Signed(AuthorityAccount::<T>::get()))
     verify {
-        assert_last_event::<T>(Event::ClaimedPSWAP().into());
+        assert_last_event::<T>(Event::<T>::ClaimedPSWAP().into());
     }
 
     add_whitelisted_contributor {
@@ -584,7 +584,7 @@ benchmarks! {
         let contributor = alice::<T>();
     }: _(RawOrigin::Signed(caller.clone()), contributor.clone())
     verify {
-        assert_last_event::<T>(Event::WhitelistedContributor(contributor).into());
+        assert_last_event::<T>(Event::<T>::WhitelistedContributor(contributor).into());
     }
 
     remove_whitelisted_contributor {
@@ -592,7 +592,7 @@ benchmarks! {
         let contributor = alice::<T>();
     }: _(RawOrigin::Signed(caller.clone()), contributor.clone())
     verify {
-        assert_last_event::<T>(Event::RemovedWhitelistedContributor(contributor).into());
+        assert_last_event::<T>(Event::<T>::RemovedWhitelistedContributor(contributor).into());
     }
 
     add_whitelisted_ilo_organizer {
@@ -600,7 +600,7 @@ benchmarks! {
         let ilo_organizer = alice::<T>();
     }: _(RawOrigin::Signed(caller.clone()), ilo_organizer.clone())
     verify {
-        assert_last_event::<T>(Event::WhitelistedIloOrganizer(ilo_organizer).into());
+        assert_last_event::<T>(Event::<T>::WhitelistedIloOrganizer(ilo_organizer).into());
     }
 
     remove_whitelisted_ilo_organizer {
@@ -608,7 +608,7 @@ benchmarks! {
         let ilo_organizer = alice::<T>();
     }: _(RawOrigin::Signed(caller.clone()), ilo_organizer.clone())
     verify {
-        assert_last_event::<T>(Event::RemovedWhitelistedIloOrganizer(ilo_organizer).into());
+        assert_last_event::<T>(Event::<T>::RemovedWhitelistedIloOrganizer(ilo_organizer).into());
     }
 
     impl_benchmark_test_suite!(

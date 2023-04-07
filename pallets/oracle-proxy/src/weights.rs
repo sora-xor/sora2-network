@@ -38,15 +38,11 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	// Storage: OracleProxy EnabledOracles (r:1 w:1)
 	fn enable_oracle() -> Weight {
-		(35_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::zero()
 	}
 	// Storage: OracleProxy EnabledOracles (r:1 w:1)
 	fn disable_oracle() -> Weight {
-		(39_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::zero()
 	}
 }
 

@@ -39,17 +39,11 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_std::vec::Vec;
 
-pub mod weights;
-
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
-
-pub trait WeightInfo {
-    fn swap() -> Weight;
-}
 
 type DEXManager<T> = dex_manager::Pallet<T>;
 
@@ -95,7 +89,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
             ($source_type:ident) => {
@@ -127,7 +121,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! exchange {
             ($source_type:ident) => {
@@ -159,7 +153,7 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! check_rewards {
             ($source_type:ident) => {
@@ -215,6 +209,24 @@ impl<T: Config>
             MockPool4 => quote_without_impact!(MockLiquiditySource4),
             BondingCurvePool => unreachable!(),
         }
+    }
+
+    fn quote_weight() -> Weight {
+        T::XSTPool::quote_weight()
+            .max(T::XYKPool::quote_weight())
+            .max(T::MulticollateralBondingCurvePool::quote_weight())
+    }
+
+    fn exchange_weight() -> Weight {
+        T::XSTPool::exchange_weight()
+            .max(T::XYKPool::exchange_weight())
+            .max(T::MulticollateralBondingCurvePool::exchange_weight())
+    }
+
+    fn check_rewards_weight() -> Weight {
+        T::XSTPool::check_rewards_weight()
+            .max(T::XYKPool::check_rewards_weight())
+            .max(T::MulticollateralBondingCurvePool::check_rewards_weight())
     }
 }
 
@@ -326,8 +338,6 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.

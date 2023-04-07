@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.7.6;
+pragma solidity 0.8.15;
 pragma experimental ABIEncoderV2;
 
-import "../OutboundChannel.sol";
+import "../interfaces/IOutboundChannel.sol";
 
-contract MockOutboundChannel is OutboundChannel {
+contract MockOutboundChannel is IOutboundChannel {
     function submit(address, bytes calldata) external override {}
 
     function fee() external pure override returns (uint256) {

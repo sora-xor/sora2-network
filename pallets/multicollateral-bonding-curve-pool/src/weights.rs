@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
@@ -38,36 +37,34 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn initialize_pool() -> Weight {
-        (56_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(7 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn set_reference_asset() -> Weight {
-        (26_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn set_optional_reward_multiplier() -> Weight {
-        (35_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(5 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
-    fn on_initialize(n: u32) -> Weight {
-        (26_492_000 as Weight)
-            // Standard Error: 269_000
-            .saturating_add((33_780_000 as Weight).saturating_mul(n as Weight))
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    fn on_initialize(_n: u32) -> Weight {
+        Weight::zero()
     }
     fn set_price_change_config() -> Weight {
-        (27_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+        Weight::zero()
     }
     fn set_price_bias() -> Weight {
-        (26_000_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
+    }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
+    fn can_exchange() -> Weight {
+        Weight::zero()
+    }
+    fn check_rewards() -> Weight {
+        Weight::zero()
     }
 }
 
@@ -84,12 +81,22 @@ impl crate::WeightInfo for () {
     fn set_optional_reward_multiplier() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-
     fn set_price_change_config() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-
     fn set_price_bias() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn quote() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn exchange() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn can_exchange() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn check_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

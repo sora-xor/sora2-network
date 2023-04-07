@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::cli::prelude::*;
 use bridge_types::H256;
 use futures::StreamExt;
@@ -5,37 +35,38 @@ use substrate_gen::SignatureParams;
 
 #[derive(Args, Clone, Debug)]
 pub struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    /// Bridge network id
     #[clap(short, long)]
     network: u32,
+    /// Relay transaction with given hash
     #[clap(long)]
     hash: Option<H256>,
 }
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub = args.get_signed_substrate().await?;
-        let eth = args.get_signed_ethereum().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
+        let eth = self.eth.get_signed_ethereum().await?;
         if let Some(hash) = self.hash {
             self.relay_request(&eth, &sub, hash).await?;
             return Ok(());
         }
-        let mut events = sub
+        let mut blocks = sub
             .api()
-            .events()
+            .blocks()
             .subscribe_finalized()
             .await
             .context("Subscribe")?;
-        while let Some(events) = events.next().await.transpose().context("Events next")? {
-            for event in events.iter() {
-                info!("Recieved event: {:?}", event);
-                use sub_runtime::runtime_types::eth_bridge;
+        while let Some(block) = blocks.next().await.transpose().context("Events next")? {
+            let events = sub.api().events().at(Some(block.hash())).await?;
+            for event in events.find::<runtime::eth_bridge::events::ApprovalsCollected>() {
                 if let Ok(event) = event {
-                    match event.event {
-                        sub_runtime::Event::EthBridge(
-                            eth_bridge::pallet::Event::ApprovalsCollected(hash),
-                        ) => self.relay_request(&eth, &sub, hash).await?,
-                        _ => {}
-                    }
+                    info!("Recieved event: {:?}", event);
+                    self.relay_request(&eth, &sub, event.0).await?;
                 }
             }
         }
@@ -45,30 +76,36 @@ impl Command {
     async fn relay_request(
         &self,
         eth: &EthSignedClient,
-        sub: &SubSignedClient,
+        sub: &SubSignedClient<MainnetConfig>,
         hash: H256,
     ) -> AnyResult<()> {
-        use sub_runtime::runtime_types::eth_bridge;
+        use mainnet_runtime::runtime_types::eth_bridge;
         let contract_address = sub
-            .api()
-            .storage()
-            .eth_bridge()
-            .bridge_contract_address(false, &self.network, None)
+            .storage_fetch_or_default(
+                &runtime::storage()
+                    .eth_bridge()
+                    .bridge_contract_address(&self.network),
+                (),
+            )
             .await?;
-        let contract = ethereum_gen::eth_bridge::Bridge::new(contract_address, eth.inner());
+        let contract = ethereum_gen::Bridge::new(contract_address, eth.inner());
         let request = sub
-            .api()
-            .storage()
-            .eth_bridge()
-            .requests(false, &self.network, &hash, None)
+            .storage_fetch(
+                &runtime::storage()
+                    .eth_bridge()
+                    .requests(&self.network, &hash),
+                (),
+            )
             .await?
             .expect("Should exists");
         info!("Send request {}: {:?}", hash, request);
         let approvals = sub
-            .api()
-            .storage()
-            .eth_bridge()
-            .request_approvals(false, &self.network, &hash, None)
+            .storage_fetch_or_default(
+                &runtime::storage()
+                    .eth_bridge()
+                    .request_approvals(&self.network, &hash),
+                (),
+            )
             .await?;
 
         let mut s_vec = vec![];
@@ -88,19 +125,12 @@ impl Command {
                 match request {
                     eth_bridge::requests::OutgoingRequest::PrepareForMigration(_) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::PrepareForMigration);
-                        let call = contract.prepare_for_migration(
-                            contract_address,
-                            hash.to_fixed_bytes(),
-                            v,
-                            r,
-                            s,
-                        );
+                        let call = contract.prepare_for_migration(hash.to_fixed_bytes(), v, r, s);
                         (call, kind)
                     }
                     eth_bridge::requests::OutgoingRequest::Migrate(request) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::Migrate);
                         let call = contract.shut_down_and_migrate(
-                            contract_address,
                             hash.to_fixed_bytes(),
                             request.new_contract_address,
                             request.erc20_native_tokens,
@@ -113,10 +143,10 @@ impl Command {
                     eth_bridge::requests::OutgoingRequest::AddAsset(request) => {
                         let kind = Some(sub_types::eth_bridge::requests::IncomingTransactionRequestKind::AddAsset);
                         let (symbol, name, decimals, ..) = sub
-                            .api()
-                            .storage()
-                            .assets()
-                            .asset_infos(false, &request.asset_id, None)
+                            .storage_fetch_or_default(
+                                &runtime::storage().assets().asset_infos(&request.asset_id),
+                                (),
+                            )
                             .await?;
                         let call = contract.add_new_sidechain_token(
                             String::from_utf8_lossy(&name.0).to_string(),
@@ -161,14 +191,14 @@ impl Command {
         if let (Some(kind), Some(tx)) = (kind, res) {
             sub.api()
                 .tx()
-                .eth_bridge()
-                .request_from_sidechain(
-                    false,
-                    tx.transaction_hash,
-                    sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
-                    self.network,
-                )?
-                .sign_and_submit_then_watch_default(sub)
+                .sign_and_submit_then_watch_default(
+                    &runtime::tx().eth_bridge().request_from_sidechain(
+                        tx.transaction_hash,
+                        sub_types::eth_bridge::requests::IncomingRequestKind::Transaction(kind),
+                        self.network,
+                    ),
+                    sub,
+                )
                 .await?
                 .wait_for_in_block()
                 .await?
