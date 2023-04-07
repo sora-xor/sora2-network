@@ -99,15 +99,15 @@ impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
         } else {
             return Ok(None);
         };
+
         let current_time = T::UnixTime::now().as_millis().saturated_into::<u64>();
         let stale_period = T::GetBandRateStalePeriod::get();
         let current_period = current_time
             .checked_sub(rate.last_updated)
             .ok_or(Error::<T, I>::RateHasInvalidTimestamp)?;
-        sp_std::if_std! {
-            println!("current_time: {}; current_period: {}", current_time, current_period);
-        }
+
         ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
+
         Ok(Some(rate.into()))
     }
 
