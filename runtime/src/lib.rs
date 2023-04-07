@@ -308,8 +308,8 @@ parameter_types! {
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
-    pub const DemocracyMaxDeposits: u32 = 100; // todo
-    pub const DemocracyMaxBlacklisted: u32 = 100; // todo
+    pub const DemocracyMaxDeposits: u32 = 100;
+    pub const DemocracyMaxBlacklisted: u32 = 100;
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const CouncilCollectiveMaxProposals: u32 = 100;
     pub const CouncilCollectiveMaxMembers: u32 = 100;

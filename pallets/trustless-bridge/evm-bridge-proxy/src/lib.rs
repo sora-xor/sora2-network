@@ -186,7 +186,7 @@ pub mod pallet {
                         T::ERC20App::refund(chain_id, message_id, beneficiary, asset_id, amount)
                     }
                 }
-                GenericNetworkId::Sub(_) => todo!(),
+                GenericNetworkId::Sub(_) => Err(Error::<T>::PathIsNotAvailable.into()),
             }
         }
     }
