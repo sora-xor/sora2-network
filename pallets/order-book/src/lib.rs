@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(dead_code)] // todo (m.tagirov) remove
 
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
