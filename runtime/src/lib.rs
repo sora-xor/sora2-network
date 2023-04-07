@@ -308,8 +308,8 @@ parameter_types! {
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
-    pub const DemocracyMaxDeposits: u32 = 100; // todo
-    pub const DemocracyMaxBlacklisted: u32 = 100; // todo
+    pub const DemocracyMaxDeposits: u32 = 100;
+    pub const DemocracyMaxBlacklisted: u32 = 100;
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const CouncilCollectiveMaxProposals: u32 = 100;
     pub const CouncilCollectiveMaxMembers: u32 = 100;
@@ -1751,6 +1751,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1761,6 +1762,8 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
+    type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
 }
 
 parameter_types! {
@@ -3087,21 +3090,21 @@ impl_runtime_apis! {
 
     #[cfg(feature = "try-runtime")]
     impl frame_try_runtime::TryRuntime<Block> for Runtime {
-        fn on_runtime_upgrade() -> (Weight, Weight) {
-            log::info!("try-runtime::on_runtime_upgrade.");
-            let weight = Executive::try_runtime_upgrade().unwrap();
+        fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
+            log::info!("try-runtime::on_runtime_upgrade");
+            let weight = Executive::try_runtime_upgrade(checks).unwrap();
             (weight, BlockWeights::get().max_block)
         }
 
-        fn execute_block(block: Block, state_root_check: bool, select: frame_try_runtime::TryStateSelect) -> Weight {
-            log::info!(
-                target: "runtime", "try-runtime: executing block #{} ({:?}) / root checks: {:?} / sanity-checks: {:?}",
-                block.header.number,
-                block.header.hash(),
-                state_root_check,
-                select,
-            );
-            Executive::try_execute_block(block, state_root_check, select).expect("try_execute_block failed")
+        fn execute_block(
+            block: Block,
+            state_root_check: bool,
+            signature_check: bool,
+            select: frame_try_runtime::TryStateSelect,
+        ) -> Weight {
+            // NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
+            // have a backtrace here.
+            Executive::try_execute_block(block, state_root_check, signature_check, select).unwrap()
         }
     }
 }

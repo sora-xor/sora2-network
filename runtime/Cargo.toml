@@ -367,6 +367,7 @@ try-runtime = [
     "ceres-staking/try-runtime",
     "ceres-token-locker/try-runtime",
     "demeter-farming-platform/try-runtime",
+    "hermes-governance-platform/try-runtime",
     "dex-api/try-runtime",
     "dex-manager/try-runtime",
     "eth-bridge/try-runtime",
