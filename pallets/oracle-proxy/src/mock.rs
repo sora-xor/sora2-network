@@ -91,7 +91,7 @@ impl Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBandRateStalePeriod: u64 = 5*60;
+    pub const GetBandRateStalePeriod: u64 = 5*60; // 5 minutes
     pub const MinimumPeriod: u64 = 5;
 }
 

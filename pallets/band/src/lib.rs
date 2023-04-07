@@ -151,6 +151,7 @@ pub mod pallet {
         /// Hook which is being executed when some new symbols were relayed
         type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
         /// Rate expiration period in seconds.
+        #[pallet::constant]
         type GetBandRateStalePeriod: Get<u64>;
         /// Time used for checking if rate expired
         type UnixTime: UnixTime;

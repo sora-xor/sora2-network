@@ -94,7 +94,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub const GetBandRateStalePeriod: u64 = 60*5;
+    pub const GetBandRateStalePeriod: u64 = 60*5; // 5 minutes
 }
 
 construct_runtime! {
