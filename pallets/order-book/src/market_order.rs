@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::OrderVolume;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::PriceVariant;
 use core::fmt::Debug;
@@ -39,5 +40,5 @@ where
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
-    pub amount: T::Balance,
+    pub amount: OrderVolume<T>,
 }

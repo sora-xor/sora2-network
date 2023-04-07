@@ -7715,6 +7715,7 @@ dependencies = [
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "orml-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

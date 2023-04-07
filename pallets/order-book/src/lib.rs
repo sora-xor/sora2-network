@@ -32,11 +32,11 @@
 
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{Balance, LiquiditySource, PriceVariant, RewardReason};
+use common::{LiquiditySource, PriceVariant, RewardReason};
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
-use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay};
+use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -101,7 +101,7 @@ pub mod pallet {
     use common::TradingPair;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
-        Blake2_128Concat,
+        Blake2_128Concat, BoundedBTreeMap,
     };
     use frame_system::pallet_prelude::*;
 
@@ -130,10 +130,13 @@ pub mod pallet {
             + scale_info::TypeInfo;
         type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
+        type MaxSidePrices: Get<u32>;
         type WeightInfo: WeightInfo;
     }
 
     pub type OrderBookId<T> = TradingPair<<T as assets::Config>::AssetId>;
+    pub type OrderPrice<T> = <T as tokens::Config>::Balance;
+    pub type OrderVolume<T> = <T as tokens::Config>::Balance;
 
     #[pallet::storage]
     #[pallet::getter(fn order_books)]
@@ -159,7 +162,7 @@ pub mod pallet {
         Blake2_128Concat,
         OrderBookId<T>,
         Blake2_128Concat,
-        T::Balance,
+        OrderPrice<T>,
         BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
@@ -171,9 +174,29 @@ pub mod pallet {
         Blake2_128Concat,
         OrderBookId<T>,
         Blake2_128Concat,
-        T::Balance,
+        OrderPrice<T>,
         BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn aggregated_bids)]
+    pub type AggregatedBids<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<T>,
+        BoundedBTreeMap<OrderPrice<T>, OrderVolume<T>, T::MaxSidePrices>,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn aggregated_asks)]
+    pub type AggregatedAsks<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<T>,
+        BoundedBTreeMap<OrderPrice<T>, OrderVolume<T>, T::MaxSidePrices>,
+        ValueQuery,
     >;
 
     #[pallet::storage]
@@ -226,10 +249,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             _dex_id: T::DEXId,
             order_book_id: OrderBookId<T>,
-            _tick_size: T::Balance,
-            _step_lot_size: T::Balance,
-            _min_lot_size: T::Balance,
-            _max_lot_size: T::Balance,
+            _tick_size: OrderPrice<T>,
+            _step_lot_size: OrderVolume<T>,
+            _min_lot_size: OrderVolume<T>,
+            _max_lot_size: OrderVolume<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -256,10 +279,10 @@ pub mod pallet {
         pub fn update_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            _tick_size: T::Balance,
-            _step_lot_size: T::Balance,
-            _min_lot_size: T::Balance,
-            _max_lot_size: T::Balance,
+            _tick_size: OrderPrice<T>,
+            _step_lot_size: OrderVolume<T>,
+            _min_lot_size: OrderVolume<T>,
+            _max_lot_size: OrderVolume<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -287,8 +310,8 @@ pub mod pallet {
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            _price: Balance,
-            _amount: Balance,
+            _price: OrderPrice<T>,
+            _amount: OrderVolume<T>,
             _side: PriceVariant,
             _lifespan: T::Moment,
         ) -> DispatchResult {
@@ -324,19 +347,28 @@ impl<T: Config> Pallet<T> {
             PriceVariant::Buy => {
                 <Bids<T>>::try_append(order_book_id, order.price, order.id)
                     .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+
+                let mut bids = <AggregatedBids<T>>::get(order_book_id);
+                let volume = bids.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                bids.try_insert(order.price, volume)
+                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                <AggregatedBids<T>>::set(order_book_id, bids);
             }
             PriceVariant::Sell => {
                 <Asks<T>>::try_append(order_book_id, order.price, order.id)
                     .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+
+                let mut asks = <AggregatedAsks<T>>::get(order_book_id);
+                let volume = asks.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                asks.try_insert(order.price, volume)
+                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                <AggregatedAsks<T>>::set(order_book_id, asks);
             }
         }
 
-        let mut user_orders =
-            <UserLimitOrders<T>>::try_get(&order.owner, order_book_id).unwrap_or_default();
-        user_orders
-            .try_push(order.id)
+        <UserLimitOrders<T>>::try_append(&order.owner, order_book_id, order.id)
             .map_err(|_| Error::<T>::InsertLimitOrderError)?;
-        <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
+
         Ok(())
     }
 
@@ -366,6 +398,24 @@ impl<T: Config> Pallet<T> {
                 } else {
                     <Bids<T>>::set(order_book_id, order.price, Some(bids));
                 }
+
+                let mut agg_bids = <AggregatedBids<T>>::try_get(order_book_id)
+                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                let volume = agg_bids
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?
+                    - order.amount;
+                if volume.is_zero() {
+                    agg_bids
+                        .remove(&order.price)
+                        .ok_or(Error::<T>::DeleteLimitOrderError)?;
+                } else {
+                    agg_bids
+                        .try_insert(order.price, volume)
+                        .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                }
+                <AggregatedBids<T>>::set(order_book_id, agg_bids);
             }
             PriceVariant::Sell => {
                 let mut asks = <Asks<T>>::try_get(order_book_id, order.price)
@@ -376,6 +426,24 @@ impl<T: Config> Pallet<T> {
                 } else {
                     <Asks<T>>::set(order_book_id, order.price, Some(asks));
                 }
+
+                let mut agg_asks = <AggregatedAsks<T>>::try_get(order_book_id)
+                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                let volume = agg_asks
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?
+                    - order.amount;
+                if volume.is_zero() {
+                    agg_asks
+                        .remove(&order.price)
+                        .ok_or(Error::<T>::DeleteLimitOrderError)?;
+                } else {
+                    agg_asks
+                        .try_insert(order.price, volume)
+                        .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                }
+                <AggregatedAsks<T>>::set(order_book_id, agg_asks);
             }
         }
 
