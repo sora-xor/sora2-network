@@ -6,22 +6,6 @@ impl Get<&'static str> for StakingMigrationV11OldPallet {
         "BagsList"
     }
 }
-
-pub struct GetPoolsWithBlock;
-impl Get<Vec<(AccountId, BlockNumber)>> for GetPoolsWithBlock {
-    fn get() -> Vec<(AccountId, BlockNumber)> {
-        let mut res = vec![];
-        for (_fee_account, (dex_id, pool_account, _freq, block)) in
-            pswap_distribution::SubscribedAccounts::<Runtime>::iter()
-        {
-            if dex_id == u32::from(common::DEXId::PolkaswapXSTUSD) {
-                res.push((pool_account, block));
-            }
-        }
-        res
-    }
-}
-
 pub struct EmptyAccountList;
 
 impl Get<Vec<AccountId>> for EmptyAccountList {
@@ -31,7 +15,6 @@ impl Get<Vec<AccountId>> for EmptyAccountList {
 }
 
 pub type Migrations = (
-    farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,
     pallet_staking::migrations::v10::MigrateToV10<Runtime>,
     pallet_staking::migrations::v11::MigrateToV11<Runtime, BagsList, StakingMigrationV11OldPallet>,
     pallet_staking::migrations::v12::MigrateToV12<Runtime>,
@@ -45,4 +28,5 @@ pub type Migrations = (
     pallet_election_provider_multi_phase::migrations::v1::MigrateToV1<Runtime>,
     // We don't need this migration, so pass empty account list
     pallet_balances::migration::MigrateManyToTrackInactive<Runtime, EmptyAccountList>,
+    multicollateral_bonding_curve_pool::migrations::v3::MigrateToV3<Runtime>,
 );
