@@ -689,10 +689,6 @@ fn bonding_curve_distribution_accounts(
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
-    let parliament_and_development = DistributionAccountData::new(
-        DistributionAccount::Account(GetParliamentAccountId::get()),
-        projects_parliament_and_development_coeff.get().unwrap(),
-    );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
@@ -711,7 +707,6 @@ fn bonding_curve_distribution_accounts(
         xor_allocation,
         sora_citizens,
         stores_and_shops,
-        parliament_and_development,
         projects,
         val_holders,
     }
@@ -1483,7 +1478,7 @@ fn testnet_genesis(
                     },
                     AssetConfig::Sidechain {
                         id: DAI.into(),
-                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        sidechain_id: hex!("34273F3a534dF490437F0deFFcb0549B40fb3Db6").into(),
                         owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },

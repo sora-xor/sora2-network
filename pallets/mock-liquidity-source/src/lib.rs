@@ -557,7 +557,7 @@ pub mod pallet {
     impl<T: Config<I>, I: 'static> Pallet<T, I> {
         // example, this checks should be called at the beginning of management functions of actual liquidity sources, e.g. register, set_fee
         #[pallet::call_index(0)]
-        #[pallet::weight(0)]
+        #[pallet::weight(Weight::zero())]
         pub fn test_access(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
@@ -574,7 +574,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(0)]
+        #[pallet::weight(Weight::zero())]
         pub fn set_reserve(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
