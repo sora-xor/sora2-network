@@ -86,6 +86,7 @@ pub trait WeightInfo {
     fn burn() -> Weight;
     fn update_balance() -> Weight;
     fn set_non_mintable() -> Weight;
+    fn update_info() -> Weight;
 }
 
 pub type AssetIdOf<T> = <T as Config>::AssetId;
@@ -458,6 +459,36 @@ pub mod pallet {
             let who = ensure_signed(origin.clone())?;
             Self::set_non_mintable_from(&asset_id, &who)?;
             Self::deposit_event(Event::AssetSetNonMintable(asset_id.clone()));
+            Ok(().into())
+        }
+
+        /// Change information about asset. Can only be done by root
+        ///
+        /// - `origin`: caller Account, should be root
+        /// - `asset_id`: Id of asset to change,
+        /// - `new_symbol`: New asset symbol. If None asset symbol will not change
+        /// - `new_name`: New asset name. If None asset name will not change
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_info())]
+        pub fn update_info(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            new_symbol: Option<AssetSymbol>,
+            new_name: Option<AssetName>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            Self::ensure_asset_exists(&asset_id)?;
+            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
+                if let Some(new_name) = new_name {
+                    ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
+                    *name = new_name;
+                }
+                if let Some(new_symbol) = new_symbol {
+                    ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
+                    *symbol = new_symbol;
+                }
+                DispatchResult::Ok(())
+            })?;
             Ok(().into())
         }
     }

@@ -795,4 +795,106 @@ mod tests {
             assert_eq!(xst_total_after, xst_total - (amount_to_mint / 10));
         })
     }
+
+    #[test]
+    fn test_update_asset_info() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::zero(),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(Assets::update_info(
+                RuntimeOrigin::root(),
+                XOR,
+                Some(AssetSymbol(b"VAL".to_vec())),
+                Some(AssetName(b"VAL Token".to_vec()))
+            ));
+            assert_eq!(
+                Assets::asset_infos(XOR),
+                (
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"VAL Token".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    true,
+                    None,
+                    None
+                )
+            );
+
+            assert_ok!(Assets::update_info(
+                RuntimeOrigin::root(),
+                XOR,
+                None,
+                Some(AssetName(b"Polkaswap".to_vec()))
+            ));
+            assert_eq!(
+                Assets::asset_infos(XOR),
+                (
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    true,
+                    None,
+                    None
+                )
+            );
+
+            assert_ok!(Assets::update_info(
+                RuntimeOrigin::root(),
+                XOR,
+                Some(AssetSymbol(b"PSWAP".to_vec())),
+                None
+            ));
+            assert_eq!(
+                Assets::asset_infos(XOR),
+                (
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    true,
+                    None,
+                    None
+                )
+            );
+
+            assert_noop!(
+                Assets::update_info(
+                    RuntimeOrigin::root(),
+                    XOR,
+                    Some(AssetSymbol(b"Dai".to_vec())),
+                    None
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+            assert_noop!(
+                Assets::update_info(
+                    RuntimeOrigin::root(),
+                    XOR,
+                    None,
+                    Some(AssetName(b"D@I".to_vec()))
+                ),
+                Error::<Runtime>::InvalidAssetName
+            );
+            assert_eq!(
+                Assets::asset_infos(XOR),
+                (
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    true,
+                    None,
+                    None
+                )
+            );
+        });
+    }
 }
