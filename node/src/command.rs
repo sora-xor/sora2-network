@@ -214,6 +214,11 @@ pub fn run() -> sc_cli::Result<()> {
         }
         #[cfg(feature = "try-runtime")]
         Some(Subcommand::TryRuntime(cmd)) => {
+            use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
+            type HostFunctionsOf<E> = ExtendedHostFunctions<
+                sp_io::SubstrateHostFunctions,
+                <E as NativeExecutionDispatch>::ExtendHostFunctions,
+            >;
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
 
@@ -226,9 +231,9 @@ pub fn run() -> sc_cli::Result<()> {
             let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
                 .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
 
-            runner.async_run(|config| {
+            runner.async_run(|_config| {
                 Ok((
-                    cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config),
+                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
                     task_manager,
                 ))
             })

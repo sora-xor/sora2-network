@@ -22,6 +22,14 @@ impl Get<Vec<(AccountId, BlockNumber)>> for GetPoolsWithBlock {
     }
 }
 
+pub struct EmptyAccountList;
+
+impl Get<Vec<AccountId>> for EmptyAccountList {
+    fn get() -> Vec<AccountId> {
+        Default::default()
+    }
+}
+
 pub type Migrations = (
     farming::migrations::v2::Migrate<Runtime, GetPoolsWithBlock>,
     pallet_staking::migrations::v10::MigrateToV10<Runtime>,
@@ -31,4 +39,10 @@ pub type Migrations = (
     pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
     pallet_democracy::migrations::v1::Migration<Runtime>,
     pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+    pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+    pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
+    pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+    pallet_election_provider_multi_phase::migrations::v1::MigrateToV1<Runtime>,
+    // We don't need this migration, so pass empty account list
+    pallet_balances::migration::MigrateManyToTrackInactive<Runtime, EmptyAccountList>,
 );
