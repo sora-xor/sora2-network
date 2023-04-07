@@ -153,8 +153,20 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    #[pallet::getter(fn prices)]
-    pub type Prices<T: Config> = StorageDoubleMap<
+    #[pallet::getter(fn bids)]
+    pub type Bids<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<T>,
+        Blake2_128Concat,
+        T::Balance,
+        BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
+        OptionQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn asks)]
+    pub type Asks<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         OrderBookId<T>,
@@ -308,11 +320,16 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), DispatchError> {
         <LimitOrders<T>>::insert(order_book_id, order.id, order);
 
-        let mut prices = <Prices<T>>::try_get(order_book_id, order.price).unwrap_or_default();
-        prices
-            .try_push(order.id)
-            .map_err(|_| Error::<T>::InsertLimitOrderError)?;
-        <Prices<T>>::set(order_book_id, order.price, Some(prices));
+        match order.side {
+            PriceVariant::Buy => {
+                <Bids<T>>::try_append(order_book_id, order.price, order.id)
+                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+            }
+            PriceVariant::Sell => {
+                <Asks<T>>::try_append(order_book_id, order.price, order.id)
+                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+            }
+        }
 
         let mut user_orders =
             <UserLimitOrders<T>>::try_get(&order.owner, order_book_id).unwrap_or_default();
@@ -339,14 +356,29 @@ impl<T: Config> Pallet<T> {
             <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
         }
 
-        let mut prices = <Prices<T>>::try_get(order_book_id, order.price)
-            .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-        prices.retain(|x| *x != order.id);
-        if prices.is_empty() {
-            <Prices<T>>::remove(order_book_id, order.price);
-        } else {
-            <Prices<T>>::set(order_book_id, order.price, Some(prices));
+        match order.side {
+            PriceVariant::Buy => {
+                let mut bids = <Bids<T>>::try_get(order_book_id, order.price)
+                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                bids.retain(|x| *x != order.id);
+                if bids.is_empty() {
+                    <Bids<T>>::remove(order_book_id, order.price);
+                } else {
+                    <Bids<T>>::set(order_book_id, order.price, Some(bids));
+                }
+            }
+            PriceVariant::Sell => {
+                let mut asks = <Asks<T>>::try_get(order_book_id, order.price)
+                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
+                asks.retain(|x| *x != order.id);
+                if asks.is_empty() {
+                    <Asks<T>>::remove(order_book_id, order.price);
+                } else {
+                    <Asks<T>>::set(order_book_id, order.price, Some(asks));
+                }
+            }
         }
+
         Ok(())
     }
 

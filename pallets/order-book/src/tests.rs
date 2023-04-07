@@ -52,12 +52,24 @@ fn insert_limit_order_success() {
             target_asset_id: VAL.into(),
         };
 
-        let order_id = 1;
+        let order_buy_id = 1;
+        let order_sell_id = 2;
         let owner = alice();
         let price = balance!(12);
 
-        let order = LimitOrder::<Runtime> {
-            id: order_id,
+        let order_buy = LimitOrder::<Runtime> {
+            id: order_buy_id,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell = LimitOrder::<Runtime> {
+            id: order_sell_id,
             owner: owner.clone(),
             side: PriceVariant::Sell,
             price: price,
@@ -67,18 +79,37 @@ fn insert_limit_order_success() {
             lifespan: 1000,
         };
 
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy));
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
-            order
+            OrderBook::limit_orders(order_book_id, order_buy_id).unwrap(),
+            order_buy
         );
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id]
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id]
+        );
+        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            vec![order_buy_id]
+        );
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell));
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_sell_id).unwrap(),
+            order_sell
+        );
+        assert_eq!(
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id]
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
-            vec![order_id]
+            vec![order_buy_id, order_sell_id]
         );
     });
 }
@@ -130,13 +161,37 @@ fn delete_limit_order_success() {
             target_asset_id: VAL.into(),
         };
 
-        let order_id1 = 1;
-        let order_id2 = 2;
+        let order_buy_id1 = 1;
+        let order_buy_id2 = 2;
+        let order_sell_id1 = 3;
+        let order_sell_id2 = 4;
         let owner = alice();
         let price = balance!(12);
 
-        let order1 = LimitOrder::<Runtime> {
-            id: order_id1,
+        let order_buy1 = LimitOrder::<Runtime> {
+            id: order_buy_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_buy2 = LimitOrder::<Runtime> {
+            id: order_buy_id2,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price,
+            original_amount: balance!(10),
+            executed_amount: balance!(0),
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell1 = LimitOrder::<Runtime> {
+            id: order_sell_id1,
             owner: owner.clone(),
             side: PriceVariant::Sell,
             price: price,
@@ -146,8 +201,8 @@ fn delete_limit_order_success() {
             lifespan: 1000,
         };
 
-        let order2 = LimitOrder::<Runtime> {
-            id: order_id2,
+        let order_sell2 = LimitOrder::<Runtime> {
+            id: order_sell_id2,
             owner: owner.clone(),
             side: PriceVariant::Sell,
             price: price,
@@ -157,40 +212,99 @@ fn delete_limit_order_success() {
             lifespan: 1000,
         };
 
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order1));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order2));
+        // add orders
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy1));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy2));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell1));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell2));
+
+        // check they added
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id1).unwrap(),
-            order1
+            OrderBook::limit_orders(order_book_id, order_buy_id1).unwrap(),
+            order_buy1
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id2).unwrap(),
-            order2
+            OrderBook::limit_orders(order_book_id, order_buy_id2).unwrap(),
+            order_buy2
         );
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id1, order_id2]
+            OrderBook::limit_orders(order_book_id, order_sell_id1).unwrap(),
+            order_sell1
+        );
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_sell_id2).unwrap(),
+            order_sell2
+        );
+        assert_eq!(
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id1, order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id1, order_sell_id2]
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_id1, order_id2]
+            vec![order_buy_id1, order_buy_id2, order_sell_id1, order_sell_id2]
         );
 
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id1));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id1), None);
+        // delete order sell 1
+        assert_ok!(OrderBook::delete_limit_order(
+            &order_book_id,
+            order_sell_id1
+        ));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id1), None);
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id2]
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id1, order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id2]
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_id2]
+            vec![order_buy_id1, order_buy_id2, order_sell_id2]
         );
 
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id2));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id2), None);
-        assert_eq!(OrderBook::prices(order_book_id, price), None);
-        assert_eq!(OrderBook::user_limit_orders(&owner, order_book_id), None);
+        // delete order buy 1
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id1));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id1), None);
+        assert_eq!(
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_buy_id2, order_sell_id2]
+        );
+
+        // delete order buy 2
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id2));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id2), None);
+        assert_eq!(OrderBook::bids(order_book_id, price), None);
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_sell_id2]
+        );
+
+        // delete order sell 2
+        assert_ok!(OrderBook::delete_limit_order(
+            &order_book_id,
+            order_sell_id2
+        ));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id2), None);
+        assert_eq!(OrderBook::bids(order_book_id, price), None);
+        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBook::user_limit_orders(&owner, &order_book_id), None);
     });
 }
 
