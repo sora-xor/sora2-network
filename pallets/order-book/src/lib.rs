@@ -233,8 +233,8 @@ pub mod pallet {
         UnknownOrderBook,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
-        /// Cannot insert the limit order
-        InsertLimitOrderError,
+        /// Cannot insert the limit order because bounds are reached
+        LimitOrderStorageOverflow,
         /// Cannot delete the limit order
         DeleteLimitOrderError,
         /// There is not enough liquidity in the order book to cover the deal
@@ -346,28 +346,28 @@ impl<T: Config> Pallet<T> {
         match order.side {
             PriceVariant::Buy => {
                 <Bids<T>>::try_append(order_book_id, order.price, order.id)
-                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut bids = <AggregatedBids<T>>::get(order_book_id);
                 let volume = bids.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
                 bids.try_insert(order.price, volume)
-                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedBids<T>>::set(order_book_id, bids);
             }
             PriceVariant::Sell => {
                 <Asks<T>>::try_append(order_book_id, order.price, order.id)
-                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut asks = <AggregatedAsks<T>>::get(order_book_id);
                 let volume = asks.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
                 asks.try_insert(order.price, volume)
-                    .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedAsks<T>>::set(order_book_id, asks);
             }
         }
 
         <UserLimitOrders<T>>::try_append(&order.owner, order_book_id, order.id)
-            .map_err(|_| Error::<T>::InsertLimitOrderError)?;
+            .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
         Ok(())
     }

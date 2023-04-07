@@ -167,7 +167,7 @@ fn should_not_insert_limit_order() {
         // Error if storage overflow
         assert_err!(
             OrderBook::insert_limit_order(&order_book_id, &order),
-            E::InsertLimitOrderError
+            E::LimitOrderStorageOverflow
         );
     });
 }
