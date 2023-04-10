@@ -33,9 +33,9 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet,
-    PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, BuyBackHandler, EnsureDEXManager, Fixed,
+    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned,
+    PoolXykPallet, PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -268,8 +268,8 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers = distribution
                     .liquidity_providers
                     .saturating_sub(undistributed_lp_amount);
-                distribution.parliament = distribution
-                    .parliament
+                distribution.buy_back_xst = distribution
+                    .buy_back_xst
                     .saturating_add(undistributed_lp_amount);
             }
 
@@ -280,11 +280,10 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers,
             )?;
 
-            assets::Pallet::<T>::mint_to(
+            T::BuyBackHandler::mint_buy_back_and_burn(
                 &incentive_asset_id,
-                tech_account_id,
-                &T::GetParliamentAccountId::get(),
-                distribution.parliament,
+                &T::GetXSTAssetId::get(),
+                distribution.buy_back_xst,
             )?;
 
             Self::deposit_event(Event::<T>::IncentiveDistributed(
@@ -332,10 +331,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<PswapRemintInfo, DispatchError> {
         let amount_burned = FixedWrapper::from(amount_burned);
         // Calculate amount for parliament and actual remainder after its fraction.
-        let amount_parliament = (amount_burned.clone() * ParliamentPswapFraction::<T>::get())
+        let amount_buy_back = (amount_burned.clone() * BuyBackXSTFraction::<T>::get())
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
-        let mut amount_left = (amount_burned.clone() - amount_parliament)
+        let mut amount_left = (amount_burned.clone() - amount_buy_back)
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
 
@@ -353,7 +352,7 @@ impl<T: Config> Pallet<T> {
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,
             vesting: amount_vesting,
-            parliament: amount_parliament,
+            buy_back_xst: amount_buy_back,
         })
     }
 
@@ -370,13 +369,17 @@ impl<T: Config> Pallet<T> {
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
                 let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, dex_id);
-                let distribute_result = Self::distribute_incentive(
-                    &fees_account,
-                    &dex_id,
-                    &pool_account,
-                    &tech_account_id,
-                );
-                if distribute_result.is_err() {
+                // Revert storage state if distribution failed and try to distribute next time
+                let distribute_result = common::with_transaction(|| {
+                    Self::distribute_incentive(
+                        &fees_account,
+                        &dex_id,
+                        &pool_account,
+                        &tech_account_id,
+                    )
+                });
+                if let Err(err) = distribute_result {
+                    frame_support::log::error!("Incentive distribution failed: {err:?}");
                     Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
                         dex_id,
                         fees_account,
@@ -442,6 +445,7 @@ pub mod pallet {
         const PSWAP_BURN_PERCENT: Percent;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<Self::AssetId>;
+        type GetXSTAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
@@ -456,6 +460,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
         type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
     }
 
     /// The current storage version.
@@ -588,15 +593,15 @@ pub mod pallet {
     pub type ClaimableShares<T: Config> = StorageValue<_, Fixed, ValueQuery>;
 
     #[pallet::type_value]
-    pub(super) fn DefaultForParliamentPswapFraction() -> Fixed {
+    pub(super) fn DefaultForBuyBackXSTFraction() -> Fixed {
         fixed!(0.1)
     }
 
-    /// Fraction of PSWAP that could be reminted for parliament.
+    /// Fraction of PSWAP that could be buy backed to XST
     #[pallet::storage]
-    #[pallet::getter(fn parliament_pswap_fraction)]
-    pub(super) type ParliamentPswapFraction<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForParliamentPswapFraction>;
+    #[pallet::getter(fn buy_back_xst_fraction)]
+    pub(super) type BuyBackXSTFraction<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForBuyBackXSTFraction>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

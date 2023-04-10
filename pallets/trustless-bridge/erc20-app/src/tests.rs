@@ -158,18 +158,6 @@ fn should_not_burn_on_commitment_failure() {
             ),
             bridge_outbound_channel::Error::<Test>::QueueSizeLimitReached
         );
-        // let call = crate::mock::Call::Erc20App(crate::Call::<Test>::burn {
-        //     network_id: BASE_NETWORK_ID,
-        //     channel_id: ChannelId::Bridge,
-        //     asset_id,
-        //     recipient: recipient.clone(),
-        //     amount,
-        // });
-
-        // assert_noop!(
-        //     call.dispatch(RuntimeOrigin::signed(sender.clone())),
-        //     bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
-        // );
     });
 }
 

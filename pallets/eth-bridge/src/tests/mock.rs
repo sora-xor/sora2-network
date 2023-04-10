@@ -233,7 +233,7 @@ impl<RuntimeCall: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<RuntimeCal
     fn get_dispatch_info(&self) -> DispatchInfo {
         // for testing: weight == size.
         DispatchInfo {
-            weight: Weight::from_ref_time(self.encode().len() as u64),
+            weight: Weight::from_parts(self.encode().len() as u64, 0),
             pays_fee: Pays::No,
             ..Default::default()
         }
@@ -246,13 +246,13 @@ pub type TestExtrinsic = MyTestXt<RuntimeCall, MyExtra>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
-    pub const SchedulerMaxWeight: Weight = Weight::from_ref_time(1024);
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
 }
 
 pub struct RemoveTemporaryPeerAccountId;

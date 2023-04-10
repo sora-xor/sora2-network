@@ -34,10 +34,10 @@ use common::prelude::{
     Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
-    TechPurpose, VestedRewardsPallet, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR,
-    XST, XSTUSD,
+    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,
+    BuyBackHandler, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, PriceVariant, TechPurpose, VestedRewardsPallet, DAI,
+    DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -86,6 +86,10 @@ pub fn free_reserves_account() -> AccountId {
     AccountId32::from([5u8; 32])
 }
 
+pub fn tmp_account() -> AccountId {
+    AccountId32::from([6u8; 32])
+}
+
 pub fn get_pool_reserves_account_id() -> AccountId {
     let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
     let reserves_account_id =
@@ -97,7 +101,7 @@ pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetDefaultFee: u16 = 30;
@@ -118,6 +122,7 @@ parameter_types! {
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub GetTBCBuyBackXSTPercent: Fixed = fixed!(0.025);
 }
 
 construct_runtime! {
@@ -195,7 +200,43 @@ impl Config for Runtime {
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
+    type BuyBackHandler = BuyBackHandlerImpl;
+    type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
     type WeightInfo = ();
+}
+
+pub struct BuyBackHandlerImpl;
+
+impl BuyBackHandler<AccountId, AssetId> for BuyBackHandlerImpl {
+    fn mint_buy_back_and_burn(
+        mint_asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let owner = Assets::asset_owner(&mint_asset_id).unwrap();
+        Assets::mint_to(&mint_asset_id, &owner, &tmp_account(), amount)?;
+        let amount =
+            Self::buy_back_and_burn(&tmp_account(), mint_asset_id, buy_back_asset_id, amount)?;
+        Ok(amount)
+    }
+
+    fn buy_back_and_burn(
+        account_id: &AccountId,
+        asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let outcome = MockDEXApi::inner_exchange(
+            account_id,
+            account_id,
+            &DEX_A_ID,
+            asset_id,
+            buy_back_asset_id,
+            SwapAmount::with_desired_input(amount, 0),
+        )?;
+        Assets::burn_from(buy_back_asset_id, account_id, account_id, outcome.amount)?;
+        Ok(outcome.amount)
+    }
 }
 
 pub struct MockVestedRewards;
@@ -300,6 +341,7 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -310,6 +352,7 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl price_tools::Config for Runtime {
@@ -406,6 +449,7 @@ impl MockDEXApi {
         Self::add_reserves(vec![
             (XOR, balance!(100000)),
             (VAL, balance!(100000)),
+            (XST, balance!(100000)),
             (USDT, balance!(1000000)),
         ])?;
         Ok(())
@@ -557,7 +601,10 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XSTUSD, PSWAP), balance!(1)),
         // XSTUSD
         ((XOR, XSTUSD), balance!(102.0)),
+        // TBCD
         ((XOR, TBCD), balance!(103.0)),
+        // XST
+        ((XOR, XST), balance!(0.001)),
     ];
     prices.into_iter().collect()
 }
@@ -680,6 +727,14 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"DAI".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                ),
+                (
+                    alice(),
+                    XST,
+                    balance!(100),
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
@@ -820,6 +875,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
@@ -1011,6 +1067,13 @@ impl ExtBuilder {
                     trading_pair::TradingPair::<Runtime> {
                         base_asset_id: XOR,
                         target_asset_id: VAL,
+                    },
+                ),
+                (
+                    DEX_A_ID,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR,
+                        target_asset_id: XST,
                     },
                 ),
             ],

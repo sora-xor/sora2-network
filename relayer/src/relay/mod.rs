@@ -35,6 +35,5 @@ pub mod justification;
 pub mod messages_subscription;
 pub mod parachain;
 pub mod parachain_messages;
-pub mod simplified_proof;
 pub mod substrate;
 pub mod substrate_messages;

@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, FilterMode, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    OnValBurned,
+    Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait, LiquiditySourceFilter,
+    LiquiditySourceType, OnValBurned,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::log::error;
@@ -528,7 +528,7 @@ impl<T: Config> Pallet<T> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
         let val = T::ValId::get();
-        let parliament = T::GetParliamentAccountId::get();
+        let xst = T::XstId::get();
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -538,7 +538,7 @@ impl<T: Config> Pallet<T> {
         match T::LiquidityProxy::exchange(
             T::DEXIdValue::get(),
             &tech_account_id,
-            &parliament,
+            &tech_account_id,
             &xor,
             &val,
             SwapAmount::WithDesiredInput {
@@ -551,11 +551,32 @@ impl<T: Config> Pallet<T> {
             ),
         ) {
             Ok(swap_outcome) => {
-                let val_to_burn = Balance::from(swap_outcome.amount);
+                let mut val_to_burn = Balance::from(swap_outcome.amount);
                 T::OnValBurned::on_val_burned(val_to_burn.clone());
 
-                let val_to_burn = val_to_burn.clone() - T::SoraParliamentShare::get() * val_to_burn;
-                Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
+                let val_to_buy_back = T::BuyBackXSTPercent::get() * val_to_burn;
+                let result = common::with_transaction(|| {
+                    T::BuyBackHandler::buy_back_and_burn(
+                        &tech_account_id,
+                        &val,
+                        &xst,
+                        val_to_buy_back,
+                    )
+                });
+                match result {
+                    Ok(_) => {
+                        val_to_burn -= val_to_buy_back;
+                    }
+                    Err(err) => {
+                        error!("failed to exchange val to xst, burning VAL instead of buy back: {err:?}");
+                    }
+                }
+                assets::Pallet::<T>::burn_from(
+                    &val,
+                    &tech_account_id,
+                    &tech_account_id,
+                    val_to_burn,
+                )?;
             }
             Err(e) => {
                 error!(
@@ -598,20 +619,21 @@ pub mod pallet {
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<Self::AssetId>;
         type ValId: Get<Self::AssetId>;
+        type XstId: Get<Self::AssetId>;
         type ReferrerWeight: Get<u32>;
         type XorBurnedWeight: Get<u32>;
         type XorIntoValBurnedWeight: Get<u32>;
-        type SoraParliamentShare: Get<Percent>;
+        type BuyBackXSTPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type GetParliamentAccountId: Get<Self::AccountId>;
         type SessionManager: pallet_session::historical::SessionManager<
             Self::AccountId,
             <Self as pallet_session::historical::Config>::FullIdentification,
         >;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         type WithdrawFee: WithdrawFee<Self>;

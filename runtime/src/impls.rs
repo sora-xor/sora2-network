@@ -66,7 +66,7 @@ impl pallet_preimage::WeightInfo for PreimageWeightInfo {
             .max_extrinsic
             .expect("Democracy pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(Weight::from_ref_time(1));
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
         }
         let weight = <() as pallet_preimage::WeightInfo>::note_preimage(bytes);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -145,7 +145,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(Weight::from_ref_time(1));
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_early_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -162,7 +162,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(Weight::from_ref_time(1));
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -321,7 +321,7 @@ mod test {
     use frame_support::weights::Weight;
     use pallet_preimage::WeightInfo;
 
-    const MAX_WEIGHT: Weight = Weight::from_ref_time(1_459_875_000_000_u64);
+    const MAX_WEIGHT: Weight = Weight::from_parts(1_459_875_000_000_u64, 0);
     const MEBIBYTE: u32 = 1024 * 1024;
 
     #[test]
@@ -332,13 +332,13 @@ mod test {
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_ref_time(248_828_000), "u32::MIN");
-        t(1, Weight::from_ref_time(248_829_705), "1");
-        t(500_000, Weight::from_ref_time(1_101_328_000), "500_000");
-        t(1_000_000, Weight::from_ref_time(1_953_828_000), "1_000_000");
+        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
+        t(1, Weight::from_parts(248_829_705, 0), "1");
+        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
+        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
         t(
             5 * MEBIBYTE,
-            Weight::from_ref_time(9_187_938_400),
+            Weight::from_parts(9_187_938_400, 0),
             "5 * MEBIBYTE",
         );
     }
