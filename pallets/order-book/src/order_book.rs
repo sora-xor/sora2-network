@@ -30,7 +30,10 @@
 
 use crate::{OrderBookId, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::balance;
 use core::fmt::Debug;
+use sp_runtime::traits::{One, Zero};
+use sp_std::ops::Add;
 
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
@@ -42,7 +45,7 @@ pub enum OrderBookStatus {
     Stop,
 }
 
-#[derive(Encode, Decode, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, PartialEq, Eq, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct OrderBook<T>
 where
@@ -52,8 +55,57 @@ where
     pub dex_id: T::DEXId,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
-    pub tick_size: OrderPrice<T>,      // price precision
-    pub step_lot_size: OrderVolume<T>, // amount precision
-    pub min_lot_size: OrderVolume<T>,
-    pub max_lot_size: OrderVolume<T>,
+    pub tick_size: OrderPrice,      // price precision
+    pub step_lot_size: OrderVolume, // amount precision
+    pub min_lot_size: OrderVolume,
+    pub max_lot_size: OrderVolume,
+}
+
+impl<T: crate::Config + Sized> OrderBook<T> {
+    pub fn new(
+        order_book_id: OrderBookId<T>,
+        dex_id: T::DEXId,
+        tick_size: OrderPrice,
+        step_lot_size: OrderVolume,
+        min_lot_size: OrderVolume,
+        max_lot_size: OrderVolume,
+    ) -> Self {
+        Self {
+            order_book_id: order_book_id,
+            dex_id: dex_id,
+            status: OrderBookStatus::Trade,
+            last_order_id: T::OrderId::zero(),
+            tick_size: tick_size,
+            step_lot_size: step_lot_size,
+            min_lot_size: min_lot_size,
+            max_lot_size: max_lot_size,
+        }
+    }
+
+    pub fn default(order_book_id: OrderBookId<T>, dex_id: T::DEXId) -> Self {
+        Self::new(
+            order_book_id,
+            dex_id,
+            balance!(0.00001), // TODO: order-book clarify
+            balance!(0.00001), // TODO: order-book clarify
+            balance!(1),       // TODO: order-book clarify
+            balance!(100000),  // TODO: order-book clarify
+        )
+    }
+
+    pub fn default_nft(order_book_id: OrderBookId<T>, dex_id: T::DEXId) -> Self {
+        Self::new(
+            order_book_id,
+            dex_id,
+            balance!(0.00001), // TODO: order-book clarify
+            balance!(1),       // TODO: order-book clarify
+            balance!(1),       // TODO: order-book clarify
+            balance!(1),       // TODO: order-book clarify
+        )
+    }
+
+    pub fn next_order_id(&mut self) -> T::OrderId {
+        self.last_order_id = self.last_order_id.add(T::OrderId::one());
+        self.last_order_id
+    }
 }
