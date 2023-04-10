@@ -189,16 +189,16 @@ impl SubstrateMessagesRelay {
         let eth = self.eth.inner();
         let inbound_channel = ethereum_gen::InboundChannel::new(self.inbound_channel, eth.clone());
         let events: Vec<(
-            ethereum_gen::inbound_channel::MessageDispatchedFilter,
+            ethereum_gen::inbound_channel::BatchDispatchedFilter,
             LogMeta,
         )> = inbound_channel
-            .message_dispatched_filter()
+            .batch_dispatched_filter()
             .from_block(self.latest_channel_block)
             .to_block(current_eth_block)
             .query_with_meta()
             .await?;
         debug!(
-            "Channel: Found {} MessageDispatched events from {} to {}",
+            "Channel: Found {} BatchDispatched events from {} to {}",
             events.len(),
             self.latest_channel_block,
             current_eth_block
@@ -214,19 +214,37 @@ impl SubstrateMessagesRelay {
             )
             .await?;
 
-        for (event, meta) in events {
-            if event.nonce > sub_inbound_nonce && meta.address == self.inbound_channel {
+        for (_event, meta) in events {
+            if meta.address == self.inbound_channel {
                 let tx = eth
                     .get_transaction_receipt(meta.transaction_hash)
                     .await?
                     .expect("should exist");
 
                 let eth_tx_hash = meta.transaction_hash;
-                // relayer who paid for the gas
-                let relayer = tx.from;
-                // gas_used None means light client mode
-                let gas_used = tx.gas_used.unwrap_or(U256::from(0));
-                let gas_price = tx.effective_gas_price.unwrap_or(U256::from(0));
+
+                // TODO why all? What if one failed?
+                let need_to_handle = tx.logs.iter().all(|log| {
+                    let raw_log = RawLog {
+                        topics: log.topics.clone(),
+                        data: log.data.to_vec(),
+                    };
+                    if let Ok(event) =
+                        <ethereum_gen::inbound_channel::MessageDispatchedFilter as EthEvent>::decode_log(
+                            &raw_log,
+                        ) {
+                        debug!("Channel: Send {} MessageDispatched", event.nonce);
+                        // TODO event.result is not checked
+                        if event.nonce > sub_inbound_nonce {
+                            return true;
+                        }
+                        sub_inbound_nonce = event.nonce;
+                    }
+                    false
+                });
+                if !need_to_handle {
+                    return Ok(());
+                }
 
                 for log in tx.logs {
                     let raw_log = RawLog {
@@ -234,11 +252,11 @@ impl SubstrateMessagesRelay {
                         data: log.data.to_vec(),
                     };
                     if let Ok(event) =
-                    <ethereum_gen::inbound_channel::MessageDispatchedFilter as EthEvent>::decode_log(
-                        &raw_log,
-                    )
+                        <ethereum_gen::inbound_channel::BatchDispatchedFilter as EthEvent>::decode_log(
+                            &raw_log,
+                        )
                     {
-                        debug!("Channel: Send {} MessageDispatched", event.nonce);
+                        debug!("Channel: Send BatchDispatchedFilter {}", event.relayer);
                         let message = self.make_message(log).await?;
                         let ev = self
                             .sub
@@ -251,9 +269,7 @@ impl SubstrateMessagesRelay {
                                         self.network_id,
                                         message,
                                         eth_tx_hash,
-                                        relayer,
-                                        gas_used,
-                                        gas_price
+                                        event.relayer,
                                     ),
                                 &self.sub,
                             )
@@ -263,11 +279,10 @@ impl SubstrateMessagesRelay {
                             .wait_for_success()
                             .await?;
                         info!(
-                            "Channel: MessageDispatched event {} submitted in {:?}",
-                            event.nonce,
+                            "Channel: BatchDispatchedFilter event from {} submitted in {:?}",
+                            event.relayer,
                             ev.block_hash()
                         );
-                        sub_inbound_nonce = event.nonce;
                     }
                 }
             }

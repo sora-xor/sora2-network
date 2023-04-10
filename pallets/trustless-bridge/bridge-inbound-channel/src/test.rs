@@ -523,8 +523,6 @@ fn test_message_dispatched_wrong_event() {
                 message.clone(),
                 Default::default(),
                 Address::zero(),
-                Default::default(),
-                Default::default(),
             ),
             Error::<Test>::InvalidMessageDispatchedEvent
         );
@@ -552,8 +550,6 @@ fn test_message_dispatched_with_invalid_source_channel() {
                 message.clone(),
                 Default::default(),
                 Address::zero(),
-                Default::default(),
-                Default::default(),
             ),
             Error::<Test>::InvalidSourceChannel
         );
@@ -580,8 +576,6 @@ fn test_message_dispatched_with_invalid_nonce() {
             message.clone(),
             Default::default(),
             Address::zero(),
-            Default::default(),
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -594,8 +588,6 @@ fn test_message_dispatched_with_invalid_nonce() {
                 message.clone(),
                 Default::default(),
                 Address::zero(),
-                Default::default(),
-                Default::default(),
             ),
             Error::<Test>::InvalidNonce
         );
@@ -622,8 +614,6 @@ fn test_message_dispatched() {
             message_1,
             Default::default(),
             Address::zero(),
-            Default::default(),
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -643,8 +633,6 @@ fn test_message_dispatched() {
             message_2,
             Default::default(),
             Address::zero(),
-            Default::default(),
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -671,8 +659,6 @@ fn test_message_dispatched_refund() {
             message,
             Default::default(),
             Address::zero(),
-            Default::default(),
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);

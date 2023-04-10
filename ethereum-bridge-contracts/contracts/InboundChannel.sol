@@ -8,10 +8,10 @@ import "./interfaces/ISimplifiedMMRProof.sol";
 import "./libraries/ScaleCodec.sol";
 import "./BeefyLightClient.sol";
 
-/** 
-* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
-* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
-*/
+/**
+ * @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken
+ * into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`.
+ */
 contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
     using ScaleCodec for uint256;
     using ScaleCodec for uint64;
@@ -50,6 +50,8 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
     BeefyLightClient public beefyLightClient;
 
     event MessageDispatched(uint64 nonce, bool result);
+    // Batch of messages was dispatched by relayer. Emitted in order to determine the relayer address for the reward.
+    event BatchDispatched(address relayer);
 
     constructor(address _beefyLightClient) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -85,6 +87,7 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         );
 
         processMessages(payable(msg.sender), batch.messages);
+        emit BatchDispatched(msg.sender);
     }
 
     function verifyMerkleLeaf(
@@ -116,7 +119,7 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         Message[] calldata messages
     ) internal {
         uint256 rewardAmount;
-        uint64 _nonce = nonce; 
+        uint64 _nonce = nonce;
         for (uint256 i = 0; i < messages.length; i++) {
             // Check message nonce is correct and increment nonce for replay protection
             require(messages[i].nonce == _nonce + 1, "invalid nonce");

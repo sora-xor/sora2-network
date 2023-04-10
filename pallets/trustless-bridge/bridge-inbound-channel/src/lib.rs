@@ -207,8 +207,6 @@ pub mod pallet {
         ///
         /// - `ethereum_tx_hash`: tx hash on Ethereum
         /// - `ethereum_relayer_address`: address of relayer which paid fees.
-        /// - `gas_used`: gas used by tx.
-        /// - `gas_price`: gas price paid by relayer.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
         pub fn message_dispatched(
@@ -217,8 +215,6 @@ pub mod pallet {
             message: Message,
             ethereum_tx_hash: H256,
             ethereum_relayer_address: Address,
-            gas_used: U256,
-            gas_price: U256,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
@@ -255,8 +251,8 @@ pub mod pallet {
                 message_id,
                 ethereum_tx_hash,
                 ethereum_relayer_address,
-                gas_used,
-                gas_price,
+                U256::zero(),
+                U256::zero(),
             );
 
             T::MessageStatusNotifier::update_status(
