@@ -273,7 +273,7 @@ fn test_submit() {
                 target
             }
         ));
-        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 0);
 
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
@@ -284,7 +284,7 @@ fn test_submit() {
                 target
             }
         ));
-        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
+        assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 0);
     });
 }
 
@@ -410,26 +410,4 @@ fn test_submit_exceeds_payload_limit() {
             Error::<Test>::PayloadTooLarge,
         );
     })
-}
-
-#[test]
-fn test_submit_fails_on_nonce_overflow() {
-    new_tester().execute_with(|| {
-        let target = H160::zero();
-        let who: AccountId = Keyring::Bob.into();
-
-        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        assert_noop!(
-            BridgeOutboundChannel::submit(
-                BASE_NETWORK_ID,
-                &RawOrigin::Signed(who),
-                &vec![0, 1, 2],
-                AdditionalEVMOutboundData {
-                    max_gas: 100000.into(),
-                    target
-                }
-            ),
-            Error::<Test>::Overflow,
-        );
-    });
 }

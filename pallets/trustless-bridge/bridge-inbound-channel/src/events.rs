@@ -100,25 +100,35 @@ impl<T: Config> TryFrom<Log> for Envelope<T> {
     }
 }
 
-pub static MESSAGE_DISPATCHED_EVENT_ABI: OnceBox<Event> = OnceBox::new();
+pub static BATCH_DISPATCHED_EVENT_ABI: OnceBox<Event> = OnceBox::new();
 
-fn get_message_dispatched_event_abi() -> &'static Event {
-    MESSAGE_DISPATCHED_EVENT_ABI.get_or_init(message_dispatched_event_abi)
+fn get_batch_dispatched_event_abi() -> &'static Event {
+    BATCH_DISPATCHED_EVENT_ABI.get_or_init(batch_dispatched_event_abi)
 }
 
-/// ABI for InoundChannel MessageDispatched event
-fn message_dispatched_event_abi() -> Box<Event> {
+/// ABI for InboundChannel BatchDispatched event
+fn batch_dispatched_event_abi() -> Box<Event> {
     Box::new(Event {
-        name: "MessageDispatched".into(),
+        name: "BatchDispatched".into(),
         inputs: vec![
             EventParam {
                 kind: ParamType::Uint(64),
-                name: "nonce".into(),
+                name: "batch_nonce".into(),
                 indexed: false,
             },
             EventParam {
-                kind: ParamType::Bool,
-                name: "result".into(),
+                kind: ParamType::Address,
+                name: "relayer".into(),
+                indexed: false,
+            },
+            EventParam {
+                kind: ParamType::Uint(256),
+                name: "results".into(),
+                indexed: false,
+            },
+            EventParam {
+                kind: ParamType::Uint(256),
+                name: "results_length".into(),
                 indexed: false,
             },
         ],
@@ -127,40 +137,51 @@ fn message_dispatched_event_abi() -> Box<Event> {
 }
 
 #[derive(Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct MessageDispatched {
+pub struct BatchDispatched {
     /// The address of the inbound channel on Ethereum that processed this message.
     pub channel: H160,
+    /// Ethereum address of batch sender
+    pub relayer: H160,
     /// A nonce for enforcing replay protection and ordering.
-    pub nonce: u64,
-    /// A status of message delivery.
-    pub result: bool,
+    pub batch_nonce: u64,
+    /// A bitfield status of message delivery.
+    pub results: u64,
+    /// A number of messages in a batch.
+    pub results_length: u64,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct MessageDispatchedEventDecodeError;
+pub struct BatchDispatchedEventDecodeError;
 
-impl TryFrom<Log> for MessageDispatched {
-    type Error = MessageDispatchedEventDecodeError;
+impl TryFrom<Log> for BatchDispatched {
+    type Error = BatchDispatchedEventDecodeError;
 
     fn try_from(log: Log) -> Result<Self, Self::Error> {
         let address = log.address;
-        let mut nonce = None;
-        let mut result = None;
-        let log = get_message_dispatched_event_abi()
+        let mut batch_nonce = None;
+        let mut relayer = None;
+        let mut results = None;
+        let mut results_length = None;
+        let log = get_batch_dispatched_event_abi()
             .parse_log((log.topics, log.data).into())
-            .map_err(|_| MessageDispatchedEventDecodeError)?;
+            .map_err(|_| BatchDispatchedEventDecodeError)?;
+
         for param in log.params {
             match param.name.as_str() {
-                "nonce" => nonce = param.value.into_uint().map(|x| x.low_u64()),
-                "result" => result = param.value.into_bool(),
-                _ => return Err(MessageDispatchedEventDecodeError),
+                "batch_nonce" => batch_nonce = param.value.into_uint().map(|x| x.low_u64()),
+                "relayer" => relayer = param.value.into_address(),
+                "results" => results = param.value.into_uint().map(|x| x.low_u64()),
+                "results_length" => results_length = param.value.into_uint().map(|x| x.low_u64()),
+                _ => return Err(BatchDispatchedEventDecodeError),
             }
         }
 
         Ok(Self {
             channel: address,
-            nonce: nonce.ok_or(MessageDispatchedEventDecodeError)?,
-            result: result.ok_or(MessageDispatchedEventDecodeError)?,
+            relayer: relayer.ok_or(BatchDispatchedEventDecodeError)?,
+            batch_nonce: batch_nonce.ok_or(BatchDispatchedEventDecodeError)?,
+            results: results.ok_or(BatchDispatchedEventDecodeError)?,
+            results_length: results_length.ok_or(BatchDispatchedEventDecodeError)?,
         })
     }
 }

@@ -76,7 +76,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     // Storage: Rewards UmiNftReceivers (r:1 w:0)
     fn claim() -> Weight {
         // Minimum execution time: 2_380_000 nanoseconds.
-        Weight::from_ref_time(2_399_000_000 as u64)
+        Weight::from_parts(2_399_000_000 as u64, 0)
             .saturating_add(T::DbWeight::get().reads(14 as u64))
             .saturating_add(T::DbWeight::get().writes(10 as u64))
     }
@@ -86,9 +86,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     /// The range of component `n` is `[1, 1000]`.
     fn add_umi_nfts_receivers(n: u64, ) -> Weight {
         // Minimum execution time: 199_000 nanoseconds.
-        Weight::from_ref_time(199_000_000 as u64)
+        Weight::from_parts(199_000_000 as u64, 0)
             // Standard Error: 115_239
-            .saturating_add(Weight::from_ref_time(54_319_538 as u64).saturating_mul(n as u64))
+            .saturating_add(Weight::from_parts(54_319_538 as u64, 0).saturating_mul(n as u64))
             .saturating_add(T::DbWeight::get().reads(1 as u64))
             .saturating_add(T::DbWeight::get().reads((1 as u64).saturating_mul(n as u64)))
             .saturating_add(T::DbWeight::get().writes((1 as u64).saturating_mul(n as u64)))

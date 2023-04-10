@@ -20,6 +20,6 @@ sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polk
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 anyhow = "1.0"
-bridge-types = { git = "https://github.com/sora-xor/sora2-common", branch = "polkadot-v0.9.38" } # 'develop' branch after PR 14
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", rev = "3b1ae58977b1a163380ec021d4088525987a539b" }
 bridge-outbound-channel = { path = "../bridge-outbound-channel" }
 common = { path = "../../../common" }

@@ -36,9 +36,8 @@ mod tests {
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, DAI, LiquiditySourceFilter,
         DEFAULT_BALANCE_PRECISION,
-        LiquidityProxyTrait, PriceVariant, TBCD,
+        LiquidityProxyTrait, PriceVariant, TBCD, XST,
     };
-    use hex_literal::hex;
     use frame_support::traits::OnInitialize;
     use frame_support::assert_err;
     use frame_support::assert_noop;
@@ -344,10 +343,6 @@ mod tests {
             )),
             projects_stores_and_shops_coeff.get().unwrap(),
         );
-        let parliament_and_development = DistributionAccountData::new(
-            DistributionAccount::Account(hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into()),
-            projects_parliament_and_development_coeff.get().unwrap(),
-        );
         let projects = DistributionAccountData::new(
             DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
@@ -366,7 +361,6 @@ mod tests {
             xor_allocation,
             sora_citizens,
             stores_and_shops,
-            parliament_and_development,
             projects,
             val_holders,
         };
@@ -521,7 +515,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(2.760049066522984224),
                 balance!(11.040196266091936898),
-                balance!(13.800245332614921123),
                 balance!(248.404415987068580219),
             ]);
             assert_swap_outcome(
@@ -584,7 +577,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(2.760049066522984224),
                 balance!(11.040196266091936898),
-                balance!(13.800245332614921123),
                 balance!(248.404415987068580219),
             ]);
             assert_swap_outcome(
@@ -1593,6 +1585,7 @@ mod tests {
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XST, 0, AssetSymbol(b"XST".to_vec()), AssetName(b"XST".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
@@ -1611,7 +1604,6 @@ mod tests {
             assert_eq!(free_reserves_balance, balance!(0));
 
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
-                balance!(0),
                 balance!(0),
                 balance!(0),
                 balance!(0),
@@ -1639,7 +1631,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(0.002747946907288807),
                 balance!(0.010991787629155229),
-                balance!(0.013739734536444036),
                 balance!(0.247315221655992660),
             ]);
         })
@@ -1658,6 +1649,7 @@ mod tests {
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XST, 0, AssetSymbol(b"XST".to_vec()), AssetName(b"XST".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
@@ -1702,11 +1694,10 @@ mod tests {
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
             // exchange becomes possible for stored free reserves
-            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000)), (XST, balance!(1000000))]).unwrap();
 
             // actual accounts check before distribution
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
-                balance!(0),
                 balance!(0),
                 balance!(0),
                 balance!(0),
@@ -1728,7 +1719,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(0.002000003750968687),
                 balance!(0.008000015003874750),
-                balance!(0.010000018754843438),
                 balance!(0.180000337587181890),
             ]);
         })
@@ -1747,6 +1737,7 @@ mod tests {
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XST, 0, AssetSymbol(b"XST".to_vec()), AssetName(b"XST".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
@@ -1812,7 +1803,7 @@ mod tests {
             assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
 
             // exchange becomes available
-            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000)), (XST, balance!(1000000))]).unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
@@ -1905,6 +1896,7 @@ mod tests {
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XST, 0, AssetSymbol(b"XST".to_vec()), AssetName(b"XST".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
@@ -1955,7 +1947,7 @@ mod tests {
             assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
 
             // funds are added and one of exchanges becomes available, unavailable is left as pending
-            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000)), (XST, balance!(1000000))]).unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id().unwrap()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, expected_balances[0])]);
@@ -1976,6 +1968,7 @@ mod tests {
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), DEFAULT_BALANCE_PRECISION),
+            (alice(), XST, 0, AssetSymbol(b"XST".to_vec()), AssetName(b"XST".to_vec()), DEFAULT_BALANCE_PRECISION),
             (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), DEFAULT_BALANCE_PRECISION),
         ])
         .build();
@@ -2022,7 +2015,6 @@ mod tests {
                 balance!(0),
                 balance!(0),
                 balance!(0),
-                balance!(0),
             ]);
 
             // another buy is performed
@@ -2048,6 +2040,7 @@ mod tests {
 
             // exchange becomes possible, but val is enough only to fulfill one of pending distributions
             MockDEXApi::add_reserves(vec![(VAL, balance!(0.4))]).unwrap();
+            MockDEXApi::add_reserves(vec![(XST, balance!(0.4))]).unwrap();
 
             // val is not enough for one of distributions, it's still present
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
@@ -2059,7 +2052,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
                 balance!(0.002000003750968687),
                 balance!(0.008000015003874750),
-                balance!(0.010000018754843438),
                 balance!(0.180000337587181890),
             ]);
 
@@ -2076,7 +2068,6 @@ mod tests {
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(0.004747958137689057),
                 balance!(0.018991832550756232),
-                balance!(0.023739790688445290),
                 balance!(0.427316232392015238),
             ]);
         })

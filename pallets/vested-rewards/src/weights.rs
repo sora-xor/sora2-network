@@ -70,7 +70,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     // Storage: VestedRewards TotalRewards (r:1 w:1)
     fn claim_rewards() -> Weight {
         // Minimum execution time: 1_009_000 nanoseconds.
-        Weight::from_ref_time(1_073_000_000 as u64)
+        Weight::from_parts(1_073_000_000 as u64, 0)
             .saturating_add(T::DbWeight::get().reads(6 as u64))
             .saturating_add(T::DbWeight::get().writes(5 as u64))
     }
@@ -80,7 +80,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     // Storage: System Account (r:2 w:1)
     fn claim_crowdloan_rewards() -> Weight {
         // Minimum execution time: 1_157_000 nanoseconds.
-        Weight::from_ref_time(1_163_000_000 as u64)
+        Weight::from_parts(1_163_000_000 as u64, 0)
             .saturating_add(T::DbWeight::get().reads(6 as u64))
             .saturating_add(T::DbWeight::get().writes(4 as u64))
     }

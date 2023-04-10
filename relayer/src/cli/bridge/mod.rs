@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod fixtures;
 mod register_app;
 mod register_asset;
 mod register_bridge;
@@ -60,7 +59,7 @@ pub(crate) enum Commands {
     TransferToEthereum(transfer_to_ethereum::Command),
     /// Reset bridge contracts
     Reset(reset::Command),
-    Fixtures(fixtures::Command),
+
     RegisterSubstrateBridge(register_substrate_bridge::Command),
 }
 
@@ -75,7 +74,6 @@ impl Commands {
             Commands::TransferToSora(cmd) => cmd.run().await,
             Commands::TransferToEthereum(cmd) => cmd.run().await,
             Commands::Reset(cmd) => cmd.run().await,
-            Commands::Fixtures(cmd) => cmd.run().await,
             Commands::RegisterSubstrateBridge(cmd) => cmd.run().await,
         }
     }

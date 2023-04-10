@@ -38,10 +38,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::events::MessageDispatched;
+    use crate::events::BatchDispatched;
     use bridge_types::traits::{AppRegistry, GasTracker, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::MessageStatus;
-    use bridge_types::{Address, GenericNetworkId, Log, H256};
+    use bridge_types::{GenericNetworkId, Log, H256};
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -57,6 +57,7 @@ pub mod pallet {
         type Verifier: Verifier<EVMChainId, Message, Result = (Log, u64)>;
 
         /// Verifier module for message verification.
+        // TODO rename trait to BatchDispatched
         type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
 
         type Hashing: Hash<Output = H256>;
@@ -94,6 +95,7 @@ pub mod pallet {
     pub type InboundChannelAddresses<T: Config> =
         StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
+    // Dispatched batch nonce for replay protection
     #[pallet::storage]
     pub type InboundChannelNonces<T: Config> = StorageMap<_, Identity, EVMChainId, u64, ValueQuery>;
 
@@ -140,8 +142,8 @@ pub mod pallet {
         InvalidSourceChannel,
         /// Message has an invalid envelope.
         InvalidEnvelope,
-        /// Malformed MessageDispatched event
-        InvalidMessageDispatchedEvent,
+        /// Malformed BatchDispatched event
+        InvalidBatchDispatchedEvent,
         /// Message has an unexpected nonce.
         InvalidNonce,
         /// Incorrect reward fraction
@@ -152,6 +154,7 @@ pub mod pallet {
         CallEncodeFailed,
     }
 
+    /// OutboundChannel event Message found.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
@@ -202,39 +205,38 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// MessageDispatched event on Ethereum found, the function verifies tx and changes its
-        /// status.
+        /// BatchDispatched event from InboundChannel on Ethereum found, the function verifies tx
+        /// and changes all the batch messages statuses.
         ///
         /// - `ethereum_tx_hash`: tx hash on Ethereum
-        /// - `ethereum_relayer_address`: address of relayer which paid fees.
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::message_dispatched())]
-        pub fn message_dispatched(
+        #[pallet::weight(<T as Config>::WeightInfo::batch_dispatched())]
+        pub fn batch_dispatched(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             message: Message,
+            // TODO ethereum_tx_hash not reliable
             ethereum_tx_hash: H256,
-            ethereum_relayer_address: Address,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
-                "message_dispatched: Received MessageDispatched from {:?}",
+                "message_dispatched: Received BatchDispatched from {:?}",
                 relayer
             );
             // submit message to verifier for verification
             let (log, _timestamp) = T::Verifier::verify(network_id, &message)?;
-            let message_dispatched_event: MessageDispatched = MessageDispatched::try_from(log)
-                .map_err(|_| Error::<T>::InvalidMessageDispatchedEvent)?;
+            let batch_dispatched_event: BatchDispatched = BatchDispatched::try_from(log)
+                .map_err(|_| Error::<T>::InvalidBatchDispatchedEvent)?;
 
             ensure!(
                 <InboundChannelAddresses<T>>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?
-                    == message_dispatched_event.channel,
+                    == batch_dispatched_event.channel,
                 Error::<T>::InvalidSourceChannel
             );
 
-            // Verify message nonce
+            // Verify batch nonce
             <InboundChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if message_dispatched_event.nonce != *nonce + 1 {
+                if batch_dispatched_event.batch_nonce != *nonce + 1 {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
                     *nonce += 1;
@@ -243,28 +245,32 @@ pub mod pallet {
             })?;
 
             let network_id = GenericNetworkId::EVM(network_id);
-            let message_id = MessageId::outbound(message_dispatched_event.nonce)
-                .using_encoded(|v| <T as Config>::Hashing::hash(v));
 
-            T::GasTracker::record_tx_fee(
-                network_id,
-                message_id,
-                ethereum_tx_hash,
-                ethereum_relayer_address,
-                U256::zero(),
-                U256::zero(),
-            );
+            for i in 0..batch_dispatched_event.results_length {
+                let message_id = MessageId::outbound_batched(batch_dispatched_event.batch_nonce, i)
+                    .using_encoded(|v| <T as Config>::Hashing::hash(v));
 
-            T::MessageStatusNotifier::update_status(
-                network_id,
-                message_id,
-                if message_dispatched_event.result {
+                T::GasTracker::record_tx_fee(
+                    network_id,
+                    message_id,
+                    ethereum_tx_hash,
+                    batch_dispatched_event.relayer,
+                    U256::zero(),
+                    U256::zero(),
+                );
+
+                let message_status = if (batch_dispatched_event.results & 1 << i) != 0 {
                     MessageStatus::Done
                 } else {
                     MessageStatus::Failed
-                },
-                None,
-            );
+                };
+                T::MessageStatusNotifier::update_status(
+                    network_id,
+                    message_id,
+                    message_status,
+                    None,
+                );
+            }
 
             Ok(().into())
         }
