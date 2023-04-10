@@ -32,7 +32,7 @@
 
 use assets::AssetIdOf;
 use common::prelude::EnsureDEXManager;
-use common::{hash, ManagementMode};
+use common::{hash, DexInfoProvider, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
@@ -73,12 +73,12 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pall
     }
 }
 
-impl<T: Config> Pallet<T> {
-    pub fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
+impl<T: Config> DexInfoProvider<T::DEXId, DEXInfo<T>> for Pallet<T> {
+    fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
         Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
     }
 
-    pub fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
+    fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
         ensure!(
             DEXInfos::<T>::contains_key(&dex_id),
             Error::<T>::DEXDoesNotExist
@@ -86,10 +86,12 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn list_dex_ids() -> Vec<T::DEXId> {
+    fn list_dex_ids() -> Vec<T::DEXId> {
         DEXInfos::<T>::iter().map(|(k, _)| k).collect()
     }
+}
 
+impl<T: Config> Pallet<T> {
     fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {
         permissions::Pallet::<T>::check_permission_with_scope(
             who.clone(),

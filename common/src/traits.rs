@@ -773,6 +773,37 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
     }
 }
 
+/// Trait to provide DEXInfo
+pub trait DexInfoProvider<
+    DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+    DEXInfo: Clone + PartialEq + Eq + Default,
+>
+{
+    fn get_dex_info(dex_id: &DEXId) -> Result<DEXInfo, DispatchError>;
+
+    fn ensure_dex_exists(dex_id: &DEXId) -> DispatchResult;
+
+    fn list_dex_ids() -> Vec<DEXId>;
+}
+
+impl<
+        DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+        DEXInfo: Clone + PartialEq + Eq + Default,
+    > DexInfoProvider<DEXId, DEXInfo> for ()
+{
+    fn get_dex_info(_dex_id: &DEXId) -> Result<DEXInfo, DispatchError> {
+        unimplemented!()
+    }
+
+    fn ensure_dex_exists(_dex_id: &DEXId) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn list_dex_ids() -> Vec<DEXId> {
+        unimplemented!()
+    }
+}
+
 pub trait IsValid {
     fn is_valid(&self) -> bool;
 }

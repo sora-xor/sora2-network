@@ -34,7 +34,9 @@
 #[macro_use]
 extern crate alloc;
 
-use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
+use common::{
+    DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::IsType;
@@ -156,6 +158,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + dex_manager::Config
