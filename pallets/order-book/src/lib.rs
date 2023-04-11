@@ -48,6 +48,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod migrations;
+
 mod limit_order;
 mod market_order;
 mod order_book;

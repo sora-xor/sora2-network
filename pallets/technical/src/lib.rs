@@ -157,7 +157,7 @@ impl<T: Config> Pallet<T> {
         Self::ensure_account_registered(&account_id).map(|_| ())
     }
 
-    /// Register `TechAccountId` in storate map.
+    /// Register `TechAccountId` in storage map.
     pub fn register_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
         frame_system::Pallet::<T>::inc_providers(&account_id);

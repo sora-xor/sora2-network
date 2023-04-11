@@ -1958,6 +1958,7 @@ impl order_book::Config for Runtime {
     type OrderId = u128;
     type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>;
     type MaxLimitOrdersForPrice = ConstU32<10000>;
+    type LockTechAccountId = GetOrderBookLockTechAccountId;
     type WeightInfo = order_book::weights::WeightInfo<Runtime>;
 }
 
