@@ -38,14 +38,14 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, OrderBook, OrderBookId, Pallet};
+use crate::{Config, Event, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
-use framenode_runtime::order_book::{Config, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::order_book::{Config, Event, OrderBook, OrderBookId, Pallet};
 
 use codec::Decode;
 use common::{balance, AssetName, AssetSymbol, DEXId, XOR};
 use frame_benchmarking::benchmarks;
-use frame_system::RawOrigin;
+use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 
 use assets::Pallet as Assets;
@@ -58,6 +58,14 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
+
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+    let events = frame_system::Pallet::<T>::events();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
 }
 
 benchmarks! {
@@ -94,12 +102,14 @@ benchmarks! {
         ).unwrap();
     }: {
         OrderBookPallet::<T>::create_orderbook(
-            RawOrigin::Signed(caller).into(),
+            RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             order_book_id
         ).unwrap();
     }
     verify {
+        assert_last_event::<T>(Event::<T>::OrderBookCreated(order_book_id, DEX.into(), caller).into());
+
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
             OrderBook::<T>::default_nft(order_book_id, DEX.into())
