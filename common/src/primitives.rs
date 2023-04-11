@@ -936,7 +936,7 @@ impl Default for RewardReason {
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
-    pub parliament: Balance,
+    pub buy_back_xst: Balance,
     pub vesting: Balance,
 }
 

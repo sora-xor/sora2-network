@@ -35,6 +35,7 @@ use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
 use framenode_runtime::{order_book, Runtime};
+use sp_std::collections::btree_map::BTreeMap;
 
 type OrderBook = Pallet<Runtime>;
 
@@ -45,46 +46,94 @@ fn alice() -> <Runtime as frame_system::Config>::AccountId {
 type E = order_book::Error<Runtime>;
 
 #[test]
-fn insert_limit_order_success() {
+fn should_insert_limit_order() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<Runtime> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
 
-        let order_id = 1;
+        let order_buy_id = 1;
+        let order_sell_id = 2;
         let owner = alice();
         let price = balance!(12);
+        let amount = balance!(10);
 
-        let order = LimitOrder::<Runtime> {
-            id: order_id,
+        let order_buy = LimitOrder::<Runtime> {
+            id: order_buy_id,
             owner: owner.clone(),
-            side: PriceVariant::Sell,
+            side: PriceVariant::Buy,
             price: price,
-            original_amount: balance!(10),
-            executed_amount: balance!(0),
+            original_amount: amount,
+            amount: amount,
             time: 10,
             lifespan: 1000,
         };
 
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));
+        let order_sell = LimitOrder::<Runtime> {
+            id: order_sell_id,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy));
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
-            order
+            OrderBook::limit_orders(order_book_id, order_buy_id).unwrap(),
+            order_buy
         );
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id]
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id]
+        );
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([(price, amount)])
+        );
+        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([])
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
-            vec![order_id]
+            vec![order_buy_id]
+        );
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell));
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_sell_id).unwrap(),
+            order_sell
+        );
+        assert_eq!(
+            OrderBook::bids(order_book_id, price).unwrap(),
+            vec![order_buy_id]
+        );
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([(price, amount)])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price).unwrap(),
+            vec![order_sell_id]
+        );
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price, amount)])
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            vec![order_buy_id, order_sell_id]
         );
     });
 }
 
 #[test]
-fn insert_limit_order_fail() {
+fn should_not_insert_limit_order() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<Runtime> {
             base_asset_id: XOR.into(),
@@ -94,14 +143,15 @@ fn insert_limit_order_fail() {
         let order_id = 1;
         let owner = alice();
         let price = balance!(12);
+        let amount = balance!(10);
 
         let order = LimitOrder::<Runtime> {
             id: order_id,
             owner: owner.clone(),
             side: PriceVariant::Sell,
             price: price,
-            original_amount: balance!(10),
-            executed_amount: balance!(0),
+            original_amount: amount,
+            amount: amount,
             time: 10,
             lifespan: 1000,
         };
@@ -117,85 +167,275 @@ fn insert_limit_order_fail() {
         // Error if storage overflow
         assert_err!(
             OrderBook::insert_limit_order(&order_book_id, &order),
-            E::InsertLimitOrderError
+            E::LimitOrderStorageOverflow
         );
     });
 }
 
 #[test]
-fn delete_limit_order_success() {
+fn should_delete_limit_order_success() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<Runtime> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
 
-        let order_id1 = 1;
-        let order_id2 = 2;
+        let order_buy_id1 = 1;
+        let order_buy_id2 = 2;
+        let order_sell_id1 = 3;
+        let order_sell_id2 = 4;
+        let order_sell_id3 = 5;
         let owner = alice();
-        let price = balance!(12);
+        let price1 = balance!(12);
+        let price2 = balance!(13);
+        let amount = balance!(10);
 
-        let order1 = LimitOrder::<Runtime> {
-            id: order_id1,
+        let order_buy1 = LimitOrder::<Runtime> {
+            id: order_buy_id1,
             owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: balance!(10),
-            executed_amount: balance!(0),
+            side: PriceVariant::Buy,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
             time: 10,
             lifespan: 1000,
         };
 
-        let order2 = LimitOrder::<Runtime> {
-            id: order_id2,
+        let order_buy2 = LimitOrder::<Runtime> {
+            id: order_buy_id2,
             owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: balance!(10),
-            executed_amount: balance!(0),
+            side: PriceVariant::Buy,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
             time: 10,
             lifespan: 1000,
         };
 
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order1));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order2));
+        let order_sell1 = LimitOrder::<Runtime> {
+            id: order_sell_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell2 = LimitOrder::<Runtime> {
+            id: order_sell_id2,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell3 = LimitOrder::<Runtime> {
+            id: order_sell_id3,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price2,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        // add orders
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy1));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy2));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell1));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell2));
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell3));
+
+        // check they added
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id1).unwrap(),
-            order1
+            OrderBook::limit_orders(order_book_id, order_buy_id1).unwrap(),
+            order_buy1
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id2).unwrap(),
-            order2
+            OrderBook::limit_orders(order_book_id, order_buy_id2).unwrap(),
+            order_buy2
         );
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id1, order_id2]
+            OrderBook::limit_orders(order_book_id, order_sell_id1).unwrap(),
+            order_sell1
+        );
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_sell_id2).unwrap(),
+            order_sell2
+        );
+        assert_eq!(
+            OrderBook::limit_orders(order_book_id, order_sell_id3).unwrap(),
+            order_sell3
+        );
+        assert_eq!(
+            OrderBook::bids(order_book_id, price1).unwrap(),
+            vec![order_buy_id1, order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([(price1, 2 * amount)])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price1).unwrap(),
+            vec![order_sell_id1, order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price2).unwrap(),
+            vec![order_sell_id3]
+        );
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price1, 2 * amount), (price2, amount)])
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_id1, order_id2]
+            vec![
+                order_buy_id1,
+                order_buy_id2,
+                order_sell_id1,
+                order_sell_id2,
+                order_sell_id3
+            ]
         );
 
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id1));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id1), None);
+        // delete order sell 1
+        assert_ok!(OrderBook::delete_limit_order(
+            &order_book_id,
+            order_sell_id1
+        ));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id1), None);
         assert_eq!(
-            OrderBook::prices(order_book_id, price).unwrap(),
-            vec![order_id2]
+            OrderBook::bids(order_book_id, price1).unwrap(),
+            vec![order_buy_id1, order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([(price1, 2 * amount)])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price1).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price2).unwrap(),
+            vec![order_sell_id3]
+        );
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
             OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_id2]
+            vec![order_buy_id1, order_buy_id2, order_sell_id2, order_sell_id3]
         );
 
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_id2));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id2), None);
-        assert_eq!(OrderBook::prices(order_book_id, price), None);
-        assert_eq!(OrderBook::user_limit_orders(&owner, order_book_id), None);
+        // delete order buy 1
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id1));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id1), None);
+        assert_eq!(
+            OrderBook::bids(order_book_id, price1).unwrap(),
+            vec![order_buy_id2]
+        );
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([(price1, amount)])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price1).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price2).unwrap(),
+            vec![order_sell_id3]
+        );
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price1, amount), (price2, amount)])
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_buy_id2, order_sell_id2, order_sell_id3]
+        );
+
+        // delete order buy 2
+        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id2));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id2), None);
+        assert_eq!(OrderBook::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price1).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price2).unwrap(),
+            vec![order_sell_id3]
+        );
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price1, amount), (price2, amount)])
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_sell_id2, order_sell_id3]
+        );
+
+        // delete order sell 3
+        assert_ok!(OrderBook::delete_limit_order(
+            &order_book_id,
+            order_sell_id3
+        ));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id3), None);
+        assert_eq!(OrderBook::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([])
+        );
+        assert_eq!(
+            OrderBook::asks(order_book_id, price1).unwrap(),
+            vec![order_sell_id2]
+        );
+        assert_eq!(OrderBook::asks(order_book_id, price2), None);
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([(price1, amount)])
+        );
+        assert_eq!(
+            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_sell_id2]
+        );
+
+        // delete order sell 2
+        assert_ok!(OrderBook::delete_limit_order(
+            &order_book_id,
+            order_sell_id2
+        ));
+        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id2), None);
+        assert_eq!(OrderBook::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBook::aggregated_bids(order_book_id),
+            BTreeMap::from([])
+        );
+        assert_eq!(OrderBook::asks(order_book_id, price1), None);
+        assert_eq!(OrderBook::asks(order_book_id, price2), None);
+        assert_eq!(
+            OrderBook::aggregated_asks(order_book_id),
+            BTreeMap::from([])
+        );
+        assert_eq!(OrderBook::user_limit_orders(&owner, &order_book_id), None);
     });
 }
 
 #[test]
-fn delete_limit_order_fail() {
+fn should_not_delete_limit_order() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<Runtime> {
             base_asset_id: XOR.into(),

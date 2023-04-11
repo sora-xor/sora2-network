@@ -128,7 +128,7 @@ pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch =
 pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, features = [
     "historical",
 ] }
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
+pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -290,7 +290,7 @@ private-net = [
 ]
 
 wip = [
-    "order-book",
+    "order-book/wip",
     "framenode-chain-spec/wip",
 ]
 
@@ -371,6 +371,7 @@ try-runtime = [
     "ceres-staking/try-runtime",
     "ceres-token-locker/try-runtime",
     "demeter-farming-platform/try-runtime",
+    "hermes-governance-platform/try-runtime",
     "dex-api/try-runtime",
     "dex-manager/try-runtime",
     "eth-bridge/try-runtime",

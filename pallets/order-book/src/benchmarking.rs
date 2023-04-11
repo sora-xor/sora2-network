@@ -31,21 +31,76 @@
 //! Benchmarking setup for order-book
 
 #![cfg(feature = "runtime-benchmarks")]
-#![cfg(feature = "wip")] // order-book
+// order-book
+#![cfg(feature = "wip")]
+// now it works only as benchmarks, not as unit tests
+// TODO fix when new approach be developed
+#![cfg(not(test))]
 
-use super::*;
-use crate::Pallet as OrderBook;
+#[cfg(not(test))]
+use crate::{Config, Pallet};
+#[cfg(test)]
+use framenode_runtime::order_book::{Config, Pallet};
 
 use frame_benchmarking::benchmarks;
 
 benchmarks! {
 
-    abcd {
+    create_orderbook {
     }: {
-        assert_eq!(0, 1);
+        // todo (m.tagirov)
     }
     verify {
     }
 
-    impl_benchmark_test_suite!(OrderBook, framenode_chain_spec::ext(), framenode_runtime::Runtime);
+    delete_orderbook {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    update_orderbook {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    change_orderbook_status {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    place_limit_order {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    cancel_limit_order {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    quote {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    exchange {
+    }: {
+        // todo (m.tagirov)
+    }
+    verify {
+    }
+
+    impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
 }

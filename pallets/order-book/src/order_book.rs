@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::{OrderBookId, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::fmt::Debug;
 
@@ -47,12 +48,12 @@ pub struct OrderBook<T>
 where
     T: crate::Config,
 {
-    pub order_book_id: crate::OrderBookId<T>,
+    pub order_book_id: OrderBookId<T>,
     pub dex_id: T::DEXId,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
-    pub tick_size: T::Balance,     // price precision
-    pub step_lot_size: T::Balance, // amount precision
-    pub min_lot_size: T::Balance,
-    pub max_lot_size: T::Balance,
+    pub tick_size: OrderPrice<T>,      // price precision
+    pub step_lot_size: OrderVolume<T>, // amount precision
+    pub min_lot_size: OrderVolume<T>,
+    pub max_lot_size: OrderVolume<T>,
 }

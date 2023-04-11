@@ -262,6 +262,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                     hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                    hex!("328be9c672c4fff8ae9065ebdf116a47e1121933616a1d1749ff9bb3356fd542").into(),
                 ],
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
@@ -689,10 +690,6 @@ fn bonding_curve_distribution_accounts(
         )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
-    let parliament_and_development = DistributionAccountData::new(
-        DistributionAccount::Account(GetParliamentAccountId::get()),
-        projects_parliament_and_development_coeff.get().unwrap(),
-    );
     let projects = DistributionAccountData::new(
         DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
@@ -711,7 +708,6 @@ fn bonding_curve_distribution_accounts(
         xor_allocation,
         sora_citizens,
         stores_and_shops,
-        parliament_and_development,
         projects,
         val_holders,
     }
@@ -1496,7 +1492,7 @@ fn testnet_genesis(
                     },
                     AssetConfig::Sidechain {
                         id: DAI.into(),
-                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        sidechain_id: hex!("34273F3a534dF490437F0deFFcb0549B40fb3Db6").into(),
                         owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
