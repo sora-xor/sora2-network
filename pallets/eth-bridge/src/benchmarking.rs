@@ -51,9 +51,9 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = events.last().unwrap();
     assert_eq!(event, &system_event);
@@ -61,7 +61,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     transfer_to_sidechain {
-        let u in 0 .. 1000;
         let caller = alice::<T>();
         let asset_id: T::AssetId = XOR.into();
         let net_id = 0u32.into();
@@ -83,7 +82,6 @@ benchmarks! {
     }
 
     request_from_sidechain {
-        let u in 0 .. 1000;
         let caller = alice::<T>();
         let asset_id: T::AssetId = XOR.into();
         let net_id = 0u32.into();
@@ -98,11 +96,10 @@ benchmarks! {
         net_id
     )
     verify {
-        assert_last_event::<T>(Event::RequestRegistered(req_hash).into());
+        assert_last_event::<T>(Event::<T>::RequestRegistered(req_hash).into());
     }
 
     register_incoming_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -130,7 +127,6 @@ benchmarks! {
     }
 
     finalize_incoming_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -160,11 +156,10 @@ benchmarks! {
         net_id
     )
     verify {
-        assert_last_event::<T>(Event::IncomingRequestFinalized(req_hash).into());
+        assert_last_event::<T>(Event::<T>::IncomingRequestFinalized(req_hash).into());
     }
 
     approve_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -200,7 +195,6 @@ benchmarks! {
     }
 
     approve_request_finalize {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -240,11 +234,10 @@ benchmarks! {
         net_id
     )
     verify {
-        assert_last_event::<T>(Event::ApprovalsCollected(req_hash).into());
+        assert_last_event::<T>(Event::<T>::ApprovalsCollected(req_hash).into());
     }
 
     abort_request {
-        let u in 0 .. 1000;
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
         let asset_id: T::AssetId = XOR.into();
@@ -267,7 +260,7 @@ benchmarks! {
         net_id
     )
     verify {
-        assert_last_event::<T>(Event::RequestAborted(req_hash).into());
+        assert_last_event::<T>(Event::<T>::RequestAborted(req_hash).into());
     }
 }
 

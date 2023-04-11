@@ -17,7 +17,7 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::service;
-use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
+use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
 fn set_default_ss58_version() {
@@ -54,7 +54,8 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Some(framenode_chain_spec::local_testnet_config()),
+            "" | "local" => Some(framenode_chain_spec::local_testnet_config(3, 3)),
+            "docker-local" => Some(framenode_chain_spec::local_testnet_config(1, 1)),
             // dev doesn't use json chain spec to make development easier
             // "dev" => framenode_chain_spec::dev_net(),
             // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
@@ -63,6 +64,9 @@ impl SubstrateCli for Cli {
             "test-coded" => Some(framenode_chain_spec::staging_net_coded(true)),
             "staging" => Some(framenode_chain_spec::staging_net()?),
             "staging-coded" => Some(framenode_chain_spec::staging_net_coded(false)),
+            "bridge-staging" => Some(framenode_chain_spec::bridge_staging_net()?),
+            "bridge-staging-coded" => Some(framenode_chain_spec::bridge_staging_net_coded()),
+            "bridge-dev" => Some(framenode_chain_spec::bridge_dev_net_coded()),
             _ => None,
         };
 
@@ -208,17 +212,53 @@ pub fn run() -> sc_cli::Result<()> {
                 _ => Err(Error::Other("Command not implemented".into()).into()),
             }
         }
+        #[cfg(feature = "try-runtime")]
+        Some(Subcommand::TryRuntime(cmd)) => {
+            use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
+            type HostFunctionsOf<E> = ExtendedHostFunctions<
+                sp_io::SubstrateHostFunctions,
+                <E as NativeExecutionDispatch>::ExtendHostFunctions,
+            >;
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+
+            use sc_service::TaskManager;
+            let registry = &runner
+                .config()
+                .prometheus_config
+                .as_ref()
+                .map(|cfg| &cfg.registry);
+            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
+                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+
+            runner.async_run(|_config| {
+                Ok((
+                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
+                    task_manager,
+                ))
+            })
+        }
+        #[cfg(feature = "private-net")]
+        Some(Subcommand::ForkOff(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+
+            use sc_service::TaskManager;
+            let registry = &runner
+                .config()
+                .prometheus_config
+                .as_ref()
+                .map(|cfg| &cfg.registry);
+            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
+                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+
+            runner.async_run(|config| Ok((cmd.run(config), task_manager)))
+        }
         None => {
             let runner = cli.create_runner(&cli.run)?;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
-                match config.role {
-                    //Role::Light => service::new_light(config),
-                    Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
-                    // TODO: fix args
-                    _ => service::new_full(config, true, None),
-                }
-                .map_err(sc_cli::Error::Service)
+                service::new_full(config, cli.disable_beefy, None).map_err(sc_cli::Error::Service)
             })
         }
     }

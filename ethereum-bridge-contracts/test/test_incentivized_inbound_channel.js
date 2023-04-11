@@ -3,8 +3,7 @@ require("chai")
   .use(require("chai-as-promised"))
   .should();
 
-const IncentivizedInboundChannel = artifacts.require("IncentivizedInboundChannel");
-const MerkleProof = artifacts.require("MerkleProof");
+const IncentivizedInboundChannel = artifacts.require("InboundChannel");
 const ScaleCodec = artifacts.require("ScaleCodec");
 const { createBeefyValidatorFixture, runBeefyLightClientFlow } = require("./beefy-helpers");
 
@@ -18,9 +17,7 @@ describe("IncentivizedInboundChannel", function () {
   const interface = new ethers.utils.Interface(IncentivizedInboundChannel.abi)
 
   before(async function () {
-    const merkleProof = await MerkleProof.new();
     const scaleCodec = await ScaleCodec.new();
-    await IncentivizedInboundChannel.link(merkleProof);
     await IncentivizedInboundChannel.link(scaleCodec);
 
     const totalNumberOfValidatorSigs = 100;

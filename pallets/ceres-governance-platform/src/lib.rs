@@ -74,7 +74,7 @@ pub mod pallet {
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
@@ -157,6 +157,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Voting for option
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -224,6 +225,7 @@ pub mod pallet {
         }
 
         /// Create poll
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
@@ -275,6 +277,7 @@ pub mod pallet {
         }
 
         /// Withdraw voting funds
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(origin: OriginFor<T>, poll_id: Vec<u8>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -321,7 +324,7 @@ pub mod pallet {
                 PalletStorageVersion::<T>::put(StorageVersion::V2);
                 weight
             } else {
-                0
+                Weight::zero()
             }
         }
     }

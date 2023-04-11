@@ -36,21 +36,21 @@ use pool_xyk::Properties;
 use vested_rewards::Rewards;
 
 use crate::mock::{
-    self, run_to_block, AssetId, DEXId, ExtBuilder, Origin, Runtime, ALICE, BOB, CHARLIE, DAVE,
-    DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
+    self, run_to_block, AssetId, DEXId, ExtBuilder, Runtime, RuntimeOrigin, ALICE, BOB, CHARLIE,
+    DAVE, DEX_A_ID, DEX_B_ID, EVE, REFRESH_FREQUENCY, VESTING_FREQUENCY,
 };
 use crate::{PoolFarmer, PoolFarmers};
 
 fn init_pool(dex_id: DEXId, base_asset: AssetId, other_asset: AssetId) {
     assert_ok!(trading_pair::Pallet::<Runtime>::register(
-        Origin::signed(BOB()),
+        RuntimeOrigin::signed(BOB()),
         dex_id,
         base_asset,
         other_asset
     ));
 
     assert_ok!(pool_xyk::Pallet::<Runtime>::initialize_pool(
-        Origin::signed(BOB()),
+        RuntimeOrigin::signed(BOB()),
         dex_id,
         base_asset,
         other_asset,
@@ -92,7 +92,7 @@ fn test() {
         // Add liquidity before the first refresh
         {
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(EVE()),
+                RuntimeOrigin::signed(EVE()),
                 DEX_A_ID,
                 XOR,
                 XSTUSD,
@@ -103,7 +103,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(EVE()),
+                RuntimeOrigin::signed(EVE()),
                 DEX_B_ID,
                 XSTUSD,
                 VAL,
@@ -114,7 +114,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 DEX_A_ID,
                 XOR,
                 DOT,
@@ -125,7 +125,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(BOB()),
+                RuntimeOrigin::signed(BOB()),
                 DEX_A_ID,
                 XOR,
                 DOT,
@@ -136,7 +136,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 DEX_A_ID,
                 XOR,
                 PSWAP,
@@ -147,7 +147,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
+                RuntimeOrigin::signed(ALICE()),
                 DEX_B_ID,
                 XSTUSD,
                 VAL,
@@ -158,7 +158,7 @@ fn test() {
             ));
 
             assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-                Origin::signed(DAVE()),
+                RuntimeOrigin::signed(DAVE()),
                 DEX_B_ID,
                 XSTUSD,
                 PSWAP,
@@ -240,7 +240,7 @@ fn test() {
 
         // Remove Alice and add Charlie before the second refresh
         assert_ok!(pool_xyk::Pallet::<Runtime>::withdraw_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR,
             PSWAP,
@@ -249,7 +249,7 @@ fn test() {
             balance!(0.1),
         ));
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(CHARLIE()),
+            RuntimeOrigin::signed(CHARLIE()),
             dex_id,
             XOR,
             PSWAP,
@@ -293,7 +293,7 @@ fn test() {
 
         // Add Alice
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR,
             PSWAP,
@@ -336,7 +336,7 @@ fn test() {
         assert_eq!(eve_reward, balance!(225764.640994242700064977));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
+            RuntimeOrigin::signed(ALICE()),
             dex_id,
             XOR,
             DOT,
@@ -347,7 +347,7 @@ fn test() {
         ));
 
         assert_ok!(pool_xyk::Pallet::<Runtime>::withdraw_liquidity(
-            Origin::signed(BOB()),
+            RuntimeOrigin::signed(BOB()),
             dex_id,
             XOR,
             DOT,

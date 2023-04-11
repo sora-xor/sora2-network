@@ -35,57 +35,37 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register_token() -> Weight {
-        (65_400_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn add_pool() -> Weight {
-        (87_800_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+        Weight::zero()
     }
     fn deposit() -> Weight {
-        (223_100_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+        Weight::zero()
     }
     fn get_rewards() -> Weight {
-        (207_100_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(4 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn withdraw() -> Weight {
-        (181_500_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(4 as Weight))
-            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+        Weight::zero()
     }
     fn remove_pool() -> Weight {
-        (70_500_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn change_pool_multiplier() -> Weight {
-        (89_700_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(3 as Weight))
-            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+        Weight::zero()
     }
     fn change_pool_deposit_fee() -> Weight {
-        (62_300_000 as Weight).saturating_add(T::DbWeight::get().reads(2 as Weight))
+        Weight::zero()
     }
     fn change_token_info() -> Weight {
-        (69_400_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn change_total_tokens() -> Weight {
-        (89_700_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
     fn change_info() -> Weight {
-        (69_400_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::zero()
     }
 }
 
@@ -97,13 +77,13 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn deposit() -> Weight {
-        2 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(2)
     }
     fn get_rewards() -> Weight {
-        2 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(2)
     }
     fn withdraw() -> Weight {
-        2 * EXTRINSIC_FIXED_WEIGHT
+        EXTRINSIC_FIXED_WEIGHT.mul(2)
     }
     fn remove_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT

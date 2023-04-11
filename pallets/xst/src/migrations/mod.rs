@@ -50,7 +50,7 @@ where
     fn on_runtime_upgrade() -> Weight {
         if Pallet::<T>::on_chain_storage_version() >= 2 {
             info!("Migration to version 2 has already been applied");
-            return 0;
+            return Weight::zero();
         }
 
         if BaseFee::<T>::exists() {

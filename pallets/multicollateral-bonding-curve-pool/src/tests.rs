@@ -84,7 +84,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             // base case for buy
@@ -141,7 +141,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
             // base case for buy
@@ -209,7 +209,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             // add some reserves
             MBCPool::exchange(&alice, &alice, &DEXId::Polkaswap, &VAL, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
@@ -396,7 +396,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             assert_swap_outcome(
                 MBCPool::exchange(
@@ -407,7 +407,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -420,7 +420,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(2.100439516374830873),
                     balance!(0.093)
@@ -441,7 +441,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
             assert_swap_outcome(
                 MBCPool::exchange(
@@ -452,7 +452,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(101.003009027081243711), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -465,7 +465,7 @@ mod tests {
                     &TBCD,
                     SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(38.370385852073146860),
                     balance!(0.093)
@@ -487,7 +487,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let initial_price: Fixed = fixed!(200);
             crate::InitialPrice::<Runtime>::put(initial_price);
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
             let reserve_amount_expected = FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR,&VAL, Fixed::ZERO).unwrap();
@@ -508,7 +508,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
                 balance!(0.0001)
             );
@@ -526,7 +526,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4365.335149368998667748),
                     balance!(3.000000000000000000)
@@ -549,8 +549,8 @@ mod tests {
             let initial_price: Fixed = fixed!(200);
             crate::InitialPrice::<Runtime>::put(initial_price);
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let pool_reference_amount =
@@ -570,7 +570,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193)),
                 balance!(0.0001)
             );
@@ -588,7 +588,7 @@ mod tests {
                     &VAL,
                     SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(
                     balance!(4365.335415603766574971),
                     balance!(3.000000000000000000)
@@ -611,8 +611,8 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
             let alice = &alice();
@@ -662,7 +662,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let alice = &alice();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let amount = balance!(100); // TODO: investigate strange precision error dependency on value
             let parts = 5;
@@ -698,11 +698,11 @@ mod tests {
                 .fold(
                     SwapOutcome::new(Balance::zero(), Balance::zero()),
                     |acc, x| SwapOutcome {
-                        amount: acc.amount + x.amount,
-                        fee: acc.fee + x.fee,
+                        amount: acc.amount + x.0.amount,
+                        fee: acc.fee + x.0.fee,
                     },
                 );
-            assert_swap_outcome(whole_outcome.unwrap(), cumulative_outcome, balance!(0.001)); 
+            assert_swap_outcome(whole_outcome.unwrap().0, cumulative_outcome, balance!(0.001)); 
             // TODO: improve precision if possible
         });
     }
@@ -720,7 +720,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let price_a = MBCPool::quote(
@@ -732,7 +732,7 @@ mod tests {
             )
                 .unwrap();
 
-            MBCPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
+            MBCPool::set_reference_asset(RuntimeOrigin::signed(alice()), DAI).expect("Failed to set new reference asset.");
 
             let price_b = MBCPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -760,7 +760,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let price_a = MBCPool::quote(
@@ -772,7 +772,7 @@ mod tests {
                 )
                 .unwrap();
 
-            MBCPool::set_price_bias(Origin::root(), balance!(123)).expect("Failed to set price bias");
+            MBCPool::set_price_bias(RuntimeOrigin::root(), balance!(123)).expect("Failed to set price bias");
             assert_eq!(MBCPool::initial_price(), FixedWrapper::from(balance!(123)).get().unwrap());
 
 
@@ -802,7 +802,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let price_a = MBCPool::quote(
@@ -814,7 +814,7 @@ mod tests {
                 )
                 .unwrap();
 
-            MBCPool::set_price_change_config(Origin::root(), balance!(12), balance!(2543)).expect("Failed to set price bias");
+            MBCPool::set_price_change_config(RuntimeOrigin::root(), balance!(12), balance!(2543)).expect("Failed to set price bias");
 
             assert_eq!(MBCPool::price_change_rate(), FixedWrapper::from(balance!(12)).get().unwrap());
             assert_eq!(MBCPool::price_change_step(), FixedWrapper::from(balance!(2543)).get().unwrap());
@@ -845,11 +845,11 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             let amount: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -861,7 +861,7 @@ mod tests {
             assert_eq!(quote_outcome_a.amount, balance!(361.549938632002690452));
             assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705186));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -873,7 +873,7 @@ mod tests {
             assert_eq!(quote_outcome_b.amount, quote_outcome_a.amount + quote_outcome_a.fee);
             assert_eq!(quote_outcome_b.fee, balance!(0));
 
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -885,7 +885,7 @@ mod tests {
             assert_eq!(quote_outcome_a.amount, balance!(11088.209839932824950839));
             assert_eq!(quote_outcome_a.fee, balance!(6.018054162487462387));
 
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -912,12 +912,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -925,7 +925,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_a = MBCPool::exchange(
+            let (exchange_outcome_a, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -942,7 +942,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -950,7 +950,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_b = MBCPool::exchange(
+            let (exchange_outcome_b, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -967,7 +967,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(300);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -975,7 +975,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_c = MBCPool::exchange(
+            let (exchange_outcome_c, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -992,7 +992,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1000,7 +1000,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = MBCPool::exchange(
+            let (exchange_outcome_d, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1027,12 +1027,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, TBCD).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1040,7 +1040,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_a = MBCPool::exchange(
+            let (exchange_outcome_a, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1057,7 +1057,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(10);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1065,7 +1065,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_b = MBCPool::exchange(
+            let (exchange_outcome_b, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1082,7 +1082,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(10);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &TBCD,
@@ -1090,7 +1090,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_c = MBCPool::exchange(
+            let (exchange_outcome_c, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1107,7 +1107,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(10);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
@@ -1115,7 +1115,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = MBCPool::exchange(
+            let (exchange_outcome_d, _) = MBCPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -1146,8 +1146,8 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
 
@@ -1194,7 +1194,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             // calculate buy amount from zero to total supply of XOR
@@ -1225,11 +1225,11 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
-            MBCPool::set_reference_asset(Origin::signed(alice()), DAI).unwrap();
+            MBCPool::set_reference_asset(RuntimeOrigin::signed(alice()), DAI).unwrap();
 
             let val_amount: Balance = balance!(2000);
             let dai_amount: Balance = balance!(200000);
@@ -1286,7 +1286,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             MBCPool::exchange(
@@ -1300,7 +1300,7 @@ mod tests {
             .unwrap();
 
             // Buy
-            let price_a = MBCPool::quote(
+            let (price_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1308,7 +1308,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_b = MBCPool::quote(
+            let (price_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -1320,7 +1320,7 @@ mod tests {
             assert_eq!(price_a.fee, balance!(0.054394410184082514));
 
             // Sell
-            let price_c = MBCPool::quote(
+            let (price_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1328,7 +1328,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_d = MBCPool::quote(
+            let (price_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -1373,9 +1373,9 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
-            MBCPool::set_reference_asset(Origin::signed(alice()), DAI).unwrap();
+            MBCPool::set_reference_asset(RuntimeOrigin::signed(alice()), DAI).unwrap();
 
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(100000));
@@ -1393,7 +1393,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(100724.916324262414168899));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1416,7 +1416,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(107896.889465954935399866));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1439,7 +1439,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(114934.359190755661026458));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1462,7 +1462,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(128633.975165230400000080));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1485,7 +1485,7 @@ mod tests {
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
             assert_eq!(xor_supply, balance!(151530.994236602104619871));
 
-            let sell_price = MBCPool::quote(
+            let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
@@ -1511,8 +1511,8 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
 
@@ -1594,8 +1594,8 @@ mod tests {
             MockDEXApi::init().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
@@ -1619,7 +1619,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.621555395065931189), balance!(0.003009027081243731))
             );
 
@@ -1658,8 +1658,8 @@ mod tests {
             MockDEXApi::init_without_reserves().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
@@ -1677,7 +1677,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1746,8 +1746,8 @@ mod tests {
             MockDEXApi::init_without_reserves().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // check pending list and reserves before trade
@@ -1765,7 +1765,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1778,7 +1778,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602931835531681746), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1791,7 +1791,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.603682029269214463), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -1831,8 +1831,8 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
@@ -1845,7 +1845,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3789817571942.618173119057163101), balance!(300902.708124373119358074)),
                 balance!(0.0001)
             );
@@ -1871,7 +1871,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7529503.255499584322288265), balance!(0.300902708124373119)),
                 balance!(0.0001)
             );
@@ -1905,8 +1905,8 @@ mod tests {
             MockDEXApi::init_without_reserves().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
@@ -1919,7 +1919,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(3782315634567.290994901504505143), balance!(300902.708124373119358074)),
                 balance!(0.0001)
             );
@@ -1934,7 +1934,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(7522001.318124257144070739), balance!(0.300902708124373119)),
                 balance!(0.0001)
             );
@@ -1977,8 +1977,8 @@ mod tests {
             MockDEXApi::init_without_reserves().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform buy on tbc
@@ -1991,7 +1991,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(200.602181641794149028), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -2027,7 +2027,7 @@ mod tests {
                     &XOR,
                     SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
                 )
-                .unwrap(),
+                .unwrap().0,
                 SwapOutcome::new(balance!(275.622305588803464169), balance!(0.003009027081243731)),
                 balance!(0.0001)
             );
@@ -2093,8 +2093,8 @@ mod tests {
             MockDEXApi::init_without_reserves().unwrap();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
-            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
             let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000001));
             assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
@@ -2116,12 +2116,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2152,7 +2152,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2183,7 +2183,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2214,7 +2214,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2259,12 +2259,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(70000);
-            let quote_outcome_a = MBCPool::quote(
+            let (quote_outcome_a, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2295,7 +2295,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(14000);
-            let quote_outcome_b = MBCPool::quote(
+            let (quote_outcome_b, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
@@ -2326,7 +2326,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(7000);
-            let quote_outcome_c = MBCPool::quote(
+            let (quote_outcome_c, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
@@ -2357,7 +2357,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(7000);
-            let quote_outcome_d = MBCPool::quote(
+            let (quote_outcome_d, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,

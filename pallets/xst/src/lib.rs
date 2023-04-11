@@ -71,6 +71,8 @@ pub trait WeightInfo {
     fn register_synthetic_asset() -> Weight;
     fn set_synthetic_asset_fee() -> Weight;
     fn set_synthetic_base_asset_floor_price() -> Weight;
+    fn quote() -> Weight;
+    fn exchange() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -136,7 +138,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + technical::Config + dex_api::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -164,6 +166,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `reference_asset_id`: asset id of the new reference asset.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -175,6 +178,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
             origin: OriginFor<T>,
@@ -188,6 +192,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_synthetic_asset())]
         pub fn register_synthetic_asset(
             origin: OriginFor<T>,
@@ -216,6 +221,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
         pub fn disable_synthetic_asset(
             origin: OriginFor<T>,
@@ -242,6 +248,7 @@ pub mod pallet {
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
@@ -269,6 +276,7 @@ pub mod pallet {
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
         pub fn set_synthetic_base_asset_floor_price(
             origin: OriginFor<T>,
@@ -962,7 +970,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -994,8 +1002,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             fee_amount
         };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(output_amount, fee_amount),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(input_amount, fee_amount),
+                Self::quote_weight(),
+            )),
         }
     }
 
@@ -1006,7 +1020,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1019,7 +1033,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             sender,
             receiver,
         );
-        outcome
+        outcome.map(|res| (res, Self::exchange_weight()))
     }
 
     fn check_rewards(
@@ -1028,8 +1042,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new()) // no rewards for XST
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        Ok((Vec::new(), Weight::zero())) // no rewards for XST
     }
 
     fn quote_without_impact(
@@ -1042,6 +1056,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
         Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
+            .map(|(outcome, _)| outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 

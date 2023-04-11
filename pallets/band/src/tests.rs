@@ -50,7 +50,8 @@ fn add_and_remove_relayers_should_work() {
         assert!(Band::trusted_relayers().is_none());
 
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(Origin::root(), relayers.clone()).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
+            .expect("Failed to add relayers");
 
         let trusted_relayers = Band::trusted_relayers().expect("Expected initialized relayers");
         for relayer in &relayers {
@@ -58,7 +59,7 @@ fn add_and_remove_relayers_should_work() {
         }
 
         let to_remove = vec![3, 1];
-        Band::remove_relayers(Origin::root(), to_remove.clone())
+        Band::remove_relayers(RuntimeOrigin::root(), to_remove.clone())
             .expect("Failed to remove relayers");
         for relayer in &to_remove {
             assert!(!Band::trusted_relayers().unwrap().contains(relayer));
@@ -72,12 +73,12 @@ fn add_and_remove_relayers_should_forbid_non_root_call() {
         let relayers = vec![1, 2, 3, 4, 5];
 
         assert_noop!(
-            Band::add_relayers(Origin::signed(10), relayers.clone()),
+            Band::add_relayers(RuntimeOrigin::signed(10), relayers.clone()),
             BadOrigin
         );
 
         assert_noop!(
-            Band::remove_relayers(Origin::signed(11), relayers.clone()),
+            Band::remove_relayers(RuntimeOrigin::signed(11), relayers.clone()),
             BadOrigin
         );
 
@@ -89,10 +90,11 @@ fn add_and_remove_relayers_should_forbid_non_root_call() {
 fn add_relayers_should_check_if_relayer_was_already_added() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(Origin::root(), relayers.clone()).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
+            .expect("Failed to add relayers");
 
         assert_noop!(
-            Band::add_relayers(Origin::root(), vec![1]),
+            Band::add_relayers(RuntimeOrigin::root(), vec![1]),
             Error::<Runtime>::AlreadyATrustedRelayer
         );
     });
@@ -102,10 +104,11 @@ fn add_relayers_should_check_if_relayer_was_already_added() {
 fn remove_relayers_should_check_if_no_such_relayer_exists() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(Origin::root(), relayers.clone()).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
+            .expect("Failed to add relayers");
 
         assert_noop!(
-            Band::remove_relayers(Origin::root(), vec![6]),
+            Band::remove_relayers(RuntimeOrigin::root(), vec![6]),
             Error::<Runtime>::NoSuchRelayer,
         );
     });
@@ -115,7 +118,8 @@ fn remove_relayers_should_check_if_no_such_relayer_exists() {
 fn add_relayers_should_ignore_duplicates() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5, 3, 5, 4];
-        Band::add_relayers(Origin::root(), relayers.clone()).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
+            .expect("Failed to add relayers");
 
         assert_eq!(
             Band::trusted_relayers().expect("Expected initialized relayers"),
@@ -128,9 +132,10 @@ fn add_relayers_should_ignore_duplicates() {
 fn remove_relayers_should_ignore_duplicates() {
     new_test_ext().execute_with(|| {
         let relayers = vec![1, 2, 3, 4, 5];
-        Band::add_relayers(Origin::root(), relayers.clone()).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), relayers.clone())
+            .expect("Failed to add relayers");
 
-        Band::remove_relayers(Origin::root(), vec![1, 2, 3, 2, 1, 1, 3])
+        Band::remove_relayers(RuntimeOrigin::root(), vec![1, 2, 3, 2, 1, 1, 3])
             .expect("Failed to remove relayers");
 
         assert_eq!(
@@ -156,9 +161,9 @@ fn relay_should_work() {
             assert_eq!(Band::rates(symbol), None);
         }
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             rates.clone(),
             initial_resolve_time,
             request_id,
@@ -185,9 +190,9 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
         let initial_resolve_time = 100;
         let request_id = 0;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
@@ -200,7 +205,7 @@ fn relay_should_not_update_if_time_is_lower_than_last_stored() {
 
         let new_request_id = 1;
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![("RUB".to_owned(), 4)],
             initial_resolve_time - 1,
             new_request_id,
@@ -225,9 +230,9 @@ fn force_relay_should_rewrite_rates_without_time_check() {
         let initial_resolve_time = 100;
         let request_id = 0;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
@@ -242,7 +247,7 @@ fn force_relay_should_rewrite_rates_without_time_check() {
         let new_resolve_time = initial_resolve_time - 1;
         let new_request_id = 1;
         Band::force_relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![("RUB".to_owned(), new_rub_rate)],
             new_resolve_time,
             new_request_id,
@@ -266,10 +271,10 @@ fn relay_should_check_for_trusted_relayer() {
         let relayer = 1;
         let initial_resolve_time = 100;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         assert_noop!(
             Band::relay(
-                Origin::signed(relayer + 1),
+                RuntimeOrigin::signed(relayer + 1),
                 vec![
                     ("USD".to_owned(), 1),
                     ("RUB".to_owned(), 2),
@@ -289,10 +294,10 @@ fn force_relay_should_check_for_trusted_relayer() {
         let relayer = 1;
         let initial_resolve_time = 100;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         assert_noop!(
             Band::force_relay(
-                Origin::signed(relayer + 1),
+                RuntimeOrigin::signed(relayer + 1),
                 vec![
                     ("USD".to_owned(), 1),
                     ("RUB".to_owned(), 2),
@@ -312,9 +317,9 @@ fn relay_should_store_last_duplicated_rate() {
         let relayer = 1;
         let initial_resolve_time = 100;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
@@ -343,9 +348,9 @@ fn force_relay_should_store_last_duplicated_rate() {
         let relayer = 1;
         let initial_resolve_time = 100;
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::force_relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             vec![
                 ("USD".to_owned(), 1),
                 ("RUB".to_owned(), 2),
@@ -380,9 +385,9 @@ fn quote_and_list_enabled_symbols_should_work() {
             assert_eq!(Band::rates(symbol), None);
         }
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
+            RuntimeOrigin::signed(relayer),
             symbols.iter().cloned().zip(rates.iter().cloned()).collect(),
             initial_resolve_time,
             0,
@@ -436,14 +441,11 @@ fn quote_invalid_rate_should_fail() {
         assert_eq!(Band::rates("USD".to_owned()), None);
         assert_eq!(Band::rates("RUB".to_owned()), None);
 
-        Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
-        Band::relay(Origin::signed(relayer), vec![("USD".to_owned(), 1)], 0, 0)
-            .expect("Failed to relay rates");
-
+        Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
         Band::relay(
-            Origin::signed(relayer),
-            vec![("RUB".to_owned(), 1)],
-            10000000,
+            RuntimeOrigin::signed(relayer),
+            vec![("USD".to_owned(), 1)],
+            0,
             0,
         )
         .expect("Failed to relay rates");
@@ -454,6 +456,14 @@ fn quote_invalid_rate_should_fail() {
             <Band as DataFeed<String, Rate, u64>>::quote(&"USD".to_owned()),
             Err(Error::<Runtime>::RateExpired.into())
         );
+
+        Band::relay(
+            RuntimeOrigin::signed(relayer),
+            vec![("RUB".to_owned(), 1)],
+            GetRateStalePeriod::get() + 20,
+            0,
+        )
+        .expect("Failed to relay rates");
 
         assert_eq!(
             <Band as DataFeed<String, Rate, u64>>::quote(&"RUB".to_owned()),

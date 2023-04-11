@@ -59,7 +59,7 @@ mod tests {
             );
             assert!(Assets::ensure_asset_exists(&next_asset_id).is_err());
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
@@ -601,20 +601,20 @@ mod tests {
                 None,
                 None,
             ));
-            assert_ok!(Assets::update_balance(Origin::root(), BOB, XOR, 100));
+            assert_ok!(Assets::update_balance(RuntimeOrigin::root(), BOB, XOR, 100));
             assert_eq!(
                 Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(100u32)
             );
 
-            assert_ok!(Assets::update_balance(Origin::root(), BOB, XOR, -10));
+            assert_ok!(Assets::update_balance(RuntimeOrigin::root(), BOB, XOR, -10));
             assert_eq!(
                 Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
                 Balance::from(90u32)
             );
 
             assert_err!(
-                Assets::update_balance(Origin::signed(ALICE), BOB, XOR, -10),
+                Assets::update_balance(RuntimeOrigin::signed(ALICE), BOB, XOR, -10),
                 BadOrigin
             );
             assert_eq!(
@@ -623,7 +623,7 @@ mod tests {
             );
 
             assert_noop!(
-                Assets::update_balance(Origin::root(), BOB, XOR, -100),
+                Assets::update_balance(RuntimeOrigin::root(), BOB, XOR, -100),
                 pallet_balances::Error::<Runtime>::InsufficientBalance
             );
             assert_eq!(
@@ -639,7 +639,7 @@ mod tests {
         ext.execute_with(|| {
             let next_asset_id = Assets::gen_asset_id(&ALICE);
             assert_ok!(Assets::register(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
                 AssetName(b"ALICE".to_vec()),
                 5,
@@ -776,7 +776,7 @@ mod tests {
             .expect("Failed to register PSWAP asset");
 
             let amount_to_mint = balance!(100);
-            Assets::force_mint(Origin::root(), PSWAP, ALICE, amount_to_mint)
+            Assets::force_mint(RuntimeOrigin::root(), PSWAP, ALICE, amount_to_mint)
                 .expect("Failed to mint PSWAP");
 
             let pswap_balance_after = Assets::free_balance(&PSWAP, &ALICE)

@@ -29,74 +29,53 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use sp_runtime::traits::Get;
 use sp_std::marker::PhantomData;
-
-use common::prelude::SwapVariant;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn swap(variant: SwapVariant) -> Weight {
-        // Todo: Use all 6 weight formulas defined in benchmarks
-        match variant {
-            // swap_exact_input_multiple
-            SwapVariant::WithDesiredInput => (773_992_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
-            //swap_exact_output_multiple
-            SwapVariant::WithDesiredOutput => (914_277_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(32 as Weight))
-                .saturating_add(T::DbWeight::get().writes(11 as Weight)),
-        }
-    }
     fn enable_liquidity_source() -> Weight {
-        (21_575_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::from_parts(21_575_000, 0)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
     }
     fn disable_liquidity_source() -> Weight {
-        (20_003_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+        Weight::from_parts(20_003_000, 0)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
     }
-    // Storage: MulticollateralBondingCurvePool EnabledTargets (r:1 w:0)
-    // Storage: DEXManager DEXInfos (r:1 w:0)
-    // Storage: XSTPool EnabledSynthetics (r:1 w:0)
-    // Storage: DEXAPI EnabledSourceTypes (r:1 w:0)
-    // Storage: PoolXYK Properties (r:1 w:0)
-    // Storage: TradingPair LockedLiquiditySources (r:1 w:0)
-    // Storage: System Account (r:103 w:103)
-    // Storage: Tokens Accounts (r:102 w:102)
-    // Storage: Technical TechAccounts (r:2 w:0)
-    // Storage: PriceTools PriceInfos (r:1 w:0)
-    // Storage: PoolXYK Reserves (r:0 w:1)
-    /// The range of component `n` is `[1, 10]`.
-    /// The range of component `m` is `[10, 100]`.
-    fn swap_transfer_batch(n: u32, m: u32) -> Weight {
-        (0 as Weight)
-            // Standard Error: 42_166_000
-            .saturating_add((1_601_298_000 as Weight).saturating_mul(n as Weight))
-            // Standard Error: 4_153_000
-            .saturating_add((240_616_000 as Weight).saturating_mul(m as Weight))
-            .saturating_add(T::DbWeight::get().reads((8 as Weight).saturating_mul(n as Weight)))
-            .saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(m as Weight)))
-            .saturating_add(T::DbWeight::get().writes((5 as Weight).saturating_mul(n as Weight)))
-            .saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(m as Weight)))
+    fn check_indivisible_assets() -> Weight {
+        Weight::zero()
+    }
+    fn new_trivial() -> Weight {
+        Weight::zero()
+    }
+    fn is_forbidden_filter() -> Weight {
+        Weight::zero()
+    }
+    fn list_liquidity_sources() -> Weight {
+        Weight::zero()
     }
 }
 
 impl crate::WeightInfo for () {
-    fn swap(_variant: SwapVariant) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
     fn enable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn disable_liquidity_source() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
-    fn swap_transfer_batch(_: u32, _: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    fn check_indivisible_assets() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn new_trivial() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn is_forbidden_filter() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(10)
+    }
+    fn list_liquidity_sources() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT.saturating_div(4)
     }
 }

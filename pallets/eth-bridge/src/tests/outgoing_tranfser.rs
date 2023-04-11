@@ -56,7 +56,7 @@ fn should_approve_outgoing_transfer() {
             100000u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -92,7 +92,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&USDT.into(), &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             USDT.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -131,7 +131,7 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&PSWAP.into(), &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             PSWAP.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -165,7 +165,7 @@ fn should_not_transfer() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         assert_err!(
             EthBridge::transfer_to_sidechain(
-                Origin::signed(alice.clone()),
+                RuntimeOrigin::signed(alice.clone()),
                 KSM.into(),
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 100_u32.into(),
@@ -174,7 +174,7 @@ fn should_not_transfer() {
             Error::UnsupportedToken
         );
         assert!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_000_000_u32.into(),
@@ -193,7 +193,7 @@ fn should_register_outgoing_transfer() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from([1; 20]),
             100u32.into(),
@@ -226,7 +226,7 @@ fn ocw_should_handle_outgoing_request() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
@@ -249,7 +249,7 @@ fn ocw_should_not_handle_outgoing_request_twice() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,

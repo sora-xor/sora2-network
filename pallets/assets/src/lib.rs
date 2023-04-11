@@ -201,7 +201,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + permissions::Config + tokens::Config + common::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
             + Copy
@@ -291,6 +291,7 @@ pub mod pallet {
         /// Registers new `AssetId` for the given `origin`.
         /// AssetSymbol should represent string with only uppercase latin chars with max length of 7.
         /// AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
@@ -329,6 +330,7 @@ pub mod pallet {
         /// - `asset_id`: Id of transferred Asset,
         /// - `to`: Id of Account, to which Asset amount is deposited,
         /// - `amount`: transferred Asset amount.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::transfer())]
         pub fn transfer(
             origin: OriginFor<T>,
@@ -348,6 +350,7 @@ pub mod pallet {
         /// - `asset_id`: Id of minted Asset,
         /// - `to`: Id of Account, to which Asset amount is minted,
         /// - `amount`: minted Asset amount.
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
             origin: OriginFor<T>,
@@ -373,6 +376,7 @@ pub mod pallet {
         /// - `asset_id`: Id of minted Asset,
         /// - `to`: Id of Account, to which Asset amount is minted,
         /// - `amount`: minted Asset amount.
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::force_mint())]
         pub fn force_mint(
             origin: OriginFor<T>,
@@ -406,6 +410,7 @@ pub mod pallet {
         /// - `origin`: caller Account, from which Asset amount is burned,
         /// - `asset_id`: Id of burned Asset,
         /// - `amount`: burned Asset amount.
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
@@ -425,6 +430,7 @@ pub mod pallet {
         /// for testing purposes.
         ///
         /// TODO: move into tests extrinsic collection pallet
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::update_balance())]
         pub fn update_balance(
             origin: OriginFor<T>,
@@ -441,6 +447,7 @@ pub mod pallet {
         ///
         /// - `origin`: caller Account, should correspond to Asset owner
         /// - `asset_id`: Id of burned Asset,
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_non_mintable())]
         pub fn set_non_mintable(
             origin: OriginFor<T>,

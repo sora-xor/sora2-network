@@ -72,17 +72,17 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<(), &'static str> {
-            ensure!(
+        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+            frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
             );
-            Ok(())
+            Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade() -> Result<(), &'static str> {
-            ensure!(
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version after upgrade"
             );

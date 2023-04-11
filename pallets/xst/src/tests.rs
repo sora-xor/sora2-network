@@ -199,7 +199,7 @@ mod tests {
             )
                 .unwrap();
 
-            XSTPool::set_reference_asset(Origin::root(), DAI).expect("Failed to set new reference asset.");
+            XSTPool::set_reference_asset(RuntimeOrigin::root(), DAI).expect("Failed to set new reference asset.");
 
             let price_b = XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -235,7 +235,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -244,7 +244,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_a = XSTPool::exchange(
+            let (exchange_outcome_a, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -263,7 +263,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -272,7 +272,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_b = XSTPool::exchange(
+            let (exchange_outcome_b, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -291,7 +291,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -300,7 +300,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_c = XSTPool::exchange(
+            let (exchange_outcome_c, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -319,7 +319,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -327,7 +327,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = XSTPool::exchange(
+            let (exchange_outcome_d, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -361,7 +361,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -383,7 +383,7 @@ mod tests {
             // mock returns get_average_price with fee, we want no fee for this comparison
             let base_to_output_without_fee = base_to_output / balance!(0.993);
             let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -395,7 +395,7 @@ mod tests {
             // more error, because more computations/roundings or larger coefficients
             assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000000000000001000));
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -406,7 +406,7 @@ mod tests {
             assert_approx_eq!(price_a.fee, balance!(0.001563909801974061), balance!(0.000000000000000002));
             assert_eq!(price_a.amount, balance!(18283.739706444923188361));
 
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -448,7 +448,7 @@ mod tests {
             .unwrap();
 
             // Buy
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -456,7 +456,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -468,7 +468,7 @@ mod tests {
             assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
 
             // Sell
-            let price_c = XSTPool::quote(
+            let (price_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -476,7 +476,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_d = XSTPool::quote(
+            let (price_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -509,7 +509,7 @@ mod tests {
 
             // Buy with desired input
             let amount_a: Balance = balance!(200);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -529,7 +529,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -549,7 +549,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -569,7 +569,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -612,7 +612,7 @@ mod tests {
             let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
             assert_eq!(price_before, fixed!(181.6197));
 
-            XSTPool::set_synthetic_base_asset_floor_price(Origin::root(), balance!(200)).expect("Failed to set floor price.");
+            XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(200)).expect("Failed to set floor price.");
             let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
             assert_eq!(price_after, fixed!(200));
         });
@@ -636,23 +636,23 @@ mod tests {
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
-            OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
-            Band::add_relayers(Origin::root(), vec![alice.clone()])
+            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
+            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
                 .expect("Failed to add relayers");
-            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
             XSTPool::register_synthetic_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
                 euro.clone(),
             ).expect("Failed to register synthetic asset");
 
             XSTPool::enable_synthetic_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
@@ -667,14 +667,14 @@ mod tests {
                 euro
             );
 
-            XSTPool::disable_synthetic_asset(Origin::root(), xsteuro.clone())
+            XSTPool::disable_synthetic_asset(RuntimeOrigin::root(), xsteuro.clone())
                 .expect("Failed to disable synthetic asset");
 
             assert!(XSTPool::enabled_synthetics(&xsteuro).is_none());
             assert!(XSTPool::enabled_symbols(&euro).is_none());
 
             XSTPool::enable_synthetic_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
@@ -701,23 +701,23 @@ mod tests {
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
-            OracleProxy::enable_oracle(Origin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
-            Band::add_relayers(Origin::root(), vec![alice.clone()])
+            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
+            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
                 .expect("Failed to add relayers");
-            Band::relay(Origin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
             XSTPool::register_synthetic_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
                 euro.clone(),
             ).expect("Failed to register synthetic asset");
 
             XSTPool::enable_synthetic_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 asset_id,
                 euro.clone(),
                 fixed!(0),
@@ -726,7 +726,7 @@ mod tests {
             let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
             let quote_amount = QuoteAmount::with_desired_input(balance!(100));
 
-            let swap_outcome_before = XSTPool::quote(
+            let (swap_outcome_before, _) = XSTPool::quote(
                 &DEXId::Polkaswap,
                 &XST.into(),
                 &xsteuro,
@@ -738,13 +738,13 @@ mod tests {
 
 
             assert_ok!(XSTPool::set_synthetic_asset_fee(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 xsteuro.clone(),
                 fixed!(0.5))
             );
 
 
-            let swap_outcome_after = XSTPool::quote(
+            let (swap_outcome_after, _) = XSTPool::quote(
                 &DEXId::Polkaswap,
                 &XST.into(),
                 &xsteuro,

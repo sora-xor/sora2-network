@@ -73,17 +73,17 @@ mod utils {
         T::AccountId::decode(&mut &bytes[..]).unwrap()
     }
 
-    pub fn assert_last_event<T: Config>(generic_event: <T as xst::Config>::Event) {
+    pub fn assert_last_event<T: Config>(generic_event: <T as xst::Config>::RuntimeEvent) {
         let events = frame_system::Pallet::<T>::events();
-        let system_event: <T as frame_system::Config>::Event = generic_event.into();
+        let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
         // compare to the last event record
         let EventRecord { event, .. } = &events[events.len() - 1];
         assert_eq!(event, &system_event);
     }
 
-    pub fn assert_last_assets_event<T: Config>(generic_event: <T as assets::Config>::Event) {
+    pub fn assert_last_assets_event<T: Config>(generic_event: <T as assets::Config>::RuntimeEvent) {
         let events = frame_system::Pallet::<T>::events();
-        let system_event: <T as frame_system::Config>::Event = generic_event.into();
+        let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
         // compare to the last event record
         let EventRecord { event, .. } = &events[events.len() - 1];
         assert_eq!(event, &system_event);

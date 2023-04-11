@@ -194,7 +194,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + dex_manager::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -220,6 +220,7 @@ pub mod pallet {
         /// - `dex_id`: ID of the exchange.
         /// - `base_asset_id`: base asset ID.
         /// - `target_asset_id`: target asset ID.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
