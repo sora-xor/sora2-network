@@ -144,7 +144,10 @@ use frame_support::traits::{
     Contains, Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons,
 };
 use sp_runtime::traits::Keccak256;
-pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, xst};
+pub use {
+    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
+    xst,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;

@@ -7715,6 +7715,7 @@ dependencies = [
  "frame-system",
  "framenode-chain-spec",
  "framenode-runtime",
+ "hex-literal",
  "orml-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -7724,6 +7725,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]

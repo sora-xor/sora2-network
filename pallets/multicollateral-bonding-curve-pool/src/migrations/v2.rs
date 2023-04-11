@@ -1,6 +1,5 @@
 use crate::Pallet;
 use common::balance;
-use common::AssetInfoProvider;
 use common::FromGenericPair;
 use common::TBCD;
 use frame_support::traits::Get;
@@ -12,6 +11,9 @@ use frame_support::{
 };
 use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
+
+#[cfg(feature = "try-runtime")]
+use common::AssetInfoProvider;
 
 pub const SORAMITSU_PAYMENT_ACCOUNT: [u8; 32] =
     hex_literal::hex!("34b9a44a2d3f681d8191815a6de986bf163d15f6d6b58d56aa1ab887313e1723");
