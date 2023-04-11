@@ -34,7 +34,10 @@
 use assets::AssetIdOf;
 use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutcome};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{Balance, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason};
+use common::{
+    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+};
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
@@ -138,6 +141,15 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type WeightInfo: WeightInfo;
     }
@@ -222,12 +234,25 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// New order book is created
+        /// New order book is created by user
         /// [order_book_id, dex_id, creator]
         OrderBookCreated(OrderBookId<T>, T::DEXId, T::AccountId),
-        /// New limit order is places by user
+
+        /// Order book is deleted by Council
+        /// [order_book_id, dex_id]
+        OrderBookDeleted(OrderBookId<T>, T::DEXId),
+
+        /// Order book attributes are updated by Council
+        /// [order_book_id, dex_id]
+        OrderBookUpdated(OrderBookId<T>, T::DEXId),
+
+        /// User placed new limit order
         /// [order_book_id, dex_id, order_id, owner_id]
         OrderPlaced(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
+
+        /// User canceled their limit order
+        /// [order_book_id, dex_id, order_id, owner_id]
+        OrderCanceled(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
     }
 
     #[pallet::error]
@@ -252,6 +277,8 @@ pub mod pallet {
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
         NotAllowedBaseAsset,
+        /// User cannot create an order book with NFT if they are not NFT owner
+        UserIsNotOwnerOfNft,
     }
 
     #[pallet::call]
@@ -273,6 +300,7 @@ pub mod pallet {
                 order_book_id.base_asset_id == dex_info.base_asset_id,
                 Error::<T>::NotAllowedBaseAsset
             );
+            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.target_asset_id)?;
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &dex_id,
                 &order_book_id.base_asset_id.into(),
@@ -283,8 +311,19 @@ pub mod pallet {
                 Error::<T>::OrderBookAlreadyExists
             );
 
-            // todo nft
-            let order_book = OrderBook::<T>::default(order_book_id, dex_id);
+            let order_book =
+                if T::AssetInfoProvider::get_asset_info(&order_book_id.target_asset_id).2 != 0 {
+                    // regular asset
+                    OrderBook::<T>::default(order_book_id, dex_id)
+                } else {
+                    // nft
+                    ensure!(
+                        T::AssetInfoProvider::is_asset_owner(&order_book_id.target_asset_id, &who),
+                        Error::<T>::UserIsNotOwnerOfNft
+                    );
+                    OrderBook::<T>::default_nft(order_book_id, dex_id)
+                };
+
             <OrderBooks<T>>::set(order_book_id, Some(order_book));
 
             Self::deposit_event(Event::<T>::OrderBookCreated(order_book_id, dex_id, who));

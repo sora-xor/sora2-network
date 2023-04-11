@@ -23,7 +23,6 @@ frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "po
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 technical = { path = "../technical", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 
@@ -46,7 +45,6 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "technical/std",
-    "trading-pair/std",
 ]
 
 runtime-benchmarks = [
