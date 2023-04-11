@@ -1,5 +1,6 @@
 use crate::Pallet;
 use common::balance;
+use common::AssetInfoProvider;
 use common::FromGenericPair;
 use common::TBCD;
 use frame_support::traits::Get;

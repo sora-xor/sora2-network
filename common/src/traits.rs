@@ -804,6 +804,84 @@ impl<
     }
 }
 
+/// Trait to provide info about assets
+pub trait AssetInfoProvider<
+    AssetId,
+    AccountId,
+    AssetSymbol,
+    AssetName,
+    BalancePrecision,
+    ContentSource,
+    Description,
+>
+{
+    fn asset_exists(asset_id: &AssetId) -> bool;
+
+    fn ensure_asset_exists(asset_id: &AssetId) -> DispatchResult;
+
+    fn is_asset_owner(asset_id: &AssetId, account_id: &AccountId) -> bool;
+
+    fn get_asset_info(
+        asset_id: &AssetId,
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    );
+
+    fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
+
+    fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
+}
+
+impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    AssetInfoProvider<
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        ContentSource,
+        Description,
+    > for ()
+{
+    fn asset_exists(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn ensure_asset_exists(_asset_id: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn is_asset_owner(_asset_id: &AssetId, _account_id: &AccountId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_asset_info(
+        _asset_id: &AssetId,
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    ) {
+        unimplemented!()
+    }
+
+    fn get_asset_content_src(_asset_id: &AssetId) -> Option<ContentSource> {
+        unimplemented!()
+    }
+
+    fn get_asset_description(_asset_id: &AssetId) -> Option<Description> {
+        unimplemented!()
+    }
+}
+
 pub trait IsValid {
     fn is_valid(&self) -> bool;
 }

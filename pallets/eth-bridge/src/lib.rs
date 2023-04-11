@@ -75,7 +75,9 @@ use crate::util::majority;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
+use common::{
+    AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
+};
 use core::{line, stringify};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::{debug, error, info, warn};
@@ -361,6 +363,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

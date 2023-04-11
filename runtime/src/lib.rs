@@ -109,9 +109,10 @@ pub use common::prelude::{
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
-    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    ContentSource, DexInfoProvider, FilterMode, Fixed, FromGenericPair, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
+    balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
+    BalancePrecision, BasisPoints, ContentSource, DexInfoProvider, FilterMode, Fixed,
+    FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;

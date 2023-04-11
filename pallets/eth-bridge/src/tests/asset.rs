@@ -41,7 +41,7 @@ use crate::tests::{
 };
 use crate::{EthAddress, RegisteredSidechainToken};
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
+    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_support::assert_noop;
