@@ -717,6 +717,8 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(input_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
@@ -759,6 +761,8 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(output_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
@@ -799,6 +803,8 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
+
+                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
                     assets::AssetInfos::<T>::get(asset_a).2 != 0
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,

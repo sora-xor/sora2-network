@@ -1033,6 +1033,8 @@ pub mod pallet {
                 !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenIsAlreadyAdded
             );
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             let (_, _, precision, ..) = assets::AssetInfos::<T>::get(&asset_id);
             RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
             RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);

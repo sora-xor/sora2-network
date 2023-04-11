@@ -277,6 +277,7 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     pub fn check_indivisible_assets(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
