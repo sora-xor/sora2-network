@@ -254,6 +254,7 @@ members = [
     "pallets/xst",
     "pallets/price-tools",
     "pallets/oracle-proxy",
+    "pallets/order-book",
     "pallets/trustless-bridge/ethereum-light-client",
     "pallets/trustless-bridge/bridge-inbound-channel",
     "pallets/trustless-bridge/bridge-outbound-channel",

@@ -43,7 +43,7 @@ use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -353,13 +353,15 @@ pub trait Config: frame_system::Config + currencies::Config {
         + Encode
         + Decode
         + Eq
-        + PartialEq;
+        + PartialEq
+        + MaxEncodedLen;
     type LstId: Clone
         + Copy
         + Encode
         + Decode
         + Eq
         + PartialEq
+        + MaxEncodedLen
         + From<crate::primitives::LiquiditySourceType>;
 }
 
