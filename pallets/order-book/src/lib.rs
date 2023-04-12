@@ -326,7 +326,7 @@ pub mod pallet {
                     OrderBook::<T>::default_nft(order_book_id, dex_id)
                 };
 
-            <OrderBooks<T>>::set(order_book_id, Some(order_book));
+            <OrderBooks<T>>::insert(order_book_id, order_book);
 
             Self::deposit_event(Event::<T>::OrderBookCreated(order_book_id, dex_id, who));
             Ok(().into())
