@@ -47,7 +47,7 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY bridge-docker/recipe.json /app
-RUN cargo chef cook --release --features private-net --recipe-path /app/recipe.json
+RUN cargo chef cook --release --features private-net,wip,ready-to-test --recipe-path /app/recipe.json
 
 # Build
 COPY Cargo.lock /app
@@ -60,4 +60,4 @@ COPY utils /app/utils
 COPY node /app/node
 COPY .hooks /app/.hooks
 
-RUN cargo build --release --features private-net && cp target/release/framenode target/release/relayer /usr/local/bin && rm -rf /app
+RUN cargo build --release --features private-net,wip,ready-to-test && cp target/release/framenode target/release/relayer /usr/local/bin && rm -rf /app

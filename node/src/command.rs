@@ -258,7 +258,14 @@ pub fn run() -> sc_cli::Result<()> {
             let runner = cli.create_runner(&cli.run)?;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
-                service::new_full(config, cli.disable_beefy, None).map_err(sc_cli::Error::Service)
+                #[cfg(feature = "wip")]
+                return service::new_full(config, cli.disable_beefy, None)
+                    .map_err(sc_cli::Error::Service);
+                // Disable BEEFY on production.
+                // BEEFY is still work in progress and probably will contain breaking changes, so it's better to enable it when it's ready
+                // Also before enabling it we need to ensure that validators updated their session keys
+                #[cfg(not(feature = "wip"))]
+                service::new_full(config, true, None).map_err(sc_cli::Error::Service)
             })
         }
     }
