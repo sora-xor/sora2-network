@@ -420,7 +420,12 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut bids = <AggregatedBids<T>>::get(order_book_id);
-                let volume = bids.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                let volume = bids
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .unwrap_or_default()
+                    .checked_add(order.amount)
+                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
                 bids.try_insert(order.price, volume)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedBids<T>>::set(order_book_id, bids);
@@ -430,7 +435,12 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-                let volume = asks.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                let volume = asks
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .unwrap_or_default()
+                    .checked_add(order.amount)
+                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
                 asks.try_insert(order.price, volume)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedAsks<T>>::set(order_book_id, asks);
@@ -478,7 +488,8 @@ impl<T: Config> Pallet<T> {
                     .get(&order.price)
                     .map(|x| *x)
                     .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    - order.amount;
+                    .checked_sub(order.amount)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
                 if volume.is_zero() {
                     agg_bids
                         .remove(&order.price)
@@ -506,7 +517,8 @@ impl<T: Config> Pallet<T> {
                     .get(&order.price)
                     .map(|x| *x)
                     .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    - order.amount;
+                    .checked_sub(order.amount)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
                 if volume.is_zero() {
                     agg_asks
                         .remove(&order.price)
