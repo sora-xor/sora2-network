@@ -64,4 +64,32 @@ where
             <T as frame_system::Config>::DbWeight::get().reads(1)
         }
     }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        let account_id = T::LockTechAccountId::get();
+        frame_support::ensure!(
+            technical::Pallet::<T>::ensure_tech_account_registered(&account_id).is_err(),
+            "Tech account is already registered"
+        );
+        frame_support::ensure!(
+            Pallet::<T>::on_chain_storage_version() == 1,
+            "must upgrade linearly"
+        );
+        Ok(Vec::new())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        let account_id = T::LockTechAccountId::get();
+        frame_support::ensure!(
+            technical::Pallet::<T>::ensure_tech_account_registered(&account_id).is_ok(),
+            "Tech account is not registered"
+        );
+        frame_support::ensure!(
+            Pallet::<T>::on_chain_storage_version() == 2,
+            "should be upgraded to version 1"
+        );
+        Ok(())
+    }
 }

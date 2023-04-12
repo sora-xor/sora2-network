@@ -28,55 +28,28 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{pallet::Pallet, EnabledTargets};
-use common::FromGenericPair;
-use common::{balance, TBCD, XST};
-use frame_support::traits::GetStorageVersion as _;
-use frame_support::traits::OnRuntimeUpgrade;
+#![cfg(feature = "wip")] // order-book
+
+use common::{balance, FromGenericPair, PriceVariant, TechAccountId, VAL, XOR};
+use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade};
+use frame_support::{assert_err, assert_ok};
+use framenode_chain_spec::ext;
+use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::{order_book, Runtime};
 
 #[test]
 fn test_v1() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert!(!EnabledTargets::<Runtime>::get().contains(&XST));
+    ext().execute_with(|| {
+        let lock_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_LOCK.to_vec(),
+        );
+        assert!(technical::Pallet::ensure_tech_account_registered(&lock_account_id).is_err());
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 0);
 
-        super::v1::InitializeXSTPool::<Runtime>::on_runtime_upgrade();
+        super::v1::InitializeTechnicalAccount::<Runtime>::on_runtime_upgrade();
 
-        assert!(EnabledTargets::<Runtime>::get().contains(&XST));
+        assert!(technical::Pallet::ensure_tech_account_registered(&lock_account_id).is_ok());
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
-    });
-}
-
-#[test]
-fn test_v2() {
-    ExtBuilder::default().build().execute_with(|| {
-        super::v1::InitializeXSTPool::<Runtime>::on_runtime_upgrade();
-        assert!(!EnabledTargets::<Runtime>::get().contains(&TBCD));
-        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
-
-        let assets_and_permissions_tech_account_id =
-            <Runtime as technical::Config>::TechAccountId::from_generic_pair(
-                b"SYSTEM_ACCOUNT".to_vec(),
-                b"ASSETS_PERMISSIONS".to_vec(),
-            );
-        let assets_and_permissions_account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-                &assets_and_permissions_tech_account_id,
-            )
-            .unwrap();
-        frame_system::Pallet::<Runtime>::inc_providers(&assets_and_permissions_account_id);
-
-        super::v2::InitializeTBCD::<Runtime>::on_runtime_upgrade();
-
-        assert!(EnabledTargets::<Runtime>::get().contains(&TBCD));
-        assert_eq!(
-            assets::Pallet::<Runtime>::total_balance(
-                &TBCD,
-                &super::v2::SORAMITSU_PAYMENT_ACCOUNT.into()
-            )
-            .unwrap(),
-            balance!(1688406)
-        );
-        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });
 }

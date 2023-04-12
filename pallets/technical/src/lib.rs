@@ -165,7 +165,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Register `TechAccountId` in storate map if it not exist.
+    /// Register `TechAccountId` in storage map if it not exist.
     pub fn register_tech_account_id_if_not_exist(
         tech_account_id: &T::TechAccountId,
     ) -> DispatchResult {

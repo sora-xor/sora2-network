@@ -463,17 +463,33 @@ impl<T: Config> Pallet<T> {
     fn lock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
-        amount: Balance,
-    ) -> Result<(), DispatchError> {
-        technical::Pallet::<T>::transfer_in(asset, account, &T::LockTechAccountId::get(), amount)
+        amount: T::Balance,
+    ) -> Result<(), DispatchError>
+    where
+        T::Balance: Into<u128>,
+    {
+        technical::Pallet::<T>::transfer_in(
+            asset,
+            account,
+            &T::LockTechAccountId::get(),
+            amount.into(),
+        )
     }
 
     fn unlock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
-        amount: Balance,
-    ) -> Result<(), DispatchError> {
-        technical::Pallet::<T>::transfer_out(asset, &T::LockTechAccountId::get(), account, amount)
+        amount: T::Balance,
+    ) -> Result<(), DispatchError>
+    where
+        T::Balance: Into<u128>,
+    {
+        technical::Pallet::<T>::transfer_out(
+            asset,
+            &T::LockTechAccountId::get(),
+            account,
+            amount.into(),
+        )
     }
 }
 

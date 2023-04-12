@@ -132,6 +132,13 @@ impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
     fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
         Ok(self)
     }
+
+    fn unchecked_into_checked_i_know_what_i_am_doing(
+        self,
+        _c: &Context,
+    ) -> Result<Self::Checked, TransactionValidityError> {
+        unreachable!();
+    }
 }
 
 impl<RuntimeCall: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<RuntimeCall, Extra> {
