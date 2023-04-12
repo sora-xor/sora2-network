@@ -33,30 +33,17 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
+    use common::{self, AssetName, AssetSymbol, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
-    use sp_runtime::DispatchError;
 
     type XSTPool = Pallet<Runtime>;
-
-    /// Sets up the tech account so that mint permission is enabled
-    fn xst_pool_init() -> Result<TechAccountId, DispatchError> {
-        let xst_tech_account_id = TechAccountId::from_generic_pair(
-            crate::TECH_ACCOUNT_PREFIX.to_vec(), crate::TECH_ACCOUNT_PERMISSIONED.to_vec()
-        );
-        Technical::register_tech_account_id(xst_tech_account_id.clone())?;
-        XSTPool::set_tech_account_id(xst_tech_account_id.clone())?;
-
-        Ok(xst_tech_account_id)
-    }
 
     #[test]
     fn should_calculate_price() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
             let alice = &alice();
 
             // base case for buy
@@ -99,7 +86,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let alice = alice();
             // add some reserves
@@ -231,7 +217,6 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
@@ -359,7 +344,6 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -435,7 +419,6 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             XSTPool::exchange(
                 &alice(),
@@ -505,7 +488,6 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             // Buy with desired input
             let amount_a: Balance = balance!(200);
@@ -594,7 +576,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let alice = alice();
             // add some reserves
@@ -607,7 +588,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
             assert_eq!(price_before, fixed!(181.6197));
@@ -631,7 +611,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
@@ -696,7 +675,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            let _ = xst_pool_init().unwrap();
 
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();

@@ -57,7 +57,6 @@ use common::{
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
-use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
@@ -141,6 +140,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;
+        type GetXSTPoolPermissionedTechAccountId: Get<Self::TechAccountId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         type Oracle: DataFeed<Self::Symbol, Rate, u64>;
@@ -339,12 +339,6 @@ pub mod pallet {
         OracleQuoteError,
     }
 
-    // TODO: better by replaced with Get<>
-    /// Technical account used to store collateral tokens.
-    #[pallet::storage]
-    #[pallet::getter(fn permissioned_tech_account)]
-    pub type PermissionedTechAccount<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
-
     /// Synthetic assets and their reference symbols.
     ///
     /// It's a programmer responsibility to keep this collection consistent with [`EnabledSymbols`].
@@ -384,8 +378,6 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        /// Technical account used to perform permissioned actions e.g. mint/burn.
-        pub tech_account_id: T::TechAccountId,
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
@@ -397,7 +389,6 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
                 initial_synthetic_assets: [(
                     XSTUSD.into(),
@@ -412,11 +403,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
-
-            technical::Pallet::<T>::register_tech_account_id(self.tech_account_id.clone())
-                .expect("Failed to register technical account");
 
             self.initial_synthetic_assets.iter().cloned().for_each(
                 |(asset_id, reference_symbol, fee_ratio)| {
@@ -748,7 +735,7 @@ impl<T: Config> Pallet<T> {
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let permissioned_tech_account_id = Self::permissioned_tech_account();
+            let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
             let permissioned_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
@@ -802,24 +789,6 @@ impl<T: Config> Pallet<T> {
             )?;
 
             Ok(result)
-        })
-    }
-
-    /// Assign account id that is used to burn and mint.
-    pub fn set_tech_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
-        common::with_transaction(|| {
-            PermissionedTechAccount::<T>::set(account.clone());
-            let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-            let permissions = [BURN, MINT];
-            for permission in &permissions {
-                permissions::Pallet::<T>::assign_permission(
-                    account_id.clone(),
-                    &account_id,
-                    *permission,
-                    Scope::Unlimited,
-                )?;
-            }
-            Ok(())
         })
     }
 
@@ -885,7 +854,7 @@ impl<T: Config> Pallet<T> {
         asset_symbol: AssetSymbol,
         asset_name: AssetName,
     ) -> Result<(), DispatchError> {
-        let permissioned_tech_account_id = Self::permissioned_tech_account();
+        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
         let permissioned_account_id =
             Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
         Assets::<T>::register_asset_id(

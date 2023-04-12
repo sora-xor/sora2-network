@@ -33,8 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, PriceVariant, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
-    XSTUSD,
+    Fixed, FromGenericPair, PriceVariant, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT,
+    VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -95,6 +95,20 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
     pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+    pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            xst::TECH_ACCOUNT_PREFIX.to_vec(),
+            xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetXSTPoolPermissionedAccountId: AccountId = {
+        let tech_account_id = GetXSTPoolPermissionedTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 construct_runtime! {
@@ -169,6 +183,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type Oracle = OracleProxy;
@@ -180,7 +195,7 @@ impl band::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Symbol = common::SymbolName;
     type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = ();
+    type OnNewSymbolsRelayedHook = OracleProxy;
     type UnixTime = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
@@ -407,6 +422,7 @@ impl MockDEXApi {
 pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     let direct = vec![
         ((XOR, VAL), balance!(2.0)),
+        ((XOR, XST), balance!(0.55768)),
         // USDT
         ((XOR, USDT), balance!(100.0)),
         ((VAL, USDT), balance!(50.0)),
@@ -528,6 +544,11 @@ impl Default for ExtBuilder {
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    GetXSTPoolPermissionedAccountId::get(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }
     }
@@ -581,6 +602,15 @@ impl ExtBuilder {
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetXSTPoolPermissionedAccountId::get(),
+                GetXSTPoolPermissionedTechAccountId::get(),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();

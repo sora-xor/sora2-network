@@ -1526,7 +1526,6 @@ fn testnet_genesis(
         technical_membership: Default::default(),
         im_online: Default::default(),
         xst_pool: XSTPoolConfig {
-            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
                 XSTUSD.into(),
@@ -1769,6 +1768,8 @@ fn mainnet_genesis(
 
     let xst_pool_permissioned_tech_account_id =
         framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+    let xst_pool_permissioned_account_id =
+        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
 
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
@@ -1845,6 +1846,10 @@ fn mainnet_genesis(
         (
             mbc_pool_free_reserves_account_id.clone(),
             mbc_pool_free_reserves_tech_account_id.clone(),
+        ),
+        (
+            xst_pool_permissioned_account_id.clone(),
+            xst_pool_permissioned_tech_account_id.clone(),
         ),
         (
             iroha_migration_account_id.clone(),
@@ -2154,6 +2159,11 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    xst_pool_permissioned_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -2310,7 +2320,6 @@ fn mainnet_genesis(
         technical_membership: Default::default(),
         im_online: Default::default(),
         xst_pool: XSTPoolConfig {
-            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![(
                 XSTUSD,

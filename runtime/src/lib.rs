@@ -1773,6 +1773,7 @@ parameter_types! {
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = DEXManager;
     type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::WeightInfo<Runtime>;

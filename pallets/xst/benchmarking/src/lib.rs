@@ -35,9 +35,13 @@
 use assets::Event as AssetsEvent;
 use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
-use common::{balance, fixed, AssetName, AssetSymbol, Oracle, DAI, XSTUSD};
+use common::prelude::{QuoteAmount, SwapAmount};
+use common::{
+    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, DAI, XST, XSTUSD,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
+use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use oracle_proxy::Pallet as OracleProxy;
@@ -94,7 +98,7 @@ mod utils {
         Band::<T>::add_relayers(RawOrigin::Root.into(), vec![alice::<T>()])?;
         Band::<T>::relay(
             RawOrigin::Signed(alice::<T>()).into(),
-            vec![(symbol::<<T as band::Config>::Symbol>(), 1)],
+            vec![(symbol::<<T as band::Config>::Symbol>(), 1000000000)],
             0,
             0,
         )
@@ -165,7 +169,7 @@ benchmarks! {
     }
 
     register_synthetic_asset {
-        let permissioned_tech_account_id = XSTPool::<T>::permissioned_tech_account();
+        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
         let permissioned_account_id =
             Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)
             .expect("Expected to generate account id from technical");
@@ -201,6 +205,37 @@ benchmarks! {
     }: _(RawOrigin::Root, balance!(200))
     verify {
         utils::assert_last_event::<T>(Event::SyntheticBaseAssetFloorPriceChanged(balance!(200)).into())
+    }
+
+    quote {
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+    }: {
+        let _ = XSTPool::<T>::quote(
+            &DEXId::Polkaswap.into(),
+            &XST.into(),
+            &asset_id,
+            QuoteAmount::with_desired_input(balance!(1)),
+            true,
+        ).unwrap();
+    }
+
+    exchange {
+        let asset_id = utils::enable_synthetic_asset::<T>()?;
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            utils::alice::<T>().into(),
+            XST.into(),
+            1000000000000000000,
+        ).unwrap();
+    }: {
+        let _ = XSTPool::<T>::exchange(
+            &utils::alice::<T>(),
+            &utils::alice::<T>(),
+            &DEXId::Polkaswap.into(),
+            &XST.into(),
+            &asset_id,
+            SwapAmount::with_desired_input(balance!(1), 1),
+        ).unwrap();
     }
 
     impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
