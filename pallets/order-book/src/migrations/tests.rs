@@ -30,26 +30,31 @@
 
 #![cfg(feature = "wip")] // order-book
 
-use common::{balance, FromGenericPair, PriceVariant, TechAccountId, VAL, XOR};
+use common::FromGenericPair;
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade};
-use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::order_book::Pallet;
 use framenode_runtime::{order_book, Runtime};
+
+type OrderBook = Pallet<Runtime>;
 
 #[test]
 fn test_v1() {
     ext().execute_with(|| {
-        let lock_account_id = TechAccountId::from_generic_pair(
+        let lock_account_id = <Runtime as technical::Config>::TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
             crate::TECH_ACCOUNT_LOCK.to_vec(),
         );
-        assert!(technical::Pallet::ensure_tech_account_registered(&lock_account_id).is_err());
-        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 0);
+        assert!(
+            technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_err()
+        );
+        assert_eq!(OrderBook::on_chain_storage_version(), 0);
 
-        super::v1::InitializeTechnicalAccount::<Runtime>::on_runtime_upgrade();
+        order_book::InitializeTechnicalAccount::<Runtime>::on_runtime_upgrade();
 
-        assert!(technical::Pallet::ensure_tech_account_registered(&lock_account_id).is_ok());
-        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 1);
+        assert!(
+            technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_ok()
+        );
+        assert_eq!(OrderBook::on_chain_storage_version(), 1);
     });
 }

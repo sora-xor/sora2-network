@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![cfg(feature = "wip")] // order-book
+
 use core::marker::PhantomData;
 
 use frame_support::{
@@ -39,10 +41,7 @@ use crate::Pallet;
 
 pub struct InitializeTechnicalAccount<T>(PhantomData<T>);
 
-impl<T> OnRuntimeUpgrade for InitializeTechnicalAccount<T>
-where
-    T: crate::Config,
-{
+impl<T: crate::Config> OnRuntimeUpgrade for InitializeTechnicalAccount<T> {
     fn on_runtime_upgrade() -> frame_support::weights::Weight {
         if Pallet::<T>::on_chain_storage_version() == 0 {
             info!("Applying migration to version 1: Initialize XST pool");

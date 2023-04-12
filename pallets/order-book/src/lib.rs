@@ -58,6 +58,7 @@ mod order_book;
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
+pub use migrations::v1::InitializeTechnicalAccount;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"order-book";
 pub const TECH_ACCOUNT_LOCK: &[u8] = b"lock";
