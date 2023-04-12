@@ -95,15 +95,6 @@ fn prepare_crowdloan_contributions<T: Config>(n: u128) -> Vec<(T::AccountId, Bal
     contributions
 }
 
-fn prepare_pending_accounts<T: Config>(n: u128) {
-    for i in 0..n {
-        let user_account = create_account::<T>(b"user".to_vec(), i);
-        T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::add_tbc_reward(&user_account, balance!(1))
-            .expect("Failed to add reward.");
-    }
-}
-
 fn prepare_rewards_update<T: Config>(
     n: u128,
 ) -> BTreeMap<T::AccountId, BTreeMap<RewardReason, Balance>> {
@@ -138,18 +129,6 @@ benchmarks! {
         assert_eq!(
             T::Currency::free_balance(PSWAP.into(), &caller),
             balance!(100)
-        );
-    }
-
-    distribute_limits {
-        let n in 0 .. 100 => prepare_pending_accounts::<T>(n.into());
-    }: {
-        Pallet::<T>::distribute_limits(balance!(n))
-    }
-    verify {
-        assert_eq!(
-            TotalRewards::<T>::get(),
-            balance!(n)
         );
     }
 

@@ -383,7 +383,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(dex_id)?;
         // Get pool account.
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -422,7 +422,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &desired_amount_in,
                     deduce_fee,
                 )?;
-                Ok(SwapOutcome::new(calculated, fee))
+                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (calculated, fee) = Pallet::<T>::calc_input_for_exact_output(
@@ -433,7 +433,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &desired_amount_out,
                     deduce_fee,
                 )?;
-                Ok(SwapOutcome::new(calculated, fee))
+                Ok((SwapOutcome::new(calculated, fee), Self::quote_weight()))
             }
         }
     }
@@ -445,7 +445,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&dex_id)?;
         let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
             *dex_id,
@@ -488,7 +488,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         (a.fee.unwrap(), a.source.amount.unwrap())
                     }
                 };
-                Ok(common::prelude::SwapOutcome::new(amount, fee))
+                Ok((
+                    common::prelude::SwapOutcome::new(amount, fee),
+                    Self::exchange_weight(),
+                ))
             }
             _ => unreachable!("we know that always PairSwap is used"),
         };
@@ -510,9 +513,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         _output_asset_id: &T::AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         // XYK Pool has no rewards currently
-        Ok(Vec::new())
+        Ok((Vec::new(), Weight::zero()))
     }
 
     fn quote_without_impact(
@@ -617,6 +620,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         })
     }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::swap_pair()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl<T: Config> GetPoolReserves<T::AssetId> for Pallet<T> {
@@ -649,7 +664,7 @@ pub mod pallet {
         const MIN_XOR: Balance;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         //TODO: implement and use + Into<SwapActionOf<T> for this types.
         type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, AssetIdOf<Self>, Self>
@@ -688,6 +703,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,
@@ -730,6 +746,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_liquidity())]
         pub fn withdraw_liquidity(
             origin: OriginFor<T>,
@@ -766,6 +783,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,

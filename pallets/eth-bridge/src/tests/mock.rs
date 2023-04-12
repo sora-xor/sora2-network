@@ -49,7 +49,7 @@ use common::{
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, UnfilteredDispatchable};
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, UnfilteredDispatchable};
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
@@ -72,7 +72,7 @@ use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
 use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
-use frame_support::weights::{Pays, Weight};
+use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
@@ -116,31 +116,33 @@ parameter_types! {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
-pub struct MyTestXt<Call, Extra> {
+pub struct MyTestXt<RuntimeCall, Extra> {
     /// Signature of the extrinsic.
     pub signature: Option<(AccountId, Extra)>,
-    /// Call of the extrinsic.
-    pub call: Call,
+    /// RuntimeCall of the extrinsic.
+    pub call: RuntimeCall,
 }
 
-parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<Call, Extra>);
+parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<RuntimeCall, Extra>);
 
-impl<Call: Codec + Sync + Send, Context, Extra> Checkable<Context> for MyTestXt<Call, Extra> {
+impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
+    for MyTestXt<RuntimeCall, Extra>
+{
     type Checked = Self;
     fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
         Ok(self)
     }
 }
 
-impl<Call: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<Call, Extra> {
-    type Call = Call;
+impl<RuntimeCall: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<RuntimeCall, Extra> {
+    type Call = RuntimeCall;
     type SignaturePayload = (AccountId, Extra);
 
     fn is_signed(&self) -> Option<bool> {
         Some(self.signature.is_some())
     }
 
-    fn new(c: Call, sig: Option<Self::SignaturePayload>) -> Option<Self> {
+    fn new(c: RuntimeCall, sig: Option<Self::SignaturePayload>) -> Option<Self> {
         Some(MyTestXt {
             signature: sig,
             call: c,
@@ -151,7 +153,7 @@ impl<Call: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<Call, Extr
 impl SignedExtension for MyExtra {
     const IDENTIFIER: &'static str = "testextension";
     type AccountId = AccountId;
-    type Call = Call;
+    type Call = RuntimeCall;
     type AdditionalSigned = ();
     type Pre = ();
 
@@ -170,14 +172,21 @@ impl SignedExtension for MyExtra {
     }
 }
 
-impl<Origin, Call, Extra> Applyable for MyTestXt<Call, Extra>
+impl<Origin, RuntimeCall, Extra> Applyable for MyTestXt<RuntimeCall, Extra>
 where
-    Call:
-        'static + Sized + Send + Sync + Clone + Eq + Codec + Debug + Dispatchable<Origin = Origin>,
-    Extra: SignedExtension<AccountId = AccountId, Call = Call>,
+    RuntimeCall: 'static
+        + Sized
+        + Send
+        + Sync
+        + Clone
+        + Eq
+        + Codec
+        + Debug
+        + Dispatchable<RuntimeOrigin = Origin>,
+    Extra: SignedExtension<AccountId = AccountId, Call = RuntimeCall>,
     Origin: From<Option<AccountId32>>,
 {
-    type Call = Call;
+    type Call = RuntimeCall;
 
     /// Checks to see if this is a valid *transaction*. It returns information on it if so.
     fn validate<U: ValidateUnsigned<Call = Self::Call>>(
@@ -208,9 +217,9 @@ where
     }
 }
 
-impl<Call, Extra> Serialize for MyTestXt<Call, Extra>
+impl<RuntimeCall, Extra> Serialize for MyTestXt<RuntimeCall, Extra>
 where
-    MyTestXt<Call, Extra>: Encode,
+    MyTestXt<RuntimeCall, Extra>: Encode,
 {
     fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
     where
@@ -220,11 +229,11 @@ where
     }
 }
 
-impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
+impl<RuntimeCall: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<RuntimeCall, Extra> {
     fn get_dispatch_info(&self) -> DispatchInfo {
         // for testing: weight == size.
         DispatchInfo {
-            weight: self.encode().len() as _,
+            weight: Weight::from_parts(self.encode().len() as u64, 0),
             pays_fee: Pays::No,
             ..Default::default()
         }
@@ -233,17 +242,17 @@ impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo)]
 pub struct MyExtra;
-pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
+pub type TestExtrinsic = MyTestXt<RuntimeCall, MyExtra>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
-    pub const SchedulerMaxWeight: Weight = 1024;
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
 }
 
 pub struct RemoveTemporaryPeerAccountId;
@@ -262,8 +271,8 @@ impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -271,7 +280,7 @@ impl frame_system::Config for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -303,15 +312,15 @@ impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
-    Call: From<LocalCall>,
+    RuntimeCall: From<LocalCall>,
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-        call: Call,
+        call: RuntimeCall,
         _public: <Signature as Verify>::Signer,
         account: <Runtime as frame_system::Config>::AccountId,
         _index: <Runtime as frame_system::Config>::Index,
     ) -> Option<(
-        Call,
+        RuntimeCall,
         <TestExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
     )> {
         Some((call, (account, MyExtra {})))
@@ -325,10 +334,10 @@ impl frame_system::offchain::SigningTypes for Runtime {
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
-    Call: From<C>,
+    RuntimeCall: From<C>,
 {
     type Extrinsic = TestExtrinsic;
-    type OverarchingCall = Call;
+    type OverarchingCall = RuntimeCall;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -336,7 +345,7 @@ impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type DustRemoval = ();
     /// The ubiquitous event type.
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
@@ -346,18 +355,16 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl tokens::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
+    type CurrencyHooks = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -379,7 +386,7 @@ parameter_types! {
 }
 
 impl assets::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, LiquiditySourceType, [u8; 32]>;
@@ -402,12 +409,12 @@ impl common::Config for Runtime {
 }
 
 impl permissions::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl bridge_multisig::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
     type Currency = Balances;
     type DepositBase = DepositBase;
     type DepositFactor = DepositFactor;
@@ -416,8 +423,8 @@ impl bridge_multisig::Config for Runtime {
 }
 
 impl pallet_sudo::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
 }
 
 /// Used the compare the privilege of an origin inside the scheduler.
@@ -439,23 +446,22 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
 }
 
 impl pallet_scheduler::Config for Runtime {
-    type Event = Event;
-    type Origin = Origin;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
     type PalletsOrigin = OriginCaller;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
-    type PreimageProvider = ();
-    type NoPreimagePostponement = ();
+    type Preimages = ();
 }
 
 impl crate::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type PeerId = crate::offchain::crypto::TestAuthId;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();

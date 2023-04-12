@@ -56,7 +56,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
             let alice = &alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // base case for buy
@@ -102,7 +102,7 @@ mod tests {
             let _ = xst_pool_init().unwrap();
 
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
             XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XST.");
@@ -188,7 +188,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             let price_a = XSTPool::quote(
@@ -200,7 +200,7 @@ mod tests {
             )
                 .unwrap();
 
-            XSTPool::set_reference_asset(Origin::root(), DAI).expect("Failed to set new reference asset.");
+            XSTPool::set_reference_asset(RuntimeOrigin::root(), DAI).expect("Failed to set new reference asset.");
 
             let price_b = XSTPool::quote(
                     &DEXId::Polkaswap.into(),
@@ -229,12 +229,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -243,7 +243,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_a = XSTPool::exchange(
+            let (exchange_outcome_a, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -262,7 +262,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -271,7 +271,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_b = XSTPool::exchange(
+            let (exchange_outcome_b, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -290,7 +290,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -299,7 +299,7 @@ mod tests {
             )
             .unwrap();
 
-            let exchange_outcome_c = XSTPool::exchange(
+            let (exchange_outcome_c, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -318,7 +318,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -326,7 +326,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let exchange_outcome_d = XSTPool::exchange(
+            let (exchange_outcome_d, _) = XSTPool::exchange(
                 &alice(),
                 &alice(),
                 &DEXId::Polkaswap.into(),
@@ -355,10 +355,10 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -380,7 +380,7 @@ mod tests {
             // mock returns get_average_price with fee, we want no fee for this comparison
             let base_to_output_without_fee = base_to_output / balance!(0.993);
             let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -392,7 +392,7 @@ mod tests {
             // more error, because more computations/roundings or larger coefficients
             assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000000000000001000));
 
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -403,7 +403,7 @@ mod tests {
             assert_approx_eq!(price_a.fee, balance!(0.001563909801974061), balance!(0.000000000000000002));
             assert_eq!(price_a.amount, balance!(18283.739706444923188361));
 
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -430,7 +430,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             XSTPool::exchange(
@@ -444,7 +444,7 @@ mod tests {
             .unwrap();
 
             // Buy
-            let price_a = XSTPool::quote(
+            let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -452,7 +452,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_b = XSTPool::quote(
+            let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -464,7 +464,7 @@ mod tests {
             assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
 
             // Sell
-            let price_c = XSTPool::quote(
+            let (price_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -472,7 +472,7 @@ mod tests {
                 true,
             )
             .unwrap();
-            let price_d = XSTPool::quote(
+            let (price_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -499,12 +499,12 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = xst_pool_init().unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice()),DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
             // Buy with desired input
             let amount_a: Balance = balance!(200);
-            let quote_outcome_a = XSTPool::quote(
+            let (quote_outcome_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -524,7 +524,7 @@ mod tests {
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
-            let quote_outcome_b = XSTPool::quote(
+            let (quote_outcome_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
@@ -544,7 +544,7 @@ mod tests {
 
             // Sell with desired input
             let amount_c: Balance = balance!(1);
-            let quote_outcome_c = XSTPool::quote(
+            let (quote_outcome_c, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -564,7 +564,7 @@ mod tests {
 
             // Sell with desired output
             let amount_d: Balance = balance!(1);
-            let quote_outcome_d = XSTPool::quote(
+            let (quote_outcome_d, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XST,
                 &XSTUSD,
@@ -592,7 +592,7 @@ mod tests {
             let _ = xst_pool_init().unwrap();
 
             let alice = alice();
-            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
+            TradingPair::register(RuntimeOrigin::signed(alice.clone()), DEXId::Polkaswap.into(), XST, XSTUSD).expect("Failed to register trading pair.");
             XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
             // add some reserves
             assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
@@ -609,7 +609,7 @@ mod tests {
             let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
             assert_eq!(price_before, fixed!(181.6197));
 
-            XSTPool::set_synthetic_base_asset_floor_price(Origin::root(), balance!(200)).expect("Failed to set floor price.");
+            XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(200)).expect("Failed to set floor price.");
             let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
             assert_eq!(price_after, fixed!(200));
         });

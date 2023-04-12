@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity =0.8.13;
+pragma solidity 0.8.15;
 
 /*
  * ChannelAccess implements authorization logic for submitting messages to a channel.
@@ -52,14 +52,14 @@ abstract contract ChannelAccess {
     }
 
     // Perform the authorization check
-    function isOperatorFor(address _operator, address _origin)
+    function isOperatorFor(address operator, address origin)
         public
         view
         returns (bool)
     {
         return
-            _operator == _origin ||
-            defaultOperators[_operator] ||
-            operators[_origin][_operator];
+            operator == origin ||
+            defaultOperators[operator] ||
+            operators[origin][operator];
     }
 }

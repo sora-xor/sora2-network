@@ -78,6 +78,10 @@ pub trait WeightInfo {
     fn set_optional_reward_multiplier() -> Weight;
     fn set_price_change_config() -> Weight;
     fn set_price_bias() -> Weight;
+    fn quote() -> Weight;
+    fn exchange() -> Weight;
+    fn can_exchange() -> Weight;
+    fn check_rewards() -> Weight;
 }
 
 type Assets<T> = assets::Pallet<T>;
@@ -200,7 +204,7 @@ pub mod pallet {
         + trading_pair::Config
         + pool_xyk::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
@@ -240,6 +244,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Enable exchange path on the pool for pair BaseAsset-CollateralAsset.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,
@@ -255,6 +260,7 @@ pub mod pallet {
         }
 
         /// Change reference asset which is used to determine collateral assets value. Inteded to be e.g. stablecoin DAI.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -272,6 +278,7 @@ pub mod pallet {
 
         /// Set multiplier which is applied to rewarded amount when depositing particular collateral assets.
         /// `None` value indicates reward without change, same as Some(1.0).
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_optional_reward_multiplier())]
         pub fn set_optional_reward_multiplier(
             origin: OriginFor<T>,
@@ -299,6 +306,7 @@ pub mod pallet {
         }
 
         /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation
+        #[pallet::call_index(3)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_bias())]
         pub fn set_price_bias(
             origin: OriginFor<T>,
@@ -317,6 +325,7 @@ pub mod pallet {
         }
 
         /// Changes price change rate and step
+        #[pallet::call_index(4)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_change_config())]
         pub fn set_price_change_config(
             origin: OriginFor<T>,
@@ -1562,7 +1571,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1573,8 +1582,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
         match amount {
-            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok((
+                SwapOutcome::new(output_amount, fee_amount),
+                Self::quote_weight(),
+            )),
+            QuoteAmount::WithDesiredOutput { .. } => Ok((
+                SwapOutcome::new(input_amount, fee_amount),
+                Self::quote_weight(),
+            )),
         }
     }
 
@@ -1585,7 +1600,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
@@ -1606,7 +1621,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 receiver,
             );
             Pallet::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
-            outcome
+            outcome.map(|res| (res, Self::exchange_weight()))
         } else {
             let outcome = BuyMainAsset::<T>::new(
                 *input_asset_id,
@@ -1617,7 +1632,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             )?
             .swap();
             Pallet::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
-            outcome
+            outcome.map(|res| (res, Self::exchange_weight()))
         }
     }
 
@@ -1627,12 +1642,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         input_amount: Balance,
         output_amount: Balance,
-    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
+        let mut weight = <T as Config>::WeightInfo::can_exchange();
+
         let base_asset_id = &T::GetBaseAssetId::get();
         if output_asset_id == base_asset_id {
+            weight = Self::check_rewards_weight();
             let reserves_tech_account_id = ReservesAcc::<T>::get();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
@@ -1649,12 +1667,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
             }
             if !pswap_amount.is_zero() {
-                Ok([(pswap_amount, PSWAP.into(), RewardReason::BuyOnBondingCurve)].into())
+                Ok((
+                    [(pswap_amount, PSWAP.into(), RewardReason::BuyOnBondingCurve)].into(),
+                    weight,
+                ))
             } else {
-                Ok(Vec::new())
+                Ok((Vec::new(), weight))
             }
         } else {
-            Ok(Vec::new()) // no rewards on sell
+            Ok((Vec::new(), weight)) // no rewards on sell
         }
     }
 
@@ -1748,6 +1769,18 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         };
         Ok(outcome)
+    }
+
+    fn quote_weight() -> Weight {
+        <T as Config>::WeightInfo::quote()
+    }
+
+    fn exchange_weight() -> Weight {
+        <T as Config>::WeightInfo::exchange()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        <T as Config>::WeightInfo::check_rewards()
     }
 }
 

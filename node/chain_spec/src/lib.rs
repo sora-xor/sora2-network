@@ -49,20 +49,21 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetSyntheticBaseAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeInboundChannelConfig,
+    BridgeMultisigConfig, BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig,
+    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
+    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
-use sc_network::config::MultiaddrWithPeerId;
+use sc_network_common::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -180,6 +181,10 @@ pub fn staging_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
 }
 
+pub fn bridge_staging_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_bridge_staging.json")[..])
+}
+
 pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
@@ -257,6 +262,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                     hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                    hex!("328be9c672c4fff8ae9065ebdf116a47e1121933616a1d1749ff9bb3356fd542").into(),
                 ],
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
@@ -292,6 +298,200 @@ pub fn dev_net_coded() -> ChainSpec {
         vec![],
         None,
         Some("sora-substrate-dev"),
+        None,
+        Some(properties),
+        None,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn bridge_dev_net_coded() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
+    ChainSpec::from_genesis(
+        "SORA-dev Testnet",
+        "sora-substrate-dev",
+        ChainType::Live,
+        move || {
+            testnet_genesis(
+                true,
+                hex!("f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143").into(),
+                vec![
+                    authority_keys_from_public_keys(
+                        // scheme: sr25519, seed: <seed>//framenode-1//stash
+                        hex!("38c2970a9988caff722c140726f53ea0b0f654254dbf3f472b1ac5efd3aace35"),
+                        // scheme: sr25519, seed: <seed>//framenode-1
+                        hex!("78ed15d8b96d53576e5e9f50b7263566c3aa8b7c9a22648e06f525411a538c08"),
+                        // scheme: sr25519, seed: <seed>//framenode-1
+                        hex!("78ed15d8b96d53576e5e9f50b7263566c3aa8b7c9a22648e06f525411a538c08"),
+                        // scheme: ed25519, seed: <seed>//framenode-1
+                        hex!("4e84eeed48dd52d45f599a549edecf2a135f8045de32c6a801086b1e1fb251c9"),
+                        // scheme: ecdsa, seed: <seed>//framenode-1
+                        hex!("03c8833ad1ed110cdfee2ef838a0fc2b830a8aa821711aa4ab5b679e2624173cbb"),
+                    ),
+                    authority_keys_from_public_keys(
+                        // scheme: sr25519, seed: <seed>//framenode-2//stash
+                        hex!("36c75c50a04c792f7074453bc3080c4166a60a81361cc2d5e436a0a83f3cf643"),
+                        // scheme: sr25519, seed: <seed>//framenode-2
+                        hex!("849695acc5fc166e8e3327de0d6c75e75d32509d1ad8495e12423e3efc73500b"),
+                        // scheme: sr25519, seed: <seed>//framenode-2
+                        hex!("849695acc5fc166e8e3327de0d6c75e75d32509d1ad8495e12423e3efc73500b"),
+                        // scheme: ed25519, seed: <seed>//framenode-2
+                        hex!("2d67d9d22097d2f6f74a4076bece0b97ee3809916b0a6e234a3e27b5fabaa84f"),
+                        // scheme: ecdsa, seed: <seed>//framenode-2
+                        hex!("03629d2d9aaf8c09637b2cd1696d6d65bb632e1fe2489e45e0f3538176c3c58300"),
+                    ),
+                ],
+                vec![
+                    hex!("f6d0e31012ebeef4b9cc4cddd0593a8579d226dc17ce725139225e81683f0143").into(),
+                    hex!("328be9c672c4fff8ae9065ebdf116a47e1121933616a1d1749ff9bb3356fd542").into(),
+                    hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
+                    hex!("62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401").into(),
+                    hex!("c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c").into(),
+                    hex!("8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244").into(),
+                    hex!("a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c").into(),
+                    hex!("5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c").into(),
+                    hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
+                    hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
+                    hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                ],
+                vec![
+                    hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
+                    hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
+                ],
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
+                        .into(),
+                },
+                vec![
+                    hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
+                    hex!("62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401").into(),
+                    hex!("c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c").into(),
+                    hex!("8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244").into(),
+                    hex!("a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c").into(),
+                    hex!("5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c").into(),
+                ],
+                vec![
+                    hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
+                    hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
+                    hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                ],
+                2,
+            )
+        },
+        vec![],
+        None,
+        Some("sora-substrate-dev"),
+        None,
+        Some(properties),
+        None,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn bridge_staging_net_coded() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
+    let protocol = "sora-substrate-bridge-staging";
+    ChainSpec::from_genesis(
+        "SORA-bridge Testnet",
+        "sora-substrate-bridge",
+        ChainType::Live,
+        move || {
+            let eth_bridge_params = EthBridgeParams {
+                xor_master_contract_address: Default::default(),
+                xor_contract_address: Default::default(),
+                val_master_contract_address: Default::default(),
+                val_contract_address: Default::default(),
+                bridge_contract_address: Default::default(),
+            };
+            testnet_genesis(
+                false,
+                hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
+                vec![
+                    authority_keys_from_public_keys(
+                        hex!("ee806e5ed183345d5986ea31d93aa1afc6cbe48f128ac864e158d51f5ccda538"),
+                        hex!("3cac6a8a5a4045e9bcd30f19b7d1ab1649ca3092c3cc0b36f64011d3dc610552"),
+                        hex!("3cac6a8a5a4045e9bcd30f19b7d1ab1649ca3092c3cc0b36f64011d3dc610552"),
+                        hex!("55b2663327d8143b45a666c904c1a6621ae2d77604cabfcd3431fd0b975de480"),
+                        hex!("034405a66d5b3aa47946ee49ad23c8ef1dfabcbbc99ea30d6abe8cebe16d3561ef"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("628a21efe6c21f41d6e04b313ac779a74870dbba27ab404d921d2f09467e5258"),
+                        hex!("b4720fbf3ef701532b238f3335864d4fe185f2a82769ab2764b50165a112b057"),
+                        hex!("b4720fbf3ef701532b238f3335864d4fe185f2a82769ab2764b50165a112b057"),
+                        hex!("311646bc40d9b5ec724ff2deebeba9ff0d1866dd0d8f2db371dd2e5fc7ecf462"),
+                        hex!("03ec5ede1a45c754093a878d87ff30b28f6e9594a8b0e03e0a8b3ec6db7846e6a6"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("ce36d1ac5e9d8da1f2e0a4f8a26b102394dd35c352e2b960f56168cc10478c3c"),
+                        hex!("8e296982f9f4e67c07e0cfe990d67416773aec6c95ca708c95e852938a0d2877"),
+                        hex!("8e296982f9f4e67c07e0cfe990d67416773aec6c95ca708c95e852938a0d2877"),
+                        hex!("9448e9b714635de2158d1d7e2413c6f844793db970e76b3af40622325355e510"),
+                        hex!("031d86e31c78bcc4350e781961216d44f36550d8c8826a3805bb9915a79386018d"),
+                    ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("4e7ffd5823ea6ee8c0b4d69e9104cf375cbe63f0d13175d31a02fbed76393448"),
+                    //     hex!("0aa79e7b16d34c4cc2dc18f1d1018a4413f3d55e4543786121022700e983d972"),
+                    //     hex!("0aa79e7b16d34c4cc2dc18f1d1018a4413f3d55e4543786121022700e983d972"),
+                    //     hex!("9ad0bfa8282b9b1b324ee394e5335e0e98c3722653f45f61535d65b9514c6f7c"),
+                    //     hex!("0268ec544e1cf933f2ac54de6362930ee0c7a571ad87809cd72b4ce93dcf14f8bb"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("b4ea29407e2dc0dfde55e7e823db250f3165a02d794c3672bd32c64278cbc13f"),
+                    //     hex!("4a76a3e2c1fb07860c48099c1bbcb94984ff414988e96d26f1594a74a2e10f3e"),
+                    //     hex!("4a76a3e2c1fb07860c48099c1bbcb94984ff414988e96d26f1594a74a2e10f3e"),
+                    //     hex!("f694905813600d496d05bd9d12487498e7ed4716ee65a60f667e5535bfe43c36"),
+                    //     hex!("03e5181b1c9acec5aed73e8c14e3104792c722caadcfcb9a813edaf7fe0613e86d"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("284b92d3cfa7bfdffb5a905c8f9e2bdc38315a9f45f13267ab285632684ab709"),
+                    //     hex!("12be644497c1bb9f58d4f8bdb85b43e5b5e9762b7e2d3b9a87ed99be523b5c23"),
+                    //     hex!("12be644497c1bb9f58d4f8bdb85b43e5b5e9762b7e2d3b9a87ed99be523b5c23"),
+                    //     hex!("99bac188e04592d31059c612c386106393d2c2103747c8da3badeee0fc130627"),
+                    //     hex!("03367a1882741e54b7ddf082f1a23173a92f38f66897000b7689d6552e5397e4d2"),
+                    // ),
+                ],
+                vec![],
+                vec![],
+                eth_bridge_params,
+                vec![
+                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
+                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
+                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
+                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
+                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
+                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
+                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
+                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
+                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
+                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
+                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
+                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
+                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                ],
+                vec![
+                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
+                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
+                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                ],
+                69,
+            )
+        },
+        vec![],
+        None,
+        Some(protocol),
         None,
         Some(properties),
         None,
@@ -514,7 +714,7 @@ fn bonding_curve_distribution_accounts(
 }
 
 #[cfg(feature = "private-net")]
-pub fn local_testnet_config() -> ChainSpec {
+pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -537,7 +737,10 @@ pub fn local_testnet_config() -> ChainSpec {
                     /*
                     authority_keys_from_seed("Treasury"),
                     */
-                ],
+                ]
+                .into_iter()
+                .take(initial_authorities)
+                .collect(),
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
                     hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
@@ -548,6 +751,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -583,7 +787,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                3,
+                validator_count,
             )
         },
         vec![],
@@ -617,6 +821,7 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
+    use framenode_runtime::EthAppConfig;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -656,6 +861,18 @@ fn testnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
+
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
+
+    let treasury_tech_account_id = framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let treasury_account_id = framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -720,6 +937,18 @@ fn testnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
+        ),
+        (
+            treasury_account_id.clone(),
+            treasury_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -914,6 +1143,23 @@ fn testnet_genesis(
     ];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        beefy_light_client: Default::default(),
+        substrate_bridge_app: Default::default(),
+        substrate_bridge_inbound_channel: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
+        migration_app: Default::default(),
+        erc20_app: Default::default(),
+        eth_app: Default::default(),
+        ethereum_light_client: Default::default(),
+        bridge_inbound_channel: BridgeInboundChannelConfig {
+            reward_fraction: Perbill::from_percent(80),
+            ..Default::default()
+        },
+        bridge_outbound_channel: BridgeOutboundChannelConfig {
+            fee: 10000,
+            interval: 10,
+            ..Default::default()
+        },
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -1233,7 +1479,7 @@ fn testnet_genesis(
                     },
                     AssetConfig::Sidechain {
                         id: DAI.into(),
-                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        sidechain_id: hex!("34273F3a534dF490437F0deFFcb0549B40fb3Db6").into(),
                         owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
@@ -1301,7 +1547,9 @@ fn testnet_genesis(
     any(
         feature = "main-net-coded",
         feature = "test",
-        feature = "runtime-benchmarks"
+        feature = "runtime-benchmarks",
+        feature = "wip",
+        feature = "ready-to-test"
     ),
     not(feature = "private-net")
 ))]
@@ -1401,7 +1649,9 @@ pub fn main_net_coded() -> ChainSpec {
     any(
         feature = "main-net-coded",
         feature = "test",
-        feature = "runtime-benchmarks"
+        feature = "runtime-benchmarks",
+        feature = "wip",
+        feature = "ready-to-test"
     ),
     not(feature = "private-net")
 ))]
@@ -1465,6 +1715,15 @@ fn mainnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
+
+    let trustless_eth_bridge_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeTechAccountId::get();
+    let trustless_eth_bridge_account_id = framenode_runtime::GetTrustlessBridgeAccountId::get();
+
+    let trustless_eth_bridge_fees_tech_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesTechAccountId::get();
+    let trustless_eth_bridge_fees_account_id =
+        framenode_runtime::GetTrustlessBridgeFeesAccountId::get();
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -1531,6 +1790,14 @@ fn mainnet_genesis(
         (
             eth_bridge_authority_account_id.clone(),
             eth_bridge_authority_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_account_id.clone(),
+            trustless_eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            trustless_eth_bridge_fees_account_id.clone(),
+            trustless_eth_bridge_fees_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -1722,6 +1989,24 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        beefy_light_client: Default::default(),
+        substrate_bridge_app: Default::default(),
+        substrate_bridge_inbound_channel: Default::default(),
+        substrate_bridge_outbound_channel: Default::default(),
+        migration_app: Default::default(),
+        vested_rewards: Default::default(),
+        erc20_app: Default::default(),
+        eth_app: Default::default(),
+        ethereum_light_client: Default::default(),
+        bridge_inbound_channel: BridgeInboundChannelConfig {
+            reward_fraction: Perbill::from_percent(80),
+            ..Default::default()
+        },
+        bridge_outbound_channel: BridgeOutboundChannelConfig {
+            fee: 10000,
+            interval: 10,
+            ..Default::default()
+        },
         system: SystemConfig {
             code: WASM_BINARY.unwrap_or_default().to_vec(),
         },
@@ -1848,6 +2133,8 @@ fn mainnet_genesis(
         balances: BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_account_id.clone(), 0),
+                (trustless_eth_bridge_fees_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),

@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity =0.8.13;
+pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./RewardSource.sol";
-import "./ScaleCodec.sol";
-import "./OutboundChannel.sol";
-import "./EthTokenReceiver.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/IRewardSource.sol";
+import "./libraries/ScaleCodec.sol";
+import "./interfaces/IEthTokenReceiver.sol";
+import "./GenericApp.sol";
 
-enum ChannelId {
-    Basic,
-    Incentivized
-}
-
-contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
+/** 
+* @dev The contract was analyzed using Slither static analysis framework. All recommendations have been taken 
+* into account and some detectors have been disabled at developers' discretion using `slither-disable-next-line`. 
+*/
+contract ETHApp is
+    GenericApp,
+    IRewardSource,
+    IEthTokenReceiver,
+    ReentrancyGuard
+{
     using ScaleCodec for uint256;
-
-    mapping(ChannelId => Channel) public channels;
 
     event Locked(address sender, bytes32 recipient, uint256 amount);
 
@@ -25,82 +27,72 @@ contract ETHApp is RewardSource, AccessControl, EthTokenReceiver {
 
     bytes32 public constant REWARD_ROLE = keccak256("REWARD_ROLE");
 
-    struct Channel {
-        address inbound;
-        address outbound;
-    }
-
-    bytes32 public constant INBOUND_CHANNEL_ROLE =
-        keccak256("INBOUND_CHANNEL_ROLE");
-
     constructor(
         address rewarder,
-        Channel memory _basic,
-        Channel memory _incentivized
-    ) {
-        Channel storage c1 = channels[ChannelId.Basic];
-        c1.inbound = _basic.inbound;
-        c1.outbound = _basic.outbound;
-
-        Channel storage c2 = channels[ChannelId.Incentivized];
-        c2.inbound = _incentivized.inbound;
-        c2.outbound = _incentivized.outbound;
-
+        address inboundChannel,
+        address outboundChannel // an address of an IOutboundChannel contract
+    ) GenericApp(inboundChannel, outboundChannel) {
         _setupRole(REWARD_ROLE, rewarder);
-        _setupRole(INBOUND_CHANNEL_ROLE, _basic.inbound);
-        _setupRole(INBOUND_CHANNEL_ROLE, _incentivized.inbound);
     }
 
-    function lock(bytes32 _recipient, ChannelId _channelId) public payable {
+    function lock(bytes32 recipient) external payable {
         require(msg.value > 0, "Value of transaction must be positive");
-        require(
-            _channelId == ChannelId.Basic ||
-                _channelId == ChannelId.Incentivized,
-            "Invalid channel ID"
-        );
 
-        emit Locked(msg.sender, _recipient, msg.value);
+        emit Locked(msg.sender, recipient, msg.value);
 
-        bytes memory call = encodeCall(msg.sender, _recipient, msg.value);
+        bytes memory call = encodeCall(msg.sender, recipient, msg.value);
 
-        OutboundChannel channel = OutboundChannel(
-            channels[_channelId].outbound
-        );
-        channel.submit(msg.sender, call);
+        outbound.submit(msg.sender, call);
     }
 
     function unlock(
-        bytes32 _sender,
-        address payable _recipient,
-        uint256 _amount
-    ) public onlyRole(INBOUND_CHANNEL_ROLE) {
-        require(_amount > 0, "Must unlock a positive amount");
-        _recipient.transfer(_amount);
-        emit Unlocked(_sender, _recipient, _amount);
+        bytes32 sender,
+        address payable recipient,
+        uint256 amount
+    ) external onlyRole(INBOUND_CHANNEL_ROLE) nonReentrant {
+        require(
+            recipient != address(0x0),
+            "Recipient must not be a zero address"
+        );
+        require(amount > 0, "Must unlock a positive amount");
+        // slither-disable-next-line arbitrary-send,low-level-calls
+        (bool success, ) = recipient.call{value: amount}("");
+        require(success, "Transfer failed.");
+        emit Unlocked(sender, recipient, amount);
     }
 
     // SCALE-encode payload
     function encodeCall(
-        address _sender,
-        bytes32 _recipient,
-        uint256 _amount
+        address sender,
+        bytes32 recipient,
+        uint256 amount
     ) private pure returns (bytes memory) {
         return
             abi.encodePacked(
                 MINT_CALL,
-                _sender,
+                sender,
                 //bytes1(0x00), // Encode recipient as MultiAddress::Id
-                _recipient,
-                _amount.encode256()
+                recipient,
+                amount.encode256()
             );
     }
 
-    function reward(address payable _recipient, uint256 _amount)
+    function reward(address payable recipient, uint256 amount)
         external
         override
         onlyRole(REWARD_ROLE)
+        nonReentrant
     {
-        _recipient.transfer(_amount);
+        if (address(this).balance >= amount) {
+            require(
+                recipient != address(0x0),
+                "Recipient must not be a zero address"
+            );
+            // slither-disable-next-line arbitrary-send,low-level-calls
+            (bool success, ) = recipient.call{value: amount}("");
+            require(success, "Transfer failed.");
+            emit Rewarded(recipient, amount);
+        }
     }
 
     function receivePayment() external payable override {}

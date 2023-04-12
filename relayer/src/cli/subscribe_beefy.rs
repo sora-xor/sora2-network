@@ -1,29 +1,53 @@
-use super::*;
-use crate::prelude::*;
-use crate::relay::justification::BeefyJustification;
-use beefy_gadget_rpc::BeefyApiClient;
-use clap::*;
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use crate::cli::prelude::*;
+use futures::StreamExt;
 
 #[derive(Args, Clone, Debug)]
-pub(super) struct Command {}
+pub(super) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+}
 
 impl Command {
-    pub(super) async fn run(&self, args: &BaseArgs) -> AnyResult<()> {
-        let sub_api = args.get_unsigned_substrate().await?;
-        let beefy_start_block = sub_api.beefy_start_block().await?;
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_unsigned_substrate().await?;
 
-        // let proof = sub_api.mmr_generate_proof(1, None).await?;
-        // info!("Proof: {:#?}", proof);
-        let mut beefy_sub = sub_api.beefy().subscribe_justifications().await?;
-        while let Some(commitment) = beefy_sub.next().await.transpose()? {
-            let justification = BeefyJustification::create(
-                sub_api.clone(),
-                commitment.decode()?,
-                beefy_start_block as u32,
-            )
-            .await?;
-            println!("{:#?}", justification);
+        let mut stream =
+            crate::substrate::beefy_subscription::subscribe_beefy_justifications(sub.clone(), 1)
+                .await?;
+        while let Some(justification) = stream.next().await {
+            println!("Justification: {:?}", justification);
         }
+
         Ok(())
     }
 }

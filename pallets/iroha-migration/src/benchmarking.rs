@@ -100,9 +100,9 @@ fn add_accounts<T: Config>(n: u32) {
     Quorums::<T>::insert(&multi_sig_account_id, 2);
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -110,9 +110,9 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     migrate {
-        let n in 1 .. 1000 => add_accounts::<T>(n);
+        add_accounts::<T>(100);
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {
         Pallet::<T>::migrate(
             caller_origin,
@@ -121,13 +121,13 @@ benchmarks! {
             "233896712f752760713539f56c92534ff8f4f290812e8f129Ce0b513b99cbdffcea95abeed68edd1b0a4e4b52877c13c26c6c89e5bb6bf023ac6c0f4f53c0c02".to_string())?;
     }
     verify {
-        assert_last_event::<T>(Event::Migrated("did_sora_balance@sora".to_string(), caller).into())
+        assert_last_event::<T>(Event::<T>::Migrated("did_sora_balance@sora".to_string(), caller).into())
     }
 
     on_initialize {
-        let n in 1 .. 1000 => add_accounts::<T>(n);
+        add_accounts::<T>(100);
         let alice = alice::<T>();
-        let alice_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(alice.clone()).into();
+        let alice_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(alice.clone()).into();
         let iroha_address = "did_sora_multi_sig@sora".to_string();
         assert_ok!(Pallet::<T>::migrate(
             alice_origin,
@@ -136,7 +136,7 @@ benchmarks! {
             "d5f6dcc6967aa05df71894dd2c253085b236026efC1c66d4b33ee88dda20fc751b516aef631d1f96919f8cba2e15334022e04ef6602298d6b9820daeefe13e03".to_string())
         );
         let bob = bob::<T>();
-        let bob_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(bob.clone()).into();
+        let bob_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(bob.clone()).into();
         assert_ok!(Pallet::<T>::migrate(
             bob_origin,
             iroha_address.clone(),

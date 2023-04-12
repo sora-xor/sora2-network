@@ -1,0 +1,10 @@
+FROM node:latest
+
+WORKDIR /app
+COPY ethereum-bridge-contracts/package.json /app
+COPY ethereum-bridge-contracts/yarn.lock /app
+RUN yarn
+
+COPY ethereum-bridge-contracts /app
+COPY ethereum-bridge-contracts/env.template /app/.env
+COPY bridge-docker/hardhat/deploy.sh /app/docker-deploy.sh

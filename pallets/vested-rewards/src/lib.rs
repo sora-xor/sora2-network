@@ -116,13 +116,24 @@ pub struct CrowdloanUserInfo<AssetId> {
 
 pub trait WeightInfo {
     fn claim_rewards() -> Weight;
-    fn distribute_limits(n: u32) -> Weight;
     fn update_rewards(n: u32) -> Weight;
     fn register_crowdloan(m: u32) -> Weight;
     fn claim_crowdloan_rewards() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
+    /// Stores a new reward for a given account_id, supported by a reward reason.
+    /// Returns error in case of failure during incrementing the reference counter on an account.
+    /// Interacts with the `Rewards` StorageMap and the `TotalRewards` StorageValue;
+    /// also modifies the `System` pallet storage state.
+    ///
+    /// Used in this trait: `market_maker_rewards_distribution_routine`;
+    /// in VestedRewardsPallet trait: `add_tbc_reward`, `add_farming_reward`, `add_market_maker_reward`;
+    /// also in farming pallet: `vest_account_rewards`.
+    ///
+    /// - `account_id`: The account associated with the reward
+    /// - `reason`: The reward reason
+    /// - `amount`: The amount of reward
     pub fn add_pending_reward(
         account_id: &T::AccountId,
         reason: RewardReason,
@@ -144,6 +155,16 @@ impl<T: Config> Pallet<T> {
     }
 
     /// General claim function, which updates user reward status.
+    /// Returns error in case if total available reward or
+    /// its limit or total claimed result is equal to 0;
+    /// Interacts with the `Rewards` StorageMap and the `TotalRewards` StorageValue;
+    /// also modifies the `System` pallet storage state.
+    /// Emits `ActualDoesntMatchAvailable` event if some of the rewards were not fully claimed
+    /// for this account.
+    ///
+    /// Used in `claim_rewards` extrinsic.
+    ///
+    /// - `account_id`: The account associated with the reward
     pub fn claim_rewards_inner(account_id: &T::AccountId) -> DispatchResult {
         let mut remove_after_mutate = false;
         let result = Rewards::<T>::mutate(account_id, |info| {
@@ -196,6 +217,17 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Claim rewards from account with reserves dedicated for particular reward type.
+    /// Returns the actually transferred reward amount.
+    /// Returns error if the reward `reason` is invalid, or if the available reward is equal to 0.
+    /// Interacts with the `Asset` pallet storage state.
+    ///
+    /// Used in this trait: `claim_rewards_inner`;
+    /// also in `claim_crowdloan_rewards` extrinsic.
+    ///
+    /// - `account_id`: The account id associated with the reward
+    /// - `reason`: The reward reason
+    /// - `asset_id`: The asset id associated with the reward
+    /// - `amount`: The amount of the reward
     pub fn claim_reward_by_reason(
         account_id: &T::AccountId,
         reason: RewardReason,
@@ -216,6 +248,12 @@ impl<T: Config> Pallet<T> {
         Ok(amount)
     }
 
+    /// Distributes the vested PSWAP tokens.
+    /// Interacts with the `Rewards` StorageMap.
+    ///
+    /// Used in `OnPswapBurned` trait: `on_pswap_burned`.
+    ///
+    /// - `vested_amount`: The amount to be distributed
     pub fn distribute_limits(vested_amount: Balance) {
         let total_rewards = TotalRewards::<T>::get();
 
@@ -419,7 +457,6 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> OnPswapBurned for Pallet<T> {
-    /// NOTE: currently is not invoked.
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
         Pallet::<T>::distribute_limits(distribution.vesting)
@@ -460,7 +497,7 @@ pub mod pallet {
         + multicollateral_bonding_curve_pool::Config
     {
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Accounts holding PSWAP dedicated for rewards.
         #[pallet::constant]
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
@@ -485,6 +522,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Claim all available PSWAP rewards by account signing this transaction.
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
@@ -493,6 +531,7 @@ pub mod pallet {
         }
 
         #[transactional]
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
@@ -506,6 +545,7 @@ pub mod pallet {
         }
 
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
         pub fn update_rewards(
             origin: OriginFor<T>,
@@ -539,6 +579,7 @@ pub mod pallet {
         }
 
         #[transactional]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_crowdloan(contributions.len() as u32))]
         pub fn register_crowdloan(
             origin: OriginFor<T>,

@@ -12,6 +12,6 @@ pub fn migrate<T: Config>() -> Weight {
     if version < 2 {
         v2::migrate::<T>()
     } else {
-        0
+        Weight::zero()
     }
 }

@@ -22,46 +22,103 @@ describe("ScaleCodec", function () {
   describe("decoding compact uints", async function () {
     it("should decode case 0: [0, 63]", async function () {
       const tests = [
-        {encoded: toHexBytes("00"), decoded: 0},
-        {encoded: toHexBytes("fc"), decoded: 63},
+        {encoded: toHexBytes("00"), decoded: BigInt("0")},
+        {encoded: toHexBytes("fc"), decoded: BigInt("63")},
       ];
 
       for(test of tests) {
-        const output = Number(await codec.decodeUintCompact.call(test.encoded));
-        output.should.be.bignumber.equal(test.decoded);
+        const output = BigInt(await codec.decodeUintCompact.call(test.encoded));
+        output.should.be.equal(test.decoded);
+      }
+    });
+
+    it("must reject incorrect one-byte values: ", async function () {
+      const tests = [
+        {encoded: toHexBytes("00 ff")},
+      ];
+
+      for(test of tests) {
+        await codec.decodeUintCompact.call(test.encoded).should.not.be.fulfilled;
       }
     });
 
     it("should decode case 1: [64, 16383]", async function () {
       const tests = [
-        {encoded: toHexBytes("01 01"), decoded: 64},
-        {encoded: toHexBytes("fd ff"), decoded: 16383},
+        {encoded: toHexBytes("01 01"), decoded: BigInt("64")},
+        {encoded: toHexBytes("15 01"), decoded: BigInt("69")},
+        {encoded: toHexBytes("fd ff"), decoded: BigInt("16383")},
       ];
 
       for(test of tests) {
-        const output = Number(await codec.decodeUintCompact.call(test.encoded));
-        output.should.be.bignumber.equal(test.decoded);
+        const output = BigInt(await codec.decodeUintCompact.call(test.encoded));
+        output.should.be.equal(test.decoded);
+      }
+    });
+
+    it("must reject incorrect two-byte values: ", async function () {
+      const tests = [
+        {encoded: toHexBytes("01")},
+        {encoded: toHexBytes("01 ff ff")},
+      ];
+
+      for(test of tests) {
+        await codec.decodeUintCompact.call(test.encoded).should.not.be.fulfilled;
       }
     });
 
     it("should decode case 2: [16384, 1073741823]", async function () {
       const tests = [
-        {encoded: toHexBytes("02 00 01 00"), decoded: 16384},
-        {encoded: toHexBytes("fe ff ff ff"), decoded: 1073741823},
+        {encoded: toHexBytes("02 00 01 00"), decoded: BigInt("16384")},
+        {encoded: toHexBytes("02 09 3d 00"), decoded: BigInt("1000000")},
+        {encoded: toHexBytes("fe ff ff ff"), decoded: BigInt("1073741823")},
       ];
 
       for(test of tests) {
-        const output = Number(await codec.decodeUintCompact.call(test.encoded));
-        output.should.be.bignumber.equal(test.decoded);
+        const output = BigInt(await codec.decodeUintCompact.call(test.encoded));
+        output.should.be.equal(test.decoded);
       }
     });
 
-    it("should reject case 3: [1073741824, 4503599627370496]", async function () {
+    it("must reject incorrect four-byte values: ", async function () {
       const tests = [
-        {encoded: toHexBytes("03 00 00 00 40"), decoded: 1073741824},
-        {encoded: toHexBytes("07 00 00 00 00 01"), decoded: 1 << 32},
-        {encoded: toHexBytes("0f ff ff ff ff ff ff ff"), decoded: 1 << 48},
-        {encoded: toHexBytes("13 00 00 00 00 00 00 00 01"), decoded:  1 << 56},
+        {encoded: toHexBytes("02 00")},
+        {encoded: toHexBytes("02 ff ff ff ff")},
+      ];
+
+      for(test of tests) {
+        await codec.decodeUintCompact.call(test.encoded).should.not.be.fulfilled;
+      }
+    });
+
+    it("must decode case 3: [1073741824, 4503599627370496]", async function () {
+      const tests = [
+          // minimal multibyte number
+        {encoded: toHexBytes("03 00 00 00 40"), decoded: BigInt("1073741824")},
+        {encoded: toHexBytes("07 00 00 00 00 01"), decoded: BigInt("4294967296")},
+        {encoded: toHexBytes("07 00 ff ff ff ff"), decoded: BigInt("1099511627520")},
+        {encoded: toHexBytes("07 ff ff ff ff ff"), decoded: BigInt("1099511627775")},
+        {encoded: toHexBytes("0f ff ff ff ff ff ff ff"), decoded: BigInt("72057594037927935")},
+        {encoded: toHexBytes("13 00 00 00 00 00 00 00 01"), decoded:  BigInt("72057594037927936")},
+        {encoded: toHexBytes("37 d2 0a 3f ce 96 5f bc ac b8 f3 db c0 75 20 c9 a0 03"),
+          decoded: BigInt("1234567890123456789012345678901234567890")},
+      ];
+
+      for(test of tests) {
+        const output = BigInt(await codec.decodeUintCompact.call(test.encoded));
+        output.should.be.equal(test.decoded);
+      }
+    });
+
+    it("must reject case 3: [1073741824, 4503599627370496]", async function () {
+      const tests = [
+        // the most significant bit must not be zero
+        {encoded: toHexBytes("07 00 00 00 40 00")},
+        // insufficient bytes
+        {encoded: toHexBytes("03 ff")},
+        // insufficient byte
+        {encoded: toHexBytes("07 ff ff ff ff")},
+        // extra byte
+        {encoded: toHexBytes("07 ff ff ff ff ff ff")},
       ];
 
       for(test of tests) {
@@ -73,15 +130,16 @@ describe("ScaleCodec", function () {
   describe("decoding uint256s", async function () {
     it("should decode uint256", async function () {
       const tests = [
-        {encoded: toHexBytes("1d 00 00"), decoded: 29},
-        {encoded: "0x1d000000000000000000000000000000", decoded: 29},
-        {encoded: "0x3412", decoded: 4660},
-        {encoded: "0x201f1e1d1c1b1a1817161514131211100f0e0d0c0b0a09080706050403020100", decoded: 1780731860627700044960722568376592200742329637303199754547880948779589408},
+        {encoded: toHexBytes("1d 00 00"), decoded: BigInt("29")},
+        {encoded: "0x1d000000000000000000000000000000", decoded: BigInt("29")},
+        {encoded: "0x3412", decoded: BigInt("4660")},
+        {encoded: "0x201f1e1d1c1b1a1817161514131211100f0e0d0c0b0a09080706050403020100",
+          decoded: BigInt("1780731860627700044960722568376592200742329637303199754547880948779589408")},
       ];
 
       for(test of tests) {
-        const output = Number(await codec.decodeUint256.call(test.encoded));
-        output.should.be.bignumber.equal(test.decoded);
+        const output = BigInt(await codec.decodeUint256.call(test.encoded));
+        output.should.be.equal(test.decoded);
       }
     });
   });

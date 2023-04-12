@@ -26,7 +26,7 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
     apt-get -y update && \
     apt-get install -y --no-install-recommends \
-    clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 && \
+    clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 protobuf-compiler && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
     apt-get autoremove -y && \
     apt-get clean && \
@@ -44,7 +44,7 @@ RUN add-apt-repository \
     rm -rf /var/lib/apt/lists/*
 
 # Install rust
-ENV RUST_NIGHTLY_VERSION=nightly-2022-05-12
+ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
     rustup toolchain install ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \

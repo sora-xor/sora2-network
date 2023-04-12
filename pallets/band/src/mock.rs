@@ -58,8 +58,8 @@ impl system::Config for Runtime {
     type BlockWeights = ();
     type BlockLength = ();
     type DbWeight = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -67,7 +67,7 @@ impl system::Config for Runtime {
     type AccountId = u64;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = ConstU64<250>;
     type Version = ();
     type PalletInfo = PalletInfo;
@@ -82,14 +82,14 @@ impl system::Config for Runtime {
 
 impl Config for Runtime {
     type Symbol = String;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
 }
 
 impl oracle_proxy::Config for Runtime {
     type Symbol = String;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type BandChainOracle = crate::Pallet<Runtime>;
 }

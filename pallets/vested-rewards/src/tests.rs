@@ -64,7 +64,7 @@ fn register_crowdloan_fails() {
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         assert_err!(
             VestedRewards::register_crowdloan(
-                Origin::signed(alice()),
+                RuntimeOrigin::signed(alice()),
                 tag.clone(),
                 0,
                 100,
@@ -75,7 +75,7 @@ fn register_crowdloan_fails() {
         );
         assert_err!(
             VestedRewards::register_crowdloan(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 tag.clone(),
                 0,
                 100,
@@ -86,7 +86,7 @@ fn register_crowdloan_fails() {
         );
         assert_err!(
             VestedRewards::register_crowdloan(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 tag.clone(),
                 0,
                 100,
@@ -96,11 +96,18 @@ fn register_crowdloan_fails() {
             Error::<Runtime>::WrongCrowdloanInfo
         );
         assert_err!(
-            VestedRewards::register_crowdloan(Origin::root(), tag.clone(), 0, 100, vec![], vec![],),
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![],
+                vec![],
+            ),
             Error::<Runtime>::WrongCrowdloanInfo
         );
         assert_ok!(VestedRewards::register_crowdloan(
-            Origin::root(),
+            RuntimeOrigin::root(),
             tag.clone(),
             0,
             100,
@@ -109,7 +116,7 @@ fn register_crowdloan_fails() {
         ),);
         assert_err!(
             VestedRewards::register_crowdloan(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 tag.clone(),
                 0,
                 100,
@@ -128,7 +135,7 @@ fn can_claim_crowdloan_reward() {
         let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
         assert_eq!(CrowdloanUserInfos::<Runtime>::get(alice(), &tag), None);
         assert_ok!(VestedRewards::register_crowdloan(
-            Origin::root(),
+            RuntimeOrigin::root(),
             tag.clone(),
             BLOCKS_PER_DAY,
             BLOCKS_PER_DAY * 10,
@@ -165,7 +172,7 @@ fn can_claim_crowdloan_reward() {
         ]);
         // Too early claim
         assert_err!(
-            VestedRewards::claim_crowdloan_rewards(Origin::signed(alice()), tag.clone()),
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
             Error::<Runtime>::CrowdloanRewardsDistributionNotStarted
         );
         assert_balances(vec![
@@ -175,7 +182,7 @@ fn can_claim_crowdloan_reward() {
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 2);
         // Empty crowdloan tech account
         assert_err!(
-            VestedRewards::claim_crowdloan_rewards(Origin::signed(alice()), tag.clone()),
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
         assert_balances(vec![
@@ -192,7 +199,7 @@ fn can_claim_crowdloan_reward() {
         Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(100)).unwrap();
         Assets::mint_unchecked(&PSWAP, &crowdloan_info.account, balance!(1000)).unwrap();
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             tag.clone()
         ),);
         assert_balances(vec![
@@ -211,7 +218,7 @@ fn can_claim_crowdloan_reward() {
         );
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 3 + BLOCKS_PER_DAY / 2);
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             tag.clone()
         ),);
         assert_balances(vec![
@@ -230,15 +237,15 @@ fn can_claim_crowdloan_reward() {
         );
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 11);
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
-            Origin::signed(alice()),
+            RuntimeOrigin::signed(alice()),
             tag.clone()
         ),);
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
-            Origin::signed(bob()),
+            RuntimeOrigin::signed(bob()),
             tag.clone()
         ),);
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
-            Origin::signed(charlie()),
+            RuntimeOrigin::signed(charlie()),
             tag.clone()
         ),);
         assert_balances(vec![
@@ -339,7 +346,7 @@ fn claiming_single_user() {
             }
         );
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -380,7 +387,7 @@ fn claiming_single_user_multiple_rewards() {
             }
         );
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -446,9 +453,9 @@ fn claiming_multiple_users() {
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&PSWAP, &eve()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
-        VestedRewards::claim_rewards(Origin::signed(bob())).expect("Failed to claim");
-        VestedRewards::claim_rewards(Origin::signed(eve())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(bob())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(eve())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -520,7 +527,7 @@ fn sequential_claims_until_reserves_are_depleted() {
         );
         // user claims existing reward
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -569,7 +576,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             }
         );
         // trying to claim remaining amount, amount is limited because reserves are depleted
-        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -586,7 +593,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             balance!(60)
         );
         assert_noop!(
-            VestedRewards::claim_rewards(Origin::signed(alice())),
+            VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
         assert_eq!(
@@ -636,7 +643,7 @@ fn some_rewards_reserves_are_depleted() {
                 .collect(),
             }
         );
-        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).unwrap();
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -649,7 +656,7 @@ fn some_rewards_reserves_are_depleted() {
             }
         );
         assert_noop!(
-            VestedRewards::claim_rewards(Origin::signed(alice())),
+            VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
     });
@@ -668,7 +675,7 @@ fn all_rewards_reserves_are_depleted() {
             ..Default::default()
         });
         assert_noop!(
-            VestedRewards::claim_rewards(Origin::signed(alice())),
+            VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
         assert_eq!(
@@ -710,12 +717,12 @@ fn claiming_without_rewards() {
             }
         );
         assert_noop!(
-            VestedRewards::claim_rewards(Origin::signed(bob())),
+            VestedRewards::claim_rewards(RuntimeOrigin::signed(bob())),
             Error::<Runtime>::NothingToClaim
         );
         VestedRewards::add_tbc_reward(&bob(), balance!(10)).expect("Failed to add reward.");
         assert_noop!(
-            VestedRewards::claim_rewards(Origin::signed(bob())),
+            VestedRewards::claim_rewards(RuntimeOrigin::signed(bob())),
             Error::<Runtime>::ClaimLimitExceeded
         );
         VestedRewards::on_pswap_burned(PswapRemintInfo {
@@ -723,7 +730,8 @@ fn claiming_without_rewards() {
             ..Default::default()
         });
         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards(Origin::signed(bob())).expect("Failed to claim reward.");
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(bob()))
+            .expect("Failed to claim reward.");
         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(10));
     });
 }
@@ -757,7 +765,7 @@ fn empty_reward_entries_are_removed() {
                     .collect(),
             }
         );
-        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).unwrap();
         // zeroed entry is removed
         assert_eq!(
             VestedRewards::rewards(&alice()),
@@ -800,7 +808,7 @@ fn accounts_with_no_rewards_are_removed() {
         let accounts: Vec<_> = crate::Rewards::<Runtime>::iter().collect();
         assert_eq!(accounts.len(), 1);
 
-        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
+        VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())).unwrap();
         // account has zeroed values, default is returned on query:
         assert_eq!(
             VestedRewards::rewards(&alice()),

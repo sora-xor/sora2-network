@@ -50,7 +50,6 @@ use frame_support::weights::Weight;
 use frame_system::pallet_prelude::BlockNumberFor;
 use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
-use sp_runtime::traits::Saturating;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
@@ -88,7 +87,7 @@ impl<T: Config> Pallet<T> {
     }
 
     fn refresh_pools(now: T::BlockNumber) -> Weight {
-        let mut total_weight = 0;
+        let mut total_weight = Weight::zero();
         let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
         for pool in pools {
             let read_count = Self::refresh_pool(pool, now);
@@ -102,7 +101,7 @@ impl<T: Config> Pallet<T> {
         if asset_id == &base_asset {
             Ok(balance!(1).into())
         } else {
-            let outcome = pool_xyk::Pallet::<T>::quote(
+            let (outcome, _) = pool_xyk::Pallet::<T>::quote(
                 &common::DEXId::Polkaswap.into(),
                 &base_asset,
                 asset_id,
@@ -338,9 +337,9 @@ pub mod pallet {
         /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
-        type Call: Parameter;
+        type RuntimeCall: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
-        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
+        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::RuntimeCall, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -359,7 +358,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             if now.is_zero() {
-                return 0;
+                return Weight::zero();
             }
 
             let mut total_weight = Self::refresh_pools(now);

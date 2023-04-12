@@ -2,8 +2,7 @@ const ethers = require("ethers");
 require("chai")
   .use(require("chai-as-promised"))
   .should();
-const IncentivizedOutboundChannel = artifacts.require("IncentivizedOutboundChannel");
-const MockFeeSource = artifacts.require("MockFeeSource");
+const IncentivizedOutboundChannel = artifacts.require("OutboundChannel");
 
 const {
   printTxPromiseGas

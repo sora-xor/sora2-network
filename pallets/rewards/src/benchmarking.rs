@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::{UmiNftReceivers, UmiNfts};
 use codec::Decode;
 use common::eth::EthAddress;
 use common::{balance, PSWAP, VAL};
@@ -59,9 +60,9 @@ fn add_rewards<T: Config>(n: u32) {
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -69,8 +70,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     claim {
-        let n in 1..1000;
-
+        add_rewards::<T>(1000);
         let reserves_acc = technical::Pallet::<T>::tech_account_id_to_account_id(&ReservesAcc::<T>::get()).unwrap();
 
         let val_asset: T::AssetId = VAL.into();
@@ -91,30 +91,40 @@ benchmarks! {
             balance!(50000),
         ).unwrap();
 
-        add_rewards::<T>(n);
-
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
         let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
     }: {
         Pallet::<T>::claim(caller_origin, signature).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::Claimed(caller).into())
+        assert_last_event::<T>(Event::<T>::Claimed(caller).into())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use frame_support::assert_ok;
-
-    use crate::mock::{ExtBuilder, Runtime};
-    use crate::Pallet;
-
-    #[test]
-    fn claim() {
-        ExtBuilder::with_rewards(false).build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_claim());
-        });
+    add_umi_nfts_receivers {
+        let n in 1 .. 1000;
+        let mut addr_vec: Vec<EthAddress> = vec![];
+        for i in 0 .. n {
+            let raw_addr: Vec<u8> = Vec::from(i.to_be_bytes());
+            let reminder: Vec<u8> = Vec::from([0u8; 16]);
+            let raw_addr: [u8; 20] = vec![raw_addr, reminder].concat().try_into().expect("Failed to cast address vector to array");
+            let addr = EthAddress::from(raw_addr);
+            addr_vec.push(addr);
+        }
+    }: {
+        let _ = Pallet::<T>::add_umi_nft_receivers(RawOrigin::Root.into(), addr_vec.clone()).unwrap();
     }
+    verify {
+        addr_vec.iter()
+            .for_each(|receiver| {
+                let nft = UmiNftReceivers::<T>::get(receiver);
+                assert_eq!(
+                    nft,
+                    vec![1; UmiNfts::<T>::get().len()]
+                );
+            });
+
+    }
+
+    impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);
 }

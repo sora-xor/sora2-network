@@ -20,9 +20,9 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -57,7 +57,7 @@ benchmarks! {
         );
     }
     verify {
-        assert_last_event::<T>(Event::Locked(caller, locked_tokens, CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::Locked(caller, locked_tokens, CERES_ASSET_ID.into()).into());
     }
 
     withdraw_tokens {
@@ -89,7 +89,7 @@ benchmarks! {
 
     }: _(RawOrigin::Signed(caller.clone()), CERES_ASSET_ID.into(), timestamp, locked_tokens)
     verify {
-        assert_last_event::<T>(Event::Withdrawn(caller, locked_tokens, CERES_ASSET_ID.into()).into());
+        assert_last_event::<T>(Event::<T>::Withdrawn(caller, locked_tokens, CERES_ASSET_ID.into()).into());
     }
 
     change_fee {
@@ -97,7 +97,7 @@ benchmarks! {
         let new_fee = balance!(100);
     }: _(RawOrigin::Signed(caller.clone()), new_fee)
     verify {
-        assert_last_event::<T>(Event::FeeChanged(caller, new_fee).into());
+        assert_last_event::<T>(Event::<T>::FeeChanged(caller, new_fee).into());
     }
 
     impl_benchmark_test_suite!(

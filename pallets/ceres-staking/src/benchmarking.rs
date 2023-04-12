@@ -20,9 +20,9 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -48,7 +48,7 @@ benchmarks! {
         );
     }: _(RawOrigin::Signed(caller.clone()), amount)
     verify {
-        assert_last_event::<T>(Event::Deposited(caller.clone(), amount).into());
+        assert_last_event::<T>(Event::<T>::Deposited(caller.clone(), amount).into());
     }
 
     withdraw {
@@ -71,7 +71,7 @@ benchmarks! {
         ).unwrap();
     }: _(RawOrigin::Signed(caller.clone()))
     verify {
-        assert_last_event::<T>(Event::Withdrawn(caller, amount, balance!(0)).into());
+        assert_last_event::<T>(Event::<T>::Withdrawn(caller, amount, balance!(0)).into());
     }
 
     change_rewards_remaining {
@@ -79,7 +79,7 @@ benchmarks! {
         let rewards = balance!(69);
     }: _(RawOrigin::Signed(caller.clone()), rewards)
     verify {
-        assert_last_event::<T>(Event::RewardsChanged(rewards).into());
+        assert_last_event::<T>(Event::<T>::RewardsChanged(rewards).into());
     }
 
     impl_benchmark_test_suite!(
