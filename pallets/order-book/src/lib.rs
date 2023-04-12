@@ -338,6 +338,8 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Inserts limit order consistently in all necessary storages.
+    /// Must check before call. If returns error, it means we have problems with data consistency.
     pub fn insert_limit_order(
         order_book_id: &OrderBookId<T>,
         order: &LimitOrder<T>,
@@ -373,6 +375,8 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Delete limit order consistently from all necessary storages.
+    /// Must check before call. If returns error, it means we have problems with data consistency.
     pub fn delete_limit_order(
         order_book_id: &OrderBookId<T>,
         order_id: T::OrderId,
