@@ -835,6 +835,12 @@ pub trait AssetInfoProvider<
     fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
 
     fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
+
+    fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
+
+    fn free_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
+
+    fn ensure_can_withdraw(asset_id: &AssetId, who: &AccountId, amount: Balance) -> DispatchResult;
 }
 
 impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
@@ -878,6 +884,22 @@ impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource
     }
 
     fn get_asset_description(_asset_id: &AssetId) -> Option<Description> {
+        unimplemented!()
+    }
+
+    fn total_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn free_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn ensure_can_withdraw(
+        _asset_id: &AssetId,
+        _who: &AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
         unimplemented!()
     }
 }

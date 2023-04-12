@@ -33,9 +33,9 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, BuyBackHandler, DexInfoProvider, EnsureDEXManager, Fixed,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned,
-    PoolXykPallet, PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
+    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -435,6 +435,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

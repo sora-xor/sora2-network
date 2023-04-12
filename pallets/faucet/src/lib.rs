@@ -30,7 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
+use common::{balance, AssetInfoProvider, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use hex_literal::hex;

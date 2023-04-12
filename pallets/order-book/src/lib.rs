@@ -277,8 +277,8 @@ pub mod pallet {
         ForbiddenToCreateOrderBookWithSameAssets,
         /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
         NotAllowedBaseAsset,
-        /// User cannot create an order book with NFT if they are not NFT owner
-        UserIsNotOwnerOfNft,
+        /// User cannot create an order book with NFT if they don't have NFT
+        UserDoesntHaveNft,
     }
 
     #[pallet::call]
@@ -317,9 +317,11 @@ pub mod pallet {
                     OrderBook::<T>::default(order_book_id, dex_id)
                 } else {
                     // nft
+                    // ensure the user has nft
                     ensure!(
-                        T::AssetInfoProvider::is_asset_owner(&order_book_id.target_asset_id, &who),
-                        Error::<T>::UserIsNotOwnerOfNft
+                        T::AssetInfoProvider::total_balance(&order_book_id.target_asset_id, &who)?
+                            > Balance::zero(),
+                        Error::<T>::UserDoesntHaveNft
                     );
                     OrderBook::<T>::default_nft(order_book_id, dex_id)
                 };

@@ -41,10 +41,10 @@ use assets::WeightInfo as _;
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    balance, fixed_wrapper, AccountIdOf, BuyBackHandler, DEXInfo, DexIdOf, DexInfoProvider,
-    FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait, LiquidityRegistry,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
-    TradingPair, VestedRewardsPallet, XSTUSD,
+    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
+    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -2126,6 +2126,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + trading_pair::Config

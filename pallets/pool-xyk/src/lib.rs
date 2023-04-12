@@ -42,9 +42,9 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason,
-    TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
+    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
 
 mod aliases;
@@ -652,6 +652,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

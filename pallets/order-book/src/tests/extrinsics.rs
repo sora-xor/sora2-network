@@ -198,7 +198,7 @@ fn should_not_create_order_book_that_already_exists() {
 }
 
 #[test]
-fn should_not_create_order_book_for_user_not_nft_owner() {
+fn should_not_create_order_book_for_user_dont_have_nft() {
     ext().execute_with(|| {
         let caller = alice();
         let creator = bob();
@@ -234,15 +234,16 @@ fn should_not_create_order_book_for_user_not_nft_owner() {
                 DEX.into(),
                 order_book_id
             ),
-            E::UserIsNotOwnerOfNft
+            E::UserDoesntHaveNft
         );
     });
 }
 
 #[test]
-fn should_create_order_book_for_nft() {
+fn should_not_create_order_book_for_user_dont_have_nft_even_they_owner() {
     ext().execute_with(|| {
         let caller = alice();
+        let user = bob();
         FrameSystem::inc_providers(&caller);
 
         let nft = Assets::register_from(
@@ -254,6 +255,66 @@ fn should_create_order_book_for_nft() {
             false,
             None,
             None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: nft.into(),
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            order_book_id.base_asset_id,
+            order_book_id.target_asset_id
+        ));
+
+        // caller creates NFT and then send it to another user.
+        // That means they cannot create order book with this NFT even they are NFT asset owner
+        Assets::transfer(
+            RawOrigin::Signed(caller.clone()).into(),
+            nft,
+            user,
+            balance!(1),
+        )
+        .unwrap();
+
+        assert_err!(
+            OrderBookPallet::create_orderbook(
+                RawOrigin::Signed(caller).into(),
+                DEX.into(),
+                order_book_id
+            ),
+            E::UserDoesntHaveNft
+        );
+    });
+}
+
+#[test]
+fn should_create_order_book_for_nft() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let creator = bob();
+        FrameSystem::inc_providers(&creator);
+
+        let nft = Assets::register_from(
+            &creator,
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        Assets::transfer(
+            RawOrigin::Signed(creator).into(),
+            nft,
+            caller.clone(),
+            balance!(1),
         )
         .unwrap();
 

@@ -764,40 +764,6 @@ impl<T: Config> Pallet<T> {
         Ok(r)
     }
 
-    pub fn total_balance(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-    ) -> Result<Balance, DispatchError> {
-        let r = T::Currency::total_balance(asset_id.clone(), who);
-        if r == Default::default() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
-    }
-
-    pub fn free_balance(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-    ) -> Result<Balance, DispatchError> {
-        let r = T::Currency::free_balance(asset_id.clone(), who);
-        if r == Default::default() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        Ok(r)
-    }
-
-    pub fn ensure_can_withdraw(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> DispatchResult {
-        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
-        if r.is_err() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        r
-    }
-
     pub fn transfer_from(
         asset_id: &T::AssetId,
         from: &T::AccountId,
@@ -1018,5 +984,33 @@ impl<T: Config>
 
     fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
         AssetInfos::<T>::get(asset_id).5
+    }
+
+    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+        let r = T::Currency::total_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
+    }
+
+    fn free_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+        let r = T::Currency::free_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
+    }
+
+    fn ensure_can_withdraw(
+        asset_id: &T::AssetId,
+        who: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        r
     }
 }
