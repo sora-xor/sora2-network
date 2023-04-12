@@ -100,7 +100,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             balance!(0.00001), // TODO: order-book clarify
             balance!(1),       // TODO: order-book clarify
             balance!(1),       // TODO: order-book clarify
-            balance!(1),       // TODO: order-book clarify
+            balance!(100000),  // TODO: order-book clarify
         )
     }
 

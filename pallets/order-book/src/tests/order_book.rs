@@ -101,7 +101,7 @@ fn should_create_default_nft() {
         tick_size: balance!(0.00001),
         step_lot_size: balance!(1),
         min_lot_size: balance!(1),
-        max_lot_size: balance!(1),
+        max_lot_size: balance!(100000),
     };
 
     assert_eq!(
