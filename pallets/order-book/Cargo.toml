@@ -47,6 +47,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "technical/std",
+    "trading-pair/std",
 ]
 
 runtime-benchmarks = [
