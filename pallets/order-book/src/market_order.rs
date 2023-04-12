@@ -30,6 +30,7 @@
 
 use crate::OrderVolume;
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::prelude::SwapAmount;
 use common::PriceVariant;
 use core::fmt::Debug;
 
@@ -40,5 +41,6 @@ where
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
-    pub amount: OrderVolume,
+    pub asset: T::AssetId,
+    pub amount: SwapAmount<OrderVolume>,
 }
