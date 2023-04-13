@@ -1958,7 +1958,7 @@ impl hermes_governance_platform::Config for Runtime {
 
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFETIME: Moment = 2_592_000_000; // 30 days
+    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
     const MAX_OPENED_LIMIT_ORDERS_COUNT: u32 = 100;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
