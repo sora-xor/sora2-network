@@ -1824,6 +1824,17 @@ fn mainnet_genesis(
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
+    #[cfg(feature = "wip")]
+    let order_book_lock_tech_account_id = TechAccountId::Generic(
+        order_book::TECH_ACCOUNT_PREFIX.to_vec(),
+        order_book::TECH_ACCOUNT_LOCK.to_vec(),
+    );
+    #[cfg(feature = "wip")]
+    let order_book_lock_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+        &order_book_lock_tech_account_id,
+    )
+    .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1874,6 +1885,11 @@ fn mainnet_genesis(
         (
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
+        ),
+        #[cfg(feature = "wip")]
+        (
+            order_book_lock_account_id.clone(),
+            order_book_lock_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
