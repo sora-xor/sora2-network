@@ -454,44 +454,52 @@ fn should_not_delete_limit_order() {
 #[test]
 fn should_lock_liquidity() {
     ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             alice(),
             XOR,
             balance!(10).try_into().unwrap()
         ));
-        let order_book_id = OrderBookId::<Runtime> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
-        };
         let balance_before =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
 
-        let order_buy_id1 = 1;
-        let owner = alice();
-        let price1 = balance!(12);
-        let amount = balance!(10);
-
-        let order_buy1 = LimitOrder::<Runtime> {
-            id: order_buy_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy1));
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
 
         let balance_after =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
         let locked = balance_after - balance_before;
         assert!(
-            amount == locked,
+            amount_to_lock == locked,
             "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
-            amount,
+            amount_to_lock,
+            locked
+        );
+    });
+}
+
+#[test]
+fn should_not_lock_when_insufficient_funds() {
+    ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            XOR,
+            balance!(9.9).try_into().unwrap()
+        ));
+        let balance_before =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+
+        let balance_after =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+        let locked = balance_after - balance_before;
+        assert!(
+            amount_to_lock == locked,
+            "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
+            amount_to_lock,
             locked
         );
     });

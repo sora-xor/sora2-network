@@ -466,7 +466,8 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn lock_liquidity(
+    // todo: make pub(tests) (k.ivanov)
+    pub fn lock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
         amount: T::Balance,
@@ -482,7 +483,8 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    fn unlock_liquidity(
+    // todo: make pub(tests) (k.ivanov)
+    pub fn unlock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
         amount: T::Balance,
