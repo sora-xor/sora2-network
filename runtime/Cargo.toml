@@ -281,6 +281,7 @@ std = [
     "vested-rewards-runtime-api/std",
     "xor-fee/std",
     "xst/std",
+    "xst-benchmarking/std",
 ]
 
 private-net = [
