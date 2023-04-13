@@ -101,6 +101,7 @@ pub struct DEXInfo<AssetId> {
     RuntimeDebug,
     Hash,
     scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
@@ -323,7 +324,17 @@ where
 
 /// DEX identifier.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
@@ -631,7 +642,17 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 
 /// Enumaration of all available liquidity sources.
 #[derive(
-    Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -1007,7 +1028,9 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum PriceVariant {
     Buy,
     Sell,
