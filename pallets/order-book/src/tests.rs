@@ -468,7 +468,7 @@ fn should_lock_liquidity() {
 
         let balance_after =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
-        let locked = balance_after - balance_before;
+        let locked = balance_before - balance_after;
         assert!(
             amount_to_lock == locked,
             "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
@@ -488,19 +488,10 @@ fn should_not_lock_when_insufficient_funds() {
             XOR,
             balance!(9.9).try_into().unwrap()
         ));
-        let balance_before =
-            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
 
-        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
-
-        let balance_after =
-            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
-        let locked = balance_after - balance_before;
-        assert!(
-            amount_to_lock == locked,
-            "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
-            amount_to_lock,
-            locked
+        assert_err!(
+            OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock),
+            pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
 }
