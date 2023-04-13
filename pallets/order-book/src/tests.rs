@@ -34,7 +34,7 @@ use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
-use framenode_runtime::{order_book, Runtime};
+use framenode_runtime::{order_book, Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
 type OrderBook = Pallet<Runtime>;
@@ -447,6 +447,52 @@ fn should_not_delete_limit_order() {
         assert_err!(
             OrderBook::delete_limit_order(&order_book_id, order_id),
             E::DeleteLimitOrderError
+        );
+    });
+}
+
+#[test]
+fn should_lock_liquidity() {
+    ext().execute_with(|| {
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            XOR,
+            balance!(10).try_into().unwrap()
+        ));
+        let order_book_id = OrderBookId::<Runtime> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+        let balance_before =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+
+        let order_buy_id1 = 1;
+        let owner = alice();
+        let price1 = balance!(12);
+        let amount = balance!(10);
+
+        let order_buy1 = LimitOrder::<Runtime> {
+            id: order_buy_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy1));
+
+        let balance_after =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+        let locked = balance_after - balance_before;
+        assert!(
+            amount == locked,
+            "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
+            amount,
+            locked
         );
     });
 }
