@@ -479,17 +479,18 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             Self::ensure_asset_exists(&asset_id)?;
-            AssetInfos::<T>::mutate(asset_id, |(ref mut symbol, ref mut name, ..)| {
-                if let Some(new_name) = new_name {
+            AssetInfos::<T>::mutate(&asset_id, |(ref mut symbol, ref mut name, ..)| {
+                if let Some(new_name) = new_name.clone() {
                     ensure!(new_name.is_valid(), Error::<T>::InvalidAssetName);
                     *name = new_name;
                 }
-                if let Some(new_symbol) = new_symbol {
+                if let Some(new_symbol) = new_symbol.clone() {
                     ensure!(new_symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
                     *symbol = new_symbol;
                 }
                 DispatchResult::Ok(())
             })?;
+            Self::deposit_event(Event::<T>::AssetUpdated(asset_id, new_symbol, new_name));
             Ok(().into())
         }
     }
@@ -507,6 +508,8 @@ pub mod pallet {
         Burn(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Asset is set as non-mintable. [Target Asset Id]
         AssetSetNonMintable(AssetIdOf<T>),
+        /// Asset info has been updated
+        AssetUpdated(AssetIdOf<T>, Option<AssetSymbol>, Option<AssetName>),
     }
 
     #[pallet::error]
