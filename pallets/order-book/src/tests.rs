@@ -452,29 +452,31 @@ fn should_not_delete_limit_order() {
 }
 
 #[test]
-fn should_lock_liquidity() {
+fn should_lock_unlock_liquidity() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
+        let amount_to_mint = amount_to_lock;
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             alice(),
             XOR,
-            balance!(10).try_into().unwrap()
+            amount_to_mint.try_into().unwrap()
         ));
         let balance_before =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
 
         assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
 
-        let balance_after =
+        let balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
-        let locked = balance_before - balance_after;
-        assert!(
-            amount_to_lock == locked,
-            "Liquidity of order creator is not locked correctly. Expected: {}; Locked: {}",
-            amount_to_lock,
-            locked
-        );
+        let locked = balance_before - balance_after_lock;
+        assert!(amount_to_lock == locked);
+
+        assert_ok!(OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_lock));
+
+        let balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+        assert!(balance_before == balance_after_unlock);
     });
 }
 
@@ -482,15 +484,38 @@ fn should_lock_liquidity() {
 fn should_not_lock_when_insufficient_funds() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
+        let amount_to_mint = balance!(9.9);
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             alice(),
             XOR,
-            balance!(9.9).try_into().unwrap()
+            amount_to_mint.try_into().unwrap()
         ));
 
         assert_err!(
             OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock),
+            pallet_balances::Error::<Runtime>::InsufficientBalance
+        );
+    });
+}
+
+#[test]
+fn should_not_unlock_more_that_tech_account_has() {
+    ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
+        let amount_to_mint = amount_to_lock;
+        let amount_to_try_unlock = balance!(10.1);
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            XOR,
+            amount_to_mint.try_into().unwrap()
+        ));
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+
+        assert_err!(
+            OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
