@@ -1994,7 +1994,6 @@ fn mainnet_genesis(
         substrate_bridge_inbound_channel: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
         migration_app: Default::default(),
-        vested_rewards: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
