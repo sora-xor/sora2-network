@@ -33,8 +33,9 @@
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::order_book::{Config, LimitOrder, OrderBookId, Pallet};
 use framenode_runtime::{order_book, Runtime};
+use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
 
 type OrderBook = Pallet<Runtime>;
@@ -156,9 +157,10 @@ fn should_not_insert_limit_order() {
             lifespan: 1000,
         };
 
-        // Take actual values from `impl order_book::Config for Runtime`
-        // =min(MaxOpenedLimitOrdersForAllOrderBooksPerUser, MaxLimitOrdersForPrice)
-        let max = 10000;
+        let max_per_user: u32 =
+            <Runtime as Config>::MaxOpenedLimitOrdersForAllOrderBooksPerUser::get();
+        let max_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
+        let max = max_per_user.min(max_for_price);
 
         for _ in 0..max {
             assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));

@@ -160,6 +160,13 @@ pub mod pallet {
     pub type OrderBookId<T> = TradingPair<AssetIdOf<T>>;
     pub type OrderPrice = Balance;
     pub type OrderVolume = Balance;
+    pub type PriceOrders<T> =
+        BoundedVec<<T as Config>::OrderId, <T as Config>::MaxLimitOrdersForPrice>;
+    pub type MarketSide<T> = BoundedBTreeMap<OrderPrice, OrderVolume, <T as Config>::MaxSidePrices>;
+    pub type UserOrders<T> = BoundedVec<
+        <T as Config>::OrderId,
+        <T as Config>::MaxOpenedLimitOrdersForAllOrderBooksPerUser,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn order_books)]
@@ -186,7 +193,7 @@ pub mod pallet {
         OrderBookId<T>,
         Blake2_128Concat,
         OrderPrice,
-        BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
+        PriceOrders<T>,
         OptionQuery,
     >;
 
@@ -198,29 +205,19 @@ pub mod pallet {
         OrderBookId<T>,
         Blake2_128Concat,
         OrderPrice,
-        BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
+        PriceOrders<T>,
         OptionQuery,
     >;
 
     #[pallet::storage]
     #[pallet::getter(fn aggregated_bids)]
-    pub type AggregatedBids<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        OrderBookId<T>,
-        BoundedBTreeMap<OrderPrice, OrderVolume, T::MaxSidePrices>,
-        ValueQuery,
-    >;
+    pub type AggregatedBids<T: Config> =
+        StorageMap<_, Blake2_128Concat, OrderBookId<T>, MarketSide<T>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn aggregated_asks)]
-    pub type AggregatedAsks<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        OrderBookId<T>,
-        BoundedBTreeMap<OrderPrice, OrderVolume, T::MaxSidePrices>,
-        ValueQuery,
-    >;
+    pub type AggregatedAsks<T: Config> =
+        StorageMap<_, Blake2_128Concat, OrderBookId<T>, MarketSide<T>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn user_limit_orders)]
@@ -230,7 +227,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_128Concat,
         OrderBookId<T>,
-        BoundedVec<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
+        UserOrders<T>,
         OptionQuery,
     >;
 
