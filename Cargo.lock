@@ -7727,6 +7727,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "visibility",
 ]
 
 [[package]]
@@ -14018,6 +14019,17 @@ dependencies = [
  "sp-api",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "visibility"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8881d5cc0ae34e3db2f1de5af81e5117a420d2f937506c2dc20d6f4cfb069051"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]

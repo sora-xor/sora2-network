@@ -466,8 +466,8 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // todo: make pub(tests) (k.ivanov)
-    pub fn lock_liquidity(
+    #[cfg_attr(test, visibility::make(pub))]
+    fn lock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
         amount: T::Balance,
@@ -483,7 +483,7 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    // todo: make pub(tests) (k.ivanov)
+    #[cfg_attr(test, visibility::make(pub))]
     pub fn unlock_liquidity(
         account: &T::AccountId,
         asset: &T::AssetId,
