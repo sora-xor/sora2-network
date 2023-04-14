@@ -530,10 +530,6 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
-        let balance_before =
-            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert!(balance_before == balance!(1));
-
         assert_ok!(OrderBook::lock_liquidity(&alice(), &nft, balance!(1)));
 
         let balance_after_lock =
@@ -634,46 +630,48 @@ fn should_not_unlock_more_base_that_tech_account_has() {
     });
 }
 
-// #[test]
-// fn should_not_unlock_more_other_that_tech_account_has() {
-//     ext().execute_with(|| {
-//         let amount_to_lock = balance!(10);
-//         let amount_to_mint = amount_to_lock;
-//         let amount_to_try_unlock = balance!(10.1);
-//         assert_ok!(assets::Pallet::<Runtime>::update_balance(
-//             RuntimeOrigin::root(),
-//             alice(),
-//             XOR,
-//             amount_to_mint.try_into().unwrap()
-//         ));
+#[test]
+fn should_not_unlock_more_other_that_tech_account_has() {
+    ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
+        let amount_to_mint = amount_to_lock;
+        let amount_to_try_unlock = balance!(10.1);
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            VAL,
+            amount_to_mint.try_into().unwrap()
+        ));
 
-//         assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock));
 
-//         assert_err!(
-//             OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
-//             pallet_balances::Error::<Runtime>::InsufficientBalance
-//         );
-//     });
-// }
+        assert_err!(
+            OrderBook::unlock_liquidity(&alice(), &VAL, amount_to_try_unlock),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+    });
+}
 
-// #[test]
-// fn should_not_unlock_more_nft_that_tech_account_has() {
-//     ext().execute_with(|| {
-//         let amount_to_lock = balance!(10);
-//         let amount_to_mint = amount_to_lock;
-//         let amount_to_try_unlock = balance!(10.1);
-//         assert_ok!(assets::Pallet::<Runtime>::update_balance(
-//             RuntimeOrigin::root(),
-//             alice(),
-//             XOR,
-//             amount_to_mint.try_into().unwrap()
-//         ));
+#[test]
+fn should_not_unlock_more_nft_that_tech_account_has() {
+    ext().execute_with(|| {
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
 
-//         assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
 
-//         assert_err!(
-//             OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
-//             pallet_balances::Error::<Runtime>::InsufficientBalance
-//         );
-//     });
-// }
+        assert_err!(
+            OrderBook::unlock_liquidity(&alice(), &nft, balance!(1)),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+    });
+}
