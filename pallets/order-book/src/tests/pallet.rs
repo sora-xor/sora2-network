@@ -30,7 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
-use common::{balance, PriceVariant, VAL, XOR};
+use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
@@ -41,6 +41,10 @@ type OrderBook = Pallet<Runtime>;
 
 fn alice() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
+}
+
+fn bob() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
 type E = order_book::Error<Runtime>;
@@ -452,7 +456,7 @@ fn should_not_delete_limit_order() {
 }
 
 #[test]
-fn should_lock_unlock_liquidity() {
+fn should_lock_unlock_base_asset() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
         let amount_to_mint = amount_to_lock;
@@ -481,7 +485,71 @@ fn should_lock_unlock_liquidity() {
 }
 
 #[test]
-fn should_not_lock_when_insufficient_funds() {
+fn should_lock_unlock_other_asset() {
+    ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
+        let amount_to_mint = amount_to_lock;
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            VAL,
+            amount_to_mint.try_into().unwrap()
+        ));
+        let balance_before =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock));
+
+        let balance_after_lock =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
+        let locked = balance_before - balance_after_lock;
+        assert!(amount_to_lock == locked);
+
+        assert_ok!(OrderBook::unlock_liquidity(&alice(), &VAL, amount_to_lock));
+
+        let balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
+        assert!(balance_before == balance_after_unlock);
+    });
+}
+
+#[test]
+fn should_lock_unlock_indivisible_nft() {
+    ext().execute_with(|| {
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let balance_before =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        assert!(balance_before == balance!(1));
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &nft, balance!(1)));
+
+        let balance_after_lock =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        assert!(balance_after_lock == balance!(0));
+
+        assert_ok!(OrderBook::unlock_liquidity(&alice(), &nft, balance!(1)));
+
+        let balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        assert!(balance_after_unlock == balance!(1));
+    });
+}
+
+#[test]
+fn should_not_lock_insufficient_base_asset() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
         let amount_to_mint = balance!(9.9);
@@ -500,7 +568,52 @@ fn should_not_lock_when_insufficient_funds() {
 }
 
 #[test]
-fn should_not_unlock_more_that_tech_account_has() {
+fn should_not_lock_insufficient_other_asset() {
+    ext().execute_with(|| {
+        let amount_to_lock = balance!(10);
+        let amount_to_mint = balance!(9.9);
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            VAL,
+            amount_to_mint.try_into().unwrap()
+        ));
+
+        assert_err!(
+            OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+    });
+}
+
+#[test]
+fn should_not_lock_insufficient_nft() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let creator = bob();
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&creator);
+
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &creator,
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_err!(
+            OrderBook::lock_liquidity(&alice(), &nft, balance!(1)),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+    });
+}
+
+#[test]
+fn should_not_unlock_more_base_that_tech_account_has() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
         let amount_to_mint = amount_to_lock;
@@ -520,3 +633,47 @@ fn should_not_unlock_more_that_tech_account_has() {
         );
     });
 }
+
+// #[test]
+// fn should_not_unlock_more_other_that_tech_account_has() {
+//     ext().execute_with(|| {
+//         let amount_to_lock = balance!(10);
+//         let amount_to_mint = amount_to_lock;
+//         let amount_to_try_unlock = balance!(10.1);
+//         assert_ok!(assets::Pallet::<Runtime>::update_balance(
+//             RuntimeOrigin::root(),
+//             alice(),
+//             XOR,
+//             amount_to_mint.try_into().unwrap()
+//         ));
+
+//         assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+
+//         assert_err!(
+//             OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
+//             pallet_balances::Error::<Runtime>::InsufficientBalance
+//         );
+//     });
+// }
+
+// #[test]
+// fn should_not_unlock_more_nft_that_tech_account_has() {
+//     ext().execute_with(|| {
+//         let amount_to_lock = balance!(10);
+//         let amount_to_mint = amount_to_lock;
+//         let amount_to_try_unlock = balance!(10.1);
+//         assert_ok!(assets::Pallet::<Runtime>::update_balance(
+//             RuntimeOrigin::root(),
+//             alice(),
+//             XOR,
+//             amount_to_mint.try_into().unwrap()
+//         ));
+
+//         assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+
+//         assert_err!(
+//             OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
+//             pallet_balances::Error::<Runtime>::InsufficientBalance
+//         );
+//     });
+// }
