@@ -110,6 +110,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn update_balance() -> Weight {
         Weight::zero()
     }
+    
+    fn update_info() -> Weight {
+        Weight::zero()
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -132,6 +136,9 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn update_balance() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+    fn update_info() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
