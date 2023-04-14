@@ -30,6 +30,7 @@
 
 //! XST pool module benchmarking.
 
+#![cfg(feature = "runtime-benchmarks")]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use assets::Event as AssetsEvent;
