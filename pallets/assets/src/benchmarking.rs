@@ -259,6 +259,41 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::<T>::AssetSetNonMintable(USDT.into()).into())
     }
+
+    update_info {
+        add_assets::<T>(10)?;
+        let caller = alice::<T>();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ).unwrap();
+    }: _(
+        RawOrigin::Root,
+        USDT.into(),
+        Some(AssetSymbol(b"DAI".to_vec())),
+        Some(AssetName(b"DAI stablecoin".to_vec()))
+    )
+    verify {
+        assert_eq!(
+            crate::AssetInfos::<T>::get(T::AssetId::from(USDT)),
+            (
+                AssetSymbol(b"DAI".to_vec()),
+                AssetName(b"DAI stablecoin".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                true,
+                None,
+                None
+            )
+        );
+    }
 }
 
 #[cfg(test)]
