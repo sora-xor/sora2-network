@@ -63,7 +63,7 @@ pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // order-book
 pub use migrations::v1::InitializeTechnicalAccount;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"order-book";

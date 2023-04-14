@@ -72,7 +72,7 @@ impl<T: crate::Config> OnRuntimeUpgrade for InitializeTechnicalAccount<T> {
             "Tech account is already registered"
         );
         frame_support::ensure!(
-            Pallet::<T>::on_chain_storage_version() == 1,
+            Pallet::<T>::on_chain_storage_version() == 0,
             "must upgrade linearly"
         );
         Ok(Vec::new())
@@ -86,7 +86,7 @@ impl<T: crate::Config> OnRuntimeUpgrade for InitializeTechnicalAccount<T> {
             "Tech account is not registered"
         );
         frame_support::ensure!(
-            Pallet::<T>::on_chain_storage_version() == 2,
+            Pallet::<T>::on_chain_storage_version() == 1,
             "should be upgraded to version 1"
         );
         Ok(())
