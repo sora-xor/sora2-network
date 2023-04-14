@@ -42,6 +42,7 @@ pub mod mock;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 
+pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
