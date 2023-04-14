@@ -45,16 +45,16 @@ fn test_v1() {
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
             crate::TECH_ACCOUNT_LOCK.to_vec(),
         );
+        assert_eq!(OrderBook::on_chain_storage_version(), 0);
         assert!(
             technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_err()
         );
-        assert_eq!(OrderBook::on_chain_storage_version(), 0);
 
         order_book::InitializeTechnicalAccount::<Runtime>::on_runtime_upgrade();
 
+        assert_eq!(OrderBook::on_chain_storage_version(), 1);
         assert!(
             technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_ok()
         );
-        assert_eq!(OrderBook::on_chain_storage_version(), 1);
     });
 }
