@@ -32,7 +32,7 @@
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{FromGenericPair, SwapAction, SwapRulesValidation};
+use common::{AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -251,6 +251,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.

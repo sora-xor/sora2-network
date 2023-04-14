@@ -37,8 +37,8 @@ extern crate alloc;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
-    XSTUSD,
+    balance, AssetInfoProvider, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason,
+    VestedRewardsPallet, PSWAP, VAL, XSTUSD,
 };
 use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -357,6 +357,7 @@ pub mod pallet {
     use sp_runtime::traits::UniqueSaturatedFrom;
     use sp_std::collections::btree_map::BTreeMap;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

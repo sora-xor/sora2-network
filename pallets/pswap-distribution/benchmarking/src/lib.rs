@@ -47,7 +47,7 @@ use sp_std::prelude::*;
 use traits::MultiCurrencyExtended;
 
 use common::fixnum::ops::One;
-use common::{balance, fixed, Fixed, FromGenericPair, PSWAP};
+use common::{balance, fixed, AssetInfoProvider, Fixed, FromGenericPair, PSWAP};
 
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;

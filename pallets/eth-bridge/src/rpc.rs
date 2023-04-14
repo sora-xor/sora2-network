@@ -35,7 +35,7 @@ use crate::{
     AssetIdOf, Config, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
     RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
-use common::BalancePrecision;
+use common::{AssetInfoProvider, BalancePrecision};
 use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use sp_core::{H160, H256};

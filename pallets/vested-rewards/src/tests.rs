@@ -33,8 +33,8 @@ use crate::{Error, RewardInfo};
 use codec::Decode;
 use common::mock::charlie;
 use common::{
-    balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    PSWAP,
+    balance, AssetInfoProvider, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason,
+    VestedRewardsPallet, PSWAP,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_noop, assert_ok};

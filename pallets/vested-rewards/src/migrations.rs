@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use crate::{Assets, Config, CrowdloanReward, RewardInfo, Rewards, LEASE_TOTAL_DAYS};
 use codec::Decode;
-use common::{Balance, Fixed, RewardReason, PSWAP, VAL, XSTUSD};
+use common::{AssetInfoProvider, Balance, Fixed, RewardReason, PSWAP, VAL, XSTUSD};
 use frame_support::dispatch::GetStorageVersion;
 use frame_support::log;
 use frame_support::traits::{Get, OnRuntimeUpgrade, StorageVersion};
