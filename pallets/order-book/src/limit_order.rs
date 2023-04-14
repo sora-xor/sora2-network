@@ -28,10 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{OrderPrice, OrderVolume};
+use crate::{Error, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::PriceVariant;
 use core::fmt::Debug;
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
+use sp_runtime::traits::Zero;
 
 /// GTC Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
@@ -48,4 +51,47 @@ where
     pub amount: OrderVolume,
     pub time: T::Moment,
     pub lifespan: T::Moment,
+}
+
+impl<T: crate::Config + Sized> LimitOrder<T> {
+    pub fn new(
+        id: T::OrderId,
+        owner: T::AccountId,
+        side: PriceVariant,
+        price: OrderPrice,
+        amount: OrderVolume,
+        time: T::Moment,
+        lifespan: T::Moment,
+    ) -> Self {
+        Self {
+            id: id,
+            owner: owner,
+            side: side,
+            price: price,
+            original_amount: amount,
+            amount: amount,
+            time: time,
+            lifespan: lifespan,
+        }
+    }
+
+    pub fn ensure_valid(&self) -> Result<(), DispatchError> {
+        ensure!(
+            T::MIN_ORDER_LIFETIME <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFETIME,
+            Error::<T>::InvalidLifespan
+        );
+        ensure!(
+            !self.original_amount.is_zero(),
+            Error::<T>::InvalidOrderAmount
+        );
+        Ok(())
+    }
+
+    pub fn is_expired(&self) -> bool {
+        pallet_timestamp::Pallet::<T>::now() > self.time + self.lifespan
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.amount.is_zero()
+    }
 }

@@ -42,6 +42,7 @@ use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
+use sp_runtime::Perbill;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -117,7 +118,9 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
         const MAX_ORDER_LIFETIME: Self::Moment;
+        const MIN_ORDER_LIFETIME: Self::Moment;
         const MAX_OPENED_LIMIT_ORDERS_COUNT: u32;
+        const MAX_PRICE_SHIFT: Perbill;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -257,12 +260,6 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Trading pair currently reached its capacity
-        OrderLimitReached,
-        /// Price in given order exceeds allowed limits for the trading pair
-        PriceExceedsLimits,
-        /// Lifespan exceeds defined limits
-        InvalidLifespan,
         /// Order book does not exist for this trading pair
         UnknownOrderBook,
         /// Order book already exists for this trading pair
@@ -278,7 +275,20 @@ pub mod pallet {
         /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
         NotAllowedBaseAsset,
         /// User cannot create an order book with NFT if they don't have NFT
-        UserDoesntHaveNft,
+        UserHasNoNft,
+        /// Lifespan exceeds defined limits
+        InvalidLifespan,
+
+        InvalidOrderAmount,
+        InvalidLimitOrderPrice,
+        LimitOrderPriceIsTooFarFromSpread,
+        TradingIsForbidden,
+        PlacementOfLimitOrdersIsForbidden,
+        CancellationOfLimitOrdersIsForbidden,
+        UserHasMaxCountOfOpenedOrdersInCurrentOrderBook,
+        UserHasMaxCountOfOpenedOrdersForAllOrderBooks,
+        PriceReachedMaxCountOfLimitOrders,
+        OrderBookReachedMaxCoundOfPricesForSide,
     }
 
     #[pallet::call]
@@ -321,7 +331,7 @@ pub mod pallet {
                     ensure!(
                         T::AssetInfoProvider::total_balance(&order_book_id.target_asset_id, &who)?
                             > Balance::zero(),
-                        Error::<T>::UserDoesntHaveNft
+                        Error::<T>::UserHasNoNft
                     );
                     OrderBook::<T>::default_nft(order_book_id, dex_id)
                 };

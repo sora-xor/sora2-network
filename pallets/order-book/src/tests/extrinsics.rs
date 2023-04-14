@@ -234,7 +234,7 @@ fn should_not_create_order_book_for_user_without_nft() {
                 DEX.into(),
                 order_book_id
             ),
-            E::UserDoesntHaveNft
+            E::UserHasNoNft
         );
     });
 }
@@ -286,7 +286,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
                 DEX.into(),
                 order_book_id
             ),
-            E::UserDoesntHaveNft
+            E::UserHasNoNft
         );
     });
 }

@@ -28,10 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{OrderBookId, OrderPrice, OrderVolume};
+use crate::{Error, LimitOrder, OrderBookId, OrderPrice, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::balance;
+use common::{balance, PriceVariant};
 use core::fmt::Debug;
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::{One, Zero};
 use sp_std::ops::Add;
 
@@ -39,9 +41,16 @@ use sp_std::ops::Add;
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
 )]
 pub enum OrderBookStatus {
+    /// All operations are allowed.
     Trade,
+
+    /// Users can place and cancel limit order, but trading is forbidden.
     PlaceAndCancel,
+
+    /// Users can only cancel their limit orders. Placement and trading are forbidden.
     OnlyCancel,
+
+    /// All operations with order book are forbidden. Current limit orders are frozen and users cannot cancel them.
     Stop,
 }
 
@@ -107,5 +116,53 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn next_order_id(&mut self) -> T::OrderId {
         self.last_order_id = self.last_order_id.add(T::OrderId::one());
         self.last_order_id
+    }
+
+    pub fn place_limit_order(&self, order: &LimitOrder<T>) -> Result<(), DispatchError> {
+        ensure!(
+            self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
+            Error::<T>::PlacementOfLimitOrdersIsForbidden
+        );
+
+        self.ensure_limit_order_valid(order)?;
+        todo!()
+    }
+
+    fn ensure_limit_order_valid(&self, order: &LimitOrder<T>) -> Result<(), DispatchError> {
+        order.ensure_valid()?;
+        ensure!(
+            order.price % self.tick_size == 0,
+            Error::<T>::InvalidLimitOrderPrice
+        );
+        ensure!(
+            self.min_lot_size <= order.amount && order.amount <= self.max_lot_size,
+            Error::<T>::InvalidOrderAmount
+        );
+        ensure!(
+            order.amount % self.step_lot_size == 0,
+            Error::<T>::InvalidOrderAmount
+        );
+        Ok(())
+    }
+
+    fn check_restrictions() -> Result<(), DispatchError> {
+        // check max count per user
+        // check max count per user for all order books
+        // check max limit orders for price
+        // check max side prices
+        // check max allowed shift from spread
+        todo!()
+    }
+
+    fn best_bid() -> Option<(OrderPrice, OrderVolume)> {
+        todo!()
+    }
+
+    fn best_ask() -> Option<(OrderPrice, OrderVolume)> {
+        todo!()
+    }
+
+    fn market_volume(side: PriceVariant) -> OrderVolume {
+        todo!()
     }
 }
