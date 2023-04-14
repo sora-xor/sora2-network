@@ -264,9 +264,9 @@ pub mod pallet {
         UnknownOrderBook,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
-        /// Cannot insert the limit order because bounds are reached
+        /// It is impossible to insert the limit order because the bounds have been reached
         LimitOrderStorageOverflow,
-        /// Cannot delete the limit order
+        /// It is impossible to delete the limit order
         DeleteLimitOrderError,
         /// There is not enough liquidity in the order book to cover the deal
         NotEnoughLiquidity,
@@ -278,16 +278,25 @@ pub mod pallet {
         UserHasNoNft,
         /// Lifespan exceeds defined limits
         InvalidLifespan,
-
+        /// The order amount (limit or market) does not meet the requirements
         InvalidOrderAmount,
+        /// The limit order price does not meet the requirements
         InvalidLimitOrderPrice,
+        /// User cannot set the price of limit order too far from actual market price
         LimitOrderPriceIsTooFarFromSpread,
+        /// At the moment, Trading is forbidden in the current order book
         TradingIsForbidden,
+        /// At the moment, Users cannot place new limit orders in the current order book
         PlacementOfLimitOrdersIsForbidden,
+        /// At the moment, Users cannot cancel their limit orders in the current order book
         CancellationOfLimitOrdersIsForbidden,
+        /// User has the max available count of open limit orders in the current order book
         UserHasMaxCountOfOpenedOrdersInCurrentOrderBook,
+        /// User has the max available count of open limit orders in all order books
         UserHasMaxCountOfOpenedOrdersForAllOrderBooks,
+        /// It is impossible to place the limit order because bounds of the max count of orders at the current price have been reached
         PriceReachedMaxCountOfLimitOrders,
+        /// It is impossible to place the limit order because bounds of the max count of prices for the side have been reached
         OrderBookReachedMaxCoundOfPricesForSide,
     }
 
