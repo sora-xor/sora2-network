@@ -198,7 +198,7 @@ fn should_not_create_order_book_that_already_exists() {
 }
 
 #[test]
-fn should_not_create_order_book_for_user_dont_have_nft() {
+fn should_not_create_order_book_for_user_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
         let creator = bob();
@@ -240,7 +240,7 @@ fn should_not_create_order_book_for_user_dont_have_nft() {
 }
 
 #[test]
-fn should_not_create_order_book_for_user_dont_have_nft_even_they_owner() {
+fn should_not_create_order_book_for_nft_owner_without_nft() {
     ext().execute_with(|| {
         let caller = alice();
         let user = bob();
