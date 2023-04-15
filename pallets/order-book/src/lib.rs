@@ -236,23 +236,43 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// New order book is created by user
         /// [order_book_id, dex_id, creator]
-        OrderBookCreated(OrderBookId<T>, T::DEXId, T::AccountId),
+        OrderBookCreated {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            creator: T::AccountId,
+        },
 
         /// Order book is deleted by Council
         /// [order_book_id, dex_id]
-        OrderBookDeleted(OrderBookId<T>, T::DEXId),
+        OrderBookDeleted {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+        },
 
         /// Order book attributes are updated by Council
         /// [order_book_id, dex_id]
-        OrderBookUpdated(OrderBookId<T>, T::DEXId),
+        OrderBookUpdated {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+        },
 
         /// User placed new limit order
         /// [order_book_id, dex_id, order_id, owner_id]
-        OrderPlaced(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
+        OrderPlaced {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+        },
 
         /// User canceled their limit order
         /// [order_book_id, dex_id, order_id, owner_id]
-        OrderCanceled(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
+        OrderCanceled {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+        },
     }
 
     #[pallet::error]
@@ -328,7 +348,11 @@ pub mod pallet {
 
             <OrderBooks<T>>::insert(order_book_id, order_book);
 
-            Self::deposit_event(Event::<T>::OrderBookCreated(order_book_id, dex_id, who));
+            Self::deposit_event(Event::<T>::OrderBookCreated {
+                order_book_id: order_book_id,
+                dex_id: dex_id,
+                creator: who,
+            });
             Ok(().into())
         }
 
