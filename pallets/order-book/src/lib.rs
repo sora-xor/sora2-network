@@ -56,11 +56,13 @@ mod benchmarking;
 mod limit_order;
 mod market_order;
 mod order_book;
+pub mod traits;
 pub mod types;
 
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
+pub use traits::DataLayer;
 pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
 
 pub trait WeightInfo {
