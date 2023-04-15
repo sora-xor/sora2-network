@@ -56,10 +56,12 @@ mod benchmarking;
 mod limit_order;
 mod market_order;
 mod order_book;
+pub mod types;
 
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
+pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
@@ -104,10 +106,10 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{DEXInfo, TradingPair};
+    use common::DEXInfo;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
-        Blake2_128Concat, BoundedBTreeMap,
+        Blake2_128Concat,
     };
     use frame_system::pallet_prelude::*;
 
@@ -157,28 +159,17 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    pub type OrderBookId<T> = TradingPair<AssetIdOf<T>>;
-    pub type OrderPrice = Balance;
-    pub type OrderVolume = Balance;
-    pub type PriceOrders<T> =
-        BoundedVec<<T as Config>::OrderId, <T as Config>::MaxLimitOrdersForPrice>;
-    pub type MarketSide<T> = BoundedBTreeMap<OrderPrice, OrderVolume, <T as Config>::MaxSidePrices>;
-    pub type UserOrders<T> = BoundedVec<
-        <T as Config>::OrderId,
-        <T as Config>::MaxOpenedLimitOrdersForAllOrderBooksPerUser,
-    >;
-
     #[pallet::storage]
     #[pallet::getter(fn order_books)]
     pub type OrderBooks<T: Config> =
-        StorageMap<_, Blake2_128Concat, OrderBookId<T>, OrderBook<T>, OptionQuery>;
+        StorageMap<_, Blake2_128Concat, OrderBookId<AssetIdOf<T>>, OrderBook<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn limit_orders)]
     pub type LimitOrders<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        OrderBookId<T>,
+        OrderBookId<AssetIdOf<T>>,
         Blake2_128Concat,
         T::OrderId,
         LimitOrder<T>,
@@ -190,10 +181,10 @@ pub mod pallet {
     pub type Bids<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        OrderBookId<T>,
+        OrderBookId<AssetIdOf<T>>,
         Blake2_128Concat,
         OrderPrice,
-        PriceOrders<T>,
+        PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
 
@@ -202,22 +193,32 @@ pub mod pallet {
     pub type Asks<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        OrderBookId<T>,
+        OrderBookId<AssetIdOf<T>>,
         Blake2_128Concat,
         OrderPrice,
-        PriceOrders<T>,
+        PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
 
     #[pallet::storage]
     #[pallet::getter(fn aggregated_bids)]
-    pub type AggregatedBids<T: Config> =
-        StorageMap<_, Blake2_128Concat, OrderBookId<T>, MarketSide<T>, ValueQuery>;
+    pub type AggregatedBids<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<AssetIdOf<T>>,
+        MarketSide<T::MaxSidePrices>,
+        ValueQuery,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn aggregated_asks)]
-    pub type AggregatedAsks<T: Config> =
-        StorageMap<_, Blake2_128Concat, OrderBookId<T>, MarketSide<T>, ValueQuery>;
+    pub type AggregatedAsks<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        OrderBookId<AssetIdOf<T>>,
+        MarketSide<T::MaxSidePrices>,
+        ValueQuery,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn user_limit_orders)]
@@ -226,8 +227,8 @@ pub mod pallet {
         Blake2_128Concat,
         T::AccountId,
         Blake2_128Concat,
-        OrderBookId<T>,
-        UserOrders<T>,
+        OrderBookId<AssetIdOf<T>>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
         OptionQuery,
     >;
 
@@ -236,23 +237,33 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// New order book is created by user
         /// [order_book_id, dex_id, creator]
-        OrderBookCreated(OrderBookId<T>, T::DEXId, T::AccountId),
+        OrderBookCreated(OrderBookId<AssetIdOf<T>>, T::DEXId, T::AccountId),
 
         /// Order book is deleted by Council
         /// [order_book_id, dex_id]
-        OrderBookDeleted(OrderBookId<T>, T::DEXId),
+        OrderBookDeleted(OrderBookId<AssetIdOf<T>>, T::DEXId),
 
         /// Order book attributes are updated by Council
         /// [order_book_id, dex_id]
-        OrderBookUpdated(OrderBookId<T>, T::DEXId),
+        OrderBookUpdated(OrderBookId<AssetIdOf<T>>, T::DEXId),
 
         /// User placed new limit order
         /// [order_book_id, dex_id, order_id, owner_id]
-        OrderPlaced(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
+        OrderPlaced(
+            OrderBookId<AssetIdOf<T>>,
+            T::DEXId,
+            T::OrderId,
+            T::AccountId,
+        ),
 
         /// User canceled their limit order
         /// [order_book_id, dex_id, order_id, owner_id]
-        OrderCanceled(OrderBookId<T>, T::DEXId, T::OrderId, T::AccountId),
+        OrderCanceled(
+            OrderBookId<AssetIdOf<T>>,
+            T::DEXId,
+            T::OrderId,
+            T::AccountId,
+        ),
     }
 
     #[pallet::error]
@@ -304,7 +315,7 @@ pub mod pallet {
         pub fn create_orderbook(
             origin: OriginFor<T>,
             dex_id: T::DEXId,
-            order_book_id: OrderBookId<T>,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
@@ -352,7 +363,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            _order_book_id: OrderBookId<AssetIdOf<T>>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             // todo (m.tagirov)
@@ -363,7 +374,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::update_orderbook())]
         pub fn update_orderbook(
             origin: OriginFor<T>,
-            order_book_id: OrderBookId<T>,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
             _tick_size: OrderPrice,
             _step_lot_size: OrderVolume,
             _min_lot_size: OrderVolume,
@@ -382,7 +393,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::change_orderbook_status())]
         pub fn change_orderbook_status(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            _order_book_id: OrderBookId<AssetIdOf<T>>,
             _status: OrderBookStatus,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -394,7 +405,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::place_limit_order())]
         pub fn place_limit_order(
             origin: OriginFor<T>,
-            order_book_id: OrderBookId<T>,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
             _price: OrderPrice,
             _amount: OrderVolume,
             _side: PriceVariant,
@@ -411,7 +422,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
         pub fn cancel_limit_order(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            _order_book_id: OrderBookId<AssetIdOf<T>>,
             _order_id: T::OrderId,
         ) -> DispatchResult {
             let _who = ensure_signed(origin)?;
@@ -425,7 +436,7 @@ impl<T: Config> Pallet<T> {
     /// Inserts limit order consistently in all necessary storages.
     /// Must check before call. If returns error, it means we have problems with data consistency.
     pub fn insert_limit_order(
-        order_book_id: &OrderBookId<T>,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
         order: &LimitOrder<T>,
     ) -> Result<(), DispatchError> {
         <LimitOrders<T>>::insert(order_book_id, order.id, order);
@@ -472,7 +483,7 @@ impl<T: Config> Pallet<T> {
     /// Delete limit order consistently from all necessary storages.
     /// Must check before call. If returns error, it means we have problems with data consistency.
     pub fn delete_limit_order(
-        order_book_id: &OrderBookId<T>,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
     ) -> Result<(), DispatchError> {
         let order = <LimitOrders<T>>::take(order_book_id, order_id)

@@ -30,6 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
@@ -49,7 +50,7 @@ type E = order_book::Error<Runtime>;
 #[test]
 fn should_insert_limit_order() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
@@ -136,7 +137,7 @@ fn should_insert_limit_order() {
 #[test]
 fn should_not_insert_limit_order() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
@@ -177,7 +178,7 @@ fn should_not_insert_limit_order() {
 #[test]
 fn should_delete_limit_order_success() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
@@ -439,7 +440,7 @@ fn should_delete_limit_order_success() {
 #[test]
 fn should_not_delete_limit_order() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };

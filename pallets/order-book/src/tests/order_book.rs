@@ -30,13 +30,14 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use assets::AssetIdOf;
 use common::{balance, VAL, XOR};
 use framenode_runtime::order_book::{OrderBook, OrderBookId, OrderBookStatus};
 use framenode_runtime::Runtime;
 
 #[test]
 fn should_create_new() {
-    let order_book_id = OrderBookId::<Runtime> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
         base_asset_id: XOR.into(),
         target_asset_id: VAL.into(),
     };
@@ -67,7 +68,7 @@ fn should_create_new() {
 
 #[test]
 fn should_create_default() {
-    let order_book_id = OrderBookId::<Runtime> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
         base_asset_id: XOR.into(),
         target_asset_id: VAL.into(),
     };
@@ -88,7 +89,7 @@ fn should_create_default() {
 
 #[test]
 fn should_create_default_nft() {
-    let order_book_id = OrderBookId::<Runtime> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
         base_asset_id: XOR.into(),
         target_asset_id: VAL.into(),
     };
@@ -112,7 +113,7 @@ fn should_create_default_nft() {
 
 #[test]
 fn should_increment_order_id() {
-    let order_book_id = OrderBookId::<Runtime> {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
         base_asset_id: XOR.into(),
         target_asset_id: VAL.into(),
     };

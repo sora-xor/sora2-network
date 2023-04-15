@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Error, LimitOrder, OrderBookId, OrderPrice, OrderVolume};
+use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, PriceVariant};
 use core::fmt::Debug;
@@ -60,7 +61,7 @@ pub struct OrderBook<T>
 where
     T: crate::Config,
 {
-    pub order_book_id: OrderBookId<T>,
+    pub order_book_id: OrderBookId<AssetIdOf<T>>,
     pub dex_id: T::DEXId,
     pub status: OrderBookStatus,
     pub last_order_id: T::OrderId,
@@ -72,7 +73,7 @@ where
 
 impl<T: crate::Config + Sized> OrderBook<T> {
     pub fn new(
-        order_book_id: OrderBookId<T>,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
         dex_id: T::DEXId,
         tick_size: OrderPrice,
         step_lot_size: OrderVolume,
@@ -91,7 +92,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
     }
 
-    pub fn default(order_book_id: OrderBookId<T>, dex_id: T::DEXId) -> Self {
+    pub fn default(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
         Self::new(
             order_book_id,
             dex_id,
@@ -102,7 +103,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )
     }
 
-    pub fn default_nft(order_book_id: OrderBookId<T>, dex_id: T::DEXId) -> Self {
+    pub fn default_nft(order_book_id: OrderBookId<AssetIdOf<T>>, dex_id: T::DEXId) -> Self {
         Self::new(
             order_book_id,
             dex_id,

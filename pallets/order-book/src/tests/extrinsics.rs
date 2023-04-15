@@ -30,6 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use assets::AssetIdOf;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, VAL, XOR,
 };
@@ -59,7 +60,7 @@ fn bob() -> <Runtime as frame_system::Config>::AccountId {
 #[test]
 fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: XOR.into(),
         };
@@ -78,7 +79,7 @@ fn should_not_create_order_book_with_same_assets() {
 #[test]
 fn should_not_create_order_book_with_wrong_base_asset() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: VAL.into(),
             target_asset_id: XOR.into(),
         };
@@ -101,7 +102,7 @@ fn should_not_create_order_book_with_non_existed_asset() {
             "0123456789012345678901234567890123456789012345678901234567890123"
         ));
 
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: wrong_asset.into(),
         };
@@ -135,7 +136,7 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: new_asset.into(),
         };
@@ -154,7 +155,7 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
 #[test]
 fn should_create_order_book_for_regular_assets() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
@@ -175,7 +176,7 @@ fn should_create_order_book_for_regular_assets() {
 #[test]
 fn should_not_create_order_book_that_already_exists() {
     ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: VAL.into(),
         };
@@ -216,7 +217,7 @@ fn should_not_create_order_book_for_user_without_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: nft.into(),
         };
@@ -258,7 +259,7 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: nft.into(),
         };
@@ -318,7 +319,7 @@ fn should_create_order_book_for_nft() {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<Runtime> {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base_asset_id: XOR.into(),
             target_asset_id: nft.into(),
         };
