@@ -1277,17 +1277,19 @@ impl<T: Config> Pallet<T> {
         let mut weight = Weight::zero();
 
         for swap_batch_info in swap_batches {
-            let inner_exchange_weight = Self::inner_exchange_weight(
-                &swap_batch_info.dex_id,
-                input,
-                &swap_batch_info.outcome_asset_id,
-                SwapVariant::WithDesiredOutput,
-            );
+            if input != &swap_batch_info.outcome_asset_id {
+                let inner_exchange_weight = Self::inner_exchange_weight(
+                    &swap_batch_info.dex_id,
+                    input,
+                    &swap_batch_info.outcome_asset_id,
+                    SwapVariant::WithDesiredOutput,
+                );
 
-            weight = weight
-                .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
-                .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
-                .saturating_add(inner_exchange_weight);
+                weight = weight
+                    .saturating_add(<T as Config>::WeightInfo::check_indivisible_assets())
+                    .saturating_add(<T as Config>::WeightInfo::is_forbidden_filter())
+                    .saturating_add(inner_exchange_weight);
+            }
 
             weight = weight.saturating_add(
                 assets::weights::WeightInfo::<T>::transfer()
