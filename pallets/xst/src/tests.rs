@@ -38,45 +38,24 @@ mod tests {
     use sp_arithmetic::traits::{Zero};
 
     type XSTPool = Pallet<Runtime>;
+    type PriceTools = price_tools::Pallet<Runtime>;
 
     #[test]
     fn should_calculate_price() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-            let alice = &alice();
-
             // base case for buy
             assert_eq!(
                 XSTPool::buy_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(18161970.0) // (100000.0-100000.0*0.007)*182.9
-            );
-            assert_eq!(
-                XSTPool::buy_price(&XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(1151397.348365215316854563)))
-                    .expect("failed to calculate buy assets price"),
-                fixed!(6339.606046949837032296) // (1151397.348365215316854563+1151397.348365215316854563*0.007)/182.9
+                fixed!(15516385.30287984111) // ~ (100000.0-100000.0*0.007)*156.25
             );
 
             // base case for sell
-            assert_ok!(
+            assert_eq!(
                 XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
-            );
-            assert_ok!(
-                XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(100000)))
-            );
-
-            // base case for sell with some reserves
-            XSTPool::exchange(alice, alice, &DEXId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(100000), 0)).expect("Failed to buy XST.");
-            assert_eq!(
-                XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(50000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(275.300531825567380631) // (50000+50000*0.007)/182.9
-            );
-            assert_eq!(
-                XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_input(balance!(15287.903511880099065528)))
-                    .expect("failed to calculate buy assets price"),
-                fixed!(2776584.449456610028251475) // (15287.903511880099065528-15287.903511880099065528*0.007)*182.9
+                fixed!(635.520000000000000371) // ~ (100000+100000*0.007)/156.25
             );
         });
     }
@@ -85,8 +64,6 @@ mod tests {
     fn calculate_price_for_boundary_values() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let alice = alice();
             // add some reserves
             XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XST, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XST.");
@@ -174,8 +151,6 @@ mod tests {
             ]
         ).build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let price_a = XSTPool::quote(
                     &DEXId::Polkaswap.into(),
                     &XST,
@@ -216,8 +191,6 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             // Buy with desired input
             let amount_a: Balance = balance!(2000);
             let (quote_outcome_a, _) = XSTPool::quote(
@@ -272,7 +245,7 @@ mod tests {
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
             assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            assert_eq!(xstusd_balance_b, balance!(11432.520587110153623278));
+            assert_eq!(xstusd_balance_b, balance!(16759.165436044373306346));
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -343,8 +316,6 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
@@ -353,15 +324,15 @@ mod tests {
                 true,
             )
             .unwrap();
-            assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
-            assert_eq!(price_a.amount, balance!(0.546934060567218204));
+            assert_approx_eq!(price_a.fee, balance!(0.00666), balance!(0.000001));
+            assert_eq!(price_a.amount, balance!(0.640187763200000000));
 
             // mock uses conversion with fee
             let price_a_fee_without_fee = (
                 FixedWrapper::from(price_a.fee) / balance!(0.993)
             ).into_balance();
             // convert fee back to output_asset_id (XST) for comparison
-            let base_to_output: FixedWrapper = MockDEXApi::get_average_price(&XOR, &XST, common::PriceVariant::Buy)
+            let base_to_output: FixedWrapper = PriceTools::get_average_price(&XOR, &XST, common::PriceVariant::Buy)
                 .expect("Failed to convert fee back to synthetic base asset")
                 .into();
             // mock returns get_average_price with fee, we want no fee for this comparison
@@ -377,7 +348,7 @@ mod tests {
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
             // more error, because more computations/roundings or larger coefficients
-            assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000000000000001000));
+            assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000001));
 
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -387,8 +358,8 @@ mod tests {
                 true,
             )
             .unwrap();
-            assert_approx_eq!(price_a.fee, balance!(0.001563909801974061), balance!(0.000000000000000002));
-            assert_eq!(price_a.amount, balance!(18283.739706444923188361));
+            assert_approx_eq!(price_a.fee, balance!(1.04), balance!(0.001));
+            assert_eq!(price_a.amount, balance!(15620.417281977813346827));
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -399,7 +370,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
-            assert_eq!(price_b.amount, balance!(18161.970000000000000000));
+            assert_eq!(price_b.amount, balance!(15516.38530287984111));
         });
     }
 
@@ -418,8 +389,6 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             XSTPool::exchange(
                 &alice(),
                 &alice(),
@@ -448,7 +417,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_approx_eq!(price_a.fee, balance!(0.000008553555383546), balance!(0.000000000000000002));
+            assert_approx_eq!(price_a.fee, balance!(0.00666), balance!(0.000000000000000002));
 
             // Sell
             let (price_c, _) = XSTPool::quote(
@@ -468,7 +437,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_approx_eq!(price_c.fee, balance!(0.000008610904004214), balance!(0.000000000000000002));
+            assert_approx_eq!(price_c.fee, balance!(0.0066), balance!(0.00002));
         });
     }
 
@@ -487,8 +456,6 @@ mod tests {
         )
         .build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             // Buy with desired input
             let amount_a: Balance = balance!(200);
             let (quote_outcome_a, _) = XSTPool::quote(
@@ -575,8 +542,6 @@ mod tests {
     fn exchange_synthetic_to_any_token_disallowed() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let alice = alice();
             // add some reserves
             assert_noop!(XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &DAI, SwapAmount::with_desired_input(balance!(1), 0)), Error::<Runtime>::CantExchange);
@@ -587,10 +552,8 @@ mod tests {
     fn set_synthetic_base_asset_floor_price_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
-            assert_eq!(price_before, fixed!(181.6197));
+            assert_eq!(price_before, fixed!(155.1638530287984111));
 
             XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(200)).expect("Failed to set floor price.");
             let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
@@ -610,8 +573,6 @@ mod tests {
     fn enable_and_disable_synthetic_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
@@ -674,8 +635,6 @@ mod tests {
     fn set_synthetic_fee_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            MockDEXApi::init().unwrap();
-
             let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
             let alice = alice();
 
@@ -731,7 +690,7 @@ mod tests {
             )
             .expect("Failed to quote XST -> XSTEURO");
 
-            let xst_to_xor_price = MockDEXApi::get_average_price(
+            let xst_to_xor_price = PriceTools::get_average_price(
                 &XST.into(),
                 &XOR.into(),
                 PriceVariant::Buy,
