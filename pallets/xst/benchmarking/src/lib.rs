@@ -38,7 +38,8 @@ use band::Pallet as Band;
 use codec::{Decode as _, Encode as _};
 use common::prelude::{QuoteAmount, SwapAmount};
 use common::{
-    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, DAI, XST, XSTUSD,
+    balance, fixed, AssetName, AssetSymbol, DEXId, LiquiditySource, Oracle, PriceToolsPallet,
+    PriceVariant, DAI, XST, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::DispatchResultWithPostInfo;
@@ -46,6 +47,7 @@ use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use oracle_proxy::Pallet as OracleProxy;
+use price_tools::Pallet as PriceTools;
 use sp_std::prelude::*;
 use technical::Pallet as Technical;
 use xst::{Call, Event, Pallet as XSTPool};
@@ -71,6 +73,40 @@ mod utils {
             <T as xst::Config>::Symbol,
         >())
         .into()
+    }
+
+    pub fn permissioned_account_id<T: Config>() -> T::AccountId {
+        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
+        Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)
+            .expect("Expected to generate account id from technical")
+    }
+
+    pub fn set_asset_mock_price<T: Config>(asset_id: &T::AssetId)
+    where
+        T: price_tools::Config,
+    {
+        let _ = PriceTools::<T>::register_asset(asset_id);
+
+        for _ in 0..31 {
+            PriceTools::<T>::incoming_spot_price(asset_id, balance!(1), PriceVariant::Buy)
+                .expect("Failed to relay spot price");
+            PriceTools::<T>::incoming_spot_price(asset_id, balance!(1), PriceVariant::Sell)
+                .expect("Failed to relay spot price");
+        }
+    }
+
+    pub fn setup_exchange_benchmark<T: Config>() {
+        set_asset_mock_price::<T>(&DAI.into());
+        set_asset_mock_price::<T>(&XST.into());
+
+        let amount: i128 = balance!(1).try_into().unwrap();
+        assets::Pallet::<T>::update_balance(
+            RawOrigin::Root.into(),
+            alice::<T>().into(),
+            XST.into(),
+            amount,
+        )
+        .unwrap();
     }
 
     pub fn alice<T: Config>() -> T::AccountId {
@@ -130,7 +166,7 @@ mod utils {
     }
 }
 pub struct Pallet<T: Config>(xst::Pallet<T>);
-pub trait Config: xst::Config + band::Config + oracle_proxy::Config {}
+pub trait Config: xst::Config + band::Config + oracle_proxy::Config + price_tools::Config {}
 
 benchmarks! {
     set_reference_asset {
@@ -170,10 +206,7 @@ benchmarks! {
     }
 
     register_synthetic_asset {
-        let permissioned_tech_account_id = T::GetXSTPoolPermissionedTechAccountId::get();
-        let permissioned_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)
-            .expect("Expected to generate account id from technical");
+        let permissioned_account_id = utils::permissioned_account_id::<T>();
         let reference_symbol = utils::symbol::<<T as xst::Config>::Symbol>();
     }: _(
         RawOrigin::Root,
@@ -209,6 +242,7 @@ benchmarks! {
     }
 
     quote {
+        utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;
     }: {
         let _ = XSTPool::<T>::quote(
@@ -221,13 +255,8 @@ benchmarks! {
     }
 
     exchange {
+        utils::setup_exchange_benchmark::<T>();
         let asset_id = utils::enable_synthetic_asset::<T>()?;
-        assets::Pallet::<T>::update_balance(
-            RawOrigin::Root.into(),
-            utils::alice::<T>().into(),
-            XST.into(),
-            1000000000000000000,
-        ).unwrap();
     }: {
         let _ = XSTPool::<T>::exchange(
             &utils::alice::<T>(),

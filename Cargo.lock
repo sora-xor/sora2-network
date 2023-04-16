@@ -15088,6 +15088,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "price-tools",
  "pswap-distribution",
  "scale-info",
  "sp-core",
