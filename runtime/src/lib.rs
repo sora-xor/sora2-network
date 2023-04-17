@@ -315,7 +315,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub const SchedulerMaxWeight: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
