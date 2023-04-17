@@ -687,4 +687,41 @@ mod tests {
             assert_eq!(swap_outcome_after.fee, expected_fee_amount.into_balance());
         });
     }
+
+    #[test]
+    fn should_disallow_invalid_fee_ratio() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
+            let alice = alice();
+
+            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
+            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
+                .expect("Failed to add relayers");
+            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
+                .expect("Failed to relay");
+
+            assert_eq!(
+                XSTPool::register_synthetic_asset(
+                    RuntimeOrigin::root(),
+                    AssetSymbol("XSTEUR".into()),
+                    AssetName("XST Euro".into()),
+                    euro.clone(),
+                    fixed!(-0.1),
+                ),
+                Err(Error::<Runtime>::InvalidFeeRatio.into())
+            );
+
+            assert_eq!(
+                XSTPool::register_synthetic_asset(
+                    RuntimeOrigin::root(),
+                    AssetSymbol("XSTEUR".into()),
+                    AssetName("XST Euro".into()),
+                    euro.clone(),
+                    fixed!(1),
+                ),
+                Err(Error::<Runtime>::InvalidFeeRatio.into())
+            )
+        });
+    }
 }

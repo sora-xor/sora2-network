@@ -50,9 +50,9 @@ use common::prelude::{
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed,
-    GetMarketInfo, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, DAI, XSTUSD,
+    balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+    PriceVariant, Rate, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -193,7 +193,7 @@ pub mod pallet {
         }
 
         /// Register and enable new synthetic asset with `reference_symbol` price binding
-        #[pallet::call_index(3)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::register_synthetic_asset())]
         pub fn register_synthetic_asset(
             origin: OriginFor<T>,
@@ -229,7 +229,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to disable.
-        #[pallet::call_index(4)]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
         pub fn disable_synthetic_asset(
             origin: OriginFor<T>,
@@ -256,7 +256,7 @@ pub mod pallet {
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
-        #[pallet::call_index(5)]
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_asset_fee())]
         pub fn set_synthetic_asset_fee(
             origin: OriginFor<T>,
@@ -284,7 +284,7 @@ pub mod pallet {
         ///
         /// - `origin`: root account
         /// - `floor_price`: floor price for the synthetic base asset
-        #[pallet::call_index(6)]
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::set_synthetic_base_asset_floor_price())]
         pub fn set_synthetic_base_asset_floor_price(
             origin: OriginFor<T>,
@@ -345,6 +345,8 @@ pub mod pallet {
         SyntheticIsNotEnabled,
         /// Error quoting price from oracle.
         OracleQuoteError,
+        /// Invalid fee ratio value.
+        InvalidFeeRatio,
     }
 
     /// Synthetic assets and their reference symbols.
@@ -449,6 +451,10 @@ impl<T: Config> Pallet<T> {
             if EnabledSymbols::<T>::contains_key(&reference_symbol) {
                 return Err(Error::<T>::SymbolAlreadyReferencedToSynthetic.into());
             }
+            ensure!(
+                fee_ratio >= fixed!(0) && fee_ratio < fixed!(1),
+                Error::<T>::InvalidFeeRatio
+            );
             Self::ensure_symbol_exists(&reference_symbol)?;
 
             Assets::<T>::ensure_asset_exists(&synthetic_asset_id)?;
