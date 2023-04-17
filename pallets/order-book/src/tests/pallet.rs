@@ -31,6 +31,7 @@
 #![cfg(feature = "wip")] // order-book
 
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant, VAL, XOR};
+use frame_benchmarking::Zero;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
@@ -473,14 +474,13 @@ fn should_lock_unlock_base_asset() {
 
         let balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
-        let locked = balance_before - balance_after_lock;
-        assert!(amount_to_lock == locked);
+        assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
         assert_ok!(OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_lock));
 
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
-        assert!(balance_before == balance_after_unlock);
+        assert_eq!(balance_before, balance_after_unlock);
     });
 }
 
@@ -502,14 +502,13 @@ fn should_lock_unlock_other_asset() {
 
         let balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
-        let locked = balance_before - balance_after_lock;
-        assert!(amount_to_lock == locked);
+        assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
         assert_ok!(OrderBook::unlock_liquidity(&alice(), &VAL, amount_to_lock));
 
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
-        assert!(balance_before == balance_after_unlock);
+        assert_eq!(balance_before, balance_after_unlock);
     });
 }
 
@@ -534,13 +533,13 @@ fn should_lock_unlock_indivisible_nft() {
 
         let balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert!(balance_after_lock == balance!(0));
+        assert!(balance_after_lock.is_zero());
 
         assert_ok!(OrderBook::unlock_liquidity(&alice(), &nft, balance!(1)));
 
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert!(balance_after_unlock == balance!(1));
+        assert_eq!(balance_after_unlock, balance!(1));
     });
 }
 
