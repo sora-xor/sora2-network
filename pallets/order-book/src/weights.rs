@@ -28,40 +28,33 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// Can be useful to check that an extrinsic is failed due to an error in another pallet
-#[macro_export]
-macro_rules! assert_noop_msg {
-    ( $x:expr, $msg:expr ) => {
-        let h = frame_support::storage_root(frame_support::StateVersion::V1);
-        if let Err(e) = $crate::with_transaction(|| $x) {
-            if let frame_support::dispatch::DispatchError::Module(sp_runtime::ModuleError {
-                message,
-                ..
-            }) = e.error
-            {
-                assert_eq!(message, Some($msg));
-            } else {
-                panic!("expected DispatchError::Module, got {:?}", e.error);
-            }
-        } else {
-            panic!("expected Err(_), got Ok(_)");
-        }
-        assert_eq!(
-            h,
-            frame_support::storage_root(frame_support::StateVersion::V1)
-        );
-    };
-}
+use frame_support::weights::Weight;
+use sp_std::marker::PhantomData;
 
-pub fn init_logger() {
-    let _ = env_logger::builder().is_test(true).try_init();
-}
-
-pub fn assert_last_event<T: frame_system::Config>(
-    generic_event: <T as frame_system::Config>::RuntimeEvent,
-) {
-    let events = frame_system::Pallet::<T>::events();
-    // compare to the last event record
-    let frame_system::EventRecord { event, .. } = &events[events.len() - 1];
-    assert_eq!(event, &generic_event);
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+    fn create_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn delete_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn update_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn change_orderbook_status() -> Weight {
+        Weight::zero()
+    }
+    fn place_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn cancel_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
 }

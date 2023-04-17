@@ -123,8 +123,8 @@ pub use common::prelude::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
+    ContentSource, CrowdloanTag, FilterMode, Fixed, FromGenericPair, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -143,7 +143,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use vested_rewards::CrowdloanReward;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
@@ -154,7 +153,7 @@ use impls::{
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 #[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
-pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
+pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, xst};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -1174,6 +1173,9 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
             | RuntimeCall::Rewards(rewards::Call::claim { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
+                ..
+            })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
                 Some(BIG_FEE)
             }
@@ -1734,20 +1736,6 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetCrowdloanRewardsTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
-            vested_rewards::TECH_ACCOUNT_CROWDLOAN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetCrowdloanRewardsAccountId: AccountId = {
-        let tech_account_id = GetCrowdloanRewardsTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
     pub GetFarmingRewardsTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -1817,11 +1805,11 @@ impl pallet_offences::Config for Runtime {
 }
 
 impl vested_rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
     type RuntimeEvent = RuntimeEvent;
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -1970,6 +1958,18 @@ impl hermes_governance_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
     type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
+}
+
+#[cfg(feature = "wip")] // order-book
+impl order_book::Config for Runtime {
+    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
+    const MAX_OPENED_LIMIT_ORDERS_COUNT: u32 = 100;
+    type RuntimeEvent = RuntimeEvent;
+    type OrderId = u128;
+    type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>;
+    type MaxLimitOrdersForPrice = ConstU32<10000>;
+    type MaxSidePrices = ConstU32<100000>;
+    type WeightInfo = order_book::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -2242,7 +2242,7 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
         Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
@@ -2260,6 +2260,9 @@ construct_runtime! {
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
+
+        #[cfg(feature = "wip")] // order-book
+        OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
 
         // Trustless bridges
         #[cfg(feature = "wip")] // Bridges
@@ -3058,6 +3061,9 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xst, XSTPool);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
+            #[cfg(feature = "wip")] // order-book
+            list_benchmark!(list, extra, order_book, OrderBook);
+
             // Trustless bridge
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
@@ -3135,6 +3141,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
+            #[cfg(feature = "wip")] // order-book
+            add_benchmark!(params, batches, order_book, OrderBook);
+
             // Trustless bridge
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
@@ -3149,26 +3158,22 @@ impl_runtime_apis! {
         }
     }
 
-    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance> for Runtime {
-        fn crowdloan_claimable(account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
-            use sp_runtime::traits::UniqueSaturatedInto;
-
-            let current_block_num = <frame_system::Pallet<Runtime>>::block_number().unique_saturated_into();
-            VestedRewards::crowdloan_reward_for_asset(&account_id, &asset_id, current_block_num).ok().map(|balance|
-                vested_rewards_runtime_api::BalanceInfo::<Balance> {
-                    balance
-                }
-            )
+    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance, CrowdloanTag> for Runtime {
+        fn crowdloan_claimable(tag: CrowdloanTag, account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
+            let balance = VestedRewards::get_claimable_crowdloan_reward(&tag, &account_id, &asset_id)?;
+            Some(vested_rewards_runtime_api::BalanceInfo::<Balance> {
+                balance
+            })
         }
 
-        fn crowdloan_lease() -> vested_rewards_runtime_api::CrowdloanLease {
-            use vested_rewards::{LEASE_START_BLOCK, LEASE_TOTAL_DAYS, BLOCKS_PER_DAY};
+        fn crowdloan_lease(tag: CrowdloanTag) -> Option<vested_rewards_runtime_api::CrowdloanLease> {
+            let crowdloan_info = vested_rewards::CrowdloanInfos::<Runtime>::get(&tag)?;
 
-            vested_rewards_runtime_api::CrowdloanLease {
-                start_block: LEASE_START_BLOCK,
-                total_days: LEASE_TOTAL_DAYS,
-                blocks_per_day: BLOCKS_PER_DAY,
-            }
+            Some(vested_rewards_runtime_api::CrowdloanLease {
+                start_block: crowdloan_info.start_block as u128,
+                total_days: crowdloan_info.length as u128 / DAYS as u128,
+                blocks_per_day: DAYS as u128,
+            })
         }
     }
 
