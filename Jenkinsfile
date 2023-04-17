@@ -161,7 +161,7 @@ pipeline {
         }
         stage('Code Coverage') {
             when {
-                expression { getPushVersion(pushTags) }
+                expression { getPushVersion(pushTags) || env.BRANCH_NAME.startsWith('PR-') }
             }
             steps {
                 script {
