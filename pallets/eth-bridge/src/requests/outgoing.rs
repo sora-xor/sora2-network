@@ -42,7 +42,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetName, AssetSymbol, IsValid, VAL, XOR};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;

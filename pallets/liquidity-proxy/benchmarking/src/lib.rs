@@ -34,8 +34,8 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use common::{
-    DEXId, FilterMode, LiquidityRegistry, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
-    XSTUSD,
+    DEXId, DexInfoProvider, FilterMode, LiquidityRegistry, LiquiditySourceFilter,
+    LiquiditySourceType, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
@@ -115,6 +115,7 @@ benchmarks! {
     }
 
     new_trivial {
+        // TODO: #392 use DexInfoProvider instead of dex-manager pallet
         let dex_info = dex_manager::Pallet::<T>::get_dex_info(&DEX.into())?;
         let from_asset: T::AssetId = XSTUSD.into();
         let to_asset: T::AssetId = VAL.into();

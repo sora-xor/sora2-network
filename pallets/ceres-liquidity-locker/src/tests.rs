@@ -1,8 +1,8 @@
 use crate::mock::*;
 use common::prelude::FixedWrapper;
 use common::{
-    balance, generate_storage_instance, AssetName, AssetSymbol, Balance, LiquiditySourceType,
-    ToFeeAccount, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, generate_storage_instance, AssetInfoProvider, AssetName, AssetSymbol, Balance,
+    LiquiditySourceType, ToFeeAccount, DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_support::{assert_err, assert_ok, Identity};
 

@@ -1,7 +1,7 @@
 use crate::mock::*;
 use crate::{pallet, Error, HermesPollInfo, VotingOption};
 use codec::Encode;
-use common::{balance, HERMES_ASSET_ID};
+use common::{balance, AssetInfoProvider, HERMES_ASSET_ID};
 use frame_support::PalletId;
 use frame_support::{assert_err, assert_ok};
 use sp_core::H256;

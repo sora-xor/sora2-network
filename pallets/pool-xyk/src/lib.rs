@@ -42,9 +42,9 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
-    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
-    ToFeeAccount, TradingPair,
+    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
+    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
 
 mod aliases;
@@ -651,6 +651,8 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -716,6 +718,8 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(input_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
@@ -758,6 +762,8 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(output_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
@@ -798,6 +804,8 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
+
+                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
                     assets::AssetInfos::<T>::get(asset_a).2 != 0
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,
