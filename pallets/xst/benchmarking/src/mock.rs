@@ -32,9 +32,8 @@ use crate::Config;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, balance, fixed, hash, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol,
-    DEXInfo, Fixed, FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST,
-    XSTUSD,
+    self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
