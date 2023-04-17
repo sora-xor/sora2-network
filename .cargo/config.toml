@@ -12,4 +12,4 @@ debug = false
 weak-dep-features = true
 
 [env]
-PARACHAIN_METADATA_BRANCH = "polkadot-v0.9.38" # 'develop' branch after merge
+PARACHAIN_METADATA_BRANCH = "develop"

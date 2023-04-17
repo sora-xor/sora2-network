@@ -2,7 +2,7 @@ mod tests {
     use crate::mock::*;
     use crate::{pallet, Error};
     use common::prelude::FixedWrapper;
-    use common::{balance, CERES_ASSET_ID};
+    use common::{balance, AssetInfoProvider, CERES_ASSET_ID};
     use frame_support::{assert_err, assert_ok, PalletId};
     use sp_runtime::traits::AccountIdConversion;
 

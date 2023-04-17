@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnValBurned,
+    AssetInfoProvider, Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::log::error;
@@ -604,6 +604,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use crate::*;
 use codec::{Decode, Encode};
 use common::balance;
-use common::FromGenericPair;
+use common::{AssetInfoProvider, FromGenericPair};
 use common::{Balance, Fixed, PSWAP, VAL, XSTUSD};
 use frame_support::dispatch::GetStorageVersion;
 use frame_support::log;

@@ -57,7 +57,7 @@ pub mod pallet {
         BridgeAssetInfo, CallOriginOutput,
     };
     use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
-    use common::{AssetName, AssetSymbol, Balance};
+    use common::{AssetInfoProvider, AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
@@ -71,6 +71,7 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + permissions::Config + technical::Config

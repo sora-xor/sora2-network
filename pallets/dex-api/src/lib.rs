@@ -32,7 +32,7 @@
 
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    DexInfoProvider, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
@@ -285,6 +285,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + dex_manager::Config + trading_pair::Config

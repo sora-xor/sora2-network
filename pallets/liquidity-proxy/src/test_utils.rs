@@ -32,8 +32,8 @@ use crate::mock::{adar, AccountId, Assets, DEXId, LiquidityProxy};
 use crate::{BatchReceiverInfo, SwapBatchInfo};
 use common::prelude::{QuoteAmount, SwapOutcome};
 use common::{
-    assert_approx_eq, balance, AssetId32, Balance, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, PredefinedAssetId, XOR,
+    assert_approx_eq, balance, AssetId32, AssetInfoProvider, Balance, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PredefinedAssetId, XOR,
 };
 use std::collections::HashMap;
 

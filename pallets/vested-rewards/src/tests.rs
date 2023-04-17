@@ -32,8 +32,8 @@ use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, Crowdloan
 use crate::{Error, RewardInfo};
 use common::mock::charlie;
 use common::{
-    balance, AssetId32, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId, PswapRemintInfo,
-    RewardReason, VestedRewardsPallet, PSWAP, VAL, XOR, XSTUSD,
+    balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
+    PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::{assert_err, assert_noop, assert_ok};

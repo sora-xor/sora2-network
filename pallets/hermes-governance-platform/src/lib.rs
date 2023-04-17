@@ -68,8 +68,8 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
     use alloc::string::String;
-    use common::balance;
     use common::prelude::Balance;
+    use common::{balance, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::transactional;
@@ -83,6 +83,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
