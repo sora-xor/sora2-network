@@ -36,6 +36,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
+use common::AssetInfoProvider;
 use core::line;
 use ethabi::Token;
 use frame_support::dispatch::{DispatchError, DispatchResult};

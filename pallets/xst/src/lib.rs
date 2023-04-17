@@ -50,9 +50,9 @@ use common::prelude::{
     SwapOutcome, DEFAULT_BALANCE_PRECISION,
 };
 use common::{
-    balance, fixed_wrapper, AssetId32, AssetName, AssetSymbol, DEXId, DataFeed, GetMarketInfo,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, Rate, RewardReason,
-    DAI, XSTUSD,
+    balance, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, DataFeed,
+    GetMarketInfo, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, PriceVariant, Rate,
+    RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;

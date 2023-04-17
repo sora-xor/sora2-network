@@ -33,7 +33,9 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
-use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, TradingPair};
+use common::{
+    AccountIdOf, DexInfoProvider, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, TradingPair,
+};
 
 use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -97,6 +99,7 @@ impl<T: Config> Pallet<T> {
         asset_a: T::AssetId,
         asset_b: T::AssetId,
     ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
+        // TODO: #392 use DexInfoProvider instead of dex-manager pallet
         let dexinfo = DEXManager::<T>::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
