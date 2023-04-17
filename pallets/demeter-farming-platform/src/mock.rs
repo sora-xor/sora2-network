@@ -211,11 +211,11 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
 }
 
 impl vested_rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumberFor<Self> = 14400;
     type RuntimeEvent = RuntimeEvent;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
-    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = ();
 }
 

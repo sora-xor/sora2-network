@@ -91,6 +91,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn update_rewards(_n: u32) -> Weight {
         Weight::zero()
     }
+
+    fn register_crowdloan(_m: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -98,11 +102,15 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
 
+    fn update_rewards(_n: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
     fn claim_crowdloan_rewards() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 
-    fn update_rewards(_: u32) -> Weight {
+    fn register_crowdloan(_m: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

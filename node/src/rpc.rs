@@ -137,7 +137,13 @@ where
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
-    C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance>,
+    C::Api: vested_rewards_rpc::VestedRewardsRuntimeApi<
+        Block,
+        AccountId,
+        AssetId,
+        Balance,
+        common::CrowdloanTag,
+    >,
     C::Api: farming_rpc::FarmingRuntimeApi<Block, AssetId>,
     C::Api: BlockBuilder<Block>,
     C::Api: mmr_rpc::MmrRuntimeApi<

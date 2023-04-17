@@ -159,3 +159,25 @@ impl<'de> Deserialize<'de> for SymbolName {
         Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
     }
 }
+
+/// (De)serialization implementation for AssetId32
+#[cfg(feature = "std")]
+impl Serialize for CrowdloanTag {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for CrowdloanTag {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
