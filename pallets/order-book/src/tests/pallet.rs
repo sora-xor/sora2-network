@@ -31,11 +31,11 @@
 #![cfg(feature = "wip")] // order-book
 
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant, VAL, XOR};
-use frame_benchmarking::Zero;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
 use framenode_runtime::{order_book, Runtime, RuntimeOrigin};
+use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 
 type OrderBook = Pallet<Runtime>;
@@ -613,12 +613,12 @@ fn should_lock_unlock_indivisible_nft() {
 
         let alice_balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert!(alice_balance_after_lock.is_zero());
+        assert_eq!(alice_balance_after_lock, alice_balance_before - balance!(1));
 
         assert_ok!(OrderBook::unlock_liquidity(&bob(), &nft, balance!(1)));
 
         let bob_balance_after_unlock =
-            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+            assets::Pallet::<Runtime>::free_balance(&nft, &bob()).expect("NFT must exist");
         assert_eq!(bob_balance_after_unlock, bob_balance_before + balance!(1));
     });
 }
