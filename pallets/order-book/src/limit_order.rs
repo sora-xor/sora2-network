@@ -43,9 +43,9 @@ where
     pub id: T::OrderId,
     pub owner: T::AccountId,
     pub side: PriceVariant,
-    pub price: OrderPrice<T>,
-    pub original_amount: OrderVolume<T>,
-    pub amount: OrderVolume<T>,
+    pub price: OrderPrice,
+    pub original_amount: OrderVolume,
+    pub amount: OrderVolume,
     pub time: T::Moment,
     pub lifespan: T::Moment,
 }

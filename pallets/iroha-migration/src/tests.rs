@@ -31,7 +31,7 @@
 use crate::mock::*;
 use crate::{Error, MigratedAccounts, Pallet, PendingMultiSigAccounts, PendingReferrals};
 use common::prelude::Balance;
-use common::VAL;
+use common::{AssetInfoProvider, VAL};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;

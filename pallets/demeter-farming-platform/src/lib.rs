@@ -79,7 +79,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
-    use common::prelude::{Balance, FixedWrapper};
+    use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
     use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
@@ -92,6 +92,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config

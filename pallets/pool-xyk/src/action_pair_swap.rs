@@ -33,8 +33,8 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
-use common::balance;
 use common::prelude::{Balance, FixedWrapper};
+use common::{balance, AssetInfoProvider};
 
 use crate::to_fixed_wrapper;
 

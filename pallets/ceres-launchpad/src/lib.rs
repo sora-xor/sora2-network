@@ -93,7 +93,7 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::{balance, DEXId, PoolXykPallet, PSWAP, XSTUSD};
+    use common::{balance, AssetInfoProvider, DEXId, PoolXykPallet, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -108,6 +108,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

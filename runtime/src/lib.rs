@@ -122,9 +122,10 @@ pub use common::prelude::{
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
-    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    ContentSource, CrowdloanTag, FilterMode, Fixed, FromGenericPair, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
+    balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
+    BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
+    FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -153,7 +154,10 @@ use impls::{
 use frame_support::traits::{Everything, ExistenceRequirement, Get, PrivilegeCmp, WithdrawReasons};
 #[cfg(feature = "wip")]
 use sp_runtime::traits::Keccak256;
-pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, xst};
+pub use {
+    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, order_book, trading_pair,
+    xst,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -1962,13 +1966,16 @@ impl hermes_governance_platform::Config for Runtime {
 
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
-    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days
+    const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
     const MAX_OPENED_LIMIT_ORDERS_COUNT: u32 = 100;
     type RuntimeEvent = RuntimeEvent;
     type OrderId = u128;
-    type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>;
-    type MaxLimitOrdersForPrice = ConstU32<10000>;
-    type MaxSidePrices = ConstU32<100000>;
+    type MaxOpenedLimitOrdersForAllOrderBooksPerUser = ConstU32<10000>; // TODO: order-book clarify
+    type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
+    type MaxSidePrices = ConstU32<100000>; // TODO: order-book clarify
+    type EnsureTradingPairExists = TradingPair;
+    type AssetInfoProvider = Assets;
+    type DexInfoProvider = DEXManager;
     type WeightInfo = order_book::weights::WeightInfo<Runtime>;
 }
 
