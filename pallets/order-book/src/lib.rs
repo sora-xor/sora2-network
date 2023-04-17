@@ -235,7 +235,6 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New order book is created by user
-        /// [order_book_id, dex_id, creator]
         OrderBookCreated {
             order_book_id: OrderBookId<T>,
             dex_id: T::DEXId,
@@ -243,21 +242,18 @@ pub mod pallet {
         },
 
         /// Order book is deleted by Council
-        /// [order_book_id, dex_id]
         OrderBookDeleted {
             order_book_id: OrderBookId<T>,
             dex_id: T::DEXId,
         },
 
         /// Order book attributes are updated by Council
-        /// [order_book_id, dex_id]
         OrderBookUpdated {
             order_book_id: OrderBookId<T>,
             dex_id: T::DEXId,
         },
 
         /// User placed new limit order
-        /// [order_book_id, dex_id, order_id, owner_id]
         OrderPlaced {
             order_book_id: OrderBookId<T>,
             dex_id: T::DEXId,
@@ -266,7 +262,6 @@ pub mod pallet {
         },
 
         /// User canceled their limit order
-        /// [order_book_id, dex_id, order_id, owner_id]
         OrderCanceled {
             order_book_id: OrderBookId<T>,
             dex_id: T::DEXId,
