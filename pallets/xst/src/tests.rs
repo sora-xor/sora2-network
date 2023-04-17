@@ -33,7 +33,7 @@ mod tests {
     use core::str::FromStr;
 
     use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, PriceToolsPallet, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
+    use common::{self, AssetName, AssetSymbol, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
 
