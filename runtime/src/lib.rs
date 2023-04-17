@@ -2002,7 +2002,7 @@ impl dispatch::Config<dispatch::Instance1> for Runtime {
 #[cfg(feature = "wip")]
 use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u64 = 256;
     pub const BridgeMaxMessagesPerCommit: u64 = 20;
@@ -2021,7 +2021,7 @@ impl Convert<U256, Balance> for FeeConverter {
     }
 }
 
-#[cfg(feature = "wip")]
+#[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
 }
@@ -2883,7 +2883,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return None;
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             Beefy::validator_set()
         }
     }
@@ -2893,7 +2893,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return Err(mmr::Error::PalletNotIncluded);
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             Ok(Mmr::mmr_root())
         }
 
@@ -2901,7 +2901,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return Err(mmr::Error::PalletNotIncluded);
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             Ok(Mmr::mmr_leaves())
         }
 
@@ -2912,7 +2912,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return Err(mmr::Error::PalletNotIncluded);
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             Mmr::generate_proof(_block_numbers, _best_known_block_number).map(
                 |(leaves, proof)| {
                     (
@@ -2932,7 +2932,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return Err(mmr::Error::PalletNotIncluded);
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             {
                 pub type MmrLeaf = <<Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider>::LeafData;
                 let leaves = _leaves.into_iter().map(|leaf|
@@ -2951,7 +2951,7 @@ impl_runtime_apis! {
             #[cfg(not(feature = "wip"))]
             return Err(mmr::Error::PalletNotIncluded);
 
-            #[cfg(feature = "wip")]
+            #[cfg(feature = "wip")] // Bridges
             {
                 let nodes = _leaves.into_iter().map(|leaf|mmr::DataOrHash::Data(leaf.into_opaque_leaf())).collect();
                 pallet_mmr::verify_leaves_proof::<MmrHashing, _>(_root, nodes, _proof)

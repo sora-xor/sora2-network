@@ -1147,28 +1147,28 @@ fn testnet_genesis(
     ];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_inbound_channel: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
@@ -2033,29 +2033,29 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_inbound_channel: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
         vested_rewards: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
