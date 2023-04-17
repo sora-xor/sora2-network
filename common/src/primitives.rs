@@ -32,7 +32,8 @@ use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::{DispatchError, TypeInfo};
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::traits::ConstU32;
+use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
@@ -584,6 +585,49 @@ impl IsValid for SymbolName {
                 .0
                 .iter()
                 .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+    }
+}
+
+const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct CrowdloanTag(pub BoundedVec<u8, ConstU32<CROWDLOAN_TAG_MAX_LENGTH>>);
+
+#[cfg(feature = "std")]
+impl FromStr for CrowdloanTag {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars = s
+            .chars()
+            .map(|un| un as u8)
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| "CrowdloanTag length out of bounds")?;
+        Ok(CrowdloanTag(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for CrowdloanTag {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for CrowdloanTag {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl IsValid for CrowdloanTag {
+    /// Same as for AssetSymbol
+    fn is_valid(&self) -> bool {
+        !self.0.is_empty() && self.0.is_ascii()
     }
 }
 

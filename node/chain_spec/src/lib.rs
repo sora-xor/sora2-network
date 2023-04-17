@@ -50,11 +50,11 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeInboundChannelConfig,
-    BridgeMultisigConfig, BridgeOutboundChannelConfig, CouncilConfig, CrowdloanReward,
-    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader,
-    EthereumLightClientConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    BridgeMultisigConfig, BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig,
+    GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
+    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
@@ -77,7 +77,7 @@ use std::str::FromStr;
 use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
-use framenode_runtime::{FaucetConfig, SudoConfig, VestedRewardsConfig};
+use framenode_runtime::{FaucetConfig, SudoConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -1536,36 +1536,6 @@ fn testnet_genesis(
         beefy: BeefyConfig {
             authorities: vec![],
         },
-        vested_rewards: VestedRewardsConfig {
-            test_crowdloan_rewards: vec![
-                CrowdloanReward {
-                    id: Vec::new(),
-                    address: hex!(
-                        "f88629a067c975e17f9675ee57f011b3b1273b20768b81b097242e8581777c72"
-                    )
-                    .to_vec(),
-                    contribution: fixed!(0.0),
-                    xor_reward: fixed!(1.2),
-                    pswap_reward: fixed!(2.3),
-                    val_reward: fixed!(3.4),
-                    xstusd_reward: fixed!(4.5),
-                    percent: fixed!(5.6),
-                },
-                CrowdloanReward {
-                    id: Vec::new(),
-                    address: hex!(
-                        "f230e5df6850af42da63b271202cad2afe5deee8de8791c91157b353c3c1900c"
-                    )
-                    .to_vec(),
-                    contribution: fixed!(0.0),
-                    xor_reward: fixed!(2.3),
-                    pswap_reward: fixed!(3.4),
-                    val_reward: fixed!(4.5),
-                    xstusd_reward: fixed!(5.6),
-                    percent: fixed!(6.7),
-                },
-            ],
-        },
     }
 }
 
@@ -2025,7 +1995,6 @@ fn mainnet_genesis(
         substrate_bridge_inbound_channel: Default::default(),
         substrate_bridge_outbound_channel: Default::default(),
         migration_app: Default::default(),
-        vested_rewards: Default::default(),
         erc20_app: Default::default(),
         eth_app: Default::default(),
         ethereum_light_client: Default::default(),
