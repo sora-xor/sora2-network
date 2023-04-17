@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use common::prelude::Balance;
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;

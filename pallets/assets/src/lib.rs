@@ -59,8 +59,8 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, IsValid,
-    LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
+    hash, Amount, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, IsValid, LiquidityProxyTrait, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -770,26 +770,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    #[inline]
-    pub fn asset_exists(asset_id: &T::AssetId) -> bool {
-        AssetOwners::<T>::contains_key(asset_id)
-    }
-
-    #[inline]
-    pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
-        if !Self::asset_exists(asset_id) {
-            return Err(Error::<T>::AssetIdNotExists.into());
-        }
-        Ok(())
-    }
-
-    #[inline]
-    pub fn is_asset_owner(asset_id: &T::AssetId, account_id: &T::AccountId) -> bool {
-        Self::asset_owner(asset_id)
-            .map(|x| &x == account_id)
-            .unwrap_or(false)
-    }
-
     fn check_permission_maybe_with_parameters(
         issuer: &T::AccountId,
         permission_id: u32,
@@ -816,40 +796,6 @@ impl<T: Config> Pallet<T> {
             Self::ensure_asset_exists(asset_id)?;
         }
         Ok(r)
-    }
-
-    pub fn total_balance(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-    ) -> Result<Balance, DispatchError> {
-        let r = T::Currency::total_balance(asset_id.clone(), who);
-        if r == Default::default() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
-    }
-
-    pub fn free_balance(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-    ) -> Result<Balance, DispatchError> {
-        let r = T::Currency::free_balance(asset_id.clone(), who);
-        if r == Default::default() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        Ok(r)
-    }
-
-    pub fn ensure_can_withdraw(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> DispatchResult {
-        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
-        if r.is_err() {
-            Self::ensure_asset_exists(asset_id)?;
-        }
-        r
     }
 
     pub fn transfer_from(
@@ -880,7 +826,11 @@ impl<T: Config> Pallet<T> {
         Self::mint_unchecked(asset_id, to, amount)
     }
 
-    fn mint_unchecked(asset_id: &T::AssetId, to: &T::AccountId, amount: Balance) -> DispatchResult {
+    pub fn mint_unchecked(
+        asset_id: &T::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
@@ -1011,8 +961,40 @@ impl<T: Config> Pallet<T> {
             )
             .collect()
     }
+}
 
-    pub fn get_asset_info(
+impl<T: Config>
+    AssetInfoProvider<
+        T::AssetId,
+        T::AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        ContentSource,
+        Description,
+    > for Pallet<T>
+{
+    #[inline]
+    fn asset_exists(asset_id: &T::AssetId) -> bool {
+        AssetOwners::<T>::contains_key(asset_id)
+    }
+
+    #[inline]
+    fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
+        if !Self::asset_exists(asset_id) {
+            return Err(Error::<T>::AssetIdNotExists.into());
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn is_asset_owner(asset_id: &T::AssetId, account_id: &T::AccountId) -> bool {
+        Self::asset_owner(asset_id)
+            .map(|x| &x == account_id)
+            .unwrap_or(false)
+    }
+
+    fn get_asset_info(
         asset_id: &T::AssetId,
     ) -> (
         AssetSymbol,
@@ -1034,11 +1016,39 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    pub fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
+    fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
         AssetInfos::<T>::get(asset_id).4
     }
 
-    pub fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
+    fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
         AssetInfos::<T>::get(asset_id).5
+    }
+
+    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+        let r = T::Currency::total_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
+    }
+
+    fn free_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError> {
+        let r = T::Currency::free_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
+    }
+
+    fn ensure_can_withdraw(
+        asset_id: &T::AssetId,
+        who: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        r
     }
 }

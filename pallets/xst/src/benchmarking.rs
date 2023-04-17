@@ -36,7 +36,7 @@ use super::*;
 
 use codec::Decode;
 use common::prelude::SwapAmount;
-use common::{DAI, XST};
+use common::{AssetInfoProvider, DAI, XST};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;

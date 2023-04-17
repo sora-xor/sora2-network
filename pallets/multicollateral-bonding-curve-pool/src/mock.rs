@@ -31,7 +31,8 @@
 use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
-    Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
+    AssetInfoProvider, Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount,
+    SwapOutcome,
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol,

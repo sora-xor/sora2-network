@@ -31,6 +31,7 @@
 use alloc::string::ToString;
 
 use codec::Decode;
+use common::AssetInfoProvider;
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;

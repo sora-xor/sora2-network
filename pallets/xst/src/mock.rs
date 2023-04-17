@@ -34,9 +34,9 @@ use common::prelude::{
     Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetInfoProvider, AssetName,
+    AssetSymbol, DEXInfo, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    PriceVariant, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
