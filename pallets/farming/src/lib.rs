@@ -278,7 +278,7 @@ impl<T: Config> Pallet<T> {
         let reward = {
             let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
             let freq: u128 = T::VESTING_FREQUENCY.unique_saturated_into();
-            let blocks: u128 = T::BLOCKS_PER_DAY.unique_saturated_into();
+            let blocks: u128 = <T as Config>::BLOCKS_PER_DAY.unique_saturated_into();
             let reward_vesting_part =
                 FixedWrapper::from(balance!(freq)) / FixedWrapper::from(balance!(blocks));
             reward_per_day * reward_vesting_part
