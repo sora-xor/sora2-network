@@ -133,6 +133,7 @@ impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
         Ok(self)
     }
 
+    #[cfg(feature = "try-runtime")]
     fn unchecked_into_checked_i_know_what_i_am_doing(
         self,
         _c: &Context,
