@@ -688,6 +688,7 @@ dependencies = [
  "hex-literal",
  "oracle-proxy",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -4667,6 +4668,7 @@ dependencies = [
  "vested-rewards-runtime-api",
  "xor-fee",
  "xst",
+ "xst-benchmarking",
 ]
 
 [[package]]
@@ -7670,6 +7672,7 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -12110,7 +12113,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -12529,7 +12532,7 @@ dependencies = [
 [[package]]
 name = "sp-weights"
 version = "4.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -12537,7 +12540,7 @@ dependencies = [
  "smallvec 1.10.0",
  "sp-arithmetic",
  "sp-core",
- "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-std",
 ]
 
@@ -15079,7 +15082,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core",
- "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "xcm-procedural",
 ]
 
@@ -15143,17 +15146,18 @@ name = "xst"
 version = "1.0.1"
 dependencies = [
  "assets",
+ "band",
  "ceres-liquidity-locker",
  "common",
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
  "liquidity-proxy",
  "mock-liquidity-source",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -15173,6 +15177,42 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "xst-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "band",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "mock-liquidity-source",
+ "oracle-proxy",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+ "xst",
 ]
 
 [[package]]
