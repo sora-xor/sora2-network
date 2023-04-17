@@ -83,6 +83,11 @@ impl<T: Config> Pallet<T> {
         base_asset_id: T::AssetId,
         target_asset_id: T::AssetId,
     ) -> Result<(), DispatchError> {
+        ensure!(
+            base_asset_id != target_asset_id,
+            Error::<T>::IdenticalAssetIds
+        );
+
         let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
         ensure!(
             base_asset_id == dex_info.base_asset_id
@@ -91,10 +96,7 @@ impl<T: Config> Pallet<T> {
         );
         Assets::<T>::ensure_asset_exists(&base_asset_id)?;
         Assets::<T>::ensure_asset_exists(&target_asset_id)?;
-        ensure!(
-            base_asset_id != target_asset_id,
-            Error::<T>::IdenticalAssetIds
-        );
+
         let trading_pair = TradingPair::<T> {
             base_asset_id,
             target_asset_id,
