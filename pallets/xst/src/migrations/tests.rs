@@ -28,7 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{migrations::BaseFee, mock::*, pallet::Pallet, EnabledSynthetics};
+use crate::{
+    migrations::{BaseFee, EnabledSynthetics as OldEnabledSynthetics, PermissionedTechAccount},
+    mock::*,
+    pallet::Pallet,
+    EnabledSynthetics,
+};
 use common::{fixed, Fixed, XSTUSD};
 use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
 
@@ -46,6 +51,8 @@ fn test() {
         assert_eq!(info.reference_symbol, common::SymbolName::usd().into());
         assert_eq!(info.fee_ratio, fixed!(0.00666));
         assert!(!BaseFee::<Runtime>::exists());
+        assert!(!PermissionedTechAccount::<Runtime>::exists());
+        assert!(!OldEnabledSynthetics::<Runtime>::exists());
 
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
     });

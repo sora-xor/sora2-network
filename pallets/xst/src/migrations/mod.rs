@@ -33,11 +33,20 @@ use common::{fixed, Fixed, XSTUSD};
 use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use sp_std::collections::btree_set::BTreeSet;
 
-use crate::{EnabledSymbols, EnabledSynthetics, SyntheticInfo};
+use crate::{EnabledSymbols, EnabledSynthetics as NewEnabledSynthetics, SyntheticInfo};
 
 #[frame_support::storage_alias]
 type BaseFee<T: Config> = StorageValue<Pallet<T>, Fixed, ValueQuery>;
+
+#[frame_support::storage_alias]
+type PermissionedTechAccount<T: Config> =
+    StorageValue<Pallet<T>, <T as technical::Config>::TechAccountId, ValueQuery>;
+
+#[frame_support::storage_alias]
+type EnabledSynthetics<T: Config> =
+    StorageValue<Pallet<T>, BTreeSet<<T as assets::Config>::AssetId>, ValueQuery>;
 
 pub struct CustomSyntheticsUpgrade<T>(core::marker::PhantomData<T>);
 
@@ -57,9 +66,17 @@ where
             BaseFee::<T>::kill();
         }
 
+        if PermissionedTechAccount::<T>::exists() {
+            PermissionedTechAccount::<T>::kill();
+        }
+
+        if EnabledSynthetics::<T>::exists() {
+            EnabledSynthetics::<T>::kill();
+        }
+
         let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
 
-        EnabledSynthetics::<T>::insert(
+        NewEnabledSynthetics::<T>::insert(
             T::AssetId::from(XSTUSD),
             SyntheticInfo {
                 reference_symbol: xstusd_symbol.clone(),
@@ -70,6 +87,24 @@ where
 
         StorageVersion::new(2).put::<Pallet<T>>();
         T::DbWeight::get().reads_writes(0, 2)
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        frame_support::ensure!(
+            Pallet::<T>::on_chain_storage_version() == 1,
+            "must upgrade linearly"
+        );
+        Ok(Vec::new())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        frame_support::ensure!(
+            Pallet::<T>::on_chain_storage_version() == 2,
+            "should be upgraded to version 2"
+        );
+        Ok(())
     }
 }
 
