@@ -880,7 +880,11 @@ impl<T: Config> Pallet<T> {
         Self::mint_unchecked(asset_id, to, amount)
     }
 
-    fn mint_unchecked(asset_id: &T::AssetId, to: &T::AccountId, amount: Balance) -> DispatchResult {
+    pub fn mint_unchecked(
+        asset_id: &T::AssetId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
