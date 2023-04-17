@@ -192,6 +192,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Register and enable new synthetic asset with `reference_symbol` price binding
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_synthetic_asset())]
         pub fn register_synthetic_asset(
@@ -199,6 +200,7 @@ pub mod pallet {
             asset_symbol: AssetSymbol,
             asset_name: AssetName,
             reference_symbol: T::Symbol,
+            fee_ratio: Fixed,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
@@ -209,6 +211,12 @@ pub mod pallet {
                 .into();
 
             Self::register_synthetic_asset_unchecked(synthetic_asset_id, asset_symbol, asset_name)?;
+            Self::enable_synthetic_asset_unchecked(
+                synthetic_asset_id,
+                reference_symbol,
+                fee_ratio,
+                true,
+            )?;
 
             Ok(().into())
         }
