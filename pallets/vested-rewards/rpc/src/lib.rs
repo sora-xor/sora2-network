@@ -49,17 +49,18 @@ pub use vested_rewards_runtime_api::{
 };
 
 #[rpc(server, client)]
-pub trait VestedRewardsApi<BlockHash, EthAddress, AssetId, OptionBalanceInfo> {
+pub trait VestedRewardsApi<BlockHash, AccountId, AssetId, OptionBalanceInfo, CrowdloanTag> {
     #[method(name = "vestedRewards_crowdloanClaimable")]
     fn crowdloan_claimable(
         &self,
-        address: EthAddress,
+        tag: CrowdloanTag,
+        account_id: AccountId,
         asset_id: AssetId,
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
     #[method(name = "vestedRewards_crowdloanLease")]
-    fn crowdloan_lease(&self, at: Option<BlockHash>) -> Result<CrowdloanLease>;
+    fn crowdloan_lease(&self, tag: CrowdloanTag, at: Option<BlockHash>) -> Result<CrowdloanLease>;
 }
 
 pub struct VestedRewardsClient<C, B> {
@@ -77,25 +78,28 @@ impl<C, B> VestedRewardsClient<C, B> {
     }
 }
 
-impl<C, Block, EthAddress, AssetId, Balance>
+impl<C, Block, AccountId, AssetId, Balance, CrowdloanTag>
     VestedRewardsApiServer<
         <Block as BlockT>::Hash,
-        EthAddress,
+        AccountId,
         AssetId,
         Option<BalanceInfo<Balance>>,
+        CrowdloanTag,
     > for VestedRewardsClient<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: VestedRewardsRuntimeApi<Block, EthAddress, AssetId, Balance>,
-    EthAddress: Codec,
+    C::Api: VestedRewardsRuntimeApi<Block, AccountId, AssetId, Balance, CrowdloanTag>,
+    AccountId: Codec,
     AssetId: Codec,
+    CrowdloanTag: Codec,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
 {
     fn crowdloan_claimable(
         &self,
-        address: EthAddress,
+        tag: CrowdloanTag,
+        account_id: AccountId,
         asset_id: AssetId,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
@@ -104,17 +108,24 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.crowdloan_claimable(&at, address, asset_id)
+        api.crowdloan_claimable(&at, tag, account_id, asset_id)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 
-    fn crowdloan_lease(&self, at: Option<<Block as BlockT>::Hash>) -> Result<CrowdloanLease> {
+    fn crowdloan_lease(
+        &self,
+        tag: CrowdloanTag,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<CrowdloanLease> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.crowdloan_lease(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        let lease = api
+            .crowdloan_lease(&at, tag)
+            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+            .ok_or(RpcError::Custom("Crowdloan not found".into()))?;
+        Ok(lease)
     }
 }
