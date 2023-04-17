@@ -467,6 +467,9 @@ fn should_lock_unlock_base_asset() {
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
+
+        // Alice -> Alice (expected on order cancellation)
+
         let balance_before =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
 
@@ -481,6 +484,31 @@ fn should_lock_unlock_base_asset() {
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
         assert_eq!(balance_before, balance_after_unlock);
+
+        // Alice -> Bob (expected exchange mechanism)
+
+        let alice_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+        let bob_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &bob()).expect("XOR must exist");
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+
+        let alice_balance_after_lock =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &alice()).expect("XOR must exist");
+        assert_eq!(
+            alice_balance_after_lock,
+            alice_balance_before - amount_to_lock
+        );
+
+        assert_ok!(OrderBook::unlock_liquidity(&bob(), &XOR, amount_to_lock));
+
+        let bob_balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&XOR, &bob()).expect("XOR must exist");
+        assert_eq!(
+            bob_balance_after_unlock,
+            bob_balance_before + amount_to_lock
+        );
     });
 }
 
@@ -495,6 +523,9 @@ fn should_lock_unlock_other_asset() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
+
+        // Alice -> Alice (expected on order cancellation)
+
         let balance_before =
             assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
 
@@ -509,6 +540,31 @@ fn should_lock_unlock_other_asset() {
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
         assert_eq!(balance_before, balance_after_unlock);
+
+        // Alice -> Bob (expected exchange mechanism)
+
+        let alice_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
+        let bob_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &bob()).expect("VAL must exist");
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock));
+
+        let alice_balance_after_lock =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &alice()).expect("VAL must exist");
+        assert_eq!(
+            alice_balance_after_lock,
+            alice_balance_before - amount_to_lock
+        );
+
+        assert_ok!(OrderBook::unlock_liquidity(&bob(), &VAL, amount_to_lock));
+
+        let bob_balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&VAL, &bob()).expect("VAL must exist");
+        assert_eq!(
+            bob_balance_after_unlock,
+            bob_balance_before + amount_to_lock
+        );
     });
 }
 
@@ -529,17 +585,41 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
+        // Alice -> Alice (expected on order cancellation)
+
+        let balance_before =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+
         assert_ok!(OrderBook::lock_liquidity(&alice(), &nft, balance!(1)));
 
         let balance_after_lock =
             assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert!(balance_after_lock.is_zero());
+        assert_eq!(balance_after_lock, balance_before - balance!(1));
 
         assert_ok!(OrderBook::unlock_liquidity(&alice(), &nft, balance!(1)));
 
         let balance_after_unlock =
             assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
-        assert_eq!(balance_after_unlock, balance!(1));
+        assert_eq!(balance_after_unlock, balance_before);
+
+        // Alice -> Bob (expected exchange mechanism)
+
+        let alice_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        let bob_balance_before =
+            assets::Pallet::<Runtime>::free_balance(&nft, &bob()).expect("NFT must exist");
+
+        assert_ok!(OrderBook::lock_liquidity(&alice(), &nft, balance!(1)));
+
+        let alice_balance_after_lock =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        assert!(alice_balance_after_lock.is_zero());
+
+        assert_ok!(OrderBook::unlock_liquidity(&bob(), &nft, balance!(1)));
+
+        let bob_balance_after_unlock =
+            assets::Pallet::<Runtime>::free_balance(&nft, &alice()).expect("NFT must exist");
+        assert_eq!(bob_balance_after_unlock, bob_balance_before + balance!(1));
     });
 }
 
