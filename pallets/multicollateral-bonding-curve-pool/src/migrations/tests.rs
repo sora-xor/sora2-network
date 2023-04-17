@@ -31,7 +31,7 @@
 use crate::migrations::v3::OldDistributionAccounts;
 use crate::{mock::*, pallet::Pallet, EnabledTargets};
 use crate::{DistributionAccount, DistributionAccountData};
-use common::{balance, TBCD, XST};
+use common::{balance, AssetInfoProvider, TBCD, XST};
 use common::{fixed, FromGenericPair};
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::traits::{GetStorageVersion as _, StorageVersion};

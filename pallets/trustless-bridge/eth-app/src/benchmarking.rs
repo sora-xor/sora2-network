@@ -4,7 +4,7 @@ use super::*;
 use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
 use bridge_types::H160;
 use bridge_types::H256;
-use common::{balance, AssetId32, PredefinedAssetId, XOR};
+use common::{balance, AssetId32, AssetInfoProvider, PredefinedAssetId, XOR};
 use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;

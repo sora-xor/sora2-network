@@ -1,7 +1,7 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error};
-    use common::{balance, generate_storage_instance, CERES_ASSET_ID};
+    use common::{balance, generate_storage_instance, AssetInfoProvider, CERES_ASSET_ID};
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;

@@ -51,9 +51,9 @@ use common::prelude::{
 };
 use common::BuyBackHandler;
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquidityProxyTrait,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
-    RewardReason, VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
+    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+    ManagementMode, PriceVariant, RewardReason, VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -195,6 +195,7 @@ pub mod pallet {
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

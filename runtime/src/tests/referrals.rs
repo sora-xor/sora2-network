@@ -30,7 +30,7 @@
 
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::SMALL_FEE;
-use common::XOR;
+use common::{AssetInfoProvider, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 

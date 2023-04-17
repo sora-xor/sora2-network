@@ -34,8 +34,8 @@ use crate::{test_utils, BatchReceiverInfo, Error, QuoteInfo, SwapBatchInfo};
 use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
-    assert_approx_eq, balance, fixed, fixed_wrapper, BuyBackHandler, FilterMode, Fixed,
-    LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
+    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
     RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
