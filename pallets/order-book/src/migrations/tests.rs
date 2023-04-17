@@ -31,7 +31,7 @@
 #![cfg(feature = "wip")] // order-book
 
 use common::FromGenericPair;
-use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade};
+use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::Pallet;
 use framenode_runtime::{order_book, Runtime};
@@ -45,6 +45,13 @@ fn test_v1() {
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
             crate::TECH_ACCOUNT_LOCK.to_vec(),
         );
+        // Revert state of the storage to version 0
+        StorageVersion::new(0).put::<OrderBook>();
+        technical::Pallet::<Runtime>::deregister_tech_account_id(
+            <Runtime as framenode_runtime::order_book::Config>::LockTechAccountId::get(),
+        )
+        .expect("Must unregister to test migration");
+
         assert_eq!(OrderBook::on_chain_storage_version(), 0);
         assert!(
             technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_err()

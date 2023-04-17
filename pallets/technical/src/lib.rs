@@ -160,7 +160,9 @@ impl<T: Config> Pallet<T> {
     /// Register `TechAccountId` in storage map.
     pub fn register_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
-        frame_system::Pallet::<T>::inc_providers(&account_id);
+        if let Err(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::inc_providers(&account_id);
+        }
         TechAccounts::<T>::insert(account_id, tech_account_id);
         Ok(())
     }
@@ -170,12 +172,19 @@ impl<T: Config> Pallet<T> {
         tech_account_id: &T::TechAccountId,
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
-        frame_system::Pallet::<T>::inc_providers(&account_id);
-        match Self::lookup_tech_account_id(&account_id) {
-            Err(_) => {
-                TechAccounts::<T>::insert(account_id, tech_account_id.clone());
-            }
-            _ => (),
+        if let Err(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::inc_providers(&account_id);
+            TechAccounts::<T>::insert(account_id, tech_account_id.clone());
+        }
+        Ok(())
+    }
+
+    /// Deregister `TechAccountId` in storage map.
+    pub fn deregister_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
+        let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
+        if let Ok(_) = Self::lookup_tech_account_id(&account_id) {
+            frame_system::Pallet::<T>::dec_providers(&account_id)?;
+            TechAccounts::<T>::remove(account_id);
         }
         Ok(())
     }
