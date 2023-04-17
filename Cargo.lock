@@ -7018,13 +7018,13 @@ dependencies = [
 [[package]]
 name = "mmr-gadget"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "futures 0.3.28",
  "log",
  "parity-scale-codec",
  "sc-client-api",
- "sc-offchain 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-offchain 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-api",
  "sp-beefy",
  "sp-blockchain",
@@ -10787,7 +10787,7 @@ dependencies = [
 [[package]]
 name = "sc-network-common"
 version = "0.10.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "async-trait",
  "bitflags",
@@ -10799,7 +10799,7 @@ dependencies = [
  "parity-scale-codec",
  "prost-build",
  "sc-consensus",
- "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "serde",
  "smallvec 1.10.0",
  "sp-blockchain",
@@ -10929,7 +10929,7 @@ dependencies = [
 [[package]]
 name = "sc-offchain"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "array-bytes",
  "bytes",
@@ -10945,9 +10945,9 @@ dependencies = [
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "sc-client-api",
- "sc-network-common 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
- "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-network-common 0.10.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-api",
  "sp-core",
  "sp-offchain",
@@ -10989,12 +10989,12 @@ dependencies = [
 [[package]]
 name = "sc-peerset"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "futures 0.3.28",
  "libp2p",
  "log",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "serde_json",
  "wasm-timer",
 ]
@@ -11328,7 +11328,7 @@ dependencies = [
 [[package]]
 name = "sc-utils"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "backtrace",
  "futures 0.3.28",
