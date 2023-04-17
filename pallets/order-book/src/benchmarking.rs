@@ -109,7 +109,7 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::OrderBookCreated(order_book_id, DEX.into(), caller).into());
+        assert_last_event::<T>(Event::<T>::OrderBookCreated{order_book_id: order_book_id, dex_id: DEX.into(), creator: caller}.into());
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),

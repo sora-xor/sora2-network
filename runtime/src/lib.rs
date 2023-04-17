@@ -110,7 +110,7 @@ pub use common::prelude::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
-    BalancePrecision, BasisPoints, ContentSource, DexInfoProvider, FilterMode, Fixed,
+    BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
@@ -131,7 +131,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use vested_rewards::CrowdloanReward;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
@@ -320,7 +319,8 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
+    pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
@@ -333,6 +333,8 @@ parameter_types! {
     /// 13 members initially, to be increased to 23 eventually.
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
+    pub const ElectionsMaxVoters: u32 = 10000;
+    pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
@@ -484,8 +486,8 @@ impl pallet_elections_phragmen::Config for Runtime {
     type DesiredMembers = ElectionsDesiredMembers;
     type DesiredRunnersUp = ElectionsDesiredRunnersUp;
     type TermDuration = ElectionsTermDuration;
-    type MaxVoters = ();
-    type MaxCandidates = ();
+    type MaxVoters = ElectionsMaxVoters;
+    type MaxCandidates = ElectionsMaxCandidates;
     type WeightInfo = ();
 }
 
@@ -498,7 +500,7 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
     type PrimeOrigin = MoreThanHalfCouncil;
     type MembershipInitialized = TechnicalCommittee;
     type MembershipChanged = TechnicalCommittee;
-    type MaxMembers = ();
+    type MaxMembers = TechnicalCollectiveMaxMembers;
     type WeightInfo = ();
 }
 
@@ -787,7 +789,7 @@ impl pallet_scheduler::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
-    type MaxScheduledPerBlock = ();
+    type MaxScheduledPerBlock = MaxScheduledPerBlock;
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
     type Preimages = Preimage;
@@ -1167,6 +1169,9 @@ impl<T> xor_fee::ApplyCustomFees<RuntimeCall> for xor_fee::Pallet<T> {
             | RuntimeCall::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
             | RuntimeCall::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
             | RuntimeCall::Rewards(rewards::Call::claim { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_crowdloan_rewards {
+                ..
+            })
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_rewards { .. }) => {
                 Some(BIG_FEE)
             }
@@ -1734,20 +1739,6 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetCrowdloanRewardsTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
-            vested_rewards::TECH_ACCOUNT_CROWDLOAN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetCrowdloanRewardsAccountId: AccountId = {
-        let tech_account_id = GetCrowdloanRewardsTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
     pub GetFarmingRewardsTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -1817,11 +1808,11 @@ impl pallet_offences::Config for Runtime {
 }
 
 impl vested_rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
     type RuntimeEvent = RuntimeEvent;
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type GetCrowdloanRewardsAccountId = GetCrowdloanRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -2233,7 +2224,7 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>, Config} = 40,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
         Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
@@ -3095,26 +3086,22 @@ impl_runtime_apis! {
         }
     }
 
-    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance> for Runtime {
-        fn crowdloan_claimable(account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
-            use sp_runtime::traits::UniqueSaturatedInto;
-
-            let current_block_num = <frame_system::Pallet<Runtime>>::block_number().unique_saturated_into();
-            VestedRewards::crowdloan_reward_for_asset(&account_id, &asset_id, current_block_num).ok().map(|balance|
-                vested_rewards_runtime_api::BalanceInfo::<Balance> {
-                    balance
-                }
-            )
+    impl vested_rewards_runtime_api::VestedRewardsApi<Block, AccountId, AssetId, Balance, CrowdloanTag> for Runtime {
+        fn crowdloan_claimable(tag: CrowdloanTag, account_id: AccountId, asset_id: AssetId) -> Option<vested_rewards_runtime_api::BalanceInfo<Balance>> {
+            let balance = VestedRewards::get_claimable_crowdloan_reward(&tag, &account_id, &asset_id)?;
+            Some(vested_rewards_runtime_api::BalanceInfo::<Balance> {
+                balance
+            })
         }
 
-        fn crowdloan_lease() -> vested_rewards_runtime_api::CrowdloanLease {
-            use vested_rewards::{LEASE_START_BLOCK, LEASE_TOTAL_DAYS, BLOCKS_PER_DAY};
+        fn crowdloan_lease(tag: CrowdloanTag) -> Option<vested_rewards_runtime_api::CrowdloanLease> {
+            let crowdloan_info = vested_rewards::CrowdloanInfos::<Runtime>::get(&tag)?;
 
-            vested_rewards_runtime_api::CrowdloanLease {
-                start_block: LEASE_START_BLOCK,
-                total_days: LEASE_TOTAL_DAYS,
-                blocks_per_day: BLOCKS_PER_DAY,
-            }
+            Some(vested_rewards_runtime_api::CrowdloanLease {
+                start_block: crowdloan_info.start_block as u128,
+                total_days: crowdloan_info.length as u128 / DAYS as u128,
+                blocks_per_day: DAYS as u128,
+            })
         }
     }
 
