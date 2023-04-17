@@ -589,14 +589,8 @@ mod tests {
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
                 euro.clone(),
-            ).expect("Failed to register synthetic asset");
-
-            XSTPool::enable_synthetic_asset(
-                RuntimeOrigin::root(),
-                asset_id,
-                euro.clone(),
                 fixed!(0),
-            ).expect("Failed to enable synthetic asset");
+            ).expect("Failed to register synthetic asset");
 
             let opt_xsteuro = XSTPool::enabled_symbols(&euro);
             assert!(opt_xsteuro.is_some());
@@ -644,21 +638,13 @@ mod tests {
             Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
                 .expect("Failed to relay");
 
-            let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
-
             XSTPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
                 AssetSymbol("XSTEUR".into()),
                 AssetName("XST Euro".into()),
                 euro.clone(),
-            ).expect("Failed to register synthetic asset");
-
-            XSTPool::enable_synthetic_asset(
-                RuntimeOrigin::root(),
-                asset_id,
-                euro.clone(),
                 fixed!(0),
-            ).expect("Failed to enable synthetic asset");
+            ).expect("Failed to register synthetic asset");
 
             let xsteuro = XSTPool::enabled_symbols(&euro).expect("Expected synthetic asset");
             let quote_amount = QuoteAmount::with_desired_input(balance!(100));

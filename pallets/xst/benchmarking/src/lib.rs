@@ -125,8 +125,8 @@ mod utils {
     pub fn assert_last_assets_event<T: Config>(generic_event: <T as assets::Config>::RuntimeEvent) {
         let events = frame_system::Pallet::<T>::events();
         let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
-        // compare to the last event record
-        let EventRecord { event, .. } = &events[events.len() - 1];
+        // compare to the event record precending to trading pair and xst event records
+        let EventRecord { event, .. } = &events[events.len() - 3];
         assert_eq!(event, &system_event);
     }
 
@@ -143,19 +143,11 @@ mod utils {
 
     pub fn enable_synthetic_asset<T: Config>() -> Result<T::AssetId, DispatchErrorWithPostInfo> {
         relay_symbol::<T>()?;
-        let asset_id = symbol_asset_id::<T>();
-
         XSTPool::<T>::register_synthetic_asset(
             RawOrigin::Root.into(),
             AssetSymbol(b"XSTEURO".to_vec()),
             AssetName(b"Sora Synthetic EURO".to_vec()),
             symbol::<<T as xst::Config>::Symbol>(),
-        )?;
-
-        XSTPool::<T>::enable_synthetic_asset(
-            RawOrigin::Root.into(),
-            asset_id,
-            symbol(),
             fixed!(0),
         )?;
 
@@ -208,11 +200,13 @@ benchmarks! {
     register_synthetic_asset {
         let permissioned_account_id = utils::permissioned_account_id::<T>();
         let reference_symbol = utils::symbol::<<T as xst::Config>::Symbol>();
+        utils::relay_symbol::<T>()?;
     }: _(
         RawOrigin::Root,
         AssetSymbol(b"XSTEURO".to_vec()),
         AssetName(b"Sora Synthetic EURO".to_vec()),
-        reference_symbol
+        reference_symbol,
+        fixed!(0)
     )
     verify {
         utils::assert_last_assets_event::<T>(
@@ -220,6 +214,12 @@ benchmarks! {
                 utils::symbol_asset_id::<T>(),
                 permissioned_account_id
             ).into()
+        );
+        assert!(
+            XSTPool::<T>::enabled_symbols(
+                utils::symbol::<<T as xst::Config>::Symbol>()
+            )
+            .is_some()
         );
     }
 
