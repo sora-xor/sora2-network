@@ -319,7 +319,8 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
+    pub SchedulerMaxWeight: Weight = Perbill::from_percent(80) * BlockWeights::get().max_block;
+    pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
@@ -332,6 +333,8 @@ parameter_types! {
     /// 13 members initially, to be increased to 23 eventually.
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
+    pub const ElectionsMaxVoters: u32 = 10000;
+    pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get(), GetXstAssetId::get()];
     pub const MaxAuthorities: u32 = 100_000;
@@ -483,8 +486,8 @@ impl pallet_elections_phragmen::Config for Runtime {
     type DesiredMembers = ElectionsDesiredMembers;
     type DesiredRunnersUp = ElectionsDesiredRunnersUp;
     type TermDuration = ElectionsTermDuration;
-    type MaxVoters = ();
-    type MaxCandidates = ();
+    type MaxVoters = ElectionsMaxVoters;
+    type MaxCandidates = ElectionsMaxCandidates;
     type WeightInfo = ();
 }
 
@@ -497,7 +500,7 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
     type PrimeOrigin = MoreThanHalfCouncil;
     type MembershipInitialized = TechnicalCommittee;
     type MembershipChanged = TechnicalCommittee;
-    type MaxMembers = ();
+    type MaxMembers = TechnicalCollectiveMaxMembers;
     type WeightInfo = ();
 }
 
@@ -786,7 +789,7 @@ impl pallet_scheduler::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
-    type MaxScheduledPerBlock = ();
+    type MaxScheduledPerBlock = MaxScheduledPerBlock;
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
     type Preimages = Preimage;
