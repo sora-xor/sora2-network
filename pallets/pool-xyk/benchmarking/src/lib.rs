@@ -30,12 +30,14 @@
 
 //! XYK Pool module benchmarking.
 
+#![cfg(feature = "runtime-benchmarks")]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource,
+    DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;

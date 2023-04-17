@@ -7,8 +7,8 @@ use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;
 use bridge_types::H256;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DAI, DEFAULT_BALANCE_PRECISION,
-    ETH, XOR,
+    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, PredefinedAssetId, DAI,
+    DEFAULT_BALANCE_PRECISION, ETH, XOR,
 };
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::{Get, UnfilteredDispatchable};

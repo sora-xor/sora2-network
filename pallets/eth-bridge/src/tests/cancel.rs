@@ -46,7 +46,9 @@ use crate::tests::{
     ETH_NETWORK_ID,
 };
 use crate::{AssetConfig, EthAddress};
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR};
+use common::{
+    AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL, XOR,
+};
 use frame_support::assert_ok;
 use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};
 use frame_support::traits::Currency;

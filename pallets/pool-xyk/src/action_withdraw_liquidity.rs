@@ -34,6 +34,7 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
 use common::prelude::FixedWrapper;
+use common::AssetInfoProvider;
 
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 

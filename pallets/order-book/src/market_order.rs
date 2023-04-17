@@ -40,5 +40,5 @@ where
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
-    pub amount: OrderVolume<T>,
+    pub amount: OrderVolume,
 }

@@ -49,15 +49,18 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeInboundChannelConfig,
-    BridgeMultisigConfig, BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig,
+    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig, CouncilConfig,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumHeader,
     GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
     GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
     Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
     TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+};
+#[cfg(feature = "wip")]
+use framenode_runtime::{
+    BridgeInboundChannelConfig, BridgeOutboundChannelConfig, EthereumLightClientConfig,
 };
 
 use hex_literal::hex;
@@ -821,6 +824,7 @@ fn testnet_genesis(
     validator_count: u32,
 ) -> GenesisConfig {
     use common::XSTUSD;
+    #[cfg(feature = "wip")]
     use framenode_runtime::EthAppConfig;
 
     // Initial balances
@@ -1143,18 +1147,28 @@ fn testnet_genesis(
     ];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_inbound_channel: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,
@@ -1989,18 +2003,28 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_app: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_inbound_channel: Default::default(),
+        #[cfg(feature = "wip")] // Substrate bridge
         substrate_bridge_outbound_channel: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         migration_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         erc20_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         eth_app: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         ethereum_light_client: Default::default(),
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_inbound_channel: BridgeInboundChannelConfig {
             reward_fraction: Perbill::from_percent(80),
             ..Default::default()
         },
+        #[cfg(feature = "wip")] // EVM bridge
         bridge_outbound_channel: BridgeOutboundChannelConfig {
             fee: 10000,
             interval: 10,

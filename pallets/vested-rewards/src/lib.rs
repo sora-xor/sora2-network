@@ -38,7 +38,10 @@ use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::CrowdloanTag;
 use common::FromGenericPair;
-use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP};
+use common::{
+    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
+    PSWAP,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::fail;
@@ -489,6 +492,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_std::collections::btree_map::BTreeMap;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
