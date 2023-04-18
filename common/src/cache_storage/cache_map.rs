@@ -31,9 +31,9 @@
 use crate::cache_storage::item::{Item, State};
 use codec::{FullCodec, FullEncode};
 use frame_support::StorageMap;
+use sp_std::cmp::Ord;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
-use std::cmp::Ord;
-use std::collections::BTreeMap;
 
 pub struct CacheStorageMap<Key, Value, Storage>
 where
