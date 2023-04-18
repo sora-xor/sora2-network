@@ -38,7 +38,7 @@ fn relay_symbols() {
     let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
     let rates = vec![1, 2, 3];
     let relayer = 1;
-    let initial_resolve_time = 100;
+    let initial_resolve_time = 0;
 
     Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
     Band::relay(
@@ -98,7 +98,7 @@ fn quote_and_list_enabled_symbols_should_work() {
 
         let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];
         let rates = vec![1, 2, 3];
-        let resolve_time = 100;
+        let resolve_time = 0;
 
         symbols
             .iter()

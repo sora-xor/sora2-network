@@ -8,8 +8,5 @@ opt-level = 's'
 [profile.test]
 debug = false
 
-[unstable]
-weak-dep-features = true
-
 [env]
 PARACHAIN_METADATA_BRANCH = "develop"
