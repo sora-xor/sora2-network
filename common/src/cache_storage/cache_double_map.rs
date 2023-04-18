@@ -37,8 +37,8 @@ use sp_std::marker::PhantomData;
 
 pub struct CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
-    Key1: Ord + FullEncode + Copy + Clone,
-    Key2: Ord + FullEncode + Copy + Clone,
+    Key1: Ord + FullEncode + Clone,
+    Key2: Ord + FullEncode + Clone,
     Value: FullCodec + Clone,
     Storage: StorageDoubleMap<Key1, Key2, Value>,
 {
@@ -48,8 +48,8 @@ where
 
 impl<Key1, Key2, Value, Storage> CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
-    Key1: Ord + FullEncode + Copy + Clone,
-    Key2: Ord + FullEncode + Copy + Clone,
+    Key1: Ord + FullEncode + Clone,
+    Key2: Ord + FullEncode + Clone,
     Value: FullCodec + Clone,
     Storage: StorageDoubleMap<Key1, Key2, Value>,
 {
@@ -60,43 +60,80 @@ where
         }
     }
 
-    pub fn get(&mut self, key1: Key1, key2: Key2) -> Option<&Value> {
-        if let Some(second_map) = self.cache.get_mut(&key1) {
-            if !second_map.contains_key(&key2) {
-                if let Ok(value) = Storage::try_get(key1, key2) {
-                    second_map.insert(key2, Some(Item::cache(value)));
+    pub fn contains_key(&self, key1: &Key1, key2: &Key2) -> bool {
+        if let Some(second_map) = self.cache.get(key1) {
+            if let Some(maybe_item) = second_map.get(key2) {
+                if let Some(item) = maybe_item {
+                    return item.state != State::Removed;
                 } else {
-                    second_map.insert(key2, None);
+                    return false;
+                }
+            }
+        }
+        Storage::contains_key(key1, key2)
+    }
+
+    pub fn get(&mut self, key1: &Key1, key2: &Key2) -> Option<&Value> {
+        if let Some(second_map) = self.cache.get_mut(key1) {
+            if !second_map.contains_key(key2) {
+                if let Ok(value) = Storage::try_get(key1.clone(), key2.clone()) {
+                    second_map.insert(key2.clone(), Some(Item::cache(value)));
+                } else {
+                    second_map.insert(key2.clone(), None);
                 }
             }
         } else {
             let mut second_map: BTreeMap<Key2, Option<Item<Value>>> = BTreeMap::new();
-            second_map.insert(key2, None);
-            self.cache.insert(key1, second_map);
+            if let Ok(value) = Storage::try_get(key1.clone(), key2.clone()) {
+                second_map.insert(key2.clone(), Some(Item::cache(value)));
+            } else {
+                second_map.insert(key2.clone(), None);
+            }
+            self.cache.insert(key1.clone(), second_map);
         }
 
-        if let Some(Some(item)) = self.cache.get(&key1).unwrap().get(&key2) {
-            Some(&item.value)
+        if let Some(Some(item)) = self.cache.get(key1).unwrap().get(key2) {
+            if item.state != State::Removed {
+                Some(&item.value)
+            } else {
+                None
+            }
         } else {
             None
         }
     }
 
-    pub fn set(&mut self, key1: Key1, key2: Key2, value: Value) {
-        if let Some(second_map) = self.cache.get_mut(&key1) {
-            second_map.insert(key2, Some(Item::new(value)));
+    pub fn set(&mut self, key1: &Key1, key2: &Key2, value: Value) {
+        if let Some(second_map) = self.cache.get_mut(key1) {
+            second_map.insert(key2.clone(), Some(Item::new(value)));
         } else {
             let mut second_map: BTreeMap<Key2, Option<Item<Value>>> = BTreeMap::new();
-            second_map.insert(key2, Some(Item::new(value)));
-            self.cache.insert(key1, second_map);
+            second_map.insert(key2.clone(), Some(Item::new(value)));
+            self.cache.insert(key1.clone(), second_map);
         }
     }
 
-    pub fn remove(&mut self, key1: Key1, key2: Key2) {
-        if let Some(second_map) = self.cache.get_mut(&key1) {
-            if let Some(Some(item)) = second_map.get_mut(&key2) {
-                item.remove();
+    pub fn remove(&mut self, key1: &Key1, key2: &Key2) {
+        if let Some(second_map) = self.cache.get_mut(key1) {
+            if let Some(maybe_item) = second_map.get_mut(key2) {
+                if let Some(item) = maybe_item {
+                    item.remove();
+                }
+            } else {
+                if let Ok(value) = Storage::try_get(key1, key2) {
+                    second_map.insert(key2.clone(), Some(Item::removed(value)));
+                } else {
+                    second_map.insert(key2.clone(), None);
+                }
             }
+        } else {
+            let mut second_map: BTreeMap<Key2, Option<Item<Value>>> = BTreeMap::new();
+            if let Ok(value) = Storage::try_get(key1, key2) {
+                second_map.insert(key2.clone(), Some(Item::removed(value)));
+            } else {
+                second_map.insert(key2.clone(), None);
+            }
+            self.cache.insert(key1.clone(), second_map);
         }
     }
 

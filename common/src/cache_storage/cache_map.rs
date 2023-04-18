@@ -37,7 +37,7 @@ use sp_std::marker::PhantomData;
 
 pub struct CacheStorageMap<Key, Value, Storage>
 where
-    Key: Ord + FullEncode + Copy + Clone,
+    Key: Ord + FullEncode + Clone,
     Value: FullCodec + Clone,
     Storage: StorageMap<Key, Value>,
 {
@@ -47,7 +47,7 @@ where
 
 impl<Key: Ord, Value, Storage> CacheStorageMap<Key, Value, Storage>
 where
-    Key: Ord + FullEncode + Copy + Clone,
+    Key: Ord + FullEncode + Clone,
     Value: FullCodec + Clone,
     Storage: StorageMap<Key, Value>,
 {
@@ -58,17 +58,33 @@ where
         }
     }
 
-    pub fn get(&mut self, key: Key) -> Option<&Value> {
-        if !self.cache.contains_key(&key) {
-            if let Ok(value) = Storage::try_get(key) {
-                self.cache.insert(key, Some(Item::cache(value)));
+    pub fn contains_key(&self, key: &Key) -> bool {
+        if let Some(maybe_item) = self.cache.get(key) {
+            if let Some(item) = maybe_item {
+                item.state != State::Removed
             } else {
-                self.cache.insert(key, None);
+                false
+            }
+        } else {
+            Storage::contains_key(key)
+        }
+    }
+
+    pub fn get(&mut self, key: &Key) -> Option<&Value> {
+        if !self.cache.contains_key(&key) {
+            if let Ok(value) = Storage::try_get(key.clone()) {
+                self.cache.insert(key.clone(), Some(Item::cache(value)));
+            } else {
+                self.cache.insert(key.clone(), None);
             }
         }
 
-        if let Some(Some(item)) = self.cache.get(&key) {
-            Some(&item.value)
+        if let Some(Some(item)) = self.cache.get(key) {
+            if item.state != State::Removed {
+                Some(&item.value)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -78,9 +94,17 @@ where
         self.cache.insert(key, Some(Item::new(value)));
     }
 
-    pub fn remove(&mut self, key: Key) {
-        if let Some(Some(item)) = self.cache.get_mut(&key) {
-            item.remove();
+    pub fn remove(&mut self, key: &Key) {
+        if let Some(maybe_item) = self.cache.get_mut(key) {
+            if let Some(item) = maybe_item {
+                item.remove()
+            }
+        } else {
+            if let Ok(value) = Storage::try_get(key) {
+                self.cache.insert(key.clone(), Some(Item::removed(value)));
+            } else {
+                self.cache.insert(key.clone(), None);
+            }
         }
     }
 

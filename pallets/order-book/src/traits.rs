@@ -28,7 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, PriceOrders, UserOrders};
+use crate::{
+    Config, LimitOrder, MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders,
+};
 use assets::AssetIdOf;
 use frame_support::sp_runtime::DispatchError;
 
@@ -39,10 +41,10 @@ where
 {
     /// Returns the limit order if exists, otherwise returns error.
     fn get_limit_order(
-        &self,
+        &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
-    ) -> Result<&LimitOrder<T>, DispatchError>;
+    ) -> Result<LimitOrder<T>, DispatchError>;
 
     /// Inserts limit order consistently in all necessary storages.
     /// Must check before call. If returns error, it means we have problems with data consistency.
@@ -50,15 +52,16 @@ where
     fn insert_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        order: LimitOrder<T>,
     ) -> Result<(), DispatchError>;
 
-    /// Updates limit order.
+    /// Updates the amount of the limit order.
     /// If order doesn't exist - return error
-    fn update_limit_order(
+    fn update_limit_order_amount(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
+        order_id: T::OrderId,
+        new_amount: OrderVolume,
     ) -> Result<(), DispatchError>;
 
     /// Deletes limit order consistently from all necessary storages.
@@ -72,37 +75,34 @@ where
 
     /// Returns order ids of orders inside the bid price
     fn get_bids(
-        &self,
+        &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        price: OrderPrice,
-    ) -> Result<&PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
+        price: &OrderPrice,
+    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
 
     /// Returns order ids of orders inside the ask price
     fn get_asks(
-        &self,
+        &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        price: OrderPrice,
-    ) -> Result<&PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
+        price: &OrderPrice,
+    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
 
     /// Returns all bid prices with their volumes
     fn get_aggregated_bids(
-        &self,
+        &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<&MarketSide<T::MaxSidePrices>, DispatchError>;
+    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError>;
 
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
-        &self,
+        &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<&MarketSide<T::MaxSidePrices>, DispatchError>;
+    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError>;
 
     /// Returns order ids of user
     fn get_user_limit_orders(
-        &self,
+        &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<
-        &UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
-        DispatchError,
-    >;
+    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>>;
 }

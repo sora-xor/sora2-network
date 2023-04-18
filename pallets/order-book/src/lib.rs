@@ -53,9 +53,11 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+mod cache_data_layer;
 mod limit_order;
 mod market_order;
 mod order_book;
+mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
@@ -279,10 +281,20 @@ pub mod pallet {
         UnknownOrderBook,
         /// Order book already exists for this trading pair
         OrderBookAlreadyExists,
+        /// Limit order does not exist for this trading pair and order id
+        UnknownLimitOrder,
+        /// Limit order already exists for this trading pair and order id
+        LimitOrderAlreadyExists,
         /// It is impossible to insert the limit order because the bounds have been reached
         LimitOrderStorageOverflow,
+        /// It is impossible to update the limit order
+        UpdateLimitOrderError,
         /// It is impossible to delete the limit order
         DeleteLimitOrderError,
+        /// There are no bids/asks for the price
+        NoDataForPrice,
+        /// There are no aggregated bids/asks for the order book
+        NoAggregatedData,
         /// There is not enough liquidity in the order book to cover the deal
         NotEnoughLiquidity,
         /// Cannot create order book with equal base and target assets

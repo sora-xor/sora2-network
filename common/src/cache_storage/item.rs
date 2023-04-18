@@ -56,6 +56,13 @@ impl<Value: Clone> Item<Value> {
         }
     }
 
+    pub fn removed(value: Value) -> Self {
+        Self {
+            value: value,
+            state: State::Removed,
+        }
+    }
+
     pub fn remove(&mut self) {
         self.state = State::Removed;
     }
