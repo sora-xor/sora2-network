@@ -33,6 +33,8 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
+use frame_support::sp_runtime::SaturatedConversion;
+use frame_support::traits::UnixTime;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
@@ -92,7 +94,21 @@ pub use pallet::*;
 
 impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
-        Ok(Self::rates(symbol).map(|rate| rate.into()))
+        let rate = if let Some(rate) = Self::rates(symbol) {
+            rate
+        } else {
+            return Ok(None);
+        };
+
+        let current_time = T::UnixTime::now().as_millis().saturated_into::<u64>();
+        let stale_period = T::GetBandRateStalePeriod::get();
+        let current_period = current_time
+            .checked_sub(rate.last_updated)
+            .ok_or(Error::<T, I>::RateHasInvalidTimestamp)?;
+
+        ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
+
+        Ok(Some(rate.into()))
     }
 
     fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
@@ -135,6 +151,11 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         /// Hook which is being executed when some new symbols were relayed
         type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
+        /// Rate expiration period in seconds.
+        #[pallet::constant]
+        type GetBandRateStalePeriod: Get<u64>;
+        /// Time used for checking if rate expired
+        type UnixTime: UnixTime;
     }
 
     #[pallet::storage]
@@ -168,6 +189,10 @@ pub mod pallet {
         NoSuchRelayer,
         /// Relayed rate is too big to be stored in the pallet.
         RateConversionOverflow,
+        /// Rate has invalid timestamp.
+        RateHasInvalidTimestamp,
+        /// Rate is expired and can't be used until next update.
+        RateExpired,
     }
 
     #[pallet::call]

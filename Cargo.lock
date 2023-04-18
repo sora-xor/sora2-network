@@ -688,6 +688,7 @@ dependencies = [
  "hex-literal",
  "oracle-proxy",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -4667,6 +4668,7 @@ dependencies = [
  "vested-rewards-runtime-api",
  "xor-fee",
  "xst",
+ "xst-benchmarking",
 ]
 
 [[package]]
@@ -7016,13 +7018,13 @@ dependencies = [
 [[package]]
 name = "mmr-gadget"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "futures 0.3.28",
  "log",
  "parity-scale-codec",
  "sc-client-api",
- "sc-offchain 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-offchain 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-api",
  "sp-beefy",
  "sp-blockchain",
@@ -7670,6 +7672,7 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -10784,7 +10787,7 @@ dependencies = [
 [[package]]
 name = "sc-network-common"
 version = "0.10.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "async-trait",
  "bitflags",
@@ -10796,7 +10799,7 @@ dependencies = [
  "parity-scale-codec",
  "prost-build",
  "sc-consensus",
- "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "serde",
  "smallvec 1.10.0",
  "sp-blockchain",
@@ -10926,7 +10929,7 @@ dependencies = [
 [[package]]
 name = "sc-offchain"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "array-bytes",
  "bytes",
@@ -10942,9 +10945,9 @@ dependencies = [
  "parking_lot 0.12.1",
  "rand 0.8.5",
  "sc-client-api",
- "sc-network-common 0.10.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
- "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-network-common 0.10.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sc-peerset 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
+ "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-api",
  "sp-core",
  "sp-offchain",
@@ -10986,12 +10989,12 @@ dependencies = [
 [[package]]
 name = "sc-peerset"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "futures 0.3.28",
  "libp2p",
  "log",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "serde_json",
  "wasm-timer",
 ]
@@ -11325,7 +11328,7 @@ dependencies = [
 [[package]]
 name = "sc-utils"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "backtrace",
  "futures 0.3.28",
@@ -12194,7 +12197,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -12613,7 +12616,7 @@ dependencies = [
 [[package]]
 name = "sp-weights"
 version = "4.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -12621,7 +12624,7 @@ dependencies = [
  "smallvec 1.10.0",
  "sp-arithmetic",
  "sp-core",
- "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sp-debug-derive 5.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "sp-std",
 ]
 
@@ -15163,7 +15166,7 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core",
- "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.38)",
+ "sp-weights 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38)",
  "xcm-procedural",
 ]
 
@@ -15227,17 +15230,18 @@ name = "xst"
 version = "1.0.1"
 dependencies = [
  "assets",
+ "band",
  "ceres-liquidity-locker",
  "common",
  "demeter-farming-platform",
  "dex-api",
  "dex-manager",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
  "liquidity-proxy",
  "mock-liquidity-source",
+ "oracle-proxy",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -15257,6 +15261,42 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "xst-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "band",
+ "ceres-liquidity-locker",
+ "common",
+ "demeter-farming-platform",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "mock-liquidity-source",
+ "oracle-proxy",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+ "xst",
 ]
 
 [[package]]

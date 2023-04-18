@@ -28,13 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as xstpool, Config};
+use crate::Config;
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, FixedWrapper, PriceToolsPallet};
+use common::prelude::Balance;
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    FromGenericPair, PredefinedAssetId, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT,
-    VAL, XOR, XST, XSTUSD,
+    FromGenericPair, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -96,8 +95,8 @@ parameter_types! {
     pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
-            crate::TECH_ACCOUNT_PREFIX.to_vec(),
-            crate::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+            xst::TECH_ACCOUNT_PREFIX.to_vec(),
+            xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
         );
         tech_account_id
     };
@@ -128,14 +127,14 @@ construct_runtime! {
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
-        XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
+        XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Storage},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
-        PriceTools: price_tools::{Pallet, Storage, Event<T>},
+        PriceTools: price_tools::{Pallet, Call, Storage, Event<T>}
     }
 }
 
@@ -180,13 +179,13 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = ();
 }
 
-impl Config for Runtime {
+impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
     type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = price_tools::Pallet<Runtime>;
-    type Oracle = oracle_proxy::Pallet<Runtime>;
+    type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
     type WeightInfo = ();
 }
@@ -195,16 +194,16 @@ impl band::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Symbol = common::SymbolName;
     type WeightInfo = ();
-    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type OnNewSymbolsRelayedHook = OracleProxy;
     type UnixTime = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 impl oracle_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type Symbol = <Runtime as band::Config>::Symbol;
-    type BandChainOracle = band::Pallet<Runtime>;
+    type BandChainOracle = Band;
 }
 
 impl tokens::Config for Runtime {
@@ -300,7 +299,6 @@ impl pswap_distribution::Config for Runtime {
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type RuntimeEvent = RuntimeEvent;
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
@@ -311,13 +309,8 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type GetXSTAssetId = GetSyntheticBaseAssetId;
     type BuyBackHandler = ();
-}
-
-impl price_tools::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type LiquidityProxy = ();
-    type WeightInfo = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -350,6 +343,8 @@ impl pallet_timestamp::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl Config for Runtime {}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type RuntimeEvent = RuntimeEvent;
@@ -359,33 +354,10 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
-pub fn set_mock_price<T: Config>(
-    asset_id: &AssetId,
-    price: Balance,
-    buy_ratio: Balance,
-    sell_ratio: Balance,
-) where
-    T: price_tools::Config + assets::Config<AssetId = common::AssetId32<PredefinedAssetId>>,
-{
-    let _ = price_tools::Pallet::<T>::register_asset(asset_id);
-
-    let price_buy = (FixedWrapper::from(price) * buy_ratio).into_balance();
-    let price_sell = (FixedWrapper::from(price) * sell_ratio).into_balance();
-
-    for _ in 0..31 {
-        price_tools::Pallet::<T>::incoming_spot_price(
-            asset_id.into(),
-            price_buy,
-            PriceVariant::Buy,
-        )
-        .expect("Failed to relay spot price");
-        price_tools::Pallet::<T>::incoming_spot_price(
-            asset_id.into(),
-            price_sell,
-            PriceVariant::Sell,
-        )
-        .expect("Failed to relay spot price");
-    }
+impl price_tools::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type LiquidityProxy = ();
+    type WeightInfo = ();
 }
 
 pub struct ExtBuilder {
@@ -395,8 +367,6 @@ pub struct ExtBuilder {
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    // Vec<(AssetId, Price, Buy fee ratio, Sell fee ratio)>
-    initial_prices: Vec<(AssetId, Balance, Balance, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -486,36 +456,11 @@ impl Default for ExtBuilder {
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-            initial_prices: vec![
-                (VAL, balance!(2), balance!(0.993), balance!(1.007)),
-                (XST, balance!(0.64), balance!(0.993), balance!(1.007)),
-                (XSTUSD, balance!(100), balance!(1), balance!(1)),
-                (DAI, balance!(100), balance!(1), balance!(1)),
-                (PSWAP, balance!(10), balance!(0.993), balance!(1.007)),
-            ],
         }
     }
 }
 
 impl ExtBuilder {
-    pub fn new(
-        endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
-        endowed_accounts_with_synthetics: Vec<(
-            AccountId,
-            AssetId,
-            Balance,
-            AssetSymbol,
-            AssetName,
-            u8,
-        )>,
-    ) -> Self {
-        Self {
-            endowed_accounts,
-            endowed_accounts_with_synthetics,
-            ..Default::default()
-        }
-    }
-
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -539,17 +484,17 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         technical::GenesisConfig::<Runtime> {
             register_tech_accounts: vec![(
                 GetXSTPoolPermissionedAccountId::get(),
                 GetXSTPoolPermissionedTechAccountId::get(),
             )],
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -585,7 +530,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        crate::GenesisConfig::<Runtime>::default()
+        xst::GenesisConfig::<Runtime>::default()
             .assimilate_storage(&mut t)
             .unwrap();
 
@@ -600,14 +545,6 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        let mut ext: sp_io::TestExternalities = t.into();
-        ext.execute_with(|| {
-            self.initial_prices
-                .into_iter()
-                .for_each(|(asset_id, price, buy_r, sell_r)| {
-                    set_mock_price::<Runtime>(&asset_id, price, buy_r, sell_r)
-                })
-        });
-        ext
+        t.into()
     }
 }
