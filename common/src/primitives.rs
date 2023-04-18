@@ -770,11 +770,13 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 /// Code of purpose for technical account.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
 pub enum TechPurpose<AssetId> {
-    FeeCollector,
-    FeeCollectorForPair(TradingPair<AssetId>),
-    LiquidityKeeper(TradingPair<AssetId>),
-    Identifier(Vec<u8>),
+    FeeCollector = 0,
+    FeeCollectorForPair(TradingPair<AssetId>) = 1,
+    LiquidityKeeper(TradingPair<AssetId>) = 2,
+    Identifier(Vec<u8>) = 3,
+    OrderLiquidityKeeper(TradingPair<AssetId>) = 4,
 }
 
 /// Enum encoding of technical account id, pure and wrapped records.
@@ -1047,6 +1049,39 @@ mod tests {
 
         // should not panic
         serde_json::to_value(&BalanceWrapper(balance)).unwrap();
+    }
+
+    fn get_variant_number<TEnum>(tech_acc: TEnum) -> u8
+    where
+        TEnum: Encode,
+    {
+        tech_acc.encode()[0]
+    }
+
+    #[test]
+    fn should_keep_variant_number() {
+        let mock_pair = TradingPair {
+            base_asset_id: crate::mock::ComicAssetId::RedPepper.into(),
+            target_asset_id: crate::mock::ComicAssetId::BlackPepper.into(),
+        };
+        let fee: TechPurpose<AssetId32<crate::mock::ComicAssetId>> = TechPurpose::FeeCollector;
+        let fee_pair: TechPurpose<AssetId32<crate::mock::ComicAssetId>> =
+            TechPurpose::FeeCollectorForPair(mock_pair);
+        let keeper: TechPurpose<AssetId32<crate::mock::ComicAssetId>> =
+            TechPurpose::LiquidityKeeper(mock_pair);
+        let id: TechPurpose<AssetId32<crate::mock::ComicAssetId>> = TechPurpose::Identifier(vec![]);
+        let order: TechPurpose<AssetId32<crate::mock::ComicAssetId>> =
+            TechPurpose::OrderLiquidityKeeper(mock_pair);
+        println!("{}", fee.encode().len());
+        assert_eq!(get_variant_number(fee), 0);
+        println!("{}", fee_pair.encode().len());
+        assert_eq!(get_variant_number(fee_pair), 1);
+        println!("{}", keeper.encode().len());
+        assert_eq!(get_variant_number(keeper), 2);
+        println!("{}", id.encode().len());
+        assert_eq!(get_variant_number(id), 3);
+        println!("{}", order.encode().len());
+        assert_eq!(get_variant_number(order), 4);
     }
 }
 
