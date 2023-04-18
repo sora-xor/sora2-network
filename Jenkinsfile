@@ -14,7 +14,7 @@ String secretScannerExclusion = '.*Cargo.toml\$|.*pr.sh\$'
 Boolean disableSecretScanner  = false
 int sudoCheckStatus           = 0
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev','trustless-evm-bridge': 'bridge']
+Map pushTags                  = ['master': 'latest', 'develop': 'dev']
 
 String contractsPath          = 'ethereum-bridge-contracts'
 String contractsEnvFile       = 'env.template'

@@ -30,7 +30,7 @@
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode, MaxEncodedLen};
-use core::fmt::Debug;
+use core::{fmt::Debug, str::FromStr};
 use frame_support::dispatch::{DispatchError, TypeInfo};
 use frame_support::traits::ConstU32;
 use frame_support::{ensure, BoundedVec, RuntimeDebug};
@@ -47,7 +47,6 @@ use {
     serde::{Deserialize, Serialize},
     sp_std::convert::TryInto,
     sp_std::fmt::Display,
-    sp_std::str::FromStr,
     static_assertions::_core::fmt::Formatter,
 };
 
@@ -270,6 +269,24 @@ impl<AssetId> AssetId32<AssetId> {
         let mut bytes = [0u8; 32];
         bytes[0] = 2;
         bytes[2] = asset_id as u8;
+        Self::from_bytes(bytes)
+    }
+
+    /// Construct asset id for synthetic asset using its `reference_symbol`
+    pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
+    where
+        Symbol: From<SymbolName> + PartialEq + Encode,
+    {
+        if *reference_symbol == SymbolName::usd().into() {
+            return Self::from_asset_id(PredefinedAssetId::XSTUSD);
+        }
+
+        let mut bytes = [0u8; 32];
+        let symbol_bytes = reference_symbol.encode();
+        let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
+        bytes[0] = 3;
+        bytes[2..18].copy_from_slice(&symbol_hash);
+
         Self::from_bytes(bytes)
     }
 }
@@ -530,7 +547,12 @@ impl IsValid for Description {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
 
-#[cfg(feature = "std")]
+impl SymbolName {
+    pub fn usd() -> Self {
+        Self::from_str("USD").expect("`USD` is a valid symbol name")
+    }
+}
+
 impl FromStr for SymbolName {
     type Err = &'static str;
 

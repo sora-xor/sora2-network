@@ -28,62 +28,32 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use frame_support::weights::Weight;
-use sp_std::marker::PhantomData;
+use crate::{
+    migrations::{BaseFee, EnabledSynthetics as OldEnabledSynthetics, PermissionedTechAccount},
+    mock::*,
+    pallet::Pallet,
+    EnabledSynthetics,
+};
+use common::{fixed, Fixed, XSTUSD};
+use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
 
-/// Weight functions for `xst`.
-pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn set_reference_asset() -> Weight {
-        Weight::zero()
-    }
-    fn enable_synthetic_asset() -> Weight {
-        Weight::zero()
-    }
-    fn disable_synthetic_asset() -> Weight {
-        Weight::zero()
-    }
-    fn register_synthetic_asset() -> Weight {
-        Weight::zero()
-    }
-    fn set_synthetic_asset_fee() -> Weight {
-        Weight::zero()
-    }
-    fn set_synthetic_base_asset_floor_price() -> Weight {
-        Weight::zero()
-    }
-    fn quote() -> Weight {
-        Weight::zero()
-    }
-    fn exchange() -> Weight {
-        Weight::zero()
-    }
-}
+#[test]
+fn test() {
+    ExtBuilder::default().build().execute_with(|| {
+        StorageVersion::new(1).put::<Pallet<Runtime>>();
+        BaseFee::<Runtime>::put::<Fixed>(fixed!(0.00666));
 
-impl crate::WeightInfo for () {
-    fn set_reference_asset() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn enable_synthetic_asset() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn disable_synthetic_asset() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn register_synthetic_asset() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn set_synthetic_asset_fee() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn set_synthetic_base_asset_floor_price() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn quote() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn exchange() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
+        super::CustomSyntheticsUpgrade::<Runtime>::on_runtime_upgrade();
+
+        let info = EnabledSynthetics::<Runtime>::get(XSTUSD)
+            .expect("XSTUSD synthetic should be enabled after migration");
+
+        assert_eq!(info.reference_symbol, common::SymbolName::usd().into());
+        assert_eq!(info.fee_ratio, fixed!(0.00666));
+        assert!(!BaseFee::<Runtime>::exists());
+        assert!(!PermissionedTechAccount::<Runtime>::exists());
+        assert!(!OldEnabledSynthetics::<Runtime>::exists());
+
+        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
+    });
 }
