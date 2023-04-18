@@ -33,7 +33,6 @@
 #![cfg(feature = "runtime-benchmarks")]
 // order-book
 #![cfg(feature = "wip")]
-// order-book
 // now it works only as benchmarks, not as unit tests
 // TODO fix when new approach be developed
 #![cfg(not(test))]
