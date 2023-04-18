@@ -72,6 +72,53 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
+fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
+    #[cfg(not(test))]
+    {
+        use common::{XOR, XST};
+        let authority = alice::<T>();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            PSWAP.into(),
+        )
+        .unwrap();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            XST.into(),
+        )
+        .unwrap();
+        Assets::<T>::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
+        Assets::<T>::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
+        Assets::<T>::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            XST.into(),
+            balance!(10000),
+            balance!(100000),
+            balance!(10000),
+            balance!(100000),
+        )
+        .unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            PSWAP.into(),
+            balance!(10000),
+            balance!(1000000),
+            balance!(10000),
+            balance!(1000000),
+        )
+        .unwrap();
+    }
+}
+
 fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32) {
     let authority = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&authority);
@@ -82,6 +129,7 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
         permissions::Scope::Unlimited,
     )
     .unwrap();
+    setup_benchmark_pool_xyk::<T>();
     for i in 1u128..10 {
         let pool_fee_account = create_account::<T>(b"pool_fee".to_vec(), i);
         frame_system::Pallet::<T>::inc_providers(&pool_fee_account);

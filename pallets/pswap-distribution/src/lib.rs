@@ -60,11 +60,7 @@ type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 
-pub trait WeightInfo {
-    fn claim_incentive() -> Weight;
-    fn on_initialize_intensive() -> Weight;
-    fn on_initialize_regular() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.

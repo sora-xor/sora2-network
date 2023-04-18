@@ -65,6 +65,7 @@ type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, Li
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -238,15 +239,6 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
             vec_1.push(el);
         }
     }
-}
-
-pub trait WeightInfo {
-    fn enable_liquidity_source() -> Weight;
-    fn disable_liquidity_source() -> Weight;
-    fn check_indivisible_assets() -> Weight;
-    fn new_trivial() -> Weight;
-    fn is_forbidden_filter() -> Weight;
-    fn list_liquidity_sources() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -1293,11 +1285,11 @@ impl<T: Config> Pallet<T> {
             }
 
             weight = weight.saturating_add(
-                assets::weights::WeightInfo::<T>::transfer()
+                <T as assets::Config>::WeightInfo::transfer()
                     .saturating_mul(swap_batch_info.receivers.len() as u64),
             );
         }
-        weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
+        weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
         weight
     }
@@ -1900,7 +1892,7 @@ impl<T: Config> Pallet<T> {
                 )
             },
         )?;
-        Ok(assets::weights::WeightInfo::<T>::transfer().saturating_mul(len as u64))
+        Ok(<T as assets::Config>::WeightInfo::transfer().saturating_mul(len as u64))
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
@@ -2285,7 +2277,7 @@ pub mod pallet {
                 adar_commission,
             )
             .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
-            weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
+            weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Ok(PostDispatchInfo {
                 actual_weight: Some(weight),

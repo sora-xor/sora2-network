@@ -1,5 +1,6 @@
-use crate::{Config, PollData, PollInfo, Timestamp, Weight};
+use crate::{Config, PollData, PollInfo, Timestamp};
 use common::convert_block_number_to_timestamp;
+use frame_support::dispatch::Weight;
 use frame_support::log;
 use frame_support::traits::Get;
 
