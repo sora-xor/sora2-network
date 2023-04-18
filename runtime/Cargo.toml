@@ -95,6 +95,7 @@ vested-rewards = { path = "../pallets/vested-rewards", default-features = false 
 vested-rewards-runtime-api = { path = "../pallets/vested-rewards/runtime-api", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xst = { path = "../pallets/xst", default-features = false }
+xst-benchmarking = { path = "../pallets/xst/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -282,6 +283,7 @@ std = [
     "vested-rewards-runtime-api/std",
     "xor-fee/std",
     "xst/std",
+    "xst-benchmarking/std",
 ]
 
 private-net = [
@@ -372,7 +374,8 @@ runtime-benchmarks = [
     "price-tools/runtime-benchmarks",
     "vested-rewards/runtime-benchmarks",
     "xor-fee/runtime-benchmarks",
-    "xst/runtime-benchmarks",
+    "xst-benchmarking",
+    "xst-benchmarking/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

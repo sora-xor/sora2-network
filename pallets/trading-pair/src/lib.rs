@@ -78,6 +78,42 @@ impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for
 }
 
 impl<T: Config> Pallet<T> {
+    pub fn register_pair(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Result<(), DispatchError> {
+        ensure!(
+            base_asset_id != target_asset_id,
+            Error::<T>::IdenticalAssetIds
+        );
+
+        let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
+        ensure!(
+            base_asset_id == dex_info.base_asset_id
+                || base_asset_id == dex_info.synthetic_base_asset_id,
+            Error::<T>::ForbiddenBaseAssetId
+        );
+        Assets::<T>::ensure_asset_exists(&base_asset_id)?;
+        Assets::<T>::ensure_asset_exists(&target_asset_id)?;
+
+        let trading_pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        ensure!(
+            Self::enabled_sources(&dex_id, &trading_pair).is_none(),
+            Error::<T>::TradingPairExists
+        );
+        EnabledSources::<T>::insert(
+            &dex_id,
+            &trading_pair,
+            BTreeSet::<LiquiditySourceType>::new(),
+        );
+        Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
+        Ok(().into())
+    }
+
     pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
         DEXManager::<T>::ensure_dex_exists(dex_id)?;
         Ok(EnabledSources::<T>::iter_prefix(dex_id)
@@ -201,32 +237,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _author =
                 T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
-            let dex_info = DEXManager::<T>::get_dex_info(&dex_id)?;
-            ensure!(
-                base_asset_id == dex_info.base_asset_id
-                    || base_asset_id == dex_info.synthetic_base_asset_id,
-                Error::<T>::ForbiddenBaseAssetId
-            );
-            Assets::<T>::ensure_asset_exists(&base_asset_id)?;
-            Assets::<T>::ensure_asset_exists(&target_asset_id)?;
-            ensure!(
-                base_asset_id != target_asset_id,
-                Error::<T>::IdenticalAssetIds
-            );
-            let trading_pair = TradingPair::<T> {
-                base_asset_id,
-                target_asset_id,
-            };
-            ensure!(
-                Self::enabled_sources(&dex_id, &trading_pair).is_none(),
-                Error::<T>::TradingPairExists
-            );
-            EnabledSources::<T>::insert(
-                &dex_id,
-                &trading_pair,
-                BTreeSet::<LiquiditySourceType>::new(),
-            );
-            Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
+            Self::register_pair(dex_id, base_asset_id, target_asset_id)?;
             Ok(().into())
         }
     }

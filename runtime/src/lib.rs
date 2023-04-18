@@ -1779,11 +1779,12 @@ parameter_types! {
 impl xst::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetXstPoolConversionAssetId;
-    type LiquidityProxy = LiquidityProxy;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = DEXManager;
-    type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
+    type Oracle = OracleProxy;
+    type Symbol = <Runtime as band::Config>::Symbol;
 }
 
 parameter_types! {
@@ -1948,11 +1949,17 @@ impl oracle_proxy::Config for Runtime {
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
+parameter_types! {
+    pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+}
+
 impl band::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Symbol = Symbol;
     type WeightInfo = band::weights::WeightInfo<Runtime>;
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type UnixTime = Timestamp;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
 parameter_types! {
@@ -3039,6 +3046,7 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -3066,7 +3074,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_launchpad, CeresLaunchpad);
             list_benchmark!(list, extra, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             list_benchmark!(list, extra, band, Band);
-            list_benchmark!(list, extra, xst, XSTPool);
+            list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
 
             #[cfg(feature = "wip")] // order-book
@@ -3103,11 +3111,13 @@ impl_runtime_apis! {
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
             use demeter_farming_platform_benchmarking::Pallet as DemeterFarmingPlatformBench;
+            use xst_benchmarking::Pallet as XSTPoolBench;
 
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
+            impl xst_benchmarking::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -3150,7 +3160,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
             add_benchmark!(params, batches, band, Band);
-            add_benchmark!(params, batches, xst, XSTPool);
+            add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
 
