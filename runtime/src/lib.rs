@@ -3065,7 +3065,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, vested_rewards, VestedRewards);
             list_benchmark!(list, extra, price_tools, PriceTools);
             list_benchmark!(list, extra, xor_fee, XorFee);
-            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
             list_benchmark!(list, extra, ceres_staking, CeresStaking);
             list_benchmark!(list, extra, hermes_governance_platform, HermesGovernancePlatform);
@@ -3074,7 +3073,6 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, ceres_governance_platform, CeresGovernancePlatform);
             list_benchmark!(list, extra, ceres_launchpad, CeresLaunchpad);
             list_benchmark!(list, extra, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
-            list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
             list_benchmark!(list, extra, band, Band);
             list_benchmark!(list, extra, xst, XSTPoolBench::<Runtime>);
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
@@ -3083,12 +3081,19 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, order_book, OrderBook);
 
             // Trustless bridge
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, eth_app, EthApp);
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, erc20_app, ERC20App);
+            #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, migration_app, MigrationApp);
+            #[cfg(feature = "wip")] // Bridges
             list_benchmark!(list, extra, evm_bridge_proxy, EvmBridgeProxy);
 
             let storage_info = AllPalletsWithSystem::storage_info();
@@ -3146,7 +3151,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
-            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, xor_fee, XorFee);
             add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
@@ -3155,7 +3159,6 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
             add_benchmark!(params, batches, ceres_launchpad, CeresLaunchpad);
             add_benchmark!(params, batches, demeter_farming_platform, DemeterFarmingPlatformBench::<Runtime>);
-            add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
             add_benchmark!(params, batches, band, Band);
             add_benchmark!(params, batches, xst, XSTPoolBench::<Runtime>);
             add_benchmark!(params, batches, hermes_governance_platform, HermesGovernancePlatform);
@@ -3165,12 +3168,19 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, order_book, OrderBook);
 
             // Trustless bridge
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, eth_app, EthApp);
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, erc20_app, ERC20App);
+            #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, migration_app, MigrationApp);
+            #[cfg(feature = "wip")] // Bridges
             add_benchmark!(params, batches, evm_bridge_proxy, EvmBridgeProxy);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
