@@ -288,7 +288,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
-    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
 impl demeter_farming_platform::Config for Runtime {
