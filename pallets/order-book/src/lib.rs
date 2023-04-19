@@ -37,6 +37,7 @@ use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    ToOrderTechUnitFromDEXAndTradingPair,
 };
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
@@ -65,9 +66,6 @@ pub use market_order::MarketOrder;
 
 #[cfg(feature = "wip")] // order-book
 pub use migrations::v1::InitializeTechnicalAccount;
-
-pub const TECH_ACCOUNT_PREFIX: &[u8] = b"order-book";
-pub const TECH_ACCOUNT_LOCK: &[u8] = b"lock";
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
@@ -595,6 +593,31 @@ impl<T: Config> Pallet<T> {
             account,
             amount.into(),
         )
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    fn register_tech_account(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_id =
+            <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+                dex_id,
+                trading_pair,
+            );
+        technical::Pallet::<T>::register_tech_account_id()
+    }
+
+    fn deregister_tech_account(
+        dex_id: &T::DEXId,
+        trading_pair: &OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_id =
+            <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+                dex_id,
+                trading_pair,
+            );
     }
 }
 

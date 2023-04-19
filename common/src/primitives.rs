@@ -774,7 +774,7 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 pub enum TechPurpose<AssetId> {
     FeeCollector = 0,
     FeeCollectorForPair(TradingPair<AssetId>) = 1,
-    LiquidityKeeper(TradingPair<AssetId>) = 2,
+    XykLiquidityKeeper(TradingPair<AssetId>) = 2,
     Identifier(Vec<u8>) = 3,
     OrderLiquidityKeeper(TradingPair<AssetId>) = 4,
 }
@@ -833,7 +833,7 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
     fn to_fee_account(&self) -> Option<Self> {
         match self {
             TechAccountId::Pure(dex, purpose) => match purpose {
-                TechPurpose::LiquidityKeeper(tpair) => Some(TechAccountId::Pure(
+                TechPurpose::XykLiquidityKeeper(tpair) => Some(TechAccountId::Pure(
                     dex.clone(),
                     TechPurpose::FeeCollectorForPair(tpair.clone()),
                 )),
@@ -845,14 +845,32 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
 }
 
 impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+    crate::traits::ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
     for TechAccountId<AccountId, AssetId, DEXId>
 {
-    fn to_tech_unit_from_dex_and_trading_pair(
+    fn to_xyk_tech_unit_from_dex_and_trading_pair(
         dex_id: DEXId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
-        TechAccountId::Pure(dex_id.clone(), TechPurpose::LiquidityKeeper(trading_pair))
+        TechAccountId::Pure(
+            dex_id.clone(),
+            TechPurpose::XykLiquidityKeeper(trading_pair),
+        )
+    }
+}
+
+impl<AccountId, AssetId, DEXId: Clone>
+    crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+    for TechAccountId<AccountId, AssetId, DEXId>
+{
+    fn to_order_tech_unit_from_dex_and_trading_pair(
+        dex_id: DEXId,
+        trading_pair: TradingPair<AssetId>,
+    ) -> Self {
+        TechAccountId::Pure(
+            dex_id.clone(),
+            TechPurpose::OrderLiquidityKeeper(trading_pair),
+        )
     }
 }
 

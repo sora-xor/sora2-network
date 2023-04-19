@@ -34,7 +34,7 @@ use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    AccountIdOf, DexInfoProvider, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, TradingPair,
+    AccountIdOf, DexInfoProvider, ToFeeAccount, ToXykTechUnitFromDEXAndTradingPair, TradingPair,
 };
 
 use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
@@ -117,7 +117,7 @@ impl<T: Config> Pallet<T> {
         };
         Ok((
             tpair,
-            TechAccountIdOf::<T>::to_tech_unit_from_dex_and_trading_pair(dex_id, tpair),
+            TechAccountIdOf::<T>::to_xyk_tech_unit_from_dex_and_trading_pair(dex_id, tpair),
         ))
     }
 

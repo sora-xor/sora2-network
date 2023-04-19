@@ -285,7 +285,10 @@ pub mod pallet {
             + FromGenericPair
             + MaybeSerializeDeserialize
             + common::ToFeeAccount
-            + common::ToTechUnitFromDEXAndTradingPair<
+            + common::ToXykTechUnitFromDEXAndTradingPair<
+                DEXIdOf<Self>,
+                common::TradingPair<TechAssetIdOf<Self>>,
+            > + common::ToOrderTechUnitFromDEXAndTradingPair<
                 DEXIdOf<Self>,
                 common::TradingPair<TechAssetIdOf<Self>>,
             > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DEXId>>;
