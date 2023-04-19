@@ -31,12 +31,11 @@
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
-use frame_support::dispatch::{DispatchError, TypeInfo};
+use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
 use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
-use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -319,12 +318,11 @@ where
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId> TryFrom<AssetId32<AssetId>> for TechAssetId<AssetId>
+impl<AssetId> From<AssetId32<AssetId>> for TechAssetId<AssetId>
 where
     TechAssetId<AssetId>: Decode,
 {
-    type Error = DispatchError;
-    fn try_from(compat: AssetId32<AssetId>) -> Result<Self, Self::Error> {
+    fn from(compat: AssetId32<AssetId>) -> Self {
         let can_fail = || {
             let code = compat.code;
             let end = (code[0] as usize) + 1;
@@ -333,8 +331,8 @@ where
             TechAssetId::<AssetId>::decode(&mut frag)
         };
         match can_fail() {
-            Ok(v) => Ok(v),
-            Err(_) => Ok(TechAssetId::<AssetId>::Escaped(compat.code)),
+            Ok(v) => v,
+            Err(_) => TechAssetId::<AssetId>::Escaped(compat.code),
         }
     }
 }

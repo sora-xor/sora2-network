@@ -40,7 +40,6 @@ use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
-use sp_std::convert::TryFrom;
 
 #[cfg(test)]
 mod mock;
@@ -273,7 +272,7 @@ pub mod pallet {
             + Member
             + Parameter
             + Into<AssetIdOf<Self>>
-            + TryFrom<AssetIdOf<Self>>;
+            + From<AssetIdOf<Self>>;
 
         /// Like AccountId but controlled by consensus, not signing by user.
         /// This extra traits exist here bacause no way to do it by constraints, problem exist with

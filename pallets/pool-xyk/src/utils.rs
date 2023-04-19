@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{ensure, fail};
 
@@ -42,11 +41,8 @@ use crate::bounds::*;
 use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 
 impl<T: Config> Pallet<T> {
-    /// Using try into to get Result with some error, after this convert Result into Option,
-    /// after this AssetDecodingError is used if None.
-    pub fn try_decode_asset(asset: AssetIdOf<T>) -> Result<TechAssetIdOf<T>, DispatchError> {
-        TryInto::<TechAssetIdOf<T>>::try_into(asset)
-            .map_err(|_| Error::<T>::AssetDecodingError.into())
+    pub fn decode_asset(asset: AssetIdOf<T>) -> TechAssetIdOf<T> {
+        Into::<TechAssetIdOf<T>>::into(asset)
     }
 
     pub fn decide_is_fee_from_destination(
@@ -103,11 +99,11 @@ impl<T: Config> Pallet<T> {
         let dexinfo = DEXManager::<T>::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let ba = Pallet::<T>::try_decode_asset(base_asset_id)?;
+        let ba = Pallet::<T>::decode_asset(base_asset_id);
         let ta = if base_asset_id == asset_a {
-            Pallet::<T>::try_decode_asset(asset_b)?
+            Pallet::<T>::decode_asset(asset_b)
         } else if base_asset_id == asset_b {
-            Pallet::<T>::try_decode_asset(asset_a)?
+            Pallet::<T>::decode_asset(asset_a)
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };

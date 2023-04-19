@@ -601,23 +601,25 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
-        let tech_id =
-            <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
-                dex_id,
-                trading_pair,
-            );
-        technical::Pallet::<T>::register_tech_account_id()
+        // let tech_id =
+        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+        //         dex_id,
+        //         trading_pair,
+        //     );
+        // technical::Pallet::<T>::register_tech_account_id()
+        todo!()
     }
 
     fn deregister_tech_account(
         dex_id: &T::DEXId,
         trading_pair: &OrderBookId<T>,
     ) -> Result<(), DispatchError> {
-        let tech_id =
-            <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
-                dex_id,
-                trading_pair,
-            );
+        // let tech_id =
+        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+        //         dex_id,
+        //         trading_pair,
+        //     );
+        todo!()
     }
 }
 
