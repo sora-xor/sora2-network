@@ -62,6 +62,13 @@ type System<T> = frame_system::Pallet<T>;
 
 pub use weights::WeightInfo;
 
+#[derive(Default, Clone)]
+pub struct DistributionWeightParams {
+    pub skipped: u32,
+    pub distributed: u32,
+    pub shareholders: u32,
+}
+
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
@@ -210,7 +217,7 @@ impl<T: Config> Pallet<T> {
         dex_id: &T::DEXId,
         pool_account: &AccountIdOf<T>,
         tech_account_id: &T::AccountId,
-    ) -> DispatchResult {
+    ) -> Result<u32, DispatchError> {
         common::with_transaction(|| {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
@@ -221,7 +228,7 @@ impl<T: Config> Pallet<T> {
                     dex_id.clone(),
                     fees_account_id.clone(),
                 ));
-                return Ok(());
+                return Ok(0);
             }
 
             let mut distribution = Self::calculate_and_burn_distribution(
@@ -234,24 +241,20 @@ impl<T: Config> Pallet<T> {
             let mut shareholders_distributed_amount = fixed_wrapper!(0);
 
             // Distribute incentive to shareholders.
-            let mut shareholders_num = 0u128;
+            let mut shareholders_num = 0u32;
             for (account_id, pool_tokens) in T::PoolXykPallet::pool_providers(pool_account) {
-                {
-                    let share = FixedWrapper::from(pool_tokens)
-                        * FixedWrapper::from(distribution.liquidity_providers)
-                        / FixedWrapper::from(pool_tokens_total);
-                    let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
+                let share = FixedWrapper::from(pool_tokens)
+                    * FixedWrapper::from(distribution.liquidity_providers)
+                    / FixedWrapper::from(pool_tokens_total);
+                let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
 
-                    ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                        *current = current.saturating_add(share)
-                    });
-                    ClaimableShares::<T>::mutate(|current| {
-                        *current = current.saturating_add(share)
-                    });
-                    shareholders_distributed_amount = shareholders_distributed_amount + share;
+                ShareholderAccounts::<T>::mutate(&account_id, |current| {
+                    *current = current.saturating_add(share)
+                });
+                ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
+                shareholders_distributed_amount = shareholders_distributed_amount + share;
 
-                    shareholders_num += 1;
-                }
+                shareholders_num += 1;
             }
 
             let undistributed_lp_amount = distribution.liquidity_providers.saturating_sub(
@@ -287,9 +290,9 @@ impl<T: Config> Pallet<T> {
                 fees_account_id.clone(),
                 incentive_asset_id,
                 distribution.liquidity_providers,
-                shareholders_num,
+                shareholders_num as u128,
             ));
-            Ok(())
+            Ok(shareholders_num)
         })
     }
 
@@ -355,10 +358,10 @@ impl<T: Config> Pallet<T> {
     /// Distributes incentives to all subscribed pools
     ///
     /// - `block_num`: The block number of the current chain head
-    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> bool {
+    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> DistributionWeightParams {
         let tech_account_id = T::GetTechnicalAccountId::get();
 
-        let mut distributing_count = 0;
+        let mut weight_params = DistributionWeightParams::default();
 
         for (fees_account, (dex_id, pool_account, frequency, block_offset)) in
             SubscribedAccounts::<T>::iter()
@@ -374,17 +377,24 @@ impl<T: Config> Pallet<T> {
                         &tech_account_id,
                     )
                 });
-                if let Err(err) = distribute_result {
-                    frame_support::log::error!("Incentive distribution failed: {err:?}");
-                    Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
-                        dex_id,
-                        fees_account,
-                    ));
+                match distribute_result {
+                    Ok(shareholders) => {
+                        weight_params.shareholders += shareholders;
+                    }
+                    Err(err) => {
+                        frame_support::log::error!("Incentive distribution failed: {err:?}");
+                        Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
+                            dex_id,
+                            fees_account,
+                        ));
+                    }
                 }
-                distributing_count += 1;
+                weight_params.distributed += 1;
+            } else {
+                weight_params.skipped += 1;
             }
         }
-        distributing_count > 0
+        weight_params
     }
 
     /// Updates the fees' burn rate. Used in
@@ -475,14 +485,13 @@ pub mod pallet {
         /// Perform exchange and distribution routines for all substribed accounts
         /// with respect to thir configured frequencies.
         fn on_initialize(block_num: T::BlockNumber) -> Weight {
-            let is_distributing = Self::incentive_distribution_routine(block_num);
+            let weight_params = Self::incentive_distribution_routine(block_num);
             Self::burn_rate_update_routine(block_num);
-
-            if is_distributing {
-                <T as Config>::WeightInfo::on_initialize_intensive()
-            } else {
-                <T as Config>::WeightInfo::on_initialize_regular()
-            }
+            <T as Config>::WeightInfo::on_initialize(
+                weight_params.skipped,
+                weight_params.distributed,
+                weight_params.shareholders,
+            )
         }
     }
 
