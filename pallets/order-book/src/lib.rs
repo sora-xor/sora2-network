@@ -332,6 +332,7 @@ pub mod pallet {
                 !<OrderBooks<T>>::contains_key(order_book_id),
                 Error::<T>::OrderBookAlreadyExists
             );
+            Self::register_tech_account(dex_id.clone(), order_book_id.clone())?;
 
             let order_book =
                 if T::AssetInfoProvider::get_asset_info(&order_book_id.target_asset_id).2 != 0 {
@@ -362,9 +363,11 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_book_id: OrderBookId<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            Self::deregister_tech_account(dex_id.clone(), order_book_id.clone())?;
             // todo (m.tagirov)
             todo!()
         }
