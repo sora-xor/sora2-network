@@ -65,7 +65,6 @@ use common::{
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
-use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
@@ -77,17 +76,7 @@ use tiny_keccak::{Hasher, Keccak};
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
-
-pub trait WeightInfo {
-    fn register() -> Weight;
-    fn transfer() -> Weight;
-    fn force_mint() -> Weight;
-    fn mint() -> Weight;
-    fn burn() -> Weight;
-    fn update_balance() -> Weight;
-    fn set_non_mintable() -> Weight;
-    fn update_info() -> Weight;
-}
+pub use weights::WeightInfo;
 
 pub type AssetIdOf<T> = <T as Config>::AssetId;
 pub type Permissions<T> = permissions::Pallet<T>;

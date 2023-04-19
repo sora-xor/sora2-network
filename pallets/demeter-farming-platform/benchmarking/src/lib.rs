@@ -15,6 +15,7 @@ use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
+use demeter_farming_platform::Call;
 use demeter_farming_platform::Pallet as DemeterFarmingPlatform;
 use frame_support::traits::Hooks;
 use frame_support::PalletId;
@@ -509,6 +510,119 @@ benchmarks! {
     verify {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::DepositFeeChanged(caller, XOR.into(), XOR.into(), CERES_ASSET_ID.into(), is_farm, deposit_fee).into());
     }
+
+    change_total_tokens {
+        let caller = AuthorityAccount::<T>::get();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let is_farm = true;
+        let total_tokens = balance!(100);
+        let team_account = alice::<T>();
+
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
+        );
+
+        // Add pool
+        let _ = DemeterFarmingPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            true,
+            2,
+            balance!(0.4),
+            true,
+        );
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        XOR.into(),
+        XOR.into(),
+        CERES_ASSET_ID.into(),
+        is_farm,
+        total_tokens
+    )
+    verify {
+        assert_last_event::<T>(demeter_farming_platform::Event::<T>::TotalTokensChanged(caller, XOR.into(), XOR.into(), CERES_ASSET_ID.into(), is_farm, total_tokens).into());
+    }
+
+    change_info {
+        let caller = alice::<T>();
+        let authority = AuthorityAccount::<T>::get();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let is_farm = false;
+        let reward_asset = CERES_ASSET_ID;
+        let pallet_account: AccountIdOf<T> = PalletId(*b"deofarms").into_account_truncating();
+
+        setup_benchmark_assets_only::<T>()?;
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(caller.clone()).into(),
+            reward_asset.into(),
+            caller.clone(),
+            balance!(20000)
+        );
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(caller.clone()).into(),
+            reward_asset.into(),
+            pallet_account.clone(),
+            balance!(20000)
+        );
+
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(authority.clone()).into(),
+            reward_asset.into(),
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            caller.clone()
+        );
+
+        // Add pool
+        let _ = DemeterFarmingPlatform::<T>::add_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            reward_asset.into(),
+            reward_asset.into(),
+            reward_asset.into(),
+            is_farm,
+            2,
+            balance!(0),
+            true,
+        );
+
+        let pooled_tokens = balance!(30);
+
+        // Deposit
+        let _ = DemeterFarmingPlatform::<T>::deposit(
+            RawOrigin::Signed(caller.clone()).into(),
+            reward_asset.into(),
+            reward_asset.into(),
+            reward_asset.into(),
+            is_farm,
+            pooled_tokens,
+        );
+    }: _(
+        RawOrigin::Signed(authority.clone()),
+        caller.clone().into(),
+        reward_asset.into(),
+        reward_asset.into(),
+        reward_asset.into(),
+        is_farm,
+        pooled_tokens * 2
+    )
+    verify {
+        assert_last_event::<T>(demeter_farming_platform::Event::<T>::InfoChanged(caller, reward_asset.into(), reward_asset.into(), reward_asset.into(), is_farm, pooled_tokens * 2).into());
+    }
+
 
     change_token_info {
         let caller = AuthorityAccount::<T>::get();

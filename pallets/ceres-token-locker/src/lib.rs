@@ -13,12 +13,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn lock_tokens() -> Weight;
-    fn withdraw_tokens() -> Weight;
-    fn change_fee() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]

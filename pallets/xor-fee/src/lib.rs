@@ -41,7 +41,7 @@ use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
-    Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
@@ -593,9 +593,7 @@ impl<T: Config> Pallet<T> {
 
 pub use pallet::*;
 
-pub trait WeightInfo {
-    fn update_multiplier() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {

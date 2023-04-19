@@ -111,7 +111,7 @@ pipeline {
                         if (getPushVersion(pushTags)) {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
-                                    featureList = 'private-net runtime-benchmarks main-net-coded'
+                                    featureList = 'private-net runtime-benchmarks'
                                     sudoCheckStatus = 101
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {

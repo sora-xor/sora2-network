@@ -39,29 +39,10 @@ mod mock;
 pub mod weights;
 
 use common::Balance;
-use frame_support::dispatch::Weight;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 
-pub trait WeightInfo {
-    fn reserve() -> Weight;
-    fn unreserve() -> Weight;
-    fn set_referrer() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn reserve() -> Weight {
-        Weight::zero()
-    }
-
-    fn unreserve() -> Weight {
-        Weight::zero()
-    }
-
-    fn set_referrer() -> Weight {
-        Weight::zero()
-    }
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
