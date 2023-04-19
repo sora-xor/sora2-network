@@ -54,8 +54,6 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub mod migrations;
-
 mod limit_order;
 mod market_order;
 mod order_book;
@@ -63,9 +61,6 @@ mod order_book;
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-
-#[cfg(feature = "wip")] // order-book
-pub use migrations::v1::InitializeTechnicalAccount;
 
 pub trait WeightInfo {
     fn create_orderbook() -> Weight;
