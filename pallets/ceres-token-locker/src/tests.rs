@@ -1,7 +1,7 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, AccountIdOf, AssetIdOf, Error};
-    use common::{balance, generate_storage_instance, Balance, CERES_ASSET_ID};
+    use common::{balance, generate_storage_instance, AssetInfoProvider, Balance, CERES_ASSET_ID};
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
@@ -14,7 +14,7 @@ mod tests {
         ext.execute_with(|| {
             assert_err!(
                 CeresTokenLocker::lock_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     pallet_timestamp::Pallet::<Runtime>::get() + 1,
                     balance!(0)
@@ -30,7 +30,7 @@ mod tests {
         ext.execute_with(|| {
             assert_err!(
                 CeresTokenLocker::lock_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     pallet_timestamp::Pallet::<Runtime>::get(),
                     balance!(1)
@@ -46,7 +46,7 @@ mod tests {
         ext.execute_with(|| {
             assert_err!(
                 CeresTokenLocker::lock_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     pallet_timestamp::Pallet::<Runtime>::get() + 1,
                     balance!(3000)
@@ -63,7 +63,7 @@ mod tests {
             let unlocking_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
             let locked_tokens = balance!(2000);
             assert_ok!(CeresTokenLocker::lock_tokens(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID,
                 unlocking_timestamp,
                 locked_tokens
@@ -109,7 +109,7 @@ mod tests {
         ext.execute_with(|| {
             assert_err!(
                 CeresTokenLocker::withdraw_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     pallet_timestamp::Pallet::<Runtime>::get() + 1,
                     balance!(0)
@@ -125,7 +125,7 @@ mod tests {
         ext.execute_with(|| {
             assert_err!(
                 CeresTokenLocker::withdraw_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     pallet_timestamp::Pallet::<Runtime>::get(),
                     balance!(1)
@@ -143,7 +143,7 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp + 1);
             assert_err!(
                 CeresTokenLocker::withdraw_tokens(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
                     1u32.into(),
                     balance!(1)
@@ -162,7 +162,7 @@ mod tests {
 
             // Lock tokens
             assert_ok!(CeresTokenLocker::lock_tokens(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID,
                 unlocking_timestamp,
                 locked_tokens
@@ -176,7 +176,7 @@ mod tests {
 
             // Unlock tokens
             assert_ok!(CeresTokenLocker::withdraw_tokens(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 CERES_ASSET_ID,
                 unlocking_timestamp,
                 locked_tokens
@@ -208,7 +208,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::change_fee(Origin::signed(ALICE), balance!(0.01)),
+                CeresTokenLocker::change_fee(RuntimeOrigin::signed(ALICE), balance!(0.01)),
                 Error::<Runtime>::Unauthorized
             );
         });
@@ -221,7 +221,7 @@ mod tests {
             let new_fee = balance!(0.01);
 
             assert_ok!(CeresTokenLocker::change_fee(
-                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                RuntimeOrigin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                 new_fee
             ));
 

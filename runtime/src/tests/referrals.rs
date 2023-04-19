@@ -30,11 +30,11 @@
 
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::SMALL_FEE;
-use common::XOR;
+use common::{AssetInfoProvider, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 
-use crate::{Assets, Currencies, Origin, Referrals, Runtime};
+use crate::{Assets, Currencies, Referrals, Runtime, RuntimeOrigin};
 
 type E = referrals::Error<Runtime>;
 
@@ -69,7 +69,7 @@ fn set_referrer_to_has_referrer() {
 fn reserve_insufficient_balance() {
     ext().execute_with(|| {
         assert_err!(
-            Referrals::reserve(Origin::signed(alice()), 1),
+            Referrals::reserve(RuntimeOrigin::signed(alice()), 1),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     })
@@ -79,20 +79,26 @@ fn reserve_insufficient_balance() {
 fn reserve_unreserve() {
     ext().execute_with(|| {
         assert_ok!(Currencies::update_balance(
-            Origin::root(),
+            RuntimeOrigin::root(),
             alice(),
             XOR.into(),
             SMALL_FEE as i128 * 3
         ));
 
-        assert_ok!(Referrals::reserve(Origin::signed(alice()), 3 * SMALL_FEE));
+        assert_ok!(Referrals::reserve(
+            RuntimeOrigin::signed(alice()),
+            3 * SMALL_FEE
+        ));
 
         assert!(referrals::ReferrerBalances::<Runtime>::contains_key(
             &alice()
         ));
 
         for _ in 0..3 {
-            assert_ok!(Referrals::unreserve(Origin::signed(alice()), SMALL_FEE));
+            assert_ok!(Referrals::unreserve(
+                RuntimeOrigin::signed(alice()),
+                SMALL_FEE
+            ));
         }
 
         assert_eq!(
@@ -120,13 +126,16 @@ fn withdraw_fee_insufficient_balance() {
 fn withdraw() {
     ext().execute_with(|| {
         assert_ok!(Currencies::update_balance(
-            Origin::root(),
+            RuntimeOrigin::root(),
             alice(),
             XOR.into(),
             SMALL_FEE as i128
         ));
 
-        assert_ok!(Referrals::reserve(Origin::signed(alice()), SMALL_FEE));
+        assert_ok!(Referrals::reserve(
+            RuntimeOrigin::signed(alice()),
+            SMALL_FEE
+        ));
 
         assert_ok!(Referrals::withdraw_fee(&alice(), SMALL_FEE));
     })

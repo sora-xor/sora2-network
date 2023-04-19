@@ -1,7 +1,7 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error};
-    use common::{balance, generate_storage_instance, CERES_ASSET_ID};
+    use common::{balance, generate_storage_instance, AssetInfoProvider, CERES_ASSET_ID};
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
     use frame_support::traits::Hooks;
@@ -17,7 +17,7 @@ mod tests {
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresGovernancePlatform::create_poll(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id,
                     1,
                     current_timestamp,
@@ -39,7 +39,7 @@ mod tests {
 
             assert_err!(
                 CeresGovernancePlatform::create_poll(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id.clone(),
                     3,
                     current_timestamp,
@@ -58,7 +58,7 @@ mod tests {
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_err!(
                 CeresGovernancePlatform::create_poll(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id,
                     2,
                     current_timestamp + 1,
@@ -78,7 +78,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 number_of_option,
                 poll_start_timestamp,
@@ -102,7 +102,7 @@ mod tests {
             let poll_start_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let poll_end_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 number_of_option,
                 poll_start_timestamp,
@@ -111,7 +111,7 @@ mod tests {
 
             assert_err!(
                 CeresGovernancePlatform::create_poll(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id.clone(),
                     number_of_option,
                     poll_start_timestamp,
@@ -128,7 +128,12 @@ mod tests {
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
             assert_err!(
-                CeresGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2, balance!(0)),
+                CeresGovernancePlatform::vote(
+                    RuntimeOrigin::signed(ALICE),
+                    poll_id,
+                    2,
+                    balance!(0)
+                ),
                 Error::<Runtime>::InvalidNumberOfVotes
             );
         });
@@ -141,7 +146,7 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 2,
                 current_timestamp + 2,
@@ -149,7 +154,7 @@ mod tests {
             ));
             assert_err!(
                 CeresGovernancePlatform::vote(
-                    Origin::signed(BOB),
+                    RuntimeOrigin::signed(BOB),
                     poll_id.clone(),
                     2,
                     balance!(10)
@@ -166,7 +171,7 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 2,
                 current_timestamp + 2,
@@ -177,7 +182,7 @@ mod tests {
 
             assert_err!(
                 CeresGovernancePlatform::vote(
-                    Origin::signed(BOB),
+                    RuntimeOrigin::signed(BOB),
                     poll_id.clone(),
                     2,
                     balance!(10)
@@ -194,7 +199,7 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 3,
                 current_timestamp,
@@ -202,7 +207,7 @@ mod tests {
             ));
             assert_err!(
                 CeresGovernancePlatform::vote(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id.clone(),
                     4,
                     balance!(50)
@@ -219,21 +224,21 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 3,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_ok!(CeresGovernancePlatform::vote(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 3,
                 balance!(50)
             ));
             assert_err!(
                 CeresGovernancePlatform::vote(
-                    Origin::signed(ALICE),
+                    RuntimeOrigin::signed(ALICE),
                     poll_id.clone(),
                     2,
                     balance!(50)
@@ -250,14 +255,19 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 3,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_err!(
-                CeresGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 3, balance!(3100)),
+                CeresGovernancePlatform::vote(
+                    RuntimeOrigin::signed(ALICE),
+                    poll_id,
+                    3,
+                    balance!(3100)
+                ),
                 Error::<Runtime>::NotEnoughFunds
             );
         });
@@ -272,14 +282,14 @@ mod tests {
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             let number_of_votes = balance!(300);
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_ok!(CeresGovernancePlatform::vote(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 number_of_votes
@@ -314,14 +324,14 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 2,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_err!(
-                CeresGovernancePlatform::withdraw(Origin::signed(BOB), poll_id.clone()),
+                CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(BOB), poll_id.clone()),
                 Error::<Runtime>::PollIsNotFinished
             );
         });
@@ -336,14 +346,14 @@ mod tests {
             let number_of_votes = balance!(300);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_ok!(CeresGovernancePlatform::vote(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 number_of_votes
@@ -352,12 +362,12 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresGovernancePlatform::withdraw(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone()
             ));
 
             assert_err!(
-                CeresGovernancePlatform::withdraw(Origin::signed(ALICE), poll_id.clone()),
+                CeresGovernancePlatform::withdraw(RuntimeOrigin::signed(ALICE), poll_id.clone()),
                 Error::<Runtime>::FundsAlreadyWithdrawn
             );
         });
@@ -372,14 +382,14 @@ mod tests {
             let number_of_votes = balance!(300);
             let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
             assert_ok!(CeresGovernancePlatform::create_poll(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 current_timestamp,
                 current_timestamp + 10
             ));
             assert_ok!(CeresGovernancePlatform::vote(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
                 number_of_votes
@@ -388,7 +398,7 @@ mod tests {
             pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
 
             assert_ok!(CeresGovernancePlatform::withdraw(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 poll_id.clone()
             ));
 

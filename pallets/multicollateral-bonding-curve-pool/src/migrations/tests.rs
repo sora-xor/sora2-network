@@ -28,11 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::migrations::v3::OldDistributionAccounts;
 use crate::{mock::*, pallet::Pallet, EnabledTargets};
-use common::FromGenericPair;
-use common::{balance, TBCD, XST};
-use frame_support::traits::GetStorageVersion as _;
+use crate::{DistributionAccount, DistributionAccountData};
+use common::{balance, AssetInfoProvider, TBCD, XST};
+use common::{fixed, FromGenericPair};
 use frame_support::traits::OnRuntimeUpgrade;
+use frame_support::traits::{GetStorageVersion as _, StorageVersion};
 
 #[test]
 fn test_v1() {
@@ -78,5 +80,77 @@ fn test_v2() {
             balance!(1688406)
         );
         assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
+    });
+}
+
+#[test]
+fn test_v3() {
+    #[frame_support::storage_alias]
+    pub type DistributionAccountsEntry<T: crate::Config> = StorageValue<
+        Pallet<T>,
+        OldDistributionAccounts<
+            DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>,
+        >,
+    >;
+
+    ExtBuilder::default().build().execute_with(|| {
+        StorageVersion::new(2).put::<Pallet<Runtime>>();
+
+        DistributionAccountsEntry::<Runtime>::put(OldDistributionAccounts {
+            xor_allocation: DistributionAccountData {
+                account: DistributionAccount::Account([1u8; 32].into()),
+                coefficient: fixed!(0.1),
+            },
+            val_holders: DistributionAccountData {
+                account: DistributionAccount::Account([2u8; 32].into()),
+                coefficient: fixed!(0.2),
+            },
+            sora_citizens: DistributionAccountData {
+                account: DistributionAccount::Account([3u8; 32].into()),
+                coefficient: fixed!(0.3),
+            },
+            stores_and_shops: DistributionAccountData {
+                account: DistributionAccount::Account([4u8; 32].into()),
+                coefficient: fixed!(0.4),
+            },
+            parliament_and_development: DistributionAccountData {
+                account: DistributionAccount::Account([5u8; 32].into()),
+                coefficient: fixed!(0.5),
+            },
+            projects: DistributionAccountData {
+                account: DistributionAccount::Account([6u8; 32].into()),
+                coefficient: fixed!(0.6),
+            },
+        });
+
+        super::v3::MigrateToV3::<Runtime>::on_runtime_upgrade();
+
+        assert_eq!(
+            crate::DistributionAccountsEntry::<Runtime>::get(),
+            crate::DistributionAccounts {
+                xor_allocation: DistributionAccountData {
+                    account: DistributionAccount::Account([1u8; 32].into()),
+                    coefficient: fixed!(0.1),
+                },
+                val_holders: DistributionAccountData {
+                    account: DistributionAccount::Account([2u8; 32].into()),
+                    coefficient: fixed!(0.2),
+                },
+                sora_citizens: DistributionAccountData {
+                    account: DistributionAccount::Account([3u8; 32].into()),
+                    coefficient: fixed!(0.3),
+                },
+                stores_and_shops: DistributionAccountData {
+                    account: DistributionAccount::Account([4u8; 32].into()),
+                    coefficient: fixed!(0.4),
+                },
+                projects: DistributionAccountData {
+                    account: DistributionAccount::Account([6u8; 32].into()),
+                    coefficient: fixed!(0.6),
+                },
+            }
+        );
+
+        assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 3);
     });
 }

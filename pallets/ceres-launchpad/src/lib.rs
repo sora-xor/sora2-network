@@ -11,23 +11,7 @@ mod tests;
 mod benchmarking;
 
 use codec::{Decode, Encode};
-use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn create_ilo() -> Weight;
-    fn contribute() -> Weight;
-    fn emergency_withdraw() -> Weight;
-    fn finish_ilo() -> Weight;
-    fn claim_lp_tokens() -> Weight;
-    fn claim() -> Weight;
-    fn change_ceres_burn_fee() -> Weight;
-    fn change_ceres_contribution_fee() -> Weight;
-    fn claim_pswap_rewards() -> Weight;
-    fn add_whitelisted_contributor() -> Weight;
-    fn remove_whitelisted_contributor() -> Weight;
-    fn add_whitelisted_ilo_organizer() -> Weight;
-    fn remove_whitelisted_ilo_organizer() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -93,7 +77,7 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::{balance, DEXId, PoolXykPallet, PSWAP, XSTUSD};
+    use common::{balance, AssetInfoProvider, DEXId, PoolXykPallet, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -108,6 +92,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -124,7 +109,7 @@ pub mod pallet {
         const MILLISECONDS_PER_DAY: Self::Moment;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -355,6 +340,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Create ILO
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::create_ilo())]
         pub fn create_ilo(
             origin: OriginFor<T>,
@@ -515,6 +501,7 @@ pub mod pallet {
         }
 
         /// Contribute
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::contribute())]
         pub fn contribute(
             origin: OriginFor<T>,
@@ -597,6 +584,7 @@ pub mod pallet {
         /// Emergency withdraw
 
         #[transactional]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::emergency_withdraw())]
         pub fn emergency_withdraw(
             origin: OriginFor<T>,
@@ -666,6 +654,7 @@ pub mod pallet {
 
         /// Finish ILO
         #[transactional]
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::finish_ilo())]
         pub fn finish_ilo(
             origin: OriginFor<T>,
@@ -867,6 +856,7 @@ pub mod pallet {
         }
 
         /// Claim LP tokens
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_lp_tokens())]
         pub fn claim_lp_tokens(
             origin: OriginFor<T>,
@@ -923,6 +913,7 @@ pub mod pallet {
         }
 
         /// Claim tokens
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::claim())]
         pub fn claim(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -1035,6 +1026,7 @@ pub mod pallet {
         }
 
         /// Change fee percent on raised funds in successful ILO
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_fee_percent_for_raised_funds(
             origin: OriginFor<T>,
@@ -1059,6 +1051,7 @@ pub mod pallet {
         }
 
         /// Change CERES burn fee
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_ceres_burn_fee(
             origin: OriginFor<T>,
@@ -1079,6 +1072,7 @@ pub mod pallet {
         }
 
         /// Change CERES contribution fee
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_contribution_fee())]
         pub fn change_ceres_contribution_fee(
             origin: OriginFor<T>,
@@ -1100,6 +1094,7 @@ pub mod pallet {
 
         /// Claim PSWAP rewards
         #[transactional]
+        #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
         pub fn claim_pswap_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -1134,6 +1129,7 @@ pub mod pallet {
         }
 
         /// Add whitelisted contributor
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_contributor())]
         pub fn add_whitelisted_contributor(
             origin: OriginFor<T>,
@@ -1154,6 +1150,7 @@ pub mod pallet {
         }
 
         /// Remove whitelisted contributor
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_contributor())]
         pub fn remove_whitelisted_contributor(
             origin: OriginFor<T>,
@@ -1176,6 +1173,7 @@ pub mod pallet {
         }
 
         /// Add whitelisted ILO organizer
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_ilo_organizer())]
         pub fn add_whitelisted_ilo_organizer(
             origin: OriginFor<T>,
@@ -1196,6 +1194,7 @@ pub mod pallet {
         }
 
         /// Remove whitelisted ILO organizer
+        #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_ilo_organizer())]
         pub fn remove_whitelisted_ilo_organizer(
             origin: OriginFor<T>,

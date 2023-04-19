@@ -11,11 +11,7 @@ pub mod weights;
 
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn lock_liquidity() -> Weight;
-    fn change_ceres_fee() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -60,7 +56,7 @@ pub mod pallet {
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
         type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
@@ -178,6 +174,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock liquidity
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::lock_liquidity())]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
@@ -300,6 +297,7 @@ pub mod pallet {
         }
 
         /// Change CERES fee
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_fee())]
         pub fn change_ceres_fee(
             origin: OriginFor<T>,
@@ -353,7 +351,7 @@ pub mod pallet {
                 PalletStorageVersion::<T>::put(StorageVersion::V2);
                 weight
             } else {
-                0
+                Weight::zero()
             }
         }
     }

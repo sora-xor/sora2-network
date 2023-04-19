@@ -459,7 +459,7 @@ impl<T: Config> Pallet<T> {
     /// Handles registered networks.
     pub(crate) fn offchain()
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
 

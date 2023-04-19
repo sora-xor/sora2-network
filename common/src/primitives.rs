@@ -32,7 +32,8 @@ use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode, MaxEncodedLen};
 use core::fmt::Debug;
 use frame_support::dispatch::{DispatchError, TypeInfo};
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::traits::ConstU32;
+use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
@@ -100,6 +101,7 @@ pub struct DEXInfo<AssetId> {
     RuntimeDebug,
     Hash,
     scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
@@ -322,7 +324,17 @@ where
 
 /// DEX identifier.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
@@ -554,6 +566,49 @@ impl IsValid for SymbolName {
     }
 }
 
+const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct CrowdloanTag(pub BoundedVec<u8, ConstU32<CROWDLOAN_TAG_MAX_LENGTH>>);
+
+#[cfg(feature = "std")]
+impl FromStr for CrowdloanTag {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars = s
+            .chars()
+            .map(|un| un as u8)
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| "CrowdloanTag length out of bounds")?;
+        Ok(CrowdloanTag(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for CrowdloanTag {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for CrowdloanTag {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl IsValid for CrowdloanTag {
+    /// Same as for AssetSymbol
+    fn is_valid(&self) -> bool {
+        !self.0.is_empty() && self.0.is_ascii()
+    }
+}
+
 #[derive(
     Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
 )]
@@ -587,7 +642,17 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 
 /// Enumaration of all available liquidity sources.
 #[derive(
-    Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -915,7 +980,7 @@ impl Default for RewardReason {
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
-    pub parliament: Balance,
+    pub buy_back_xst: Balance,
     pub vesting: Balance,
 }
 
@@ -963,7 +1028,9 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum PriceVariant {
     Buy,
     Sell,

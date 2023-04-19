@@ -34,11 +34,13 @@
 #[macro_use]
 extern crate alloc;
 
-use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
+use common::{
+    AssetInfoProvider, DexInfoProvider, EnsureDEXManager, EnsureTradingPairExists,
+    LiquiditySourceType, ManagementMode,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::IsType;
-use frame_support::weights::Weight;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -56,9 +58,7 @@ pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::As
 type Assets<T> = assets::Pallet<T>;
 type DEXManager<T> = dex_manager::Pallet<T>;
 
-pub trait WeightInfo {
-    fn register() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Pallet<T> {
     fn ensure_trading_pair_exists(
@@ -156,11 +156,13 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + dex_manager::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -186,6 +188,7 @@ pub mod pallet {
         /// - `dex_id`: ID of the exchange.
         /// - `base_asset_id`: base asset ID.
         /// - `target_asset_id`: target asset ID.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,

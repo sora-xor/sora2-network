@@ -7,22 +7,16 @@ async function configureBeefy() {
   const beefyDeployment = await hre.deployments.get("BeefyLightClient");
   const beefy = await hre.ethers.getContractAt("TestBeefyLightClient", beefyDeployment.address);
 
-  const basicInboundChannelDeployment = await hre.deployments.get("BasicInboundChannel");
-  const basicInboundChannel = await hre.ethers.getContractAt("TestBasicInboundChannel", basicInboundChannelDeployment.address);
+  const inboundChannelDeployment = await hre.deployments.get("InboundChannel");
+  const inboundChannel = await hre.ethers.getContractAt("TestInboundChannel", inboundChannelDeployment.address);
 
-  const incentivizedInboundChannelDeployment = await hre.deployments.get("IncentivizedInboundChannel");
-  const incentivizedInboundChannel = await hre.ethers.getContractAt("TestIncentivizedInboundChannel", incentivizedInboundChannelDeployment.address);
-
-  const basicOutboundChannelDeployment = await hre.deployments.get("BasicOutboundChannel");
-  const basicOutboundChannel = await hre.ethers.getContractAt("TestBasicOutboundChannel", basicOutboundChannelDeployment.address);
-
-  const incentivizedOutboundChannelDeployment = await hre.deployments.get("IncentivizedOutboundChannel");
-  const incentivizedOutboundChannel = await hre.ethers.getContractAt("TestIncentivizedOutboundChannel", incentivizedOutboundChannelDeployment.address);
+  const outboundChannelDeployment = await hre.deployments.get("OutboundChannel");
+  const outboundChannel = await hre.ethers.getContractAt("TestOutboundChannel", outboundChannelDeployment.address);
 
   console.log({
     beefy: beefyDeployment.address,
-    incentivizedInbound: incentivizedInboundChannelDeployment.address, basicInbound: basicInboundChannelDeployment.address,
-    incentivizedOutbound: incentivizedOutboundChannelDeployment.address, basicOutbound: basicOutboundChannelDeployment.address
+    inbound: inboundChannelDeployment.address,
+    outbound: outboundChannelDeployment.address,
   });
 
   const wsProvider = new WsProvider(soraEndpoint);
@@ -44,17 +38,10 @@ async function configureBeefy() {
   console.log(result);
   console.log(await result.wait());
 
-  console.log("Reset channels")
-  result = await basicInboundChannel.reset();
+  result = await inboundChannel.reset();
   console.log(result);
   console.log(await result.wait());
-  result = await incentivizedInboundChannel.reset();
-  console.log(result);
-  console.log(await result.wait());
-  result = await basicOutboundChannel.reset();
-  console.log(result);
-  console.log(await result.wait());
-  result = await incentivizedOutboundChannel.reset();
+  result = await outboundChannel.reset();
   console.log(result);
   console.log(await result.wait());
 

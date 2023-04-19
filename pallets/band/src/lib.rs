@@ -33,10 +33,10 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
-use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -51,13 +51,6 @@ pub mod weights;
 /// Multiplier to convert rates from precision = 9 (which band team use)
 /// to precision = 18 (which we use)
 pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
-
-pub trait WeightInfo {
-    fn relay() -> Weight;
-    fn force_relay() -> Weight;
-    fn add_relayers() -> Weight;
-    fn remove_relayers() -> Weight;
-}
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
@@ -129,7 +122,8 @@ pub mod pallet {
         /// Type of the symbol to be relayed.
         type Symbol: Parameter + Ord;
         /// Event type of this pallet.
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self, I>>
+            + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
         /// Hook which is being executed when some new symbols were relayed
@@ -183,6 +177,7 @@ pub mod pallet {
         /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::relay())]
         pub fn relay(
             origin: OriginFor<T>,
@@ -215,6 +210,7 @@ pub mod pallet {
         /// - `rates`: symbols with rates in USD represented as fixed point with precision = 9,
         /// - `resolve_time`: symbols which rates are provided,
         /// - `request_id`: id of the request sent to the *BandChain* to retrieve this data.
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::force_relay())]
         pub fn force_relay(
             origin: OriginFor<T>,
@@ -245,6 +241,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of new trusted relayers to add.
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::add_relayers())]
         pub fn add_relayers(
             origin: OriginFor<T>,
@@ -283,6 +280,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account on whose behalf the transaction is being executed,
         /// - `account_ids`: list of relayers to remove.
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::remove_relayers())]
         pub fn remove_relayers(
             origin: OriginFor<T>,

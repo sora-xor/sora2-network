@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use super::mock::*;
 use super::Error;
 use crate::requests::{
@@ -36,7 +66,7 @@ fn should_add_peer_in_eth_network() {
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -152,7 +182,7 @@ fn should_add_peer_in_simple_networks() {
         let new_peer_address = eth::public_key_to_eth_address(&public);
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -217,7 +247,7 @@ fn should_remove_peer_in_simple_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -281,7 +311,7 @@ fn should_remove_peer_in_eth_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -387,12 +417,17 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
         assert_err!(
-            EthBridge::remove_peer(Origin::signed(bob.clone()), peer_id.clone(), None, net_id),
+            EthBridge::remove_peer(
+                RuntimeOrigin::signed(bob.clone()),
+                peer_id.clone(),
+                None,
+                net_id
+            ),
             Error::Forbidden
         );
         assert_err!(
             EthBridge::add_peer(
-                Origin::signed(bob.clone()),
+                RuntimeOrigin::signed(bob.clone()),
                 peer_id.clone(),
                 EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
@@ -414,7 +449,7 @@ fn should_not_allow_changing_peers_simultaneously() {
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&seed[..]).unwrap());
         let address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             peer_id.clone(),
             Some(H160::repeat_byte(12)),
             net_id,
@@ -423,7 +458,7 @@ fn should_not_allow_changing_peers_simultaneously() {
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_err!(
             EthBridge::remove_peer(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 peer_id.clone(),
                 Some(H160::repeat_byte(12)),
                 net_id
@@ -431,7 +466,7 @@ fn should_not_allow_changing_peers_simultaneously() {
             Error::UnknownPeerId
         );
         assert_err!(
-            EthBridge::add_peer(Origin::root(), peer_id.clone(), address, net_id,),
+            EthBridge::add_peer(RuntimeOrigin::root(), peer_id.clone(), address, net_id,),
             Error::TooManyPendingPeers
         );
     });
@@ -451,7 +486,7 @@ fn should_parse_add_peer_on_old_contract() {
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -507,9 +542,9 @@ fn should_parse_remove_peer_on_old_contract() {
         let new_peer_address = eth::public_key_to_eth_address(&public);
         let tx_hash = H256([1; 32]);
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
-        assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
+        assert_ok!(EthBridge::force_add_peer(RuntimeOrigin::root(), new_peer_id.clone(), new_peer_address, net_id));
         assert_ok!(EthBridge::remove_peer(
-            Origin::root(),
+            RuntimeOrigin::root(),
             new_peer_id.clone(),
             None,
             net_id,

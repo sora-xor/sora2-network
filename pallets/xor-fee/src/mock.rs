@@ -30,22 +30,21 @@
 
 use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, BlockLength, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
-    PSWAP, VAL, XOR, XST,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
+    Fixed, LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+    OnValBurned, PSWAP, VAL, XOR, XST,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use frame_election_provider_support::{generate_solution_type, NoElection};
+use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::traits::{
     ConstU128, ConstU32, Currency, Everything, ExistenceRequirement, GenesisBuild, Get,
     OneSessionHandler, PrivilegeCmp, U128CurrencyToVote, WithdrawReasons,
 };
-use frame_support::weights::{
-    ConstantMultiplier, DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight,
-};
+use frame_support::weights::{ConstantMultiplier, IdentityFee, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use pallet_session::historical;
 use pallet_staking::UseNominatorsAndValidatorsMap;
@@ -89,7 +88,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
-    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
+    pub const BuyBackXSTPercent: Percent = Percent::from_percent(10);
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
@@ -108,7 +107,7 @@ parameter_types! {
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
     };
-    pub OffchainSolutionWeightLimit: Weight = 600_000_000;
+    pub OffchainSolutionWeightLimit: Weight = Weight::from_parts(600_000_000, 0);
     pub GetXorFeeTechAccountId: TechAccountId = {
         TechAccountId::Generic(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -125,7 +124,7 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub RemoveTemporaryPeerAccountId: Vec<(AccountId, H160)> = Vec::new();
-    pub const SchedulerMaxWeight: Weight = 1024;
+    pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -150,7 +149,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         ReferralSystem: referrals::{Pallet, Call, Config<T>, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -172,7 +171,7 @@ construct_runtime! {
     }
 }
 
-impl xor_fee::ExtractProxySwap for Call {
+impl xor_fee::ExtractProxySwap for RuntimeCall {
     type AccountId = AccountId;
     type DexId = DEXId;
     type AssetId = AssetId;
@@ -181,7 +180,7 @@ impl xor_fee::ExtractProxySwap for Call {
     fn extract(
         &self,
     ) -> Option<xor_fee::SwapInfo<Self::AccountId, Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap {
+        if let RuntimeCall::LiquidityProxy(mock_liquidity_proxy::Call::swap {
             dex_id,
             input_asset_id,
             output_asset_id,
@@ -205,10 +204,10 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
-impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+impl xor_fee::IsCalledByBridgePeer<AccountId> for RuntimeCall {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
-            Call::BridgeMultisig(call) => match call {
+            RuntimeCall::BridgeMultisig(call) => match call {
                 bridge_multisig::Call::as_multi { id, .. } => {
                     bridge_multisig::Accounts::<Runtime>::get(id).map(|acc| acc.is_signatory(&who))
                 }
@@ -217,7 +216,7 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
                 }
                 _ => None,
             },
-            Call::EthBridge(call) => match call {
+            RuntimeCall::EthBridge(call) => match call {
                 eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
@@ -262,15 +261,15 @@ impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
-    Call: From<LocalCall>,
+    RuntimeCall: From<LocalCall>,
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-        call: Call,
+        call: RuntimeCall,
         _public: <Signature as Verify>::Signer,
         account: <Runtime as frame_system::Config>::AccountId,
         _index: <Runtime as frame_system::Config>::Index,
     ) -> Option<(
-        Call,
+        RuntimeCall,
         <Extrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
     )> {
         Some((call, (account, ())))
@@ -283,9 +282,9 @@ impl frame_system::offchain::SigningTypes for Runtime {
 }
 
 impl eth_bridge::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type PeerId = TestAppCrypto;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
@@ -298,8 +297,8 @@ impl eth_bridge::Config for Runtime {
 }
 
 impl bridge_multisig::Config for Runtime {
-    type Call = Call;
-    type Event = Event;
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type DepositBase = DepositBase;
     type DepositFactor = DepositFactor;
@@ -326,25 +325,24 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
 }
 
 impl pallet_scheduler::Config for Runtime {
-    type Event = Event;
-    type Origin = Origin;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
     type PalletsOrigin = OriginCaller;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
-    type PreimageProvider = ();
-    type NoPreimagePostponement = ();
+    type Preimages = ();
 }
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = Everything;
-    type BlockWeights = BlockWeights;
+    type BlockWeights = ();
     type BlockLength = BlockLength;
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -352,7 +350,7 @@ impl frame_system::Config for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -375,7 +373,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
@@ -387,7 +385,7 @@ impl referrals::Config for Runtime {
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -402,6 +400,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type OnChargeTransaction = XorFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
@@ -415,7 +414,7 @@ impl common::Config for Runtime {
 }
 
 impl technical::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
     type Trigger = ();
@@ -439,7 +438,7 @@ parameter_types! {
 }
 
 impl assets::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
@@ -457,36 +456,35 @@ impl assets::Config for Runtime {
 }
 
 impl permissions::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl tokens::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
+    type CurrencyHooks = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
     type DustRemovalWhitelist = Everything;
 }
 
 impl demeter_farming_platform::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = ();
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumberFor<Self> = 900;
     type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type GetIncentiveAssetId = ();
+    type GetXSTAssetId = GetBuyBackAssetId;
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = ();
@@ -497,11 +495,12 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+    type BuyBackHandler = ();
 }
 
 impl pool_xyk::Config for Runtime {
     const MIN_XOR: Balance = balance!(0.0007);
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
         pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
@@ -517,7 +516,7 @@ impl pool_xyk::Config for Runtime {
 
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type XYKPool = PoolXYK;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = ();
@@ -529,7 +528,7 @@ impl pallet_session::Config for Runtime {
     type Keys = SessionKeys;
     type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
     type SessionHandler = (OtherSessionHandler,);
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Runtime>;
     type NextSessionRotation = ();
@@ -578,17 +577,27 @@ impl pallet_staking::Config for Runtime {
     type ValRewardCurve = TestValRewardCurve;
     type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Slash = ();
     type SessionsPerEra = ();
     type SlashDeferDuration = ();
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type BondingDuration = BondingDuration;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type ElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
-    type GenesisElectionProvider = NoElection<(AccountId, BlockNumber, Staking)>;
+    type ElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
+    type GenesisElectionProvider = NoElection<(
+        AccountId,
+        BlockNumber,
+        Staking,
+        <StakingBenchmarkingConfig as pallet_staking::BenchmarkingConfig>::MaxValidators,
+    )>;
     type OnStakerSlash = ();
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
     type MaxNominations = MaxNominations;
@@ -596,27 +605,29 @@ impl pallet_staking::Config for Runtime {
     type VoterList = UseNominatorsAndValidatorsMap<Runtime>;
     type MaxUnlockingChunks = ConstU32<32>;
     type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type HistoryDepth = frame_support::traits::ConstU32<84>;
+    type TargetList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
 where
-    Call: From<LocalCall>,
+    RuntimeCall: From<LocalCall>,
 {
-    type OverarchingCall = Call;
+    type OverarchingCall = RuntimeCall;
     type Extrinsic = Extrinsic;
 }
 
-pub type Extrinsic = TestXt<Call, ()>;
+pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
 pub struct CustomFees;
 
-impl xor_fee::ApplyCustomFees<Call> for CustomFees {
-    fn compute_fee(call: &Call) -> Option<Balance> {
+impl xor_fee::ApplyCustomFees<RuntimeCall> for CustomFees {
+    fn compute_fee(call: &RuntimeCall) -> Option<Balance> {
         match call {
-            Call::Assets(assets::Call::register { .. }) => Some(balance!(0.007)),
-            Call::Assets(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
-            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            RuntimeCall::Assets(assets::Call::register { .. }) => Some(balance!(0.007)),
+            RuntimeCall::Assets(..)
+            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+            | RuntimeCall::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
         }
     }
@@ -638,7 +649,7 @@ pub struct WithdrawFee;
 impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     fn withdraw_fee(
         who: &AccountId,
-        _call: &Call,
+        _call: &RuntimeCall,
         fee: Balance,
     ) -> Result<(AccountId, Option<crate::NegativeImbalanceOf<Runtime>>), DispatchError> {
         Ok((
@@ -654,22 +665,23 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
 }
 
 impl Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type SoraParliamentShare = SoraParliamentShare;
+    type BuyBackXSTPercent = BuyBackXSTPercent;
     type XorId = XorId;
     type ValId = ValId;
+    type XstId = GetBuyBackAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
     type WithdrawFee = WithdrawFee;
+    type BuyBackHandler = ();
     type WeightInfo = ();
 }
 
@@ -685,7 +697,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
 
     #[pallet::pallet]
@@ -698,6 +710,7 @@ pub mod mock_liquidity_proxy {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(0)]
         pub fn swap(
             _origin: OriginFor<T>,
@@ -722,7 +735,7 @@ pub mod mock_liquidity_proxy {
 type MockLiquidityProxy = mock_liquidity_proxy::Pallet<Runtime>;
 
 impl mock_liquidity_proxy::Config for Runtime {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
 }
 
 impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
@@ -735,14 +748,15 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: SwapAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::exchange(
+        let (outcome, _) = MockLiquiditySource::exchange(
             &sender,
             &receiver,
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
-        )
+        )?;
+        Ok(outcome)
     }
 
     fn quote(
@@ -753,13 +767,14 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::quote(
+        let (outcome, _) = MockLiquiditySource::quote(
             &filter.dex_id,
             input_asset_id,
             output_asset_id,
             amount,
             deduce_fee,
-        )
+        )?;
+        Ok(outcome)
     }
 }
 
@@ -818,6 +833,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
+        common::test_utils::init_logger();
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
@@ -832,6 +848,19 @@ impl ExtBuilder {
                 (STASH_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT2, initial_balance),
             ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: vec![(
+                DEXId::Polkaswap,
+                DEXInfo {
+                    base_asset_id: XOR.into(),
+                    synthetic_base_asset_id: XST.into(),
+                    is_public: true,
+                },
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -886,6 +915,17 @@ impl ExtBuilder {
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    XST,
+                    xor_fee_account_id,
+                    AssetSymbol(b"XST".to_vec()),
+                    AssetName(b"XST".to_vec()),
+                    18,
+                    balance!(100),
                     true,
                     None,
                     None,
@@ -948,11 +988,18 @@ impl ExtBuilder {
 
         let initial_reserves: Fixed = Fixed::from_bits(initial_reserves() as i128);
         mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance1> {
-            reserves: vec![(
-                common::DEXId::Polkaswap,
-                VAL,
-                (initial_reserves, initial_reserves),
-            )],
+            reserves: vec![
+                (
+                    common::DEXId::Polkaswap,
+                    VAL,
+                    (initial_reserves, initial_reserves),
+                ),
+                (
+                    common::DEXId::Polkaswap,
+                    XST,
+                    (initial_reserves, initial_reserves),
+                ),
+            ],
             phantom: Default::default(),
         }
         .assimilate_storage(&mut t)

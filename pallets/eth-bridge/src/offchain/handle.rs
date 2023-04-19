@@ -137,7 +137,7 @@ impl<T: Config> Pallet<T> {
         current_height: T::BlockNumber,
     ) -> Result<(), Error<T>>
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
         if let Some(mut txs) = s_pending_txs
@@ -432,7 +432,7 @@ impl<T: Config> Pallet<T> {
 
     pub(crate) fn handle_substrate() -> Result<T::BlockNumber, Error<T>>
     where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         let substrate_finalized_block = match Self::load_substrate_finalized_header() {
             Ok(v) => v,
@@ -449,8 +449,9 @@ impl<T: Config> Pallet<T> {
             Self::handle_failed_transactions_queue();
         }
 
-        let substrate_finalized_height =
-            <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
+        let substrate_finalized_height = <T::BlockNumber>::from(
+            u32::try_from(substrate_finalized_block.number).expect("cannot cast block height"),
+        );
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
@@ -595,7 +596,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         substrate_finalized_height: T::BlockNumber,
     ) where
-        T: CreateSignedTransaction<<T as Config>::Call>,
+        T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         if !Self::is_peer_for_network(network_id) {
             log::debug!("Node is not peer for network {:?}, skipping", network_id);

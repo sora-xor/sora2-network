@@ -43,7 +43,7 @@ use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -109,7 +109,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
-    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
 
     /// Perform exchange based on desired amount.
     fn exchange(
@@ -119,7 +119,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
-    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+    ) -> Result<(SwapOutcome<Amount>, Weight), DispatchError>;
 
     /// Get rewards that are given for perfoming given exchange.
     fn check_rewards(
@@ -128,7 +128,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         input_amount: Amount,
         output_amount: Amount,
-    ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
+    ) -> Result<(Vec<(Amount, AssetId, RewardReason)>, Weight), DispatchError>;
 
     /// Get spot price of tokens based on desired amount, ignoring non-linearity
     /// of underlying liquidity source.
@@ -139,6 +139,15 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         amount: QuoteAmount<Amount>,
         deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Get weight of quote
+    fn quote_weight() -> Weight;
+
+    /// Get weight of exchange
+    fn exchange_weight() -> Weight;
+
+    /// Get weight of exchange
+    fn check_rewards_weight() -> Weight;
 }
 
 /// *Hook*-like trait for oracles to capture newly relayed symbols.
@@ -200,7 +209,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -211,7 +220,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+    ) -> Result<(SwapOutcome<Fixed>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -221,7 +230,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _output_asset_id: &AssetId,
         _input_amount: Fixed,
         _output_amount: Fixed,
-    ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Fixed, AssetId, RewardReason)>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -233,6 +242,18 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 
@@ -253,7 +274,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -264,7 +285,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -274,7 +295,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _input_amount: Balance,
         _output_amount: Balance,
-    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+    ) -> Result<(Vec<(Balance, AssetId, RewardReason)>, Weight), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 
@@ -286,6 +307,18 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn exchange_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn check_rewards_weight() -> Weight {
+        Weight::zero()
     }
 }
 
@@ -320,13 +353,15 @@ pub trait Config: frame_system::Config + currencies::Config {
         + Encode
         + Decode
         + Eq
-        + PartialEq;
+        + PartialEq
+        + MaxEncodedLen;
     type LstId: Clone
         + Copy
         + Encode
         + Decode
         + Eq
         + PartialEq
+        + MaxEncodedLen
         + From<crate::primitives::LiquiditySourceType>;
 }
 
@@ -738,6 +773,177 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
     }
 }
 
+/// Trait to provide DEXInfo
+pub trait DexInfoProvider<
+    DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+    DEXInfo: Clone + PartialEq + Eq + Default,
+>
+{
+    fn get_dex_info(dex_id: &DEXId) -> Result<DEXInfo, DispatchError>;
+
+    fn ensure_dex_exists(dex_id: &DEXId) -> DispatchResult;
+
+    fn list_dex_ids() -> Vec<DEXId>;
+}
+
+impl<
+        DEXId: Eq + PartialEq + Copy + Clone + PartialOrd + Ord,
+        DEXInfo: Clone + PartialEq + Eq + Default,
+    > DexInfoProvider<DEXId, DEXInfo> for ()
+{
+    fn get_dex_info(_dex_id: &DEXId) -> Result<DEXInfo, DispatchError> {
+        unimplemented!()
+    }
+
+    fn ensure_dex_exists(_dex_id: &DEXId) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn list_dex_ids() -> Vec<DEXId> {
+        unimplemented!()
+    }
+}
+
+/// Trait to provide info about assets
+pub trait AssetInfoProvider<
+    AssetId,
+    AccountId,
+    AssetSymbol,
+    AssetName,
+    BalancePrecision,
+    ContentSource,
+    Description,
+>
+{
+    fn asset_exists(asset_id: &AssetId) -> bool;
+
+    fn ensure_asset_exists(asset_id: &AssetId) -> DispatchResult;
+
+    fn is_asset_owner(asset_id: &AssetId, account_id: &AccountId) -> bool;
+
+    fn get_asset_info(
+        asset_id: &AssetId,
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    );
+
+    fn get_asset_content_src(asset_id: &AssetId) -> Option<ContentSource>;
+
+    fn get_asset_description(asset_id: &AssetId) -> Option<Description>;
+
+    fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
+
+    fn free_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError>;
+
+    fn ensure_can_withdraw(asset_id: &AssetId, who: &AccountId, amount: Balance) -> DispatchResult;
+}
+
+impl<AssetId, AccountId, AssetSymbol, AssetName, BalancePrecision, ContentSource, Description>
+    AssetInfoProvider<
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        ContentSource,
+        Description,
+    > for ()
+{
+    fn asset_exists(_asset_id: &AssetId) -> bool {
+        unimplemented!()
+    }
+
+    fn ensure_asset_exists(_asset_id: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+
+    fn is_asset_owner(_asset_id: &AssetId, _account_id: &AccountId) -> bool {
+        unimplemented!()
+    }
+
+    fn get_asset_info(
+        _asset_id: &AssetId,
+    ) -> (
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        bool,
+        Option<ContentSource>,
+        Option<Description>,
+    ) {
+        unimplemented!()
+    }
+
+    fn get_asset_content_src(_asset_id: &AssetId) -> Option<ContentSource> {
+        unimplemented!()
+    }
+
+    fn get_asset_description(_asset_id: &AssetId) -> Option<Description> {
+        unimplemented!()
+    }
+
+    fn total_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn free_balance(_asset_id: &AssetId, _who: &AccountId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn ensure_can_withdraw(
+        _asset_id: &AssetId,
+        _who: &AccountId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
 pub trait IsValid {
     fn is_valid(&self) -> bool;
+}
+
+pub trait BuyBackHandler<AccountId, AssetId> {
+    /// Mint `amount` of `mint_asset_id`, exchange to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
+    fn mint_buy_back_and_burn(
+        mint_asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError>;
+
+    /// Exchange `amount` of `asset_id` from `account_id` to `buy_back_asset_id` and burn result amount
+    ///
+    /// Returns burned amount
+    fn buy_back_and_burn(
+        account_id: &AccountId,
+        asset_id: &AssetId,
+        buy_back_asset_id: &AssetId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError>;
+}
+
+impl<AssetId, AccountId> BuyBackHandler<AccountId, AssetId> for () {
+    fn mint_buy_back_and_burn(
+        _mint_asset_id: &AssetId,
+        _buy_back_asset_id: &AssetId,
+        _amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
+
+    fn buy_back_and_burn(
+        _account_id: &AccountId,
+        _asset_id: &AssetId,
+        _buy_back_asset_id: &AssetId,
+        _amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
 }

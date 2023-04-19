@@ -40,9 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::eth::EthAddress;
 use common::{balance, AssetName, AssetSymbol, Balance, XOR};
-use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
 use assets::Pallet as Assets;
 
@@ -55,7 +53,8 @@ fn alice<T: Config>() -> T::AccountId {
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::RuntimeOrigin =
+        RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
             owner_origin.clone(),
@@ -72,19 +71,9 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Adds `n` of rewards
-fn add_rewards<T: Config>(n: u32) {
-    let unaccessible_eth_addr: EthAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
-    for _i in 0..n {
-        ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
-        PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
-        PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
-    }
-}
-
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -92,9 +81,9 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     transfer {
-        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {
         Pallet::<T>::transfer(
             caller_origin,
@@ -104,13 +93,13 @@ benchmarks! {
         )?;
     }
     verify {
-        assert_last_event::<T>(Event::Transferred(caller, 100_u32.into()).into())
+        assert_last_event::<T>(Event::<T>::Transferred(caller, 100_u32.into()).into())
     }
 
     reset_rewards {
-        let n in 1 .. 1000 => add_rewards::<T>(n);
+        add_assets::<T>(100)?;
         let caller = alice::<T>();
-        let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
+        let caller_origin: <T as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(caller.clone()).into();
     }: {
         Pallet::<T>::reset_rewards(caller_origin)?;
     }

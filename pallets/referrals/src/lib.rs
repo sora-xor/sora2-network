@@ -39,29 +39,10 @@ mod mock;
 pub mod weights;
 
 use common::Balance;
-use frame_support::dispatch::Weight;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 
-pub trait WeightInfo {
-    fn reserve() -> Weight;
-    fn unreserve() -> Weight;
-    fn set_referrer() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn reserve() -> Weight {
-        0
-    }
-
-    fn unreserve() -> Weight {
-        0
-    }
-
-    fn set_referrer() -> Weight {
-        0
-    }
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
@@ -131,6 +112,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Reserves the balance from the account for a special balance that can be used to pay referrals' fees
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::reserve())]
         pub fn reserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
             let referrer = ensure_signed(origin)?;
@@ -156,6 +138,7 @@ pub mod pallet {
         }
 
         /// Unreserves the balance and transfers it back to the account
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::unreserve())]
         pub fn unreserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
             let referrer = ensure_signed(origin)?;
@@ -186,6 +169,7 @@ pub mod pallet {
         }
 
         /// Sets the referrer for the account
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_referrer())]
         pub fn set_referrer(
             origin: OriginFor<T>,

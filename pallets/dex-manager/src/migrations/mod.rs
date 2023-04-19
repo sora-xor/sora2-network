@@ -46,7 +46,7 @@ struct DEXInfoV0<T: Config> {
 pub fn migrate<T: Config>() -> Weight {
     if Pallet::<T>::on_chain_storage_version() >= 2 {
         info!("Migration to version 2 has already been applied");
-        return 0;
+        return Weight::zero();
     }
 
     let mut weight = 0;
