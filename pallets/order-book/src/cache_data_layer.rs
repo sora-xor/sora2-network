@@ -61,7 +61,7 @@ pub struct CacheDataLayer<T: Config> {
     user_limit_orders: CacheStorageDoubleMap<
         T::AccountId,
         OrderBookId<AssetIdOf<T>>,
-        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
         UserLimitOrders<T>,
     >,
 }
@@ -401,53 +401,43 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError> {
-        if let Some(bids) = self.bids.get(order_book_id, price) {
-            Ok(bids.clone())
-        } else {
-            Err(Error::<T>::NoDataForPrice.into())
-        }
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
+        self.bids.get(order_book_id, price).cloned()
     }
 
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError> {
-        if let Some(asks) = self.asks.get(order_book_id, price) {
-            Ok(asks.clone())
-        } else {
-            Err(Error::<T>::NoDataForPrice.into())
-        }
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
+        self.asks.get(order_book_id, price).cloned()
     }
 
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError> {
-        if let Some(agg_bids) = self.aggregated_bids.get(order_book_id) {
-            Ok(agg_bids.clone())
-        } else {
-            Err(Error::<T>::NoAggregatedData.into())
-        }
+    ) -> MarketSide<T::MaxSidePrices> {
+        self.aggregated_bids
+            .get(order_book_id)
+            .cloned()
+            .unwrap_or_default()
     }
 
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError> {
-        if let Some(agg_asks) = self.aggregated_asks.get(order_book_id) {
-            Ok(agg_asks.clone())
-        } else {
-            Err(Error::<T>::NoAggregatedData.into())
-        }
+    ) -> MarketSide<T::MaxSidePrices> {
+        self.aggregated_asks
+            .get(order_book_id)
+            .cloned()
+            .unwrap_or_default()
     }
 
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>> {
+    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         self.user_limit_orders.get(account, order_book_id).cloned()
     }
 }

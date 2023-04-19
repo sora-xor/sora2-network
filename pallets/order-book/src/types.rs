@@ -36,5 +36,5 @@ pub type OrderPrice = Balance;
 pub type OrderVolume = Balance;
 pub type PriceOrders<OrderId, MaxLimitOrdersForPrice> = BoundedVec<OrderId, MaxLimitOrdersForPrice>;
 pub type MarketSide<MaxSidePrices> = BoundedBTreeMap<OrderPrice, OrderVolume, MaxSidePrices>;
-pub type UserOrders<OrderId, MaxOpenedLimitOrdersForAllOrderBooksPerUser> =
-    BoundedVec<OrderId, MaxOpenedLimitOrdersForAllOrderBooksPerUser>;
+pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
+    BoundedVec<OrderId, MaxOpenedLimitOrdersPerUser>;

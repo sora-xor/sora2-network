@@ -125,7 +125,6 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
         const MAX_ORDER_LIFETIME: Self::Moment;
         const MIN_ORDER_LIFETIME: Self::Moment;
-        const MAX_OPENED_LIMIT_ORDERS_COUNT: u32;
         const MAX_PRICE_SHIFT: Perbill;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -142,7 +141,7 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo;
-        type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
+        type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePrices: Get<u32>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
@@ -232,7 +231,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_128Concat,
         OrderBookId<AssetIdOf<T>>,
-        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>,
+        UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
         OptionQuery,
     >;
 
@@ -318,9 +317,7 @@ pub mod pallet {
         /// At the moment, Users cannot cancel their limit orders in the current order book
         CancellationOfLimitOrdersIsForbidden,
         /// User has the max available count of open limit orders in the current order book
-        UserHasMaxCountOfOpenedOrdersInCurrentOrderBook,
-        /// User has the max available count of open limit orders in all order books
-        UserHasMaxCountOfOpenedOrdersForAllOrderBooks,
+        UserHasMaxCountOfOpenedOrders,
         /// It is impossible to place the limit order because bounds of the max count of orders at the current price have been reached
         PriceReachedMaxCountOfLimitOrders,
         /// It is impossible to place the limit order because bounds of the max count of prices for the side have been reached

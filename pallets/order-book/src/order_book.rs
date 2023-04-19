@@ -28,13 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Error, LimitOrder, OrderBookId, OrderPrice, OrderVolume};
+use crate::{DataLayer, Error, LimitOrder, OrderBookId, OrderPrice, OrderVolume};
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
 use sp_std::ops::Add;
 
@@ -119,13 +120,45 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.last_order_id
     }
 
-    pub fn place_limit_order(&self, order: &LimitOrder<T>) -> Result<(), DispatchError> {
+    pub fn place_limit_order(
+        &self,
+        order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
             Error::<T>::PlacementOfLimitOrdersIsForbidden
         );
 
-        self.ensure_limit_order_valid(order)?;
+        self.ensure_limit_order_valid(&order)?;
+        self.check_restrictions(&order, data)?;
+
+        let cross_spread = match order.side {
+            PriceVariant::Buy => {
+                if let Some((best_ask_price, _)) = self.best_ask(data) {
+                    order.price >= best_ask_price
+                } else {
+                    false
+                }
+            }
+            PriceVariant::Sell => {
+                if let Some((best_bid_price, _)) = self.best_bid(data) {
+                    order.price <= best_bid_price
+                } else {
+                    false
+                }
+            }
+        };
+
+        if cross_spread {
+            if self.status == OrderBookStatus::Trade {
+                self.cross_spread();
+            } else {
+                return Err(Error::<T>::InvalidLimitOrderPrice.into());
+            }
+        }
+
+        data.insert_limit_order(&self.order_book_id, order)?;
         todo!()
     }
 
@@ -146,24 +179,95 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    fn check_restrictions() -> Result<(), DispatchError> {
-        // check max count per user
-        // check max count per user for all order books
-        // check max limit orders for price
-        // check max side prices
-        // check max allowed shift from spread
-        todo!()
+    fn check_restrictions(
+        &self,
+        order: &LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError> {
+        if let Some(user_orders) = data.get_user_limit_orders(&order.owner, &self.order_book_id) {
+            ensure!(
+                !user_orders.is_full(),
+                Error::<T>::UserHasMaxCountOfOpenedOrders
+            );
+        }
+        match order.side {
+            PriceVariant::Buy => {
+                if let Some(bids) = data.get_bids(&self.order_book_id, &order.price) {
+                    ensure!(
+                        !bids.is_full(),
+                        Error::<T>::PriceReachedMaxCountOfLimitOrders
+                    );
+                }
+
+                let agg_bids = data.get_aggregated_bids(&self.order_book_id);
+                ensure!(
+                    agg_bids.len() < T::MaxSidePrices::get() as usize,
+                    Error::<T>::OrderBookReachedMaxCoundOfPricesForSide
+                );
+
+                if let Some((best_bid_price, _)) = self.best_bid(data) {
+                    let diff = best_bid_price.abs_diff(order.price);
+                    ensure!(
+                        diff <= T::MAX_PRICE_SHIFT * best_bid_price,
+                        Error::<T>::InvalidLimitOrderPrice
+                    );
+                }
+            }
+            PriceVariant::Sell => {
+                if let Some(asks) = data.get_asks(&self.order_book_id, &order.price) {
+                    ensure!(
+                        !asks.is_full(),
+                        Error::<T>::PriceReachedMaxCountOfLimitOrders
+                    );
+                }
+
+                let agg_asks = data.get_aggregated_asks(&self.order_book_id);
+                ensure!(
+                    agg_asks.len() < T::MaxSidePrices::get() as usize,
+                    Error::<T>::OrderBookReachedMaxCoundOfPricesForSide
+                );
+
+                if let Some((best_ask_price, _)) = self.best_ask(data) {
+                    let diff = best_ask_price.abs_diff(order.price);
+                    ensure!(
+                        diff <= T::MAX_PRICE_SHIFT * best_ask_price,
+                        Error::<T>::InvalidLimitOrderPrice
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 
-    fn best_bid() -> Option<(OrderPrice, OrderVolume)> {
-        todo!()
+    fn best_bid(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
+        let bids = data.get_aggregated_bids(&self.order_book_id);
+        bids.iter().max().map(|(k, v)| (*k, *v))
     }
 
-    fn best_ask() -> Option<(OrderPrice, OrderVolume)> {
-        todo!()
+    fn best_ask(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
+        let asks = data.get_aggregated_asks(&self.order_book_id);
+        asks.iter().min().map(|(k, v)| (*k, *v))
     }
 
-    fn market_volume(side: PriceVariant) -> OrderVolume {
+    fn market_volume(&self, side: PriceVariant, data: &mut impl DataLayer<T>) -> OrderVolume {
+        let volume = match side {
+            PriceVariant::Buy => {
+                let bids = data.get_aggregated_bids(&self.order_book_id);
+                bids.iter()
+                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + volume)
+            }
+            PriceVariant::Sell => {
+                let asks = data.get_aggregated_asks(&self.order_book_id);
+                asks.iter()
+                    .fold(OrderVolume::zero(), |sum, (_, volume)| sum + volume)
+            }
+        };
+
+        volume
+    }
+
+    fn cross_spread(&self) {
+        // todo (m.tagirov)
         todo!()
     }
 }

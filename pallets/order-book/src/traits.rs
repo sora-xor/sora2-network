@@ -78,31 +78,31 @@ where
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
     /// Returns order ids of orders inside the ask price
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError>;
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>>;
 
     /// Returns all bid prices with their volumes
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError>;
+    ) -> MarketSide<T::MaxSidePrices>;
 
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError>;
+    ) -> MarketSide<T::MaxSidePrices>;
 
     /// Returns order ids of user
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>>;
+    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }

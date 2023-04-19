@@ -158,8 +158,7 @@ fn should_not_insert_limit_order() {
             lifespan: 1000,
         };
 
-        let max_per_user: u32 =
-            <Runtime as Config>::MaxOpenedLimitOrdersForAllOrderBooksPerUser::get();
+        let max_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
         let max_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
         let max = max_per_user.min(max_for_price);
 

@@ -268,49 +268,37 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError> {
-        if let Some(bids) = <Bids<T>>::get(order_book_id, price) {
-            Ok(bids)
-        } else {
-            Err(Error::<T>::NoDataForPrice.into())
-        }
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
+        <Bids<T>>::get(order_book_id, price)
     }
 
     fn get_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         price: &OrderPrice,
-    ) -> Result<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>, DispatchError> {
-        if let Some(asks) = <Asks<T>>::get(order_book_id, price) {
-            Ok(asks)
-        } else {
-            Err(Error::<T>::NoDataForPrice.into())
-        }
+    ) -> Option<PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>> {
+        <Asks<T>>::get(order_book_id, price)
     }
 
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError> {
-        let agg_bids = <AggregatedBids<T>>::try_get(order_book_id)
-            .map_err(|_| Error::<T>::NoAggregatedData)?;
-        Ok(agg_bids)
+    ) -> MarketSide<T::MaxSidePrices> {
+        <AggregatedBids<T>>::get(order_book_id)
     }
 
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Result<MarketSide<T::MaxSidePrices>, DispatchError> {
-        let agg_asks = <AggregatedAsks<T>>::try_get(order_book_id)
-            .map_err(|_| Error::<T>::NoAggregatedData)?;
-        Ok(agg_asks)
+    ) -> MarketSide<T::MaxSidePrices> {
+        <AggregatedAsks<T>>::get(order_book_id)
     }
 
     fn get_user_limit_orders(
         &mut self,
         account: &T::AccountId,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersForAllOrderBooksPerUser>> {
+    ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>> {
         <UserLimitOrders<T>>::get(account, order_book_id)
     }
 }
