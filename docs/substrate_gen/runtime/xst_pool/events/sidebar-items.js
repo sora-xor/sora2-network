@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["PoolInitialized","Pool is initialized for pair. [DEX Id, Synthetic Asset Id]"],["ReferenceAssetChanged","Reference Asset has been changed for pool. [New Reference Asset Id]"]]});

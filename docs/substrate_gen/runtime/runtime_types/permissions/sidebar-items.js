@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Scope",""]],"mod":[["pallet",""]]});

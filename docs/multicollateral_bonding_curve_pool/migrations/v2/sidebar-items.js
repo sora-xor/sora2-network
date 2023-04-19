@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["SORAMITSU_PAYMENT_ACCOUNT",""]],"struct":[["InitializeTBCD",""]]});

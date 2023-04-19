@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["CreatePoll",""],["TransactionApi",""],["Vote",""],["Withdraw",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["ChangeFee",""],["LockTokens",""],["TransactionApi",""],["WithdrawTokens",""]]});

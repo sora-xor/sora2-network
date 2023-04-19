@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Call",""],["Event",""],["OriginCaller",""]],"mod":[["extensions",""],["opaque",""]],"struct":[["NposCompactSolution24",""],["Runtime",""]]});

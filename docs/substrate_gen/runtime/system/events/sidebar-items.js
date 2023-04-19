@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["CodeUpdated","`:code` was updated."],["ExtrinsicFailed","An extrinsic failed."],["ExtrinsicSuccess","An extrinsic completed successfully."],["KilledAccount","An account was reaped."],["NewAccount","A new account was created."],["Remarked","On on-chain remark happened."]]});

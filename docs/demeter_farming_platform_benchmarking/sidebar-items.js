@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Pallet",""]],"trait":[["Config","Configuration trait of this pallet."]]});

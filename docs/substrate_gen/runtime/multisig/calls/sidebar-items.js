@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["ApproveAsMulti",""],["AsMulti",""],["AsMultiThreshold1",""],["CancelAsMulti",""],["TransactionApi",""]]});

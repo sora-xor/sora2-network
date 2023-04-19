@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["ArithmeticError",""],["DispatchError",""],["MultiSignature",""],["MultiSigner",""],["TokenError",""],["TransactionalError",""]],"mod":[["bounded",""],["generic",""],["traits",""]],"struct":[["ModuleError",""]]});

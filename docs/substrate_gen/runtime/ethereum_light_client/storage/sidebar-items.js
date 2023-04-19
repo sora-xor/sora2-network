@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["BestBlock",""],["BlocksToPrune",""],["FinalizedBlock",""],["Headers",""],["HeadersByNumber",""],["NetworkConfig",""],["StorageApi",""]]});

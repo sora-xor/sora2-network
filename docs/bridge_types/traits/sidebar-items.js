@@ -1,1 +1,0 @@
-initSidebarItems({"trait":[["AppRegistry",""],["MessageCommitment","Add a message to a commitment"],["MessageDispatch","Dispatch a message"],["OutboundRouter","Outbound submission for applications"],["Verifier","A trait for verifying messages."]]});

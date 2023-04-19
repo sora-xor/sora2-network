@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["common"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html\" title=\"trait num_traits::ops::checked::CheckedAdd\">CheckedAdd</a>&gt; <a class=\"trait\" href=\"https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html\" title=\"trait num_traits::ops::checked::CheckedAdd\">CheckedAdd</a> for <a class=\"enum\" href=\"common/prelude/enum.QuoteAmount.html\" title=\"enum common::prelude::QuoteAmount\">QuoteAmount</a>&lt;T&gt;","synthetic":false,"types":["common::swap_amount::QuoteAmount"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["CurrentClaimableVal",""],["EthAddresses",""],["MigrationPending",""],["PswapFarmOwners",""],["PswapWaifuOwners",""],["ReservesAcc",""],["StorageApi",""],["TotalClaimableVal",""],["TotalValRewards",""],["UmiNftClaimed",""],["UmiNftReceivers",""],["UmiNfts",""],["ValBurnedSinceLastVesting",""],["ValOwners",""]]});

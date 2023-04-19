@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["PswapDistributionClient",""]],"trait":[["PswapDistributionAPIClient","Client implementation for the `PswapDistributionAPI` RPC API."],["PswapDistributionAPIServer","Server trait implementation for the `PswapDistributionAPI` RPC API."],["PswapDistributionRuntimeAPI",""]]});

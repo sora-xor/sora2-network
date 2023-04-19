@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["EnableSyntheticAsset",""],["InitializePool",""],["SetReferenceAsset",""],["TransactionApi",""]]});

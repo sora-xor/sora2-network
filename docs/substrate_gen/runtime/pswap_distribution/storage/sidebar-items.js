@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["BurnRate",""],["BurnUpdateInfo",""],["ClaimableShares",""],["ParliamentPswapFraction",""],["ShareholderAccounts",""],["StorageApi",""],["SubscribedAccounts",""]]});

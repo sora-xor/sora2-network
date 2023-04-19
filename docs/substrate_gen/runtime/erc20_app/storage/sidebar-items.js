@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["AppAddresses",""],["AssetKinds",""],["AssetsByAddresses",""],["StorageApi",""],["TokenAddresses",""]]});

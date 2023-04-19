@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["BlockLength",""],["BlockWeights",""],["WeightsPerClass",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["MessageDecodeFailed","We have failed to decode a Call from the message."],["MessageDispatched","Message has been dispatched with given result."],["MessageRejected","Message has been rejected"]]});

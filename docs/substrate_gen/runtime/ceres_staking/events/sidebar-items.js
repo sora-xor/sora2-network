@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Deposited","Ceres deposited. [who, amount]"],["RewardsChanged","Rewards changed [balance]"],["Withdrawn","Staked Ceres and rewards withdrawn. [who, staked, rewards]"]]});

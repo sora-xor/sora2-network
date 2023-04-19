@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Reasons",""],["Releases",""]],"mod":[["pallet",""]],"struct":[["AccountData",""],["BalanceLock",""],["ReserveData",""]]});

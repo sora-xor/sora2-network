@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["ChannelNonces",""],["Fee",""],["Interval",""],["MessageQueues",""],["QueuesTotalGas",""],["StorageApi",""]]});

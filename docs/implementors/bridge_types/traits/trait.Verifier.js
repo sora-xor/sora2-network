@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["ethereum_light_client"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"ethereum_light_client/pallet/trait.Config.html\" title=\"trait ethereum_light_client::pallet::Config\">Config</a>&gt; <a class=\"trait\" href=\"bridge_types/traits/trait.Verifier.html\" title=\"trait bridge_types::traits::Verifier\">Verifier</a> for <a class=\"struct\" href=\"ethereum_light_client/pallet/struct.Pallet.html\" title=\"struct ethereum_light_client::pallet::Pallet\">Pallet</a>&lt;T&gt;","synthetic":false,"types":["ethereum_light_client::pallet::Pallet"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

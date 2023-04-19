@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["add_crowdloan_rewards",""],["add_funds_to_crowdloan_rewards_account",""],["move_market_making_rewards_to_liquidity_provider_rewards_pool",""],["reset_claiming_for_crowdloan_errors",""]],"struct":[["MoveMarketMakerRewardPoolToLiquidityProviderPool",""],["ResetClaimingForCrowdloadErrors",""]]});

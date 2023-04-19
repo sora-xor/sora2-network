@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["WeightInfo","Weight functions for ceres_staking."]]});

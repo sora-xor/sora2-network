@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["framenode_runtime"] = [{"text":"impl NposSolution for <a class=\"struct\" href=\"framenode_runtime/struct.NposCompactSolution24.html\" title=\"struct framenode_runtime::NposCompactSolution24\">NposCompactSolution24</a>","synthetic":false,"types":["framenode_runtime::NposCompactSolution24"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

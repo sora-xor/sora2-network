@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["ImportHeader",""],["RegisterNetwork",""],["TransactionApi",""],["UpdateDifficultyConfig",""]]});

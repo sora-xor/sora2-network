@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["GetPoolsWithBlock",""]],"type":[["Migrations",""]]});

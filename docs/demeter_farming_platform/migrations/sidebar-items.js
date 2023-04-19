@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["migrate",""],["migrate_pool_and_user_data",""]]});

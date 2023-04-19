@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["MultiChainHeight",""]],"mod":[["pallet",""]],"struct":[["BridgeTimepoint",""],["Multisig",""],["MultisigAccount",""],["Timepoint",""]]});

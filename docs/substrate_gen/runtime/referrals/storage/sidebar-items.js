@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Referrals",""],["ReferrerBalances",""],["Referrers",""],["StorageApi",""]]});

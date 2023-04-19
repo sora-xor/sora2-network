@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Event","The event emitted by this pallet."]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["main",""]],"mod":[["cli",""],["command",""],["eth_bridge_metrics",""],["rpc",""],["service","Service implementation. Specialized wrapper over substrate service."]]});

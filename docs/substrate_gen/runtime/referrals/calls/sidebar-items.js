@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Reserve",""],["SetReferrer",""],["TransactionApi",""],["Unreserve",""]]});

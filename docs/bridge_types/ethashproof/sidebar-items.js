@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Error",""]],"fn":[["calc_seedhash",""]],"struct":[["DoubleNodeWithMerkleProof",""],["EthashCache","A wrapper around ethash::make_cache with LRU caching. Use this to retrieve DAG cache data for a given epoch."],["EthashProver",""],["MixNonce",""]]});

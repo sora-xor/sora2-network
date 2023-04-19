@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["AssetKind",""],["AuxiliaryDigestItem",""],["ChannelId",""]],"struct":[["AuxiliaryDigest",""],["Message",""],["MessageId",""],["Proof",""]]});

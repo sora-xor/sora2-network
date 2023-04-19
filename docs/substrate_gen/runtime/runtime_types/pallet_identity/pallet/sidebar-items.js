@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Call","Identity pallet declaration."],["Error","Custom dispatch errors of this pallet."],["Event","The event emitted by this pallet."]]});

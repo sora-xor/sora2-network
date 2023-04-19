@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["CrowdloanClaimHistory",""],["CrowdloanRewards",""],["MarketMakersRegistry",""],["MarketMakingPairs",""],["Rewards",""],["StorageApi",""],["TotalRewards",""]]});

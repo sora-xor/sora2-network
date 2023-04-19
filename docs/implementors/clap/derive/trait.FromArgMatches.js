@@ -1,4 +1,0 @@
-(function() {var implementors = {};
-implementors["framenode"] = [{"text":"impl FromArgMatches for <a class=\"struct\" href=\"framenode/cli/struct.Cli.html\" title=\"struct framenode::cli::Cli\">Cli</a>","synthetic":false,"types":["framenode::cli::Cli"]},{"text":"impl FromArgMatches for <a class=\"enum\" href=\"framenode/cli/enum.Subcommand.html\" title=\"enum framenode::cli::Subcommand\">Subcommand</a>","synthetic":false,"types":["framenode::cli::Subcommand"]}];
-implementors["remote_ext"] = [{"text":"impl FromArgMatches for <a class=\"struct\" href=\"remote_ext/struct.Cli.html\" title=\"struct remote_ext::Cli\">Cli</a>","synthetic":false,"types":["remote_ext::Cli"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["PurgeKeys",""],["SetKeys",""],["TransactionApi",""]]});

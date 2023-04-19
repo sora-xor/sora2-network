@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["CENTS",""],["GRAND",""],["MILLICENTS",""],["TRANSACTION_BYTE_FEE",""],["UNITS",""]],"fn":[["deposit",""]]});

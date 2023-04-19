@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Burn",""],["Mint",""],["RegisterNetwork",""],["RegisterNetworkWithExistingAsset",""],["TransactionApi",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["SetKey",""],["Sudo",""],["SudoAs",""],["SudoUncheckedWeight",""],["TransactionApi",""]]});

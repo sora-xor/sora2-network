@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["digest",""],["era",""],["header",""],["unchecked_extrinsic",""]]});

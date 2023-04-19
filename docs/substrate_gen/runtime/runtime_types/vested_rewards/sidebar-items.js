@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["pallet",""]],"struct":[["CrowdloanReward",""],["MarketMakerInfo",""],["RewardInfo",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["EthBridgeRpc",""]],"trait":[["EthBridgeApiClient","Client implementation for the `EthBridgeApi` RPC API."],["EthBridgeApiServer","Server trait implementation for the `EthBridgeApi` RPC API."],["EthBridgeRuntimeApi",""]]});

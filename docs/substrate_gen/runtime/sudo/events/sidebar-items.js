@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["KeyChanged","The [sudoer] just switched identity; the old key is supplied if one existed."],["Sudid","A sudo just took place. [result]"],["SudoAsDone","A sudo just took place. [result]"]]});

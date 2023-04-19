@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["RegisterChannel",""],["Submit",""],["TransactionApi",""]]});

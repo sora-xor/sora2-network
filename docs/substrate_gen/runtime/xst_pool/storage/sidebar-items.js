@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["BaseFee",""],["CollateralReserves",""],["EnabledSynthetics",""],["PermissionedTechAccount",""],["ReferenceAssetId",""],["StorageApi",""]]});

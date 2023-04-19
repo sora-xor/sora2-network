@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["AssetKind",""]],"mod":[["config",""],["runtime",""]],"struct":[["SignatureParams","Separated components of a secp256k1 signature."]]});

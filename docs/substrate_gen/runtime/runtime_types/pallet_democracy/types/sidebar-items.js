@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["ReferendumInfo",""]],"struct":[["Delegations",""],["ReferendumStatus",""],["Tally",""]]});

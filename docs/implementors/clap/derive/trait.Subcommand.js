@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["framenode"] = [{"text":"impl Subcommand for <a class=\"enum\" href=\"framenode/cli/enum.Subcommand.html\" title=\"enum framenode::cli::Subcommand\">Subcommand</a>","synthetic":false,"types":["framenode::cli::Subcommand"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

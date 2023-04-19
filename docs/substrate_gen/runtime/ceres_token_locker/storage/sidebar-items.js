@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["AuthorityAccount",""],["FeeAmount",""],["FeesAccount",""],["PalletStorageVersion",""],["StorageApi",""],["TokenLockerData",""]]});

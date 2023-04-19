@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["bridge_types"] = [{"text":"impl IntoEnumIterator for <a class=\"enum\" href=\"bridge_types/types/enum.ChannelId.html\" title=\"enum bridge_types::types::ChannelId\">ChannelId</a>","synthetic":false,"types":["bridge_types::types::ChannelId"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

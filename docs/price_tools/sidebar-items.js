@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["AVG_BLOCK_SPAN","Count of blocks to participate in avg value calculation."]],"mod":[["migration",""],["pallet","The module that hosts all the FRAME types needed to add this pallet to a runtime."],["weights",""]],"struct":[["AggregatedPriceInfo",""],["PriceInfo",""]],"trait":[["WeightInfo",""]]});

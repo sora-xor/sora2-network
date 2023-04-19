@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["pallet","A type that is able to return current list of parachain heads that end up in the MMR leaf."]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["PerU16",""],["Perbill",""],["Percent",""]]});

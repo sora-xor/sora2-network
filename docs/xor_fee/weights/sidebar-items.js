@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["WeightInfo","Weight functions for fee_multiplier."]]});

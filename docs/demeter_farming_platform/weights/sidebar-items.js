@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["WeightInfo","Weight functions for demeter_farming_platform."]]});

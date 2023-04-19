@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["StorageVersion",""]],"mod":[["pallet",""]],"struct":[["LockInfo",""]]});

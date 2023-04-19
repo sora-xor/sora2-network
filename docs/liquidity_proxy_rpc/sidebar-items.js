@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["LiquidityProxyClient",""]],"trait":[["LiquidityProxyAPIClient","Client implementation for the `LiquidityProxyAPI` RPC API."],["LiquidityProxyAPIServer","Server trait implementation for the `LiquidityProxyAPI` RPC API."],["LiquidityProxyRuntimeAPI",""]]});

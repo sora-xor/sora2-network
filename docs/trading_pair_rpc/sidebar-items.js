@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["TradingPairClient",""]],"trait":[["TradingPairAPIClient","Client implementation for the `TradingPairAPI` RPC API."],["TradingPairAPIServer","Server trait implementation for the `TradingPairAPI` RPC API."],["TradingPairRuntimeAPI",""]]});

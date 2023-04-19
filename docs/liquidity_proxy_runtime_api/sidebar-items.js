@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["RewardsInfo",""],["SwapOutcomeInfo",""],["SwapOutcomeInfoV1",""]],"trait":[["LiquidityProxyAPI",""]]});

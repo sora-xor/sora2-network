@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["crypto","Cryptography used by off-chain workers."]],"struct":[["SignatureParams","Separated components of a secp256k1 signature."],["SignedTransactionData","Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in finalized blocks."]]});

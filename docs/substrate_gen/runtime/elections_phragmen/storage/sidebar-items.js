@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Candidates",""],["ElectionRounds",""],["Members",""],["RunnersUp",""],["StorageApi",""],["Voting",""]]});

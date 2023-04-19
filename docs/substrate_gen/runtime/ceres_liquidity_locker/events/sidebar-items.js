@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Locked","Funds Locked [who, amount, timestamp]"]]});

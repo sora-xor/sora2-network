@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["calls","Contains one variant per dispatchable that can be called by an extrinsic."],["events",""]],"type":[["Event","The event emitted by this pallet."]]});

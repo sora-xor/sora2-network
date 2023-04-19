@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["DistributionAccount",""]],"mod":[["pallet",""]],"struct":[["DistributionAccountData",""],["DistributionAccounts",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Call","Contains one variant per dispatchable that can be called by an extrinsic."],["Event","The event emitted by this pallet."]],"struct":[["Pallet","BEEFY-MMR pallet."]],"trait":[["Config","The module’s configuration trait."]],"type":[["Module","Type alias to `Pallet`, to be used by `construct_runtime`."]]});

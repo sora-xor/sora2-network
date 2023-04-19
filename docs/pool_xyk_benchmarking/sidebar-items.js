@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["DEX",""]],"struct":[["Pallet",""]],"trait":[["Config",""]]});

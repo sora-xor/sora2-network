@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["RateInfo",""]],"trait":[["OracleProxyAPI",""]]});

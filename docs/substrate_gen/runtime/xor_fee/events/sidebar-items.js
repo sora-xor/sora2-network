@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["FeeWithdrawn","Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]"],["ReferrerRewarded","The portion of fee is sent to the referrer. [Referral, Referrer, Amount]"],["WeightToFeeMultiplierUpdated","New multiplier for weight to fee conversion is set (*1_000_000_000_000_000_000). [New value]"]]});

@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["substrate_gen"] = [{"text":"impl HasModuleError for <a class=\"enum\" href=\"substrate_gen/runtime/runtime_types/sp_runtime/enum.DispatchError.html\" title=\"enum substrate_gen::runtime::runtime_types::sp_runtime::DispatchError\">DispatchError</a>","synthetic":false,"types":["substrate_gen::runtime::runtime_types::sp_runtime::DispatchError"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

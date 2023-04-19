@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["StoredState",""]],"mod":[["pallet",""]],"struct":[["StoredPendingChange",""]]});

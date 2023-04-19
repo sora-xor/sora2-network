@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Close",""],["DisapproveProposal",""],["Execute",""],["Propose",""],["SetMembers",""],["TransactionApi",""],["Vote",""]]});

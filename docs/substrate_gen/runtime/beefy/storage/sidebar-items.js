@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Authorities",""],["NextAuthorities",""],["StorageApi",""],["ValidatorSetId",""]]});

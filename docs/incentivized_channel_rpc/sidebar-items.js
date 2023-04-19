@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Commitment","Wire-format for commitment"],["IncentivizedChannelClient",""]],"trait":[["IncentivizedChannelAPIClient","Client implementation for the `IncentivizedChannelAPI` RPC API."],["IncentivizedChannelAPIServer","Server trait implementation for the `IncentivizedChannelAPI` RPC API."]]});

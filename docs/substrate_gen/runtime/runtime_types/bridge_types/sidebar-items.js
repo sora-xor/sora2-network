@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["difficulty",""],["ethashproof",""],["header",""],["network_config",""],["types",""]]});

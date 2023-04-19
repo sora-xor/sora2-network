@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["pallet",""]],"struct":[["ScheduledV3",""]]});

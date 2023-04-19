@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["module",""]],"struct":[["AccountData",""],["BalanceLock",""],["ReserveData",""]]});

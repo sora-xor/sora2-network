@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["framenode_runtime"] = [{"text":"impl PalletInfo for <a class=\"struct\" href=\"framenode_runtime/struct.PalletInfo.html\" title=\"struct framenode_runtime::PalletInfo\">PalletInfo</a>","synthetic":false,"types":["framenode_runtime::PalletInfo"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
