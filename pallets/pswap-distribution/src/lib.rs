@@ -33,9 +33,9 @@
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquidityProxyTrait,
-    LiquiditySourceFilter, LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet,
-    PswapRemintInfo,
+    fixed, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DexInfoProvider,
+    EnsureDEXManager, Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
+    OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -60,9 +60,13 @@ type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 
-pub trait WeightInfo {
-    fn claim_incentive() -> Weight;
-    fn on_initialize(is_distributing: bool) -> Weight;
+pub use weights::WeightInfo;
+
+#[derive(Default, Clone)]
+pub struct DistributionWeightParams {
+    pub skipped: u32,
+    pub distributed: u32,
+    pub shareholders: u32,
 }
 
 impl<T: Config> Pallet<T> {
@@ -213,7 +217,7 @@ impl<T: Config> Pallet<T> {
         dex_id: &T::DEXId,
         pool_account: &AccountIdOf<T>,
         tech_account_id: &T::AccountId,
-    ) -> DispatchResult {
+    ) -> Result<u32, DispatchError> {
         common::with_transaction(|| {
             // Get state of incentive availability and corresponding definitions.
             let incentive_asset_id = T::GetIncentiveAssetId::get();
@@ -224,7 +228,7 @@ impl<T: Config> Pallet<T> {
                     dex_id.clone(),
                     fees_account_id.clone(),
                 ));
-                return Ok(());
+                return Ok(0);
             }
 
             let mut distribution = Self::calculate_and_burn_distribution(
@@ -237,24 +241,20 @@ impl<T: Config> Pallet<T> {
             let mut shareholders_distributed_amount = fixed_wrapper!(0);
 
             // Distribute incentive to shareholders.
-            let mut shareholders_num = 0u128;
+            let mut shareholders_num = 0u32;
             for (account_id, pool_tokens) in T::PoolXykPallet::pool_providers(pool_account) {
-                {
-                    let share = FixedWrapper::from(pool_tokens)
-                        * FixedWrapper::from(distribution.liquidity_providers)
-                        / FixedWrapper::from(pool_tokens_total);
-                    let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
+                let share = FixedWrapper::from(pool_tokens)
+                    * FixedWrapper::from(distribution.liquidity_providers)
+                    / FixedWrapper::from(pool_tokens_total);
+                let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
 
-                    ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                        *current = current.saturating_add(share)
-                    });
-                    ClaimableShares::<T>::mutate(|current| {
-                        *current = current.saturating_add(share)
-                    });
-                    shareholders_distributed_amount = shareholders_distributed_amount + share;
+                ShareholderAccounts::<T>::mutate(&account_id, |current| {
+                    *current = current.saturating_add(share)
+                });
+                ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
+                shareholders_distributed_amount = shareholders_distributed_amount + share;
 
-                    shareholders_num += 1;
-                }
+                shareholders_num += 1;
             }
 
             let undistributed_lp_amount = distribution.liquidity_providers.saturating_sub(
@@ -267,8 +267,8 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers = distribution
                     .liquidity_providers
                     .saturating_sub(undistributed_lp_amount);
-                distribution.parliament = distribution
-                    .parliament
+                distribution.buy_back_xst = distribution
+                    .buy_back_xst
                     .saturating_add(undistributed_lp_amount);
             }
 
@@ -279,11 +279,10 @@ impl<T: Config> Pallet<T> {
                 distribution.liquidity_providers,
             )?;
 
-            assets::Pallet::<T>::mint_to(
+            T::BuyBackHandler::mint_buy_back_and_burn(
                 &incentive_asset_id,
-                tech_account_id,
-                &T::GetParliamentAccountId::get(),
-                distribution.parliament,
+                &T::GetXSTAssetId::get(),
+                distribution.buy_back_xst,
             )?;
 
             Self::deposit_event(Event::<T>::IncentiveDistributed(
@@ -291,9 +290,9 @@ impl<T: Config> Pallet<T> {
                 fees_account_id.clone(),
                 incentive_asset_id,
                 distribution.liquidity_providers,
-                shareholders_num,
+                shareholders_num as u128,
             ));
-            Ok(())
+            Ok(shareholders_num)
         })
     }
 
@@ -331,10 +330,10 @@ impl<T: Config> Pallet<T> {
     ) -> Result<PswapRemintInfo, DispatchError> {
         let amount_burned = FixedWrapper::from(amount_burned);
         // Calculate amount for parliament and actual remainder after its fraction.
-        let amount_parliament = (amount_burned.clone() * ParliamentPswapFraction::<T>::get())
+        let amount_buy_back = (amount_burned.clone() * BuyBackXSTFraction::<T>::get())
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
-        let mut amount_left = (amount_burned.clone() - amount_parliament)
+        let mut amount_left = (amount_burned.clone() - amount_buy_back)
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
 
@@ -352,39 +351,50 @@ impl<T: Config> Pallet<T> {
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,
             vesting: amount_vesting,
-            parliament: amount_parliament,
+            buy_back_xst: amount_buy_back,
         })
     }
 
     /// Distributes incentives to all subscribed pools
     ///
     /// - `block_num`: The block number of the current chain head
-    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> bool {
+    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> DistributionWeightParams {
         let tech_account_id = T::GetTechnicalAccountId::get();
 
-        let mut distributing_count = 0;
+        let mut weight_params = DistributionWeightParams::default();
 
         for (fees_account, (dex_id, pool_account, frequency, block_offset)) in
             SubscribedAccounts::<T>::iter()
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
                 let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, dex_id);
-                let distribute_result = Self::distribute_incentive(
-                    &fees_account,
-                    &dex_id,
-                    &pool_account,
-                    &tech_account_id,
-                );
-                if distribute_result.is_err() {
-                    Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
-                        dex_id,
-                        fees_account,
-                    ));
+                // Revert storage state if distribution failed and try to distribute next time
+                let distribute_result = common::with_transaction(|| {
+                    Self::distribute_incentive(
+                        &fees_account,
+                        &dex_id,
+                        &pool_account,
+                        &tech_account_id,
+                    )
+                });
+                match distribute_result {
+                    Ok(shareholders) => {
+                        weight_params.shareholders += shareholders;
+                    }
+                    Err(err) => {
+                        frame_support::log::error!("Incentive distribution failed: {err:?}");
+                        Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
+                            dex_id,
+                            fees_account,
+                        ));
+                    }
                 }
-                distributing_count += 1;
+                weight_params.distributed += 1;
+            } else {
+                weight_params.skipped += 1;
             }
         }
-        distributing_count > 0
+        weight_params
     }
 
     /// Updates the fees' burn rate. Used in
@@ -430,6 +440,8 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -439,8 +451,9 @@ pub mod pallet {
         + dex_manager::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<Self::AssetId>;
+        type GetXSTAssetId: Get<Self::AssetId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type CompatBalance: From<<Self as tokens::Config>::Balance>
             + Into<Balance>
@@ -455,6 +468,7 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
         type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
     }
 
     /// The current storage version.
@@ -471,16 +485,20 @@ pub mod pallet {
         /// Perform exchange and distribution routines for all substribed accounts
         /// with respect to thir configured frequencies.
         fn on_initialize(block_num: T::BlockNumber) -> Weight {
-            let is_distributing = Self::incentive_distribution_routine(block_num);
+            let weight_params = Self::incentive_distribution_routine(block_num);
             Self::burn_rate_update_routine(block_num);
-
-            <T as Config>::WeightInfo::on_initialize(is_distributing)
+            <T as Config>::WeightInfo::on_initialize(
+                weight_params.skipped,
+                weight_params.distributed,
+                weight_params.shareholders,
+            )
         }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_incentive())]
         pub fn claim_incentive(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_by_account(&who)?;
@@ -582,15 +600,15 @@ pub mod pallet {
     pub type ClaimableShares<T: Config> = StorageValue<_, Fixed, ValueQuery>;
 
     #[pallet::type_value]
-    pub(super) fn DefaultForParliamentPswapFraction() -> Fixed {
+    pub(super) fn DefaultForBuyBackXSTFraction() -> Fixed {
         fixed!(0.1)
     }
 
-    /// Fraction of PSWAP that could be reminted for parliament.
+    /// Fraction of PSWAP that could be buy backed to XST
     #[pallet::storage]
-    #[pallet::getter(fn parliament_pswap_fraction)]
-    pub(super) type ParliamentPswapFraction<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForParliamentPswapFraction>;
+    #[pallet::getter(fn buy_back_xst_fraction)]
+    pub(super) type BuyBackXSTFraction<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForBuyBackXSTFraction>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

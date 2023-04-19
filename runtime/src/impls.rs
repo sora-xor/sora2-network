@@ -30,11 +30,26 @@
 
 use core::marker::PhantomData;
 
+#[cfg(feature = "wip")]
+use bridge_types::traits::BridgeAssetRegistry;
+#[cfg(feature = "wip")]
+use codec::{Decode, Encode};
+use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
-use frame_support::weights::{DispatchClass, Weight};
+use frame_support::weights::Weight;
+#[cfg(feature = "wip")]
+use frame_support::{
+    dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo},
+    traits::Contains,
+    RuntimeDebug,
+};
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
+#[cfg(feature = "wip")]
+use scale_info::TypeInfo;
+#[cfg(feature = "wip")]
+use sp_runtime::DispatchError;
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
     <T as frame_system::Config>::AccountId,
@@ -44,11 +59,74 @@ pub struct CollectiveWeightInfo<T>(PhantomData<T>);
 
 pub struct DemocracyWeightInfo;
 
+pub struct PreimageWeightInfo;
+
 pub struct OnUnbalancedDemocracySlash<T> {
     _marker: PhantomData<T>,
 }
 
 const MAX_PREIMAGE_BYTES: u32 = 5 * 1024 * 1024;
+
+impl pallet_preimage::WeightInfo for PreimageWeightInfo {
+    fn note_preimage(bytes: u32) -> Weight {
+        let max_weight: Weight = BlockWeights::get()
+            .get(DispatchClass::Normal)
+            .max_extrinsic
+            .expect("Democracy pallet must have max extrinsic weight");
+        if bytes > MAX_PREIMAGE_BYTES {
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
+        }
+        let weight = <() as pallet_preimage::WeightInfo>::note_preimage(bytes);
+        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
+        // We want to keep it as high as possible, but can't risk having it reject,
+        // so we always the base block execution weight as a max
+        max_dispatch_weight.min(weight)
+    }
+
+    fn note_requested_preimage(s: u32) -> Weight {
+        <() as pallet_preimage::WeightInfo>::note_requested_preimage(s)
+    }
+
+    fn note_no_deposit_preimage(s: u32) -> Weight {
+        <() as pallet_preimage::WeightInfo>::note_no_deposit_preimage(s)
+    }
+
+    fn unnote_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unnote_preimage()
+    }
+
+    fn unnote_no_deposit_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unnote_no_deposit_preimage()
+    }
+
+    fn request_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_preimage()
+    }
+
+    fn request_no_deposit_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_no_deposit_preimage()
+    }
+
+    fn request_unnoted_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_unnoted_preimage()
+    }
+
+    fn request_requested_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::request_requested_preimage()
+    }
+
+    fn unrequest_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_preimage()
+    }
+
+    fn unrequest_unnoted_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_unnoted_preimage()
+    }
+
+    fn unrequest_multi_referenced_preimage() -> Weight {
+        <() as pallet_preimage::WeightInfo>::unrequest_multi_referenced_preimage()
+    }
+}
 
 impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeightInfo<T> {
     fn set_members(m: u32, n: u32, p: u32) -> Weight {
@@ -75,7 +153,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_early_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -92,7 +170,7 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
             .max_extrinsic
             .expect("Collective pallet must have max extrinsic weight");
         if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
+            return max_weight.saturating_add(Weight::from_parts(1, 0));
         }
         let weight = <() as pallet_collective::WeightInfo>::close_approved(bytes, m, p);
         let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
@@ -112,23 +190,23 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn propose() -> Weight {
         <() as pallet_democracy::WeightInfo>::propose()
     }
-    fn second(s: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::second(s)
+    fn second() -> Weight {
+        <() as pallet_democracy::WeightInfo>::second()
     }
-    fn vote_new(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::vote_new(r)
+    fn vote_new() -> Weight {
+        <() as pallet_democracy::WeightInfo>::vote_new()
     }
-    fn vote_existing(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::vote_existing(r)
+    fn vote_existing() -> Weight {
+        <() as pallet_democracy::WeightInfo>::vote_existing()
     }
     fn emergency_cancel() -> Weight {
         <() as pallet_democracy::WeightInfo>::emergency_cancel()
     }
-    fn blacklist(p: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::blacklist(p)
+    fn blacklist() -> Weight {
+        <() as pallet_democracy::WeightInfo>::blacklist()
     }
-    fn external_propose(v: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::external_propose(v)
+    fn external_propose() -> Weight {
+        <() as pallet_democracy::WeightInfo>::external_propose()
     }
     fn external_propose_majority() -> Weight {
         <() as pallet_democracy::WeightInfo>::external_propose_majority()
@@ -139,17 +217,14 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn fast_track() -> Weight {
         <() as pallet_democracy::WeightInfo>::fast_track()
     }
-    fn veto_external(v: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::veto_external(v)
+    fn veto_external() -> Weight {
+        <() as pallet_democracy::WeightInfo>::veto_external()
     }
-    fn cancel_proposal(p: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::cancel_proposal(p)
+    fn cancel_proposal() -> Weight {
+        <() as pallet_democracy::WeightInfo>::cancel_proposal()
     }
     fn cancel_referendum() -> Weight {
         <() as pallet_democracy::WeightInfo>::cancel_referendum()
-    }
-    fn cancel_queued(r: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::cancel_queued(r)
     }
     fn on_initialize_base(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::on_initialize_base(r)
@@ -162,26 +237,6 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     }
     fn clear_public_proposals() -> Weight {
         <() as pallet_democracy::WeightInfo>::clear_public_proposals()
-    }
-    fn note_preimage(bytes: u32) -> Weight {
-        let max_weight: Weight = BlockWeights::get()
-            .get(DispatchClass::Normal)
-            .max_extrinsic
-            .expect("Democracy pallet must have max extrinsic weight");
-        if bytes > MAX_PREIMAGE_BYTES {
-            return max_weight.saturating_add(1);
-        }
-        let weight = <() as pallet_democracy::WeightInfo>::note_preimage(bytes);
-        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
-        // We want to keep it as high as possible, but can't risk having it reject,
-        // so we always the base block execution weight as a max
-        max_dispatch_weight.min(weight)
-    }
-    fn note_imminent_preimage(b: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::note_imminent_preimage(b)
-    }
-    fn reap_preimage(b: u32) -> Weight {
-        <() as pallet_democracy::WeightInfo>::reap_preimage(b)
     }
     fn unlock_remove(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::unlock_remove(r)
@@ -205,37 +260,123 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
+#[cfg(feature = "wip")] // Substrate bridge
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+pub struct DispatchableSubstrateBridgeCall(
+    bridge_types::substrate::SubstrateBridgeMessage<
+        crate::AccountId,
+        crate::AssetId,
+        crate::Balance,
+    >,
+);
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl Dispatchable for DispatchableSubstrateBridgeCall {
+    type RuntimeOrigin = crate::RuntimeOrigin;
+    type Config = crate::Runtime;
+    type Info = DispatchInfo;
+    type PostInfo = PostDispatchInfo;
+
+    fn dispatch(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+        frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        match self.0 {
+            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(msg) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {
+                unimplemented!()
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wip")] // Bridges
+pub struct BridgeAssetRegistryImpl;
+
+#[cfg(feature = "wip")] // Bridges
+impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = crate::AssetName;
+    type AssetSymbol = crate::AssetSymbol;
+    type Decimals = u8;
+
+    fn register_asset(
+        owner: crate::AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+        decimals: Self::Decimals,
+    ) -> Result<crate::AssetId, DispatchError> {
+        let asset_id =
+            crate::Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+pub struct SubstrateBridgeCallFilter;
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
+    fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
+        match &call.0 {
+            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(_) => true,
+            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => false,
+        }
+    }
+}
+
+#[cfg(feature = "wip")] // EVM bridge
+pub struct EVMBridgeCallFilter;
+
+#[cfg(feature = "wip")] // EVM bridge
+impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
+    fn contains(call: &crate::RuntimeCall) -> bool {
+        match call {
+            crate::RuntimeCall::ERC20App(_) | crate::RuntimeCall::EthApp(_) => true,
+            _ => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     use frame_support::weights::Weight;
-    use pallet_democracy::WeightInfo;
+    use pallet_preimage::WeightInfo;
 
-    const MAX_WEIGHT: Weight = 1_459_875_000_000_u64 as _;
+    const MAX_WEIGHT: Weight = Weight::from_parts(1_459_875_000_000_u64, 0);
     const MEBIBYTE: u32 = 1024 * 1024;
 
     #[test]
     fn democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size() {
-        fn t(bytes: u32, expected: Weight) {
-            let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, expected);
-            assert!(actual <= MAX_WEIGHT);
+        fn t(bytes: u32, expected: Weight, name: &str) {
+            let actual = PreimageWeightInfo::note_preimage(bytes);
+            assert_eq!(actual.ref_time(), expected.ref_time(), "{}", name);
+            assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, 152986000);
-        t(1, 152988000);
-        t(500_000, 1_152_986_000);
-        t(1_000_000, 2_152_986_000);
-        t(5 * MEBIBYTE, 10_638_746_000);
+        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
+        t(1, Weight::from_parts(248_829_705, 0), "1");
+        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
+        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
+        t(
+            5 * MEBIBYTE,
+            Weight::from_parts(9_187_938_400, 0),
+            "5 * MEBIBYTE",
+        );
     }
 
     #[test]
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
         fn t(bytes: u32) {
-            let actual = DemocracyWeightInfo::note_preimage(bytes);
-            assert_eq!(actual, 1_459_913_702_001_u64);
-            assert!(actual > MAX_WEIGHT);
+            let actual = PreimageWeightInfo::note_preimage(bytes);
+            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
+            assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
         }
 
         t(5 * MEBIBYTE + 1);

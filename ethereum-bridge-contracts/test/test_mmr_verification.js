@@ -6,7 +6,7 @@ require("chai")
     .use(require("chai-bignumber")(BigNumber))
     .should();
 
-const MMRVerification = artifacts.require("MMRVerification");
+const MMRVerification = artifacts.require("SimplifiedMMRVerification");
 const fixture7leaves = require('./fixtures/mmr-fixture-data-7-leaves.json');
 const fixture15leaves = require('./fixtures/mmr-fixture-data-15-leaves.json');
 

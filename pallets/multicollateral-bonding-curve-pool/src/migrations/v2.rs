@@ -10,6 +10,10 @@ use frame_support::{
     traits::GetStorageVersion as _,
 };
 use sp_runtime::traits::Zero;
+use sp_std::prelude::*;
+
+#[cfg(feature = "try-runtime")]
+use common::AssetInfoProvider;
 
 pub const SORAMITSU_PAYMENT_ACCOUNT: [u8; 32] =
     hex_literal::hex!("34b9a44a2d3f681d8191815a6de986bf163d15f6d6b58d56aa1ab887313e1723");
@@ -92,27 +96,27 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<(), &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         frame_support::ensure!(
-            assets::Pallet::<T>::ensure_asset_exists(TBCD.into()).is_err(),
+            assets::Pallet::<T>::ensure_asset_exists(&TBCD.into()).is_err(),
             "TBCD asset already registered"
         );
         frame_support::ensure!(
-            !crate::EnabledTargets::get().contains(&TBCD.into()),
+            !crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
             "TBCD pool already initialized"
         );
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 1,
             "must upgrade linearly"
         );
-        Ok(())
+        Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade() -> Result<(), &'static str> {
-        assets::Pallet::<T>::ensure_asset_exists(TBCD.into())?;
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        assets::Pallet::<T>::ensure_asset_exists(&TBCD.into())?;
         frame_support::ensure!(
-            crate::EnabledTargets::get().contains(&TBCD.into()),
+            crate::EnabledTargets::<T>::get().contains(&TBCD.into()),
             "TBCD pool is not initialized"
         );
         frame_support::ensure!(

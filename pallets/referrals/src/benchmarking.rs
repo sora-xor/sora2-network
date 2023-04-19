@@ -31,7 +31,7 @@
 use crate::{Config, Pallet, ReferrerBalances, Referrers};
 use codec::Decode;
 use common::weights::constants::SMALL_FEE;
-use common::{balance, XOR};
+use common::{balance, AssetInfoProvider, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -61,6 +61,8 @@ benchmarks! {
 
     unreserve {
         let caller = alice::<T>();
+        // Alice could have some start balance depending on chainspec
+        let start_balance = assets::Pallet::<T>::free_balance(&XOR.into(), &alice::<T>())?;
         T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
         Pallet::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }: {
@@ -68,7 +70,7 @@ benchmarks! {
     }
     verify {
         assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), None);
-        assert_eq!(assets::Pallet::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000)));
+        assert_eq!(assets::Pallet::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000) + start_balance));
     }
 
     set_referrer {

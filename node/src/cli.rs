@@ -37,6 +37,10 @@ pub struct Cli {
 
     #[clap(flatten)]
     pub run: RunCmd,
+
+    /// Disable BEEFY gadget. Enabled by default
+    #[clap(long)]
+    pub disable_beefy: bool,
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -64,6 +68,14 @@ pub enum Subcommand {
 
     /// Revert the chain to a previous state.
     Revert(sc_cli::RevertCmd),
+
+    /// Try some command against runtime state.
+    #[cfg(feature = "try-runtime")]
+    TryRuntime(try_runtime_cli::TryRuntimeCmd),
+
+    /// Generate chainspec for network fork-off
+    #[cfg(feature = "private-net")]
+    ForkOff(crate::fork_off::ForkOffCmd),
 
     /// The custom benchmark subcommmand benchmarking runtime pallets.
     #[cfg(feature = "runtime-benchmarks")]

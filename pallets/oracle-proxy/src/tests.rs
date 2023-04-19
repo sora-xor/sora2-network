@@ -40,9 +40,9 @@ fn relay_symbols() {
     let relayer = 1;
     let initial_resolve_time = 100;
 
-    Band::add_relayers(Origin::root(), vec![relayer]).expect("Failed to add relayers");
+    Band::add_relayers(RuntimeOrigin::root(), vec![relayer]).expect("Failed to add relayers");
     Band::relay(
-        Origin::signed(relayer),
+        RuntimeOrigin::signed(relayer),
         symbols.into_iter().zip(rates.into_iter()).collect(),
         initial_resolve_time,
         0,
@@ -56,13 +56,13 @@ fn enable_and_disable_oracles_should_work() {
         assert!(OracleProxy::enabled_oracles().is_empty());
 
         let oracle = Oracle::BandChainFeed;
-        OracleProxy::enable_oracle(Origin::root(), oracle.clone())
+        OracleProxy::enable_oracle(RuntimeOrigin::root(), oracle.clone())
             .expect("Failed to enable oracle");
 
         let enabled_oracles = OracleProxy::enabled_oracles();
         assert!(enabled_oracles.contains(&oracle));
 
-        OracleProxy::disable_oracle(Origin::root(), oracle.clone())
+        OracleProxy::disable_oracle(RuntimeOrigin::root(), oracle.clone())
             .expect("Failed to disable oracle");
 
         assert!(!OracleProxy::enabled_oracles().contains(&oracle));
@@ -74,14 +74,14 @@ fn enable_and_disable_oracles_should_forbid_non_root_call() {
     new_test_ext().execute_with(|| {
         let oracle = Oracle::BandChainFeed;
         assert_err!(
-            OracleProxy::enable_oracle(Origin::signed(1), oracle.clone()),
+            OracleProxy::enable_oracle(RuntimeOrigin::signed(1), oracle.clone()),
             BadOrigin
         );
 
         assert!(OracleProxy::enabled_oracles().is_empty());
 
         assert_err!(
-            OracleProxy::disable_oracle(Origin::signed(2), oracle.clone()),
+            OracleProxy::disable_oracle(RuntimeOrigin::signed(2), oracle.clone()),
             BadOrigin
         );
     });
@@ -93,7 +93,7 @@ fn quote_and_list_enabled_symbols_should_work() {
         relay_symbols();
 
         let oracle = Oracle::BandChainFeed;
-        OracleProxy::enable_oracle(Origin::root(), oracle.clone())
+        OracleProxy::enable_oracle(RuntimeOrigin::root(), oracle.clone())
             .expect("Failed to enable oracle");
 
         let symbols = vec!["USD".to_owned(), "RUB".to_owned(), "YEN".to_owned()];

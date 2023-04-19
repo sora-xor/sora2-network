@@ -14,9 +14,9 @@ module.exports = async ({
   let merkleProofLibrary = await deployments.get("MerkleProof")
   let beefy = await deployments.get("BeefyLightClient")
 
-  await deployments.deploy("BasicInboundChannel", {
+  await deployments.deploy("InboundChannel", {
     from: deployer,
-    contract: isTest ? "TestBasicInboundChannel" : null,
+    contract: isTest ? "TestInboundChannel" : null,
     args: [beefy.address],
     libraries: {
       MerkleProof: merkleProofLibrary.address,
@@ -26,28 +26,9 @@ module.exports = async ({
     autoMine: true,
   });
 
-  await deployments.deploy("IncentivizedInboundChannel", {
+  await deployments.deploy("OutboundChannel", {
     from: deployer,
-    contract: isTest ? "TestIncentivizedInboundChannel" : null,
-    args: [beefy.address],
-    libraries: {
-      MerkleProof: merkleProofLibrary.address,
-      ScaleCodec: scaleCodecLibrary.address,
-    },
-    log: true,
-    autoMine: true,
-  });
-
-  await deployments.deploy("BasicOutboundChannel", {
-    contract: isTest ? "TestBasicOutboundChannel" : null,
-    from: deployer,
-    log: true,
-    autoMine: true,
-  });
-
-  await deployments.deploy("IncentivizedOutboundChannel", {
-    from: deployer,
-    contract: isTest ? "TestIncentivizedOutboundChannel" : null,
+    contract: isTest ? "TestOutboundChannel" : null,
     log: true,
     autoMine: true,
   });

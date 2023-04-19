@@ -47,11 +47,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
-
-pub trait WeightInfo {
-    fn enable_oracle() -> Weight;
-    fn disable_oracle() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
@@ -102,7 +98,7 @@ pub mod pallet {
     /// `OracleProxy` pallet is used to aggregate data from all supported oracles in Sora.
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
         type Symbol: Parameter + Ord;
         type BandChainOracle: DataFeed<Self::Symbol, Rate, u64>;
@@ -147,6 +143,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account
         /// - `oracle`: oracle variant which should be enabled
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_oracle())]
         pub fn enable_oracle(origin: OriginFor<T>, oracle: Oracle) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -168,6 +165,7 @@ pub mod pallet {
         ///
         /// - `origin`: the sudo account
         /// - `oracle`: oracle variant which should be disabled
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_oracle())]
         pub fn disable_oracle(origin: OriginFor<T>, oracle: Oracle) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;

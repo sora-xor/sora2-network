@@ -10,14 +10,8 @@ module.exports = async ({
   let [deployer] = await getUnnamedAccounts();
 
   let channels = {
-    basic: {
-      inbound: await deployments.get("BasicInboundChannel"),
-      outbound: await deployments.get("BasicOutboundChannel")
-    },
-    incentivized: {
-      inbound: await deployments.get("IncentivizedInboundChannel"),
-      outbound: await deployments.get("IncentivizedOutboundChannel")
-    }
+    inbound: await deployments.get("InboundChannel"),
+    outbound: await deployments.get("OutboundChannel")
   }
 
   let scaleCodecLibrary = await deployments.get("ScaleCodec")
@@ -25,10 +19,8 @@ module.exports = async ({
   await deployments.deploy("MigrationApp", {
     from: deployer,
     args: [
-      channels.basic.inbound.address,
-      channels.basic.outbound.address,
-      channels.incentivized.inbound.address,
-      channels.incentivized.outbound.address,
+      channels.inbound.address,
+      channels.outbound.address,
     ],
     libraries: {
       ScaleCodec: scaleCodecLibrary.address

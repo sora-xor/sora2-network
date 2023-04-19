@@ -31,6 +31,7 @@ Example genesis
     "petersburgBlock": 0,
     "istanbulBlock": 0,
     "muirGlacierBlock": 0,
+    "grayGlacierBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
     "ethash": {}

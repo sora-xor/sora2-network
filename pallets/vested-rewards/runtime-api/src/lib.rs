@@ -67,16 +67,28 @@ pub struct CrowdloanLease {
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait VestedRewardsApi<EthAddress, AssetId, Balance> where
-        EthAddress: Codec,
+    #[api_version(2)]
+    pub trait VestedRewardsApi<AccountId, AssetId, Balance, CrowdloanTag> where
+        AccountId: Codec,
         AssetId: Codec,
-        Balance: Codec + MaybeFromStr + MaybeDisplay
+        Balance: Codec + MaybeFromStr + MaybeDisplay,
+        CrowdloanTag: Codec
     {
         fn crowdloan_claimable(
-            address: EthAddress,
+            tag: CrowdloanTag,
+            account_id: AccountId,
             asset_id: AssetId,
         ) -> Option<BalanceInfo<Balance>>;
 
+        fn crowdloan_lease(tag: CrowdloanTag) -> Option<CrowdloanLease>;
+
+        #[changed_in(2)]
+        fn crowdloan_claimable(
+            account_id: AccountId,
+            asset_id: AssetId,
+        ) -> Option<BalanceInfo<Balance>>;
+
+        #[changed_in(2)]
         fn crowdloan_lease() -> CrowdloanLease;
     }
 }

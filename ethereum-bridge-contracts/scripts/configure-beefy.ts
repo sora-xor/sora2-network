@@ -5,40 +5,31 @@ const soraEndpoint = process.env.RELAYCHAIN_ENDPOINT;
 
 async function configureBeefy() {
   const beefyDeployment = await hre.deployments.get("BeefyLightClient");
-
-  const validatorRegistryDeployment = await hre.deployments.get("ValidatorRegistry");
-  const validatorRegistry = await hre.ethers.getContractAt("ValidatorRegistry", validatorRegistryDeployment.address);
-  console.log(`Contract address ${validatorRegistryDeployment.address}`);
+  const beefy = await hre.ethers.getContractAt("TestBeefyLightClient", beefyDeployment.address);
+  console.log(`Contract address ${beefyDeployment.address}`);
 
   const wsProvider = new WsProvider(soraEndpoint);
   const api = await ApiPromise.create({ provider: wsProvider });
 
   const blockHash = await api.rpc.chain.getBlockHash(1);
-  const authorities = await (await api.at(blockHash)).query.mmrLeaf.beefyNextAuthorities();
-  console.log(authorities);
-  const root = authorities['root'].toString();
-  const numValidators = authorities['len'].toString();
-  const id = authorities['id'].toString();
-
+  const nextAuthorities = (await (await api.at(blockHash)).query.mmrLeaf.beefyNextAuthorities()).toJSON();
+  const authorities = (await (await api.at(blockHash)).query.mmrLeaf.beefyAuthorities()).toJSON();
 
   console.log("Configuring ValidatorRegistry with updated validators")
-  console.log({
-    root, numValidators, id
-  });
+  console.log("Current validator set", authorities);
+  console.log("Next validator set", nextAuthorities);
 
-  let result = await validatorRegistry.update(root, numValidators, id)
+  let result = await beefy.reset(1, {
+    length: authorities["len"],
+    root: authorities["root"],
+    id: authorities["id"],
+  }, {
+    length: nextAuthorities["len"],
+    root: nextAuthorities["root"],
+    id: nextAuthorities["id"],
+  });
   console.log(result);
   console.log(await result.wait());
-
-  console.log("Transferring ownership of ValidatorRegistry to BeefyLightClient")
-  console.log({
-    beefyAddress: beefyDeployment.address,
-  });
-
-  result = await validatorRegistry.transferOwnership(beefyDeployment.address)
-  console.log(result);
-  console.log(await result.wait());
-
   return;
 }
 

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use super::mock::*;
 use super::{Assets, Error, EthBridge};
 use crate::contract::{ContractEvent, DepositEvent};
@@ -11,7 +41,7 @@ use crate::tests::{
 };
 use crate::{EthAddress, RegisteredSidechainToken};
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, PredefinedAssetId,
+    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, PredefinedAssetId,
     DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_support::assert_noop;
@@ -71,7 +101,7 @@ fn should_mint_and_burn_sidechain_asset() {
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         check_invariant(&asset_id, 100);
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -125,7 +155,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         check_invariant();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             XOR.into(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
@@ -207,7 +237,11 @@ fn should_add_asset() {
             None,
         )
         .unwrap();
-        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id,));
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id,
+        ));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
         approve_last_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
@@ -228,7 +262,7 @@ fn should_add_token() {
         let name = "Runtime Token".into();
         let decimals = 18;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::root(),
+            RuntimeOrigin::root(),
             token_address,
             symbol,
             name,
@@ -260,7 +294,7 @@ fn should_not_add_token_if_not_bridge_account() {
         let decimals = 18;
         assert_err!(
             EthBridge::add_sidechain_token(
-                Origin::signed(bob),
+                RuntimeOrigin::signed(bob),
                 token_address,
                 symbol,
                 name,
@@ -299,17 +333,21 @@ fn should_reserve_owned_asset_on_different_networks() {
         .unwrap();
         let supply = Assets::total_issuance(&asset_id).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
             net_id_0,
         ));
         approve_last_request(&state, net_id_0).expect("request wasn't approved");
-        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id_1,));
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id_1,
+        ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
@@ -376,7 +414,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         // Register token on the first network.
         let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::root(),
+            RuntimeOrigin::root(),
             token_address,
             "TEST".into(),
             "Runtime Token".into(),
@@ -392,7 +430,11 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         );
 
         // Register the newly generated asset in the second network
-        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id_1,));
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id_1,
+        ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
         assert_eq!(
             EthBridge::registered_asset(net_id_1, asset_id).unwrap(),
@@ -429,7 +471,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
 
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
@@ -460,7 +502,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
 
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             50_u32.into(),
@@ -483,7 +525,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::root(),
+            RuntimeOrigin::root(),
             token_address,
             ticker,
             name,
@@ -543,7 +585,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         );
         // Outgoing transfer part.
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id.clone(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             balance!(1),
@@ -581,7 +623,11 @@ fn should_convert_amount_for_indivisible_token() {
         let asset_id =
             Assets::register_from(&alice, ticker, name, decimals, amount, false, None, None)
                 .unwrap();
-        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id));
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id
+        ));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
         approve_last_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
@@ -590,7 +636,7 @@ fn should_convert_amount_for_indivisible_token() {
         );
         // Outgoing transfer part.
         assert_ok!(EthBridge::transfer_to_sidechain(
-            Origin::signed(alice.clone()),
+            RuntimeOrigin::signed(alice.clone()),
             asset_id.clone(),
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             1,
@@ -648,7 +694,7 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::root(),
+            RuntimeOrigin::root(),
             token_address,
             ticker,
             name,
@@ -706,7 +752,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::root(),
+            RuntimeOrigin::root(),
             token_address,
             ticker,
             name,
@@ -730,7 +776,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
         .unwrap();
         assert_noop!(
             EthBridge::transfer_to_sidechain(
-                Origin::signed(alice.clone()),
+                RuntimeOrigin::signed(alice.clone()),
                 asset_id.clone(),
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 balance!(0.1000009),
@@ -753,7 +799,7 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
         let decimals = DEFAULT_BALANCE_PRECISION + 1;
         assert_noop!(
             EthBridge::add_sidechain_token(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 token_address,
                 ticker,
                 name,
@@ -772,7 +818,7 @@ fn should_remove_asset() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         assert_ok!(EthBridge::remove_sidechain_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             XOR,
             net_id,
         ));
@@ -788,13 +834,13 @@ fn should_register_removed_asset() {
         let net_id = ETH_NETWORK_ID;
         let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, XOR).unwrap();
         assert_ok!(EthBridge::remove_sidechain_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             XOR,
             net_id,
         ));
         assert!(EthBridge::registered_asset(net_id, XOR).is_none());
         assert_ok!(EthBridge::register_existing_sidechain_asset(
-            Origin::root(),
+            RuntimeOrigin::root(),
             XOR,
             token_address,
             net_id,
@@ -812,7 +858,7 @@ fn should_not_register_existing_asset() {
         let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, XOR).unwrap();
         assert_err!(
             EthBridge::register_existing_sidechain_asset(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 XOR,
                 token_address,
                 net_id,

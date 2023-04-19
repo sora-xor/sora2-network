@@ -14,17 +14,8 @@ extern crate alloc;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
-use frame_support::weights::Weight;
 use frame_support::RuntimeDebug;
-
-pub trait WeightInfo {
-    fn vote() -> Weight;
-    fn create_poll() -> Weight;
-    fn withdraw_funds_voter() -> Weight;
-    fn withdraw_funds_creator() -> Weight;
-    fn change_min_hermes_for_voting() -> Weight;
-    fn change_min_hermes_for_creating_poll() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
@@ -68,8 +59,8 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{HermesPollInfo, HermesVotingInfo, VotingOption, WeightInfo};
     use alloc::string::String;
-    use common::balance;
     use common::prelude::Balance;
+    use common::{balance, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::transactional;
@@ -83,6 +74,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"hermsgov");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
@@ -94,7 +86,7 @@ pub mod pallet {
         const MAX_DURATION_OF_POLL: Self::Moment;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Hermes asset id
         type HermesAssetId: Get<Self::AssetId>;
@@ -217,6 +209,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Vote for some option
         #[transactional]
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
@@ -277,6 +270,7 @@ pub mod pallet {
         }
 
         /// Create poll
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
@@ -353,6 +347,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds voter
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_voter())]
         pub fn withdraw_funds_voter(
             origin: OriginFor<T>,
@@ -398,6 +393,7 @@ pub mod pallet {
         }
 
         /// Withdraw funds creator
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_funds_creator())]
         pub fn withdraw_funds_creator(
             origin: OriginFor<T>,
@@ -445,6 +441,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for voting
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_voting())]
         pub fn change_min_hermes_for_voting(
             origin: OriginFor<T>,
@@ -467,6 +464,7 @@ pub mod pallet {
         }
 
         /// Change minimum Hermes for creating a poll
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_creating_poll())]
         pub fn change_min_hermes_for_creating_poll(
             origin: OriginFor<T>,

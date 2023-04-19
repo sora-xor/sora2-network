@@ -13,12 +13,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn lock_tokens() -> Weight;
-    fn withdraw_tokens() -> Weight;
-    fn change_fee() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -45,8 +40,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
-    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
+    use common::{balance, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -58,12 +53,13 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
@@ -167,6 +163,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock tokens
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::lock_tokens())]
         pub fn lock_tokens(
             origin: OriginFor<T>,
@@ -220,6 +217,7 @@ pub mod pallet {
         }
 
         /// Withdraw tokens
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_tokens())]
         pub fn withdraw_tokens(
             origin: OriginFor<T>,
@@ -272,6 +270,7 @@ pub mod pallet {
         }
 
         /// Change fee
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::change_fee())]
         pub fn change_fee(origin: OriginFor<T>, new_fee: Balance) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
@@ -297,7 +296,7 @@ pub mod pallet {
                 PalletStorageVersion::<T>::put(StorageVersion::V2);
                 weight
             } else {
-                0
+                Weight::zero()
             }
         }
     }

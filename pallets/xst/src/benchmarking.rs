@@ -35,11 +35,17 @@
 use super::*;
 
 use codec::Decode;
-use common::{DAI, XST};
+use common::prelude::SwapAmount;
+use common::{AssetInfoProvider, DAI, XST};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
+
+use crate::Pallet as XSTPool;
+
+#[cfg(not(test))]
+use price_tools::AVG_BLOCK_SPAN;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -49,15 +55,19 @@ fn alice<T: Config>() -> T::AccountId {
     account
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
 }
 
 benchmarks! {
+    where_clause {
+        where T: price_tools::Config
+    }
+
     initialize_pool {
         let caller = alice::<T>();
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
@@ -78,7 +88,7 @@ benchmarks! {
         DAI.into()
     )
     verify {
-        assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
+        assert_last_event::<T>(Event::<T>::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
     }
 
     set_reference_asset {
@@ -104,6 +114,110 @@ benchmarks! {
     }: _(RawOrigin::Root, balance!(200))
     verify {
         assert_last_event::<T>(Event::SyntheticBaseAssetFloorPriceChanged(balance!(200)).into())
+    }
+
+    quote {
+        let caller = alice::<T>();
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        permissions::Pallet::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+        trading_pair::Pallet::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            dex_id,
+            XST.into(),
+            DAI.into(),
+        ).unwrap();
+        XSTPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), DAI.into()).unwrap();
+        XSTPool::<T>::set_reference_asset(RawOrigin::Root.into(), DAI.into()).unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&XST.into(), balance!(0.5), PriceVariant::Buy).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&XST.into(), balance!(0.5), PriceVariant::Sell).unwrap();
+        }
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        XSTPool::<T>::quote(&dex_id, &DAI.into(), &XST.into(), amount.into(), true).unwrap();
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
+    exchange {
+        let caller = alice::<T>();
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        permissions::Pallet::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+        permissions::Pallet::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MINT,
+            permissions::Scope::Unlimited,
+        )
+        .unwrap();
+        permissions::Pallet::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::BURN,
+            permissions::Scope::Unlimited,
+        )
+        .unwrap();
+        trading_pair::Pallet::<T>::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            dex_id,
+            XST.into(),
+            DAI.into(),
+        ).unwrap();
+        XSTPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), DAI.into()).unwrap();
+        XSTPool::<T>::set_reference_asset(RawOrigin::Root.into(), DAI.into()).unwrap();
+
+        assets::Pallet::<T>::mint_to(
+            &DAI.into(),
+            &caller,
+            &caller,
+            balance!(50000000),
+        )
+        .unwrap();
+
+        #[cfg(not(test))]
+        for _ in 1..=AVG_BLOCK_SPAN {
+            price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Buy).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&DAI.into(), balance!(1), PriceVariant::Sell).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&XST.into(), balance!(0.5), PriceVariant::Buy).unwrap();
+            price_tools::Pallet::<T>::incoming_spot_price(&XST.into(), balance!(0.5), PriceVariant::Sell).unwrap();
+        }
+
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(100),
+            min_amount_out: balance!(0),
+        };
+        let initial_base_balance = Assets::<T>::free_balance(&DAI.into(), &caller).unwrap();
+    }: {
+        // run only for benchmarks, not for tests
+        // TODO: remake when unit tests use chainspec
+        #[cfg(not(test))]
+        XSTPool::<T>::exchange(&caller, &caller, &dex_id, &DAI.into(), &XST.into(), amount.into()).unwrap();
+    }
+    verify {
+        #[cfg(not(test))]
+        assert_eq!(
+            Into::<u128>::into(Assets::<T>::free_balance(&DAI.into(), &caller).unwrap()),
+            Into::<u128>::into(initial_base_balance) - balance!(100)
+        );
     }
 
     impl_benchmark_test_suite!(Pallet, crate::mock::ExtBuilder::default().build(), crate::mock::Runtime);

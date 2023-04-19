@@ -15,15 +15,6 @@ module.exports = async ({
   let bitFieldLibrary = await deployments.get("Bitfield")
   let merkleProofLibrary = await deployments.get("MerkleProof")
 
-  let registry = await deployments.deploy("ValidatorRegistry", {
-    from: deployer,
-    libraries: {
-      MerkleProof: merkleProofLibrary.address
-    },
-    log: true,
-    autoMine: true,
-  });
-
   let mmr = await deployments.deploy("SimplifiedMMRVerification", {
     from: deployer,
     log: true,
@@ -33,10 +24,11 @@ module.exports = async ({
   await deployments.deploy("BeefyLightClient", {
     contract: isTest ? "TestBeefyLightClient" : null,
     from: deployer,
-    args: [registry.address, mmr.address, 0],
+    args: [mmr.address],
     libraries: {
       Bitfield: bitFieldLibrary.address,
       ScaleCodec: scaleCodecLibrary.address,
+      MerkleProof: merkleProofLibrary.address
     },
     log: true,
     autoMine: true,

@@ -13,8 +13,8 @@ String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml\$|.*pr.sh\$'
 Boolean disableSecretScanner  = false
 int sudoCheckStatus           = 0
-String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
+String featureList            = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
+Map pushTags                  = ['master': 'latest', 'develop': 'dev']
 
 String contractsPath          = 'ethereum-bridge-contracts'
 String contractsEnvFile       = 'env.template'
@@ -75,6 +75,20 @@ pipeline {
                 }
             }
         }
+        stage('Init submodule') {
+            environment {
+                GIT_SSH_COMMAND = "ssh -o UserKnownHostsFile=/dev/null StrictHostKeyChecking=no"
+            }
+            steps {
+                script {
+                    sshagent(['soramitsu-bot-ssh']) {
+                        sh """
+                        git submodule update --init --recursive
+                        """
+                    }
+                }
+            }
+        }
         stage('Solidity Static Scanner') {
             steps {
                 script {
@@ -97,15 +111,15 @@ pipeline {
                         if (getPushVersion(pushTags)) {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
-                                    featureList = 'runtime-benchmarks main-net-coded'
+                                    featureList = 'private-net runtime-benchmarks'
                                     sudoCheckStatus = 101
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
-                                    featureList = 'private-net include-real-files'
+                                    featureList = 'private-net include-real-files ready-to-test'
                                     sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME =~ 'test.*') {
-                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test'
                                     sudoCheckStatus = 0
                                 }
                                 else if (env.TAG_NAME) {
@@ -113,7 +127,7 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
-                                    cargo test  --release --features runtime-benchmarks
+                                    cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
@@ -136,8 +150,8 @@ pipeline {
                                     rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
-                                    cargo test --features private-net
-                                    cargo test --features runtime-benchmarks
+                                    cargo test --features \"private-net wip ready-to-test\"
+                                    cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                                 '''
                             }
                         }
