@@ -64,14 +64,7 @@ use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
-pub trait WeightInfo {
-    fn initialize_pool() -> Weight;
-    fn set_reference_asset() -> Weight;
-    fn enable_synthetic_asset() -> Weight;
-    fn set_synthetic_base_asset_floor_price() -> Weight;
-    fn quote() -> Weight;
-    fn exchange() -> Weight;
-}
+pub use weights::WeightInfo;
 
 type Assets<T> = assets::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;

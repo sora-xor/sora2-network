@@ -38,7 +38,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchErrorWithPostInfo, Weight};
+use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::storage::StorageMap as StorageMapTrait;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
@@ -101,10 +101,7 @@ impl From<Balance> for RewardInfo {
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"rewards";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-pub trait WeightInfo {
-    fn claim() -> Weight;
-    fn add_umi_nfts_receivers(n: u64) -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     /// Get available rewards for a specified `eth_address`:
@@ -464,7 +461,7 @@ pub mod pallet {
         /// Add addresses, who will receive UMI NFT rewards.
         #[transactional]
         #[pallet::call_index(1)]
-        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u64), Pays::No))]
+        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u32), Pays::No))]
         pub fn add_umi_nft_receivers(
             origin: OriginFor<T>,
             receivers: Vec<EthAddress>,

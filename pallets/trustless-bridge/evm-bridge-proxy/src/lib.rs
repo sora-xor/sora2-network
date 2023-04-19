@@ -8,6 +8,7 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod weights;
 
 use bridge_types::{
     traits::MessageStatusNotifier,
@@ -15,22 +16,14 @@ use bridge_types::{
     EVMChainId, GenericAccount, GenericNetworkId, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
-use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
+use common::Balance;
+use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
-pub trait WeightInfo {
-    fn burn() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn burn() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub use weights::WeightInfo;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]

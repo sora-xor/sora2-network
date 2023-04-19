@@ -33,10 +33,10 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
-use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -51,13 +51,6 @@ pub mod weights;
 /// Multiplier to convert rates from precision = 9 (which band team use)
 /// to precision = 18 (which we use)
 pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
-
-pub trait WeightInfo {
-    fn relay() -> Weight;
-    fn force_relay() -> Weight;
-    fn add_relayers() -> Weight;
-    fn remove_relayers() -> Weight;
-}
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]

@@ -69,14 +69,10 @@ use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
+pub use weights::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-
-pub trait WeightInfo {
-    fn migrate() -> Weight;
-    fn on_initialize() -> Weight;
-}
 
 fn blocks_till_migration<T>() -> T::BlockNumber
 where

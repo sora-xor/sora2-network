@@ -41,7 +41,6 @@ use common::{
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::IsType;
-use frame_support::weights::Weight;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -59,9 +58,7 @@ pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::As
 type Assets<T> = assets::Pallet<T>;
 type DEXManager<T> = dex_manager::Pallet<T>;
 
-pub trait WeightInfo {
-    fn register() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Pallet<T> {
     fn ensure_trading_pair_exists(

@@ -11,21 +11,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::{Balance, DemeterFarmingPallet};
-use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn register_token() -> Weight;
-    fn add_pool() -> Weight;
-    fn deposit() -> Weight;
-    fn get_rewards() -> Weight;
-    fn withdraw() -> Weight;
-    fn remove_pool() -> Weight;
-    fn change_pool_multiplier() -> Weight;
-    fn change_pool_deposit_fee() -> Weight;
-    fn change_token_info() -> Weight;
-    fn change_total_tokens() -> Weight;
-    fn change_info() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Storage version.
 #[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
