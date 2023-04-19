@@ -63,16 +63,16 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<(), &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
             "must upgrade linearly"
         );
-        Ok(())
+        Ok(vec![])
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade() -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 3,
             "should be upgraded to version 3"
