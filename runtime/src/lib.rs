@@ -1633,13 +1633,6 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetOrderBookLockTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            order_book::TECH_ACCOUNT_PREFIX.to_vec(),
-            order_book::TECH_ACCOUNT_LOCK.to_vec(),
-        );
-        tech_account_id
-    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1993,7 +1986,6 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
-    type LockTechAccountId = GetOrderBookLockTechAccountId;
     type WeightInfo = order_book::weights::WeightInfo<Runtime>;
 }
 

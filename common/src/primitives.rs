@@ -115,6 +115,20 @@ impl<AssetId: Eq> TradingPair<AssetId> {
     }
 }
 
+pub enum TradingPairSelector {
+    Base,
+    Target,
+}
+
+impl<AssetId> TradingPair<AssetId> {
+    pub fn select(&self, variant: TradingPairSelector) -> &AssetId {
+        match variant {
+            TradingPairSelector::Base => &self.base_asset_id,
+            TradingPairSelector::Target => &self.target_asset_id,
+        }
+    }
+}
+
 /// Asset identifier.
 #[derive(
     Encode,

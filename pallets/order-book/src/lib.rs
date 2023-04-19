@@ -148,7 +148,6 @@ pub mod pallet {
         type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePrices: Get<u32>;
-        type LockTechAccountId: Get<Self::TechAccountId>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -566,29 +565,54 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+}
 
-    // todo: make pub(tests) (k.ivanov)
-    pub fn lock_liquidity(
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+    fn lock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+
+    fn unlock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
+    fn lock_liquidity(
+        dex_id: T::DEXId,
         account: &T::AccountId,
-        asset: &T::AssetId,
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
         amount: Balance,
     ) -> Result<(), DispatchError> {
-        technical::Pallet::<T>::transfer_in(
-            asset,
-            account,
-            &T::LockTechAccountId::get(),
-            amount.into(),
-        )
+        // let tech_account =
+        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+        //         dex_id,
+        //         trading_pair,
+        //     );
+        let asset_id = trading_pair.select(asset);
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
     }
 
-    // todo: make pub(tests) (k.ivanov)
-    pub fn unlock_liquidity(
+    fn unlock_liquidity(
+        dex_id: T::DEXId,
         account: &T::AccountId,
-        asset: &T::AssetId,
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
         amount: Balance,
     ) -> Result<(), DispatchError> {
+        let asset_id = trading_pair.select(asset);
         technical::Pallet::<T>::transfer_out(
-            asset,
+            asset_id,
             &T::LockTechAccountId::get(),
             account,
             amount.into(),
