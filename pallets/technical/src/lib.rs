@@ -286,10 +286,10 @@ pub mod pallet {
             + common::ToFeeAccount
             + common::ToXykTechUnitFromDEXAndTradingPair<
                 DEXIdOf<Self>,
-                common::TradingPair<TechAssetIdOf<Self>>,
+                common::TradingPair<Self::TechAssetId>,
             > + common::ToOrderTechUnitFromDEXAndTradingPair<
                 DEXIdOf<Self>,
-                common::TradingPair<TechAssetIdOf<Self>>,
+                common::TradingPair<Self::TechAssetId>,
             > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DEXId>>;
 
         /// Trigger for auto claim.

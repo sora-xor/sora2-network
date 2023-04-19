@@ -115,6 +115,15 @@ impl<AssetId: Eq> TradingPair<AssetId> {
     }
 }
 
+impl<T> TradingPair<T> {
+    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> TradingPair<U> {
+        TradingPair {
+            base_asset_id: f(self.base_asset_id),
+            target_asset_id: f(self.target_asset_id),
+        }
+    }
+}
+
 pub enum TradingPairSelector {
     Base,
     Target,
@@ -864,10 +873,7 @@ impl<AccountId, AssetId, DEXId: Clone>
         dex_id: DEXId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
-        TechAccountId::Pure(
-            dex_id.clone(),
-            TechPurpose::XykLiquidityKeeper(trading_pair),
-        )
+        TechAccountId::Pure(dex_id, TechPurpose::XykLiquidityKeeper(trading_pair))
     }
 }
 
@@ -879,10 +885,7 @@ impl<AccountId, AssetId, DEXId: Clone>
         dex_id: DEXId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
-        TechAccountId::Pure(
-            dex_id.clone(),
-            TechPurpose::OrderLiquidityKeeper(trading_pair),
-        )
+        TechAccountId::Pure(dex_id, TechPurpose::OrderLiquidityKeeper(trading_pair))
     }
 }
 

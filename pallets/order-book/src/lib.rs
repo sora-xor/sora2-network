@@ -594,11 +594,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T>
         asset: common::TradingPairSelector,
         amount: Balance,
     ) -> Result<(), DispatchError> {
-        // let tech_account =
-        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
-        //         dex_id,
-        //         trading_pair,
-        //     );
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
         let asset_id = trading_pair.select(asset);
         technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
     }
@@ -610,40 +606,39 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T>
         asset: common::TradingPairSelector,
         amount: Balance,
     ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
         let asset_id = trading_pair.select(asset);
-        technical::Pallet::<T>::transfer_out(
-            asset_id,
-            &T::LockTechAccountId::get(),
-            account,
-            amount.into(),
-        )
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
     }
 }
 
 impl<T: Config> Pallet<T> {
+    fn tech_account_for_order_book(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> <T as technical::Config>::TechAccountId {
+        // I'm not sure why tech
+        let trading_pair = trading_pair.map(|a| a.into());
+        <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+            dex_id,
+            trading_pair,
+        )
+    }
+
     fn register_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
-        // let tech_id =
-        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
-        //         dex_id,
-        //         trading_pair,
-        //     );
-        // technical::Pallet::<T>::register_tech_account_id()
-        todo!()
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::register_tech_account_id(tech_account)
     }
 
     fn deregister_tech_account(
-        dex_id: &T::DEXId,
-        trading_pair: &OrderBookId<T>,
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
-        // let tech_id =
-        //     <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
-        //         dex_id,
-        //         trading_pair,
-        //     );
-        todo!()
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::register_tech_account_id(tech_account)
     }
 }
 

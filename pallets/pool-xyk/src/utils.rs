@@ -99,18 +99,19 @@ impl<T: Config> Pallet<T> {
         let dexinfo = DEXManager::<T>::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let ba = Pallet::<T>::decode_asset(base_asset_id);
+        let ba = base_asset_id;
         let ta = if base_asset_id == asset_a {
-            Pallet::<T>::decode_asset(asset_b)
+            asset_b
         } else if base_asset_id == asset_b {
-            Pallet::<T>::decode_asset(asset_a)
+            asset_a
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
-        let tpair = common::TradingPair::<TechAssetIdOf<T>> {
+        let tpair = common::TradingPair::<T::AssetId> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
+        let tpair: common::TradingPair<TechAssetIdOf<T>> = tpair.map(|a| a.into());
         Ok((
             tpair,
             TechAccountIdOf::<T>::to_xyk_tech_unit_from_dex_and_trading_pair(dex_id, tpair),
