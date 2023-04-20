@@ -53,11 +53,11 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod cache_data_layer;
+pub mod cache_data_layer;
 mod limit_order;
 mod market_order;
 mod order_book;
-mod storage_data_layer;
+pub mod storage_data_layer;
 pub mod traits;
 pub mod types;
 
@@ -470,135 +470,6 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    /// Inserts limit order consistently in all necessary storages.
-    /// Must check before call. If returns error, it means we have problems with data consistency.
-    pub fn insert_limit_order(
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order: &LimitOrder<T>,
-    ) -> Result<(), DispatchError> {
-        <LimitOrders<T>>::insert(order_book_id, order.id, order);
-
-        match order.side {
-            PriceVariant::Buy => {
-                <Bids<T>>::try_append(order_book_id, order.price, order.id)
-                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-
-                let mut bids = <AggregatedBids<T>>::get(order_book_id);
-                let volume = bids
-                    .get(&order.price)
-                    .map(|x| *x)
-                    .unwrap_or_default()
-                    .checked_add(order.amount)
-                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
-                bids.try_insert(order.price, volume)
-                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-                <AggregatedBids<T>>::set(order_book_id, bids);
-            }
-            PriceVariant::Sell => {
-                <Asks<T>>::try_append(order_book_id, order.price, order.id)
-                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-
-                let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-                let volume = asks
-                    .get(&order.price)
-                    .map(|x| *x)
-                    .unwrap_or_default()
-                    .checked_add(order.amount)
-                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
-                asks.try_insert(order.price, volume)
-                    .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-                <AggregatedAsks<T>>::set(order_book_id, asks);
-            }
-        }
-
-        <UserLimitOrders<T>>::try_append(&order.owner, order_book_id, order.id)
-            .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
-
-        Ok(())
-    }
-
-    /// Delete limit order consistently from all necessary storages.
-    /// Must check before call. If returns error, it means we have problems with data consistency.
-    pub fn delete_limit_order(
-        order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order_id: T::OrderId,
-    ) -> Result<(), DispatchError> {
-        let order = <LimitOrders<T>>::take(order_book_id, order_id)
-            .ok_or(Error::<T>::DeleteLimitOrderError)?;
-
-        let mut user_orders = <UserLimitOrders<T>>::try_get(&order.owner, order_book_id)
-            .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-        user_orders.retain(|x| *x != order.id);
-        if user_orders.is_empty() {
-            <UserLimitOrders<T>>::remove(&order.owner, order_book_id)
-        } else {
-            <UserLimitOrders<T>>::set(&order.owner, order_book_id, Some(user_orders));
-        }
-
-        match order.side {
-            PriceVariant::Buy => {
-                let mut bids = <Bids<T>>::try_get(order_book_id, order.price)
-                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                bids.retain(|x| *x != order.id);
-                if bids.is_empty() {
-                    <Bids<T>>::remove(order_book_id, order.price);
-                } else {
-                    <Bids<T>>::set(order_book_id, order.price, Some(bids));
-                }
-
-                let mut agg_bids = <AggregatedBids<T>>::try_get(order_book_id)
-                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                let volume = agg_bids
-                    .get(&order.price)
-                    .map(|x| *x)
-                    .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    .checked_sub(order.amount)
-                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
-                if volume.is_zero() {
-                    agg_bids
-                        .remove(&order.price)
-                        .ok_or(Error::<T>::DeleteLimitOrderError)?;
-                } else {
-                    agg_bids
-                        .try_insert(order.price, volume)
-                        .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                }
-                <AggregatedBids<T>>::set(order_book_id, agg_bids);
-            }
-            PriceVariant::Sell => {
-                let mut asks = <Asks<T>>::try_get(order_book_id, order.price)
-                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                asks.retain(|x| *x != order.id);
-                if asks.is_empty() {
-                    <Asks<T>>::remove(order_book_id, order.price);
-                } else {
-                    <Asks<T>>::set(order_book_id, order.price, Some(asks));
-                }
-
-                let mut agg_asks = <AggregatedAsks<T>>::try_get(order_book_id)
-                    .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                let volume = agg_asks
-                    .get(&order.price)
-                    .map(|x| *x)
-                    .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    .checked_sub(order.amount)
-                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
-                if volume.is_zero() {
-                    agg_asks
-                        .remove(&order.price)
-                        .ok_or(Error::<T>::DeleteLimitOrderError)?;
-                } else {
-                    agg_asks
-                        .try_insert(order.price, volume)
-                        .map_err(|_| Error::<T>::DeleteLimitOrderError)?;
-                }
-                <AggregatedAsks<T>>::set(order_book_id, agg_asks);
-            }
-        }
-
-        Ok(())
-    }
-
     fn lock_liquidity(
         _account: &T::AccountId,
         _asset: &T::AssetId,
