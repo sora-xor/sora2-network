@@ -31,10 +31,13 @@
 #![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, VAL, XOR};
+use common::{
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, TradingPair,
+    TradingPairSelector, VAL, XOR,
+};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::order_book::{CurrencyLocker, LimitOrder, OrderBookId, Pallet};
 use framenode_runtime::{order_book, Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -457,22 +460,33 @@ fn should_not_delete_limit_order() {
 }
 
 fn test_lock_unlock_same_account(
-    asset_id: &AssetIdOf<Runtime>,
+    dex_id: common::DEXId,
+    trading_pair: TradingPair<AssetIdOf<Runtime>>,
+    asset: TradingPairSelector,
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
 ) {
+    let asset_id = trading_pair.select(asset.clone());
     let balance_before =
         assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
 
-    assert_ok!(OrderBook::lock_liquidity(account, asset_id, amount_to_lock));
+    assert_ok!(OrderBook::lock_liquidity(
+        dex_id.into(),
+        account,
+        trading_pair,
+        asset.clone(),
+        amount_to_lock
+    ));
 
     let balance_after_lock =
         assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
     assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
     assert_ok!(OrderBook::unlock_liquidity(
+        dex_id.into(),
         account,
-        asset_id,
+        trading_pair,
+        asset,
         amount_to_lock
     ));
 
@@ -482,11 +496,14 @@ fn test_lock_unlock_same_account(
 }
 
 fn test_lock_unlock_other_account(
-    asset_id: &AssetIdOf<Runtime>,
+    dex_id: common::DEXId,
+    trading_pair: TradingPair<AssetIdOf<Runtime>>,
+    asset: TradingPairSelector,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
     unlock_account: &<Runtime as frame_system::Config>::AccountId,
 ) {
+    let asset_id = trading_pair.select(asset.clone());
     let lock_account_balance_before =
         assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
     let unlock_account_balance_before =
@@ -494,8 +511,10 @@ fn test_lock_unlock_other_account(
             .expect("Asset must exist");
 
     assert_ok!(OrderBook::lock_liquidity(
+        dex_id.into(),
         lock_account,
-        asset_id,
+        trading_pair,
+        asset.clone(),
         amount_to_lock
     ));
 
@@ -507,8 +526,10 @@ fn test_lock_unlock_other_account(
     );
 
     assert_ok!(OrderBook::unlock_liquidity(
+        dex_id.into(),
         unlock_account,
-        asset_id,
+        trading_pair,
+        asset,
         amount_to_lock
     ));
 
@@ -532,12 +553,30 @@ fn should_lock_unlock_base_asset() {
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Base;
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(&XOR, amount_to_lock, &alice());
+        test_lock_unlock_same_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset.clone(),
+            amount_to_lock,
+            &alice(),
+        );
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(&XOR, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset,
+            amount_to_lock,
+            &alice(),
+            &bob(),
+        );
     });
 }
 
@@ -552,12 +591,30 @@ fn should_lock_unlock_other_asset() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Target;
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(&VAL, amount_to_lock, &alice());
+        test_lock_unlock_same_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset.clone(),
+            amount_to_lock,
+            &alice(),
+        );
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(&VAL, amount_to_lock, &alice(), &bob());
+        test_lock_unlock_other_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset,
+            amount_to_lock,
+            &alice(),
+            &bob(),
+        );
     });
 }
 
@@ -578,11 +635,30 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: nft.clone(),
+        };
+        let asset = TradingPairSelector::Target;
+
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(&nft, balance!(1), &alice());
+        test_lock_unlock_same_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset.clone(),
+            balance!(1),
+            &alice(),
+        );
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(&nft, balance!(1), &alice(), &bob());
+        test_lock_unlock_other_account(
+            common::DEXId::Polkaswap,
+            trading_pair,
+            asset,
+            balance!(1),
+            &alice(),
+            &bob(),
+        );
     });
 }
 
@@ -597,9 +673,20 @@ fn should_not_lock_insufficient_base_asset() {
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Base;
 
         assert_err!(
-            OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock),
+            OrderBook::lock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &alice(),
+                trading_pair,
+                asset,
+                amount_to_lock
+            ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
@@ -616,9 +703,20 @@ fn should_not_lock_insufficient_other_asset() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Target;
 
         assert_err!(
-            OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock),
+            OrderBook::lock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &alice(),
+                trading_pair,
+                asset,
+                amount_to_lock
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -643,8 +741,20 @@ fn should_not_lock_insufficient_nft() {
         )
         .unwrap();
 
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: nft.clone(),
+        };
+        let asset = TradingPairSelector::Target;
+
         assert_err!(
-            OrderBook::lock_liquidity(&caller, &nft, balance!(1)),
+            OrderBook::lock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &caller,
+                trading_pair,
+                asset,
+                balance!(1)
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -663,10 +773,28 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        assert_ok!(OrderBook::lock_liquidity(&alice(), &XOR, amount_to_lock));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Base;
+
+        assert_ok!(OrderBook::lock_liquidity(
+            common::DEXId::Polkaswap.into(),
+            &alice(),
+            trading_pair,
+            asset.clone(),
+            amount_to_lock
+        ));
 
         assert_err!(
-            OrderBook::unlock_liquidity(&alice(), &XOR, amount_to_try_unlock),
+            OrderBook::unlock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &alice(),
+                trading_pair,
+                asset,
+                amount_to_try_unlock
+            ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     });
@@ -684,11 +812,28 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: VAL,
+        };
+        let asset = TradingPairSelector::Target;
 
-        assert_ok!(OrderBook::lock_liquidity(&alice(), &VAL, amount_to_lock));
+        assert_ok!(OrderBook::lock_liquidity(
+            common::DEXId::Polkaswap.into(),
+            &alice(),
+            trading_pair,
+            asset.clone(),
+            amount_to_lock
+        ));
 
         assert_err!(
-            OrderBook::unlock_liquidity(&alice(), &VAL, amount_to_try_unlock),
+            OrderBook::unlock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &alice(),
+                trading_pair,
+                asset,
+                amount_to_try_unlock
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -711,8 +856,20 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
         )
         .unwrap();
 
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: nft.clone(),
+        };
+        let asset = TradingPairSelector::Target;
+
         assert_err!(
-            OrderBook::unlock_liquidity(&alice(), &nft, balance!(1)),
+            OrderBook::unlock_liquidity(
+                common::DEXId::Polkaswap.into(),
+                &alice(),
+                trading_pair,
+                asset,
+                balance!(1)
+            ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });

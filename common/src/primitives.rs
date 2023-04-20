@@ -124,6 +124,7 @@ impl<T> TradingPair<T> {
     }
 }
 
+#[derive(Clone)]
 pub enum TradingPairSelector {
     Base,
     Target,
