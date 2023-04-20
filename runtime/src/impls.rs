@@ -30,15 +30,15 @@
 
 use core::marker::PhantomData;
 
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use bridge_types::traits::BridgeAssetRegistry;
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use frame_support::{
     dispatch::{DispatchInfo, Dispatchable, PostDispatchInfo},
     traits::Contains,
@@ -46,9 +46,9 @@ use frame_support::{
 };
 
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use scale_info::TypeInfo;
-#[cfg(feature = "wip")]
+#[cfg(feature = "ready-to-test")]
 use sp_runtime::DispatchError;
 
 pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
@@ -260,7 +260,7 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
-#[cfg(feature = "wip")] // Substrate bridge
+#[cfg(feature = "ready-to-test")] // Substrate bridge
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(
     bridge_types::substrate::SubstrateBridgeMessage<
@@ -270,7 +270,7 @@ pub struct DispatchableSubstrateBridgeCall(
     >,
 );
 
-#[cfg(feature = "wip")] // Substrate bridge
+#[cfg(feature = "ready-to-test")] // Substrate bridge
 impl Dispatchable for DispatchableSubstrateBridgeCall {
     type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
@@ -295,10 +295,10 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
-#[cfg(feature = "wip")] // Bridges
+#[cfg(feature = "ready-to-test")] // Bridges
 pub struct BridgeAssetRegistryImpl;
 
-#[cfg(feature = "wip")] // Bridges
+#[cfg(feature = "ready-to-test")] // Bridges
 impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
     type AssetName = crate::AssetName;
     type AssetSymbol = crate::AssetSymbol;
@@ -316,10 +316,10 @@ impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegist
     }
 }
 
-#[cfg(feature = "wip")] // Substrate bridge
+#[cfg(feature = "ready-to-test")] // Substrate bridge
 pub struct SubstrateBridgeCallFilter;
 
-#[cfg(feature = "wip")] // Substrate bridge
+#[cfg(feature = "ready-to-test")] // Substrate bridge
 impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
@@ -329,10 +329,10 @@ impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     }
 }
 
-#[cfg(feature = "wip")] // EVM bridge
+#[cfg(feature = "ready-to-test")] // EVM bridge
 pub struct EVMBridgeCallFilter;
 
-#[cfg(feature = "wip")] // EVM bridge
+#[cfg(feature = "ready-to-test")] // EVM bridge
 impl Contains<crate::RuntimeCall> for EVMBridgeCallFilter {
     fn contains(call: &crate::RuntimeCall) -> bool {
         match call {
