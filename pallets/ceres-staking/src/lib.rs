@@ -13,12 +13,7 @@ mod tests;
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn deposit() -> Weight;
-    fn withdraw() -> Weight;
-    fn change_rewards_remaining() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]

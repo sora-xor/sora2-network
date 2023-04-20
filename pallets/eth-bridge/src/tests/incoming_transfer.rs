@@ -326,10 +326,11 @@ fn should_take_fee_in_incoming_transfer() {
             0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        let fee_amount = crate::IncomingTransfer::<Runtime>::fee_amount();
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
-            balance!(99.9993).into()
+            balance!(100) - fee_amount
         );
     });
 }

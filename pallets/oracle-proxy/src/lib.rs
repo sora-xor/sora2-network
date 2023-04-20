@@ -47,11 +47,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
-
-pub trait WeightInfo {
-    fn enable_oracle() -> Weight;
-    fn disable_oracle() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> DataFeed<T::Symbol, Rate, u64> for Pallet<T> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {

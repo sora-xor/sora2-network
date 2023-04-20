@@ -33,7 +33,6 @@
 
 use assets::AssetIdOf;
 use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutcome};
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
@@ -61,44 +60,7 @@ mod order_book;
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-
-pub trait WeightInfo {
-    fn create_orderbook() -> Weight;
-    fn delete_orderbook() -> Weight;
-    fn update_orderbook() -> Weight;
-    fn change_orderbook_status() -> Weight;
-    fn place_limit_order() -> Weight;
-    fn cancel_limit_order() -> Weight;
-    fn quote() -> Weight;
-    fn exchange() -> Weight;
-}
-
-impl crate::WeightInfo for () {
-    fn create_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn delete_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn update_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn change_orderbook_status() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn place_limit_order() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn cancel_limit_order() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn quote() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn exchange() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub use weights::WeightInfo;
 
 pub use pallet::*;
 

@@ -82,14 +82,7 @@ pub use operations::*;
 
 const MIN_LIQUIDITY: u128 = 1000;
 
-pub trait WeightInfo {
-    fn swap_pair() -> Weight;
-    fn deposit_liquidity() -> Weight;
-    fn withdraw_liquidity() -> Weight;
-    fn initialize_pool() -> Weight;
-    fn can_exchange() -> Weight;
-    fn quote() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;

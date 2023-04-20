@@ -14,17 +14,8 @@ extern crate alloc;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::Balance;
-use frame_support::weights::Weight;
 use frame_support::RuntimeDebug;
-
-pub trait WeightInfo {
-    fn vote() -> Weight;
-    fn create_poll() -> Weight;
-    fn withdraw_funds_voter() -> Weight;
-    fn withdraw_funds_creator() -> Weight;
-    fn change_min_hermes_for_voting() -> Weight;
-    fn change_min_hermes_for_creating_poll() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
