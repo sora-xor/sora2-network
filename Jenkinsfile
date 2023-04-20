@@ -127,6 +127,7 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
+                                    rm -rf ~/.cargo/registry/*
                                     cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
@@ -146,8 +147,7 @@ pipeline {
                         } else {
                             docker.image(envImageName).inside() {
                                 sh '''
-                                    rm -rf ~/.cargo/.package-cache
-                                    rm Cargo.lock
+                                    rm -rf ~/.cargo/registry/*
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features \"private-net wip ready-to-test\"
