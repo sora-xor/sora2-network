@@ -37,7 +37,7 @@ use crate::{
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
-use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
+use common::{balance, fixed_wrapper, AssetInfoProvider, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
 use frame_support::pallet_prelude::{InvalidTransaction, Pays};

@@ -36,17 +36,19 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
+use common::CrowdloanTag;
+use common::FromGenericPair;
 use common::{
-    balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL,
-    XSTUSD,
+    balance, AssetInfoProvider, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
+    PSWAP,
 };
-use core::convert::TryFrom;
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
-use frame_support::weights::Weight;
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{UniqueSaturatedInto, Zero};
+use sp_runtime::traits::{CheckedSub, Zero};
+use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
 use sp_std::str;
@@ -66,18 +68,8 @@ pub mod migrations;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
-pub const TECH_ACCOUNT_CROWDLOAN: &[u8] = b"crowdloan";
 pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const FARMING_REWARDS: Balance = balance!(3500000000);
-pub const VAL_CROWDLOAN_REWARDS: Balance = balance!(676393);
-pub const PSWAP_CROWDLOAN_REWARDS: Balance = balance!(9363480);
-pub const XSTUSD_CROWDLOAN_REWARDS: Balance = balance!(77050);
-pub const BLOCKS_PER_DAY: u128 = 14400;
-#[cfg(not(feature = "private-net"))]
-pub const LEASE_START_BLOCK: u128 = 4_397_212;
-#[cfg(feature = "private-net")]
-pub const LEASE_START_BLOCK: u128 = 0;
-pub const LEASE_TOTAL_DAYS: u128 = 318;
 
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -96,42 +88,35 @@ pub struct RewardInfo {
     pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
-/// A vested reward for crowdloan.
+/// Store information about crowdloan
 #[derive(
     Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
 )]
-pub struct CrowdloanReward {
-    /// The user id
-    #[serde(with = "serde_bytes", rename = "ID")]
-    pub id: Vec<u8>,
-    /// The user address
-    #[serde(with = "hex", rename = "Address")]
-    pub address: Vec<u8>,
-    /// Kusama contribution
-    #[serde(rename = "Contribution")]
-    pub contribution: Fixed,
-    /// Reward in XOR
-    #[serde(rename = "XOR Reward")]
-    pub xor_reward: Fixed,
-    /// Reward in VAL
-    #[serde(rename = "Val Reward")]
-    pub val_reward: Fixed,
-    /// Reward in PSWAP
-    #[serde(rename = "PSWAP Reward")]
-    pub pswap_reward: Fixed,
-    /// Reward in XSTUSD
-    #[serde(rename = "XSTUSD Reward")]
-    pub xstusd_reward: Fixed,
-    /// Reward in percents of the total contribution
-    #[serde(rename = "Percent")]
-    pub percent: Fixed,
+pub struct CrowdloanInfo<AssetId, BlockNumber, AccountId> {
+    /// Total amount of DOT, KSM, etc. contributed
+    pub total_contribution: Balance,
+    /// Asset id and total rewards amount pairs
+    pub rewards: Vec<(AssetId, Balance)>,
+    /// Rewards distribution start block
+    pub start_block: BlockNumber,
+    /// Length of rewards distribution in blocks
+    pub length: BlockNumber,
+    /// Account with crowdloan rewards
+    pub account: AccountId,
 }
 
-pub trait WeightInfo {
-    fn claim_rewards() -> Weight;
-    fn claim_crowdloan_rewards() -> Weight;
-    fn update_rewards(n: u32) -> Weight;
+/// Information about user participation in crowdloan
+#[derive(
+    Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
+)]
+pub struct CrowdloanUserInfo<AssetId> {
+    /// Amount of DOT, KSM, etc. contributed by user
+    contribution: Balance,
+    /// Amount of rewards which is already taken by user
+    rewarded: Vec<(AssetId, Balance)>,
 }
+
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     /// Stores a new reward for a given account_id, supported by a reward reason.
@@ -249,7 +234,6 @@ impl<T: Config> Pallet<T> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
-            RewardReason::Crowdloan => T::GetCrowdloanRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
         let available_rewards = Assets::<T>::free_balance(asset_id, &source_account)?;
@@ -288,38 +272,184 @@ impl<T: Config> Pallet<T> {
         };
     }
 
-    pub fn crowdloan_reward_for_asset(
-        address: &T::AccountId,
+    /// Helper function for runtime api
+    pub fn get_claimable_crowdloan_reward(
+        tag: &CrowdloanTag,
+        user: &T::AccountId,
         asset_id: &T::AssetId,
-        current_block_number: u128,
+    ) -> Option<Balance> {
+        let info = CrowdloanInfos::<T>::get(tag)?;
+        let total_rewards = info
+            .rewards
+            .iter()
+            .find(|(a, _)| a == asset_id)
+            .cloned()
+            .map(|(_, r)| r)?;
+        let user_info = CrowdloanUserInfos::<T>::get(user, tag)?;
+        let rewarded = info
+            .rewards
+            .iter()
+            .find(|(a, _)| a == asset_id)
+            .cloned()
+            .map(|(_, r)| r)
+            .unwrap_or_default();
+        let now = frame_system::Pallet::<T>::block_number();
+        let claimable = Self::calculate_claimable_crowdloan_reward(
+            &now,
+            &info,
+            total_rewards,
+            user_info.contribution,
+            rewarded,
+        )
+        .ok()?;
+        Some(claimable)
+    }
+
+    /// Calculate amount of tokens to send to user
+    pub fn calculate_claimable_crowdloan_reward(
+        now: &T::BlockNumber,
+        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        total_rewards: Balance,
+        contribution: Balance,
+        rewarded: Balance,
     ) -> Result<Balance, DispatchError> {
-        let rewards =
-            CrowdloanRewards::<T>::try_get(address).map_err(|_| Error::<T>::NothingToClaim)?;
-        let last_claim_block: u128 =
-            CrowdloanClaimHistory::<T>::get(address, asset_id).unique_saturated_into();
-        let claim_period = if last_claim_block.is_zero() {
-            current_block_number.saturating_sub(LEASE_START_BLOCK)
+        let elapsed = now
+            .checked_sub(&info.start_block)
+            .ok_or(Error::<T>::CrowdloanRewardsDistributionNotStarted)?;
+        let rewards_part = Perquintill::from_rational(contribution, info.total_contribution);
+        let user_reward = rewards_part.mul_floor(total_rewards);
+
+        let user_reward_now = if elapsed >= info.length {
+            user_reward
         } else {
-            current_block_number.saturating_sub(last_claim_block)
+            let length_days = info.length / T::BLOCKS_PER_DAY;
+            let elapsed_days = elapsed / T::BLOCKS_PER_DAY;
+            let elapsed_percent = Permill::from_rational(elapsed_days, length_days);
+            elapsed_percent.mul_floor(user_reward)
         };
-        let claim_days = Fixed::try_from(claim_period / BLOCKS_PER_DAY)
-            .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?;
-        let reward = if asset_id == &VAL.into() {
-            rewards.val_reward
-        } else if asset_id == &PSWAP.into() {
-            rewards.pswap_reward
-        } else if asset_id == &XSTUSD.into() {
-            rewards.xstusd_reward
-        } else {
-            return Err(Error::<T>::NoRewardsForAsset.into());
-        };
-        let reward = reward
-            / Fixed::try_from(LEASE_TOTAL_DAYS)
-                .map_err(|_| DispatchError::from(Error::<T>::NumberConversionError))?
-                .into();
-        (reward * claim_days)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::ArithmeticError.into())
+
+        if user_reward_now <= rewarded {
+            return Ok(0);
+        }
+        let reward_to_send = user_reward_now - rewarded;
+        Ok(reward_to_send)
+    }
+
+    /// Send crowdloan rewards with given asset to user
+    ///
+    /// Returns total amount of tokens sent to user for this crowdloan
+    pub fn claim_crowdloan_reward_for_asset(
+        user: &T::AccountId,
+        now: &T::BlockNumber,
+        info: &CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        asset_id: &T::AssetId,
+        total_rewards: Balance,
+        contribution: Balance,
+        rewarded: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let claimable_reward = Self::calculate_claimable_crowdloan_reward(
+            now,
+            info,
+            total_rewards,
+            contribution,
+            rewarded,
+        )?;
+
+        if claimable_reward.is_zero() {
+            return Ok(0);
+        }
+
+        assets::Pallet::<T>::transfer_from(asset_id, &info.account, user, claimable_reward)?;
+
+        Self::deposit_event(Event::<T>::CrowdloanClaimed(
+            user.clone(),
+            asset_id.clone(),
+            claimable_reward,
+        ));
+
+        Ok(claimable_reward)
+    }
+
+    pub fn claim_crowdloan_rewards_for_user(
+        user: &T::AccountId,
+        crowdloan: CrowdloanTag,
+    ) -> DispatchResult {
+        let now = frame_system::Pallet::<T>::block_number();
+        let info =
+            CrowdloanInfos::<T>::get(&crowdloan).ok_or(Error::<T>::CrowdloanDoesNotExists)?;
+        let mut user_info = CrowdloanUserInfos::<T>::get(user, &crowdloan)
+            .ok_or(Error::<T>::NotCrowdloanParticipant)?;
+        let user_rewarded = user_info
+            .rewarded
+            .iter()
+            .cloned()
+            .collect::<BTreeMap<_, _>>();
+        let mut user_rewards = vec![];
+
+        for (asset_id, total_rewards) in info.rewards.iter() {
+            let mut rewarded = user_rewarded.get(asset_id).cloned().unwrap_or_default();
+            rewarded += Self::claim_crowdloan_reward_for_asset(
+                user,
+                &now,
+                &info,
+                asset_id,
+                *total_rewards,
+                user_info.contribution,
+                rewarded,
+            )?;
+            user_rewards.push((asset_id.clone(), rewarded));
+        }
+        user_info.rewarded = user_rewards;
+        CrowdloanUserInfos::<T>::insert(user, &crowdloan, user_info);
+        Ok(())
+    }
+
+    pub fn register_crowdloan_unchecked(
+        tag: CrowdloanTag,
+        start_block: T::BlockNumber,
+        length: T::BlockNumber,
+        rewards: Vec<(T::AssetId, Balance)>,
+        contributions: Vec<(T::AccountId, Balance)>,
+    ) -> DispatchResult {
+        ensure!(
+            !CrowdloanInfos::<T>::contains_key(&tag),
+            Error::<T>::CrowdloanAlreadyExists
+        );
+        ensure!(
+            !rewards.is_empty() && !contributions.is_empty(),
+            Error::<T>::WrongCrowdloanInfo
+        );
+        let tech_account = T::TechAccountId::from_generic_pair(
+            TECH_ACCOUNT_PREFIX.to_vec(),
+            tag.0.clone().to_vec(),
+        );
+        technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account)?;
+        let account = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account)?;
+
+        let mut total_contribution = 0;
+        for (user, contribution) in contributions {
+            total_contribution += contribution;
+            CrowdloanUserInfos::<T>::insert(
+                &user,
+                &tag,
+                CrowdloanUserInfo {
+                    contribution,
+                    rewarded: Default::default(),
+                },
+            );
+        }
+
+        CrowdloanInfos::<T>::insert(
+            &tag,
+            CrowdloanInfo {
+                total_contribution,
+                rewards,
+                start_block,
+                length,
+                account,
+            },
+        );
+        Ok(().into())
     }
 }
 
@@ -354,9 +484,9 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::UniqueSaturatedFrom;
     use sp_std::collections::btree_map::BTreeMap;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -364,18 +494,21 @@ pub mod pallet {
         + assets::Config
         + multicollateral_bonding_curve_pool::Config
     {
+        const BLOCKS_PER_DAY: BlockNumberFor<Self>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Accounts holding PSWAP dedicated for rewards.
+        #[pallet::constant]
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
+        #[pallet::constant]
         type GetFarmingRewardsAccountId: Get<Self::AccountId>;
+        #[pallet::constant]
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
-        type GetCrowdloanRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -389,7 +522,6 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_rewards())]
-
         pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
@@ -401,22 +533,11 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::claim_crowdloan_rewards())]
         pub fn claim_crowdloan_rewards(
             origin: OriginFor<T>,
-            asset_id: T::AssetId,
+            crowdloan: CrowdloanTag,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            let current_block_number: u128 =
-                <frame_system::Pallet<T>>::block_number().unique_saturated_into();
-            let reward =
-                Pallet::<T>::crowdloan_reward_for_asset(&who, &asset_id, current_block_number)?;
 
-            Pallet::<T>::claim_reward_by_reason(&who, RewardReason::Crowdloan, &asset_id, reward)?;
-
-            CrowdloanClaimHistory::<T>::mutate(who, asset_id, |value| {
-                let offset = current_block_number % BLOCKS_PER_DAY;
-                *value = T::BlockNumber::unique_saturated_from(
-                    current_block_number.saturating_sub(offset),
-                )
-            });
+            Self::claim_crowdloan_rewards_for_user(&who, crowdloan)?;
 
             Ok(().into())
         }
@@ -454,6 +575,28 @@ pub mod pallet {
 
             Ok(().into())
         }
+
+        #[transactional]
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_crowdloan(contributions.len() as u32))]
+        pub fn register_crowdloan(
+            origin: OriginFor<T>,
+            tag: CrowdloanTag,
+            start_block: T::BlockNumber,
+            length: T::BlockNumber,
+            rewards: Vec<(T::AssetId, Balance)>,
+            contributions: Vec<(T::AccountId, Balance)>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            Pallet::<T>::register_crowdloan_unchecked(
+                tag,
+                start_block,
+                length,
+                rewards,
+                contributions,
+            )?;
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -481,6 +624,16 @@ pub mod pallet {
         NumberConversionError,
         /// Unable to get base asset price in XOR. XOR-base asset pair should exist on Polkaswap DEX.
         UnableToGetBaseAssetPrice,
+        /// Crowdloan with given tag already registered
+        CrowdloanAlreadyExists,
+        /// Wrong crowdloan data passed
+        WrongCrowdloanInfo,
+        /// Crowdloan rewards distribution is not started
+        CrowdloanRewardsDistributionNotStarted,
+        /// Crowdloan does not exists
+        CrowdloanDoesNotExists,
+        /// User is not crowdloan participant
+        NotCrowdloanParticipant,
     }
 
     #[pallet::event]
@@ -492,6 +645,8 @@ pub mod pallet {
         ActualDoesntMatchAvailable(RewardReason),
         /// Saving reward for account has failed in a distribution series. [account]
         FailedToSaveCalculatedReward(AccountIdOf<T>),
+        /// Claimed crowdloan rewards
+        CrowdloanClaimed(T::AccountId, T::AssetId, Balance),
     }
 
     /// Reserved for future use
@@ -507,77 +662,27 @@ pub mod pallet {
     #[pallet::getter(fn total_rewards)]
     pub type TotalRewards<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
-    /// Crowdloan vested rewards storage.
+    /// Information about crowdloan
     #[pallet::storage]
-    #[pallet::getter(fn crowdloan_rewards)]
-    pub type CrowdloanRewards<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, CrowdloanReward, ValueQuery>;
+    #[pallet::getter(fn crowdloan_infos)]
+    pub type CrowdloanInfos<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        CrowdloanTag,
+        CrowdloanInfo<T::AssetId, T::BlockNumber, T::AccountId>,
+        OptionQuery,
+    >;
 
-    /// This storage keeps the last block number, when the user (the first) claimed a reward for
-    /// asset (the second key). The block is rounded to days.
+    /// Information about crowdloan rewards claimed by user
     #[pallet::storage]
-    #[pallet::getter(fn crowdloan_claim_history)]
-    pub type CrowdloanClaimHistory<T: Config> = StorageDoubleMap<
+    #[pallet::getter(fn crowdloan_user_infos)]
+    pub type CrowdloanUserInfos<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         T::AccountId,
         Blake2_128Concat,
-        T::AssetId,
-        T::BlockNumber,
-        ValueQuery,
+        CrowdloanTag,
+        CrowdloanUserInfo<T::AssetId>,
+        OptionQuery,
     >;
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig {
-        pub test_crowdloan_rewards: Vec<CrowdloanReward>,
-    }
-
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                test_crowdloan_rewards: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
-        fn build(&self) {
-            use frame_support::log;
-            use traits::MultiCurrency;
-
-            self.test_crowdloan_rewards.iter().for_each(|reward| {
-                CrowdloanRewards::<T>::insert(
-                    T::AccountId::decode(&mut &reward.address[..])
-                        .expect("Can't decode contributor address."),
-                    reward.clone(),
-                )
-            });
-
-            if let Err(e) = T::Currency::deposit(
-                VAL.into(),
-                &T::GetCrowdloanRewardsAccountId::get(),
-                VAL_CROWDLOAN_REWARDS,
-            ) {
-                log::error!(target: "runtime", "Failed to add VAL crowdloan rewards: {:?}", e);
-            }
-
-            if let Err(e) = T::Currency::deposit(
-                PSWAP.into(),
-                &T::GetCrowdloanRewardsAccountId::get(),
-                PSWAP_CROWDLOAN_REWARDS,
-            ) {
-                log::error!(target: "runtime", "Failed to add PSWAP crowdloan rewards: {:?}", e);
-            }
-
-            if let Err(e) = T::Currency::deposit(
-                XSTUSD.into(),
-                &T::GetCrowdloanRewardsAccountId::get(),
-                XSTUSD_CROWDLOAN_REWARDS,
-            ) {
-                log::error!(target: "runtime", "Failed to add XSTUSD crowdloan rewards: {:?}", e);
-            }
-        }
-    }
 }

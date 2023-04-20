@@ -28,49 +28,69 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
+use super::pallet::{Config, Pallet};
+use common::{fixed, Fixed, XSTUSD};
+use frame_support::pallet_prelude::{Get, StorageVersion, ValueQuery};
+use frame_support::traits::OnRuntimeUpgrade;
+use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
+use sp_std::collections::btree_set::BTreeSet;
 
-use core::marker::PhantomData;
+use crate::{EnabledSymbols, EnabledSynthetics as NewEnabledSynthetics, SyntheticInfo};
 
-use frame_support::{
-    sp_tracing::{error, info},
-    traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
-};
+#[frame_support::storage_alias]
+type BaseFee<T: Config> = StorageValue<Pallet<T>, Fixed, ValueQuery>;
 
-use crate::Pallet;
+#[frame_support::storage_alias]
+type PermissionedTechAccount<T: Config> =
+    StorageValue<Pallet<T>, <T as technical::Config>::TechAccountId, ValueQuery>;
 
-pub struct InitializeTechnicalAccount<T>(PhantomData<T>);
+#[frame_support::storage_alias]
+type EnabledSynthetics<T: Config> =
+    StorageValue<Pallet<T>, BTreeSet<<T as assets::Config>::AssetId>, ValueQuery>;
 
-impl<T: crate::Config> OnRuntimeUpgrade for InitializeTechnicalAccount<T> {
-    fn on_runtime_upgrade() -> frame_support::weights::Weight {
-        if Pallet::<T>::on_chain_storage_version() == 0 {
-            info!("Applying migration to version 1: Initialize XST pool");
+pub struct CustomSyntheticsUpgrade<T>(core::marker::PhantomData<T>);
 
-            match technical::Pallet::<T>::register_tech_account_id(T::LockTechAccountId::get()) {
-                Ok(()) => StorageVersion::new(1).put::<Pallet<T>>(),
-                // We can't return an error here, so we just log it
-                Err(err) => error!(
-                    "An error occurred during technical account registration: {:?}",
-                    err
-                ),
-            }
-            <T as frame_system::Config>::BlockWeights::get().max_block
-        } else {
-            error!(
-                "Runtime upgrade executed with wrong storage version, expected 0, got {:?}",
-                Pallet::<T>::on_chain_storage_version()
-            );
-            <T as frame_system::Config>::DbWeight::get().reads(1)
+/// Migration which migrates `XSTUSD` synthetic to the new format.
+impl<T> OnRuntimeUpgrade for CustomSyntheticsUpgrade<T>
+where
+    T: crate::Config,
+    <T as frame_system::Config>::AccountId: From<[u8; 32]>,
+{
+    fn on_runtime_upgrade() -> Weight {
+        if Pallet::<T>::on_chain_storage_version() >= 2 {
+            info!("Migration to version 2 has already been applied");
+            return Weight::zero();
         }
+
+        if BaseFee::<T>::exists() {
+            BaseFee::<T>::kill();
+        }
+
+        if PermissionedTechAccount::<T>::exists() {
+            PermissionedTechAccount::<T>::kill();
+        }
+
+        if EnabledSynthetics::<T>::exists() {
+            EnabledSynthetics::<T>::kill();
+        }
+
+        let xstusd_symbol = T::Symbol::from(common::SymbolName::usd());
+
+        NewEnabledSynthetics::<T>::insert(
+            T::AssetId::from(XSTUSD),
+            SyntheticInfo {
+                reference_symbol: xstusd_symbol.clone(),
+                fee_ratio: fixed!(0.00666),
+            },
+        );
+        EnabledSymbols::<T>::insert(xstusd_symbol, T::AssetId::from(XSTUSD));
+
+        StorageVersion::new(2).put::<Pallet<T>>();
+        T::DbWeight::get().reads_writes(0, 2)
     }
 
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-        let account_id = T::LockTechAccountId::get();
-        frame_support::ensure!(
-            technical::Pallet::<T>::ensure_tech_account_registered(&account_id).is_err(),
-            "Tech account is already registered"
-        );
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 1,
             "must upgrade linearly"
@@ -80,15 +100,13 @@ impl<T: crate::Config> OnRuntimeUpgrade for InitializeTechnicalAccount<T> {
 
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-        let account_id = T::LockTechAccountId::get();
-        frame_support::ensure!(
-            technical::Pallet::<T>::ensure_tech_account_registered(&account_id).is_ok(),
-            "Tech account is not registered"
-        );
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
-            "should be upgraded to version 1"
+            "should be upgraded to version 2"
         );
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;

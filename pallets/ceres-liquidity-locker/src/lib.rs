@@ -11,11 +11,7 @@ pub mod weights;
 
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn lock_liquidity() -> Weight;
-    fn change_ceres_fee() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]

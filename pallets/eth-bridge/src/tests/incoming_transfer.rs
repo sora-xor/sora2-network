@@ -44,7 +44,10 @@ use crate::tests::{
 use crate::types::{Log, TransactionReceipt};
 use crate::{types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL};
 use codec::Encode;
-use common::{balance, AssetId32, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL, XOR};
+use common::{
+    balance, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
+    VAL, XOR,
+};
 use frame_support::assert_noop;
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
@@ -323,10 +326,11 @@ fn should_take_fee_in_incoming_transfer() {
             0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        let fee_amount = crate::IncomingTransfer::<Runtime>::fee_amount();
         assert_eq!(
             assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
-            balance!(99.9993).into()
+            balance!(100) - fee_amount
         );
     });
 }

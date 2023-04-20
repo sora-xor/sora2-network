@@ -30,13 +30,11 @@
 
 use crate::{self as xstpool, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{
-    Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
-};
+use common::prelude::{Balance, FixedWrapper, PriceToolsPallet};
 use common::{
-    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, PriceVariant,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
+    FromGenericPair, PredefinedAssetId, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT,
+    VAL, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -49,15 +47,12 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, DispatchResult, Perbill, Percent};
-use std::collections::HashMap;
+use sp_runtime::{Perbill, Percent};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-pub type ReservesAccount =
-    mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -98,6 +93,21 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
+    pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+    pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetXSTPoolPermissionedAccountId: AccountId = {
+        let tech_account_id = GetXSTPoolPermissionedTechAccountId::get();
+        let account_id =
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 construct_runtime! {
@@ -121,6 +131,8 @@ construct_runtime! {
         XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Storage},
+        Band: band::{Pallet, Call, Storage, Event<T>},
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
@@ -171,11 +183,28 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type GetSyntheticBaseAssetId = GetSyntheticBaseAssetId;
-    type LiquidityProxy = MockDEXApi;
-    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
-    type PriceToolsPallet = MockDEXApi;
+    type PriceToolsPallet = price_tools::Pallet<Runtime>;
+    type Oracle = oracle_proxy::Pallet<Runtime>;
+    type Symbol = <Runtime as band::Config>::Symbol;
     type WeightInfo = ();
+}
+
+impl band::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Symbol = common::SymbolName;
+    type WeightInfo = ();
+    type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type GetBandRateStalePeriod = GetBandRateStalePeriod;
+    type UnixTime = Timestamp;
+}
+
+impl oracle_proxy::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
+    type Symbol = <Runtime as band::Config>::Symbol;
+    type BandChainOracle = band::Pallet<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -288,7 +317,7 @@ impl pswap_distribution::Config for Runtime {
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = ();
-    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+    type WeightInfo = ();
 }
 
 impl demeter_farming_platform::Config for Runtime {
@@ -330,224 +359,44 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
-pub struct MockDEXApi;
+pub fn set_mock_price<T: Config>(
+    asset_id: &AssetId,
+    price: Balance,
+    buy_ratio: Balance,
+    sell_ratio: Balance,
+) where
+    T: price_tools::Config + assets::Config<AssetId = common::AssetId32<PredefinedAssetId>>,
+{
+    let _ = price_tools::Pallet::<T>::register_asset(asset_id);
 
-impl MockDEXApi {
-    fn get_mock_source_account() -> Result<(TechAccountId, AccountId), DispatchError> {
-        let tech_account_id =
-            TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
-        let account_id = Technical::tech_account_id_to_account_id(&tech_account_id)?;
-        Ok((tech_account_id, account_id))
-    }
+    let price_buy = (FixedWrapper::from(price) * buy_ratio).into_balance();
+    let price_sell = (FixedWrapper::from(price) * sell_ratio).into_balance();
 
-    pub fn init_without_reserves() -> Result<(), DispatchError> {
-        let (tech_account_id, _) = Self::get_mock_source_account()?;
-        Technical::register_tech_account_id(tech_account_id.clone())?;
-        MockLiquiditySource::set_reserves_account_id(tech_account_id)?;
-        Ok(())
-    }
-
-    pub fn init() -> Result<(), DispatchError> {
-        Self::init_without_reserves()?;
-        Ok(())
-    }
-
-    fn _can_exchange(
-        _target_id: &DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-    ) -> bool {
-        get_mock_prices().contains_key(&(*input_asset_id, *output_asset_id))
-    }
-
-    fn inner_quote(
-        _target_id: &DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: QuoteAmount<Balance>,
-        deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        match amount {
-            QuoteAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
-                let amount_out = FixedWrapper::from(desired_amount_in)
-                    * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let fee = if deduce_fee {
-                    let fee = amount_out.clone() * balance!(0.007); // XST uses 0.7% fees
-                    fee.into_balance()
-                } else {
-                    0
-                };
-                let amount_out: Balance = amount_out.into_balance();
-                let amount_out = amount_out - fee;
-                Ok(SwapOutcome::new(amount_out, fee))
-            }
-            QuoteAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
-                let amount_in = FixedWrapper::from(desired_amount_out)
-                    / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                if deduce_fee {
-                    let with_fee = amount_in.clone() / balance!(0.993); // XST uses 0.7% fees
-                    let fee = with_fee.clone() - amount_in;
-                    let fee = fee.into_balance();
-                    let with_fee = with_fee.into_balance();
-                    Ok(SwapOutcome::new(with_fee, fee))
-                } else {
-                    Ok(SwapOutcome::new(amount_in.into_balance(), 0))
-                }
-            }
-        }
-    }
-
-    fn inner_exchange(
-        sender: &AccountId,
-        receiver: &AccountId,
-        target_id: &DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Balance>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        match swap_amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
-                let outcome = Self::inner_quote(
-                    target_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?;
-                let reserves_account_id =
-                    &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(desired_amount_in, 0);
-                let old = Assets::total_balance(input_asset_id, sender)?;
-                Assets::transfer_from(
-                    input_asset_id,
-                    sender,
-                    reserves_account_id,
-                    desired_amount_in,
-                )?;
-                let new = Assets::total_balance(input_asset_id, sender)?;
-                assert_ne!(old, new);
-                Assets::transfer_from(
-                    output_asset_id,
-                    reserves_account_id,
-                    receiver,
-                    outcome.amount,
-                )?;
-                Ok(SwapOutcome::new(outcome.amount, outcome.fee))
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
-                let outcome = Self::inner_quote(
-                    target_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount.into(),
-                    true,
-                )?;
-                let reserves_account_id =
-                    &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(outcome.amount, 0);
-                let old = Assets::total_balance(input_asset_id, sender)?;
-                Assets::transfer_from(input_asset_id, sender, reserves_account_id, outcome.amount)?;
-                let new = Assets::total_balance(input_asset_id, sender)?;
-                assert_ne!(old, new);
-                Assets::transfer_from(
-                    output_asset_id,
-                    reserves_account_id,
-                    receiver,
-                    desired_amount_out,
-                )?;
-                Ok(SwapOutcome::new(outcome.amount, outcome.fee))
-            }
-        }
-    }
-}
-
-pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
-    let direct = vec![
-        ((XOR, VAL), balance!(2.0)),
-        ((XOR, XST), balance!(425.71)),
-        // USDT
-        ((XOR, USDT), balance!(100.0)),
-        ((VAL, USDT), balance!(50.0)),
-        // DAI
-        ((XOR, DAI), balance!(102.0)),
-        ((XST, DAI), balance!(182.9)),
-        ((VAL, DAI), balance!(51.0)),
-        ((USDT, DAI), balance!(1.02)),
-        // PSWAP
-        ((XOR, PSWAP), balance!(10)),
-        ((VAL, PSWAP), balance!(5)),
-        ((USDT, PSWAP), balance!(0.1)),
-        ((DAI, PSWAP), balance!(0.098)),
-        // XSTUSD
-        ((XOR, XSTUSD), balance!(103.0)),
-        ((VAL, XSTUSD), balance!(52.0)),
-        ((USDT, XSTUSD), balance!(1.03)),
-        ((DAI, XSTUSD), balance!(1.03)),
-        ((XST, XSTUSD), balance!(183.0)),
-    ];
-    let reverse = direct.clone().into_iter().map(|((a, b), price)| {
-        (
-            (b, a),
-            (fixed_wrapper!(1) / FixedWrapper::from(price))
-                .try_into_balance()
-                .unwrap(),
+    for _ in 0..31 {
+        price_tools::Pallet::<T>::incoming_spot_price(
+            asset_id.into(),
+            price_buy,
+            PriceVariant::Buy,
         )
-    });
-    direct.into_iter().chain(reverse).collect()
-}
-
-impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
-    fn exchange(
-        _dex_id: DEXId,
-        sender: &AccountId,
-        receiver: &AccountId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_exchange(
-            sender,
-            receiver,
-            &filter.dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
+        .expect("Failed to relay spot price");
+        price_tools::Pallet::<T>::incoming_spot_price(
+            asset_id.into(),
+            price_sell,
+            PriceVariant::Sell,
         )
-    }
-
-    fn quote(
-        _dex_id: DEXId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: QuoteAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-        deduce_fee: bool,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_quote(
-            &filter.dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-            deduce_fee,
-        )
+        .expect("Failed to relay spot price");
     }
 }
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    endowed_accounts_with_synthetics:
+        Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    reference_asset_id: AssetId,
+    // Vec<(AssetId, Price, Buy fee ratio, Sell fee ratio)>
+    initial_prices: Vec<(AssetId, Balance, Balance, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -596,14 +445,6 @@ impl Default for ExtBuilder {
                 ),
                 (
                     alice(),
-                    XSTUSD,
-                    balance!(100000),
-                    AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"SORA Synthetic USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
-                ),
-                (
-                    alice(),
                     DAI,
                     balance!(100000),
                     AssetSymbol(b"DAI".to_vec()),
@@ -611,6 +452,14 @@ impl Default for ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                 ),
             ],
+            endowed_accounts_with_synthetics: vec![(
+                alice(),
+                XSTUSD,
+                balance!(100000),
+                AssetSymbol(b"XSTUSD".to_vec()),
+                AssetName(b"SORA Synthetic USD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            )],
             dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
@@ -631,40 +480,38 @@ impl Default for ExtBuilder {
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    GetXSTPoolPermissionedAccountId::get(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
-            reference_asset_id: DAI,
+            initial_prices: vec![
+                (VAL, balance!(2), balance!(0.993), balance!(1.007)),
+                (XST, balance!(0.64), balance!(0.993), balance!(1.007)),
+                (XSTUSD, balance!(100), balance!(1), balance!(1)),
+                (DAI, balance!(100), balance!(1), balance!(1)),
+                (PSWAP, balance!(10), balance!(0.993), balance!(1.007)),
+            ],
         }
-    }
-}
-
-impl PriceToolsPallet<AssetId> for MockDEXApi {
-    fn get_average_price(
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        _price_variant: PriceVariant,
-    ) -> Result<Balance, DispatchError> {
-        Ok(Self::inner_quote(
-            &DEXId::Polkaswap.into(),
-            input_asset_id,
-            output_asset_id,
-            QuoteAmount::with_desired_input(balance!(1)),
-            true,
-        )?
-        .amount)
-    }
-
-    fn register_asset(_: &AssetId) -> DispatchResult {
-        // do nothing
-        Ok(())
     }
 }
 
 impl ExtBuilder {
     pub fn new(
         endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+        endowed_accounts_with_synthetics: Vec<(
+            AccountId,
+            AssetId,
+            Balance,
+            AssetSymbol,
+            AssetName,
+            u8,
+        )>,
     ) -> Self {
         Self {
             endowed_accounts,
+            endowed_accounts_with_synthetics,
             ..Default::default()
         }
     }
@@ -692,10 +539,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        crate::GenesisConfig::<Runtime> {
-            tech_account_id: Default::default(),
-            reference_asset_id: self.reference_asset_id,
-            initial_synthetic_assets: Default::default(),
+        technical::GenesisConfig::<Runtime> {
+            register_tech_accounts: vec![(
+                GetXSTPoolPermissionedAccountId::get(),
+                GetXSTPoolPermissionedTechAccountId::get(),
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -718,6 +566,7 @@ impl ExtBuilder {
                 .endowed_accounts
                 .iter()
                 .cloned()
+                .chain(self.endowed_accounts_with_synthetics.iter().cloned())
                 .map(|(account_id, asset_id, _, symbol, name, precision)| {
                     (
                         asset_id,
@@ -736,16 +585,29 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        crate::GenesisConfig::<Runtime>::default()
+            .assimilate_storage(&mut t)
+            .unwrap();
+
         tokens::GenesisConfig::<Runtime> {
             balances: self
                 .endowed_accounts
                 .into_iter()
+                .chain(self.endowed_accounts_with_synthetics.into_iter())
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        t.into()
+        let mut ext: sp_io::TestExternalities = t.into();
+        ext.execute_with(|| {
+            self.initial_prices
+                .into_iter()
+                .for_each(|(asset_id, price, buy_r, sell_r)| {
+                    set_mock_price::<Runtime>(&asset_id, price, buy_r, sell_r)
+                })
+        });
+        ext
     }
 }

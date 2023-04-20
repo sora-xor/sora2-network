@@ -11,23 +11,7 @@ mod tests;
 mod benchmarking;
 
 use codec::{Decode, Encode};
-use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn create_ilo() -> Weight;
-    fn contribute() -> Weight;
-    fn emergency_withdraw() -> Weight;
-    fn finish_ilo() -> Weight;
-    fn claim_lp_tokens() -> Weight;
-    fn claim() -> Weight;
-    fn change_ceres_burn_fee() -> Weight;
-    fn change_ceres_contribution_fee() -> Weight;
-    fn claim_pswap_rewards() -> Weight;
-    fn add_whitelisted_contributor() -> Weight;
-    fn remove_whitelisted_contributor() -> Weight;
-    fn add_whitelisted_ilo_organizer() -> Weight;
-    fn remove_whitelisted_ilo_organizer() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -93,7 +77,7 @@ pub mod pallet {
     use crate::{ContributionInfo, ContributorsVesting, ILOInfo};
     use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
-    use common::{balance, DEXId, PoolXykPallet, PSWAP, XSTUSD};
+    use common::{balance, AssetInfoProvider, DEXId, PoolXykPallet, PSWAP, XSTUSD};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
     use frame_support::PalletId;
@@ -108,6 +92,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crslaunc");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

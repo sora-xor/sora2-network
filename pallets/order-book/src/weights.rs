@@ -31,8 +31,37 @@
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
-pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+pub trait WeightInfo {
+    fn create_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn delete_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn update_orderbook() -> Weight {
+        Weight::zero()
+    }
+    fn change_orderbook_status() -> Weight {
+        Weight::zero()
+    }
+    fn place_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn cancel_limit_order() -> Weight {
+        Weight::zero()
+    }
+    fn quote() -> Weight {
+        Weight::zero()
+    }
+    fn exchange() -> Weight {
+        Weight::zero()
+    }
+}
+
+impl WeightInfo for () {}
+
+pub struct SubstrateWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn create_orderbook() -> Weight {
         Weight::zero()
     }

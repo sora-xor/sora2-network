@@ -58,12 +58,7 @@ use common::prelude::{FixedWrapper, QuoteAmount};
 use common::{balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated};
 
 pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
-
-pub trait WeightInfo {
-    fn refresh_pool(a: u32) -> Weight;
-    fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight;
-    fn vest_account_rewards(a: u32) -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> OnPoolCreated for Pallet<T> {
     type AccountId = AccountIdOf<T>;
@@ -278,7 +273,7 @@ impl<T: Config> Pallet<T> {
         let reward = {
             let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
             let freq: u128 = T::VESTING_FREQUENCY.unique_saturated_into();
-            let blocks: u128 = T::BLOCKS_PER_DAY.unique_saturated_into();
+            let blocks: u128 = <T as Config>::BLOCKS_PER_DAY.unique_saturated_into();
             let reward_vesting_part =
                 FixedWrapper::from(balance!(freq)) / FixedWrapper::from(balance!(blocks));
             reward_per_day * reward_vesting_part

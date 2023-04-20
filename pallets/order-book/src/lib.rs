@@ -31,9 +31,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(dead_code)] // todo (m.tagirov) remove
 
-use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{LiquiditySource, PriceVariant, RewardReason};
+use assets::AssetIdOf;
+use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutcome};
+use common::{
+    AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
+    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    ToOrderTechUnitFromDEXAndTradingPair,
+};
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
@@ -49,8 +53,6 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub mod migrations;
-
 mod limit_order;
 mod market_order;
 mod order_book;
@@ -58,65 +60,25 @@ mod order_book;
 pub use crate::order_book::{OrderBook, OrderBookStatus};
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-
-#[cfg(feature = "wip")]
-pub use migrations::v1::InitializeTechnicalAccount;
-
-pub const TECH_ACCOUNT_PREFIX: &[u8] = b"order-book";
-pub const TECH_ACCOUNT_LOCK: &[u8] = b"lock";
-
-pub trait WeightInfo {
-    fn create_orderbook() -> Weight;
-    fn delete_orderbook() -> Weight;
-    fn update_orderbook() -> Weight;
-    fn change_orderbook_status() -> Weight;
-    fn place_limit_order() -> Weight;
-    fn cancel_limit_order() -> Weight;
-    fn quote() -> Weight;
-    fn exchange() -> Weight;
-}
-
-impl crate::WeightInfo for () {
-    fn create_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn delete_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn update_orderbook() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn change_orderbook_status() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn place_limit_order() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn cancel_limit_order() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn quote() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn exchange() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub use weights::WeightInfo;
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::TradingPair;
+    use common::{DEXInfo, TradingPair};
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
         Blake2_128Concat, BoundedBTreeMap,
     };
     use frame_system::pallet_prelude::*;
 
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
@@ -143,13 +105,27 @@ pub mod pallet {
         type MaxOpenedLimitOrdersForAllOrderBooksPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePrices: Get<u32>;
-        type LockTechAccountId: Get<Self::TechAccountId>;
+        type EnsureTradingPairExists: EnsureTradingPairExists<
+            Self::DEXId,
+            Self::AssetId,
+            DispatchError,
+        >;
+        type AssetInfoProvider: AssetInfoProvider<
+            Self::AssetId,
+            Self::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            ContentSource,
+            Description,
+        >;
+        type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
         type WeightInfo: WeightInfo;
     }
 
-    pub type OrderBookId<T> = TradingPair<<T as assets::Config>::AssetId>;
-    pub type OrderPrice<T> = <T as tokens::Config>::Balance;
-    pub type OrderVolume<T> = <T as tokens::Config>::Balance;
+    pub type OrderBookId<T> = TradingPair<AssetIdOf<T>>;
+    pub type OrderPrice = Balance;
+    pub type OrderVolume = Balance;
 
     #[pallet::storage]
     #[pallet::getter(fn order_books)]
@@ -175,7 +151,7 @@ pub mod pallet {
         Blake2_128Concat,
         OrderBookId<T>,
         Blake2_128Concat,
-        OrderPrice<T>,
+        OrderPrice,
         BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
@@ -187,7 +163,7 @@ pub mod pallet {
         Blake2_128Concat,
         OrderBookId<T>,
         Blake2_128Concat,
-        OrderPrice<T>,
+        OrderPrice,
         BoundedVec<T::OrderId, T::MaxLimitOrdersForPrice>,
         OptionQuery,
     >;
@@ -198,7 +174,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         OrderBookId<T>,
-        BoundedBTreeMap<OrderPrice<T>, OrderVolume<T>, T::MaxSidePrices>,
+        BoundedBTreeMap<OrderPrice, OrderVolume, T::MaxSidePrices>,
         ValueQuery,
     >;
 
@@ -208,7 +184,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         OrderBookId<T>,
-        BoundedBTreeMap<OrderPrice<T>, OrderVolume<T>, T::MaxSidePrices>,
+        BoundedBTreeMap<OrderPrice, OrderVolume, T::MaxSidePrices>,
         ValueQuery,
     >;
 
@@ -227,8 +203,37 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
+        /// New order book is created by user
+        OrderBookCreated {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            creator: T::AccountId,
+        },
+
+        /// Order book is deleted by Council
+        OrderBookDeleted {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+        },
+
+        /// Order book attributes are updated by Council
+        OrderBookUpdated {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+        },
+
+        /// User placed new limit order
         OrderPlaced {
             order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+        },
+
+        /// User canceled their limit order
+        OrderCanceled {
+            order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
             order_id: T::OrderId,
             owner_id: T::AccountId,
         },
@@ -252,6 +257,12 @@ pub mod pallet {
         DeleteLimitOrderError,
         /// There is not enough liquidity in the order book to cover the deal
         NotEnoughLiquidity,
+        /// Cannot create order book with equal base and target assets
+        ForbiddenToCreateOrderBookWithSameAssets,
+        /// The asset is not allowed to be base. Only dex base asset can be a base asset for order book
+        NotAllowedBaseAsset,
+        /// User cannot create an order book with NFT if they don't have NFT
+        UserDoesntHaveNft,
     }
 
     #[pallet::call]
@@ -260,29 +271,65 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_orderbook())]
         pub fn create_orderbook(
             origin: OriginFor<T>,
-            _dex_id: T::DEXId,
+            dex_id: T::DEXId,
             order_book_id: OrderBookId<T>,
-            _tick_size: OrderPrice<T>,
-            _step_lot_size: OrderVolume<T>,
-            _min_lot_size: OrderVolume<T>,
-            _max_lot_size: OrderVolume<T>,
         ) -> DispatchResult {
-            ensure_root(origin)?;
+            let who = ensure_signed(origin)?;
+            ensure!(
+                order_book_id.base_asset_id != order_book_id.target_asset_id,
+                Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
+            );
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            ensure!(
+                order_book_id.base_asset_id == dex_info.base_asset_id,
+                Error::<T>::NotAllowedBaseAsset
+            );
+            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.target_asset_id)?;
+            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+                &dex_id,
+                &order_book_id.base_asset_id.into(),
+                &order_book_id.target_asset_id.into(),
+            )?;
             ensure!(
                 !<OrderBooks<T>>::contains_key(order_book_id),
                 Error::<T>::OrderBookAlreadyExists
             );
-            // todo (m.tagirov)
-            todo!()
+            Self::register_tech_account(dex_id.clone(), order_book_id.clone())?;
+
+            let order_book =
+                if T::AssetInfoProvider::get_asset_info(&order_book_id.target_asset_id).2 != 0 {
+                    // regular asset
+                    OrderBook::<T>::default(order_book_id, dex_id)
+                } else {
+                    // nft
+                    // ensure the user has nft
+                    ensure!(
+                        T::AssetInfoProvider::total_balance(&order_book_id.target_asset_id, &who)?
+                            > Balance::zero(),
+                        Error::<T>::UserDoesntHaveNft
+                    );
+                    OrderBook::<T>::default_nft(order_book_id, dex_id)
+                };
+
+            <OrderBooks<T>>::insert(order_book_id, order_book);
+
+            Self::deposit_event(Event::<T>::OrderBookCreated {
+                order_book_id: order_book_id,
+                dex_id: dex_id,
+                creator: who,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_book_id: OrderBookId<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            Self::deregister_tech_account(dex_id.clone(), order_book_id.clone())?;
             // todo (m.tagirov)
             todo!()
         }
@@ -292,10 +339,10 @@ pub mod pallet {
         pub fn update_orderbook(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            _tick_size: OrderPrice<T>,
-            _step_lot_size: OrderVolume<T>,
-            _min_lot_size: OrderVolume<T>,
-            _max_lot_size: OrderVolume<T>,
+            _tick_size: OrderPrice,
+            _step_lot_size: OrderVolume,
+            _min_lot_size: OrderVolume,
+            _max_lot_size: OrderVolume,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -323,8 +370,8 @@ pub mod pallet {
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<T>,
-            _price: OrderPrice<T>,
-            _amount: OrderVolume<T>,
+            _price: OrderPrice,
+            _amount: OrderVolume,
             _side: PriceVariant,
             _lifespan: T::Moment,
         ) -> DispatchResult {
@@ -364,7 +411,12 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut bids = <AggregatedBids<T>>::get(order_book_id);
-                let volume = bids.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                let volume = bids
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .unwrap_or_default()
+                    .checked_add(order.amount)
+                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
                 bids.try_insert(order.price, volume)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedBids<T>>::set(order_book_id, bids);
@@ -374,7 +426,12 @@ impl<T: Config> Pallet<T> {
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
 
                 let mut asks = <AggregatedAsks<T>>::get(order_book_id);
-                let volume = asks.get(&order.price).map(|x| *x).unwrap_or_default() + order.amount;
+                let volume = asks
+                    .get(&order.price)
+                    .map(|x| *x)
+                    .unwrap_or_default()
+                    .checked_add(order.amount)
+                    .ok_or(Error::<T>::LimitOrderStorageOverflow)?;
                 asks.try_insert(order.price, volume)
                     .map_err(|_| Error::<T>::LimitOrderStorageOverflow)?;
                 <AggregatedAsks<T>>::set(order_book_id, asks);
@@ -388,6 +445,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Delete limit order consistently from all necessary storages.
+    /// Must check before call. If returns error, it means we have problems with data consistency.
     pub fn delete_limit_order(
         order_book_id: &OrderBookId<T>,
         order_id: T::OrderId,
@@ -421,7 +479,8 @@ impl<T: Config> Pallet<T> {
                     .get(&order.price)
                     .map(|x| *x)
                     .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    - order.amount;
+                    .checked_sub(order.amount)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
                 if volume.is_zero() {
                     agg_bids
                         .remove(&order.price)
@@ -449,7 +508,8 @@ impl<T: Config> Pallet<T> {
                     .get(&order.price)
                     .map(|x| *x)
                     .ok_or(Error::<T>::DeleteLimitOrderError)?
-                    - order.amount;
+                    .checked_sub(order.amount)
+                    .ok_or(Error::<T>::DeleteLimitOrderError)?;
                 if volume.is_zero() {
                     agg_asks
                         .remove(&order.price)
@@ -465,43 +525,94 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+}
 
-    #[cfg_attr(test, visibility::make(pub))]
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+    /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
     fn lock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+
+    /// Unlock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
+    fn unlock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
+    fn lock_liquidity(
+        dex_id: T::DEXId,
         account: &T::AccountId,
-        asset: &T::AssetId,
-        amount: T::Balance,
-    ) -> Result<(), DispatchError>
-    where
-        T::Balance: Into<u128>,
-    {
-        technical::Pallet::<T>::transfer_in(
-            asset,
-            account,
-            &T::LockTechAccountId::get(),
-            amount.into(),
-        )
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        let asset_id = trading_pair.select(asset);
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
     }
 
-    #[cfg_attr(test, visibility::make(pub))]
-    pub fn unlock_liquidity(
+    fn unlock_liquidity(
+        dex_id: T::DEXId,
         account: &T::AccountId,
-        asset: &T::AssetId,
-        amount: T::Balance,
-    ) -> Result<(), DispatchError>
-    where
-        T::Balance: Into<u128>,
-    {
-        technical::Pallet::<T>::transfer_out(
-            asset,
-            &T::LockTechAccountId::get(),
-            account,
-            amount.into(),
-        )
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        let asset_id = trading_pair.select(asset);
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
     }
 }
 
-impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, DispatchError>
+impl<T: Config> Pallet<T> {
+    fn tech_account_for_order_book(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> <T as technical::Config>::TechAccountId {
+        // Same as in xyk accounts
+        let trading_pair = trading_pair.map(|a| a.into());
+        <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+            dex_id,
+            trading_pair,
+        )
+    }
+
+    // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
+    pub fn register_tech_account(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::register_tech_account_id(tech_account)
+    }
+
+    // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
+    pub fn deregister_tech_account(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::deregister_tech_account_id(tech_account)
+    }
+}
+
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Pallet<T>
 {
     fn can_exchange(
@@ -517,9 +628,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, 
         _dex_id: &T::DEXId,
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
-        _amount: QuoteAmount<T::Balance>,
+        _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<(SwapOutcome<T::Balance>, Weight), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         // todo (m.tagirov)
         todo!()
     }
@@ -530,8 +641,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, 
         _dex_id: &T::DEXId,
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
-        _desired_amount: SwapAmount<T::Balance>,
-    ) -> Result<(SwapOutcome<T::Balance>, Weight), DispatchError> {
+        _desired_amount: SwapAmount<Balance>,
+    ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         // todo (m.tagirov)
         todo!()
     }
@@ -540,9 +651,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, 
         _dex_id: &T::DEXId,
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
-        _input_amount: T::Balance,
-        _output_amount: T::Balance,
-    ) -> Result<(Vec<(T::Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<(Vec<(Balance, T::AssetId, RewardReason)>, Weight), DispatchError> {
         Ok((Vec::new(), Weight::zero())) // no rewards for Order Book
     }
 
@@ -550,9 +661,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, T::Balance, 
         _dex_id: &T::DEXId,
         _input_asset_id: &T::AssetId,
         _output_asset_id: &T::AssetId,
-        _amount: QuoteAmount<T::Balance>,
+        _amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
-    ) -> Result<SwapOutcome<T::Balance>, DispatchError> {
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // todo (m.tagirov)
         todo!()
     }

@@ -131,7 +131,7 @@ fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
 
 benchmarks! {
     refresh_pool {
-        let a in 1..100;
+        let a in 1..20;
         let (mut pools, assets) = prepare_pools::<T>(1);
         prepare_good_accounts::<T>(a, &assets);
     }: {
@@ -150,7 +150,7 @@ benchmarks! {
     }
 
     vest_account_rewards {
-        let a in 1..100;
+        let a in 1..20;
         let (mut pools, assets) = prepare_pools::<T>(1);
         prepare_good_accounts::<T>(a, &assets);
         Pallet::<T>::refresh_pools(T::VESTING_FREQUENCY);

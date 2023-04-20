@@ -28,33 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg(feature = "wip")] // order-book
-
-use common::FromGenericPair;
-use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade};
-use framenode_chain_spec::ext;
-use framenode_runtime::order_book::Pallet;
-use framenode_runtime::{order_book, Runtime};
-
-type OrderBook = Pallet<Runtime>;
-
-#[test]
-fn test_v1() {
-    ext().execute_with(|| {
-        let lock_account_id = <Runtime as technical::Config>::TechAccountId::from_generic_pair(
-            crate::TECH_ACCOUNT_PREFIX.to_vec(),
-            crate::TECH_ACCOUNT_LOCK.to_vec(),
-        );
-        assert!(
-            technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_err()
-        );
-        assert_eq!(OrderBook::on_chain_storage_version(), 0);
-
-        order_book::InitializeTechnicalAccount::<Runtime>::on_runtime_upgrade();
-
-        assert!(
-            technical::Pallet::<Runtime>::ensure_tech_account_registered(&lock_account_id).is_ok()
-        );
-        assert_eq!(OrderBook::on_chain_storage_version(), 1);
-    });
-}
+mod extrinsics;
+mod order_book;
+mod pallet;

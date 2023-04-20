@@ -41,10 +41,10 @@ use assets::WeightInfo as _;
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    balance, fixed_wrapper, AccountIdOf, BuyBackHandler, DEXInfo, DexIdOf, FilterMode, Fixed,
-    GetMarketInfo, GetPoolReserves, LiquidityProxyTrait, LiquidityRegistry, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
-    VestedRewardsPallet, XSTUSD,
+    balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
+    DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -65,6 +65,7 @@ type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, Li
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
 pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -77,7 +78,7 @@ mod test_utils;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
-pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0075);
+pub const ADAR_COMMISSION_RATIO: Balance = balance!(0.0025);
 
 const REJECTION_WEIGHT: Weight = Weight::from_parts(u64::MAX, u64::MAX);
 
@@ -240,15 +241,6 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
     }
 }
 
-pub trait WeightInfo {
-    fn enable_liquidity_source() -> Weight;
-    fn disable_liquidity_source() -> Weight;
-    fn check_indivisible_assets() -> Weight;
-    fn new_trivial() -> Weight;
-    fn is_forbidden_filter() -> Weight;
-    fn list_liquidity_sources() -> Weight;
-}
-
 impl<T: Config> Pallet<T> {
     /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
     pub fn is_forbidden_filter(
@@ -277,6 +269,7 @@ impl<T: Config> Pallet<T> {
         is_xyk_only && reserve_asset_present
     }
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     pub fn check_indivisible_assets(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
@@ -1292,11 +1285,11 @@ impl<T: Config> Pallet<T> {
             }
 
             weight = weight.saturating_add(
-                assets::weights::WeightInfo::<T>::transfer()
+                <T as assets::Config>::WeightInfo::transfer()
                     .saturating_mul(swap_batch_info.receivers.len() as u64),
             );
         }
-        weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
+        weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
         weight
     }
@@ -1899,7 +1892,7 @@ impl<T: Config> Pallet<T> {
                 )
             },
         )?;
-        Ok(assets::weights::WeightInfo::<T>::transfer().saturating_mul(len as u64))
+        Ok(<T as assets::Config>::WeightInfo::transfer().saturating_mul(len as u64))
     }
 
     fn calculate_adar_commission(amount: Balance) -> Result<Balance, DispatchError> {
@@ -2126,6 +2119,8 @@ pub mod pallet {
     use frame_support::{traits::StorageVersion, transactional};
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + trading_pair::Config
@@ -2282,7 +2277,7 @@ pub mod pallet {
                 adar_commission,
             )
             .map_err(|_| Error::<T>::FailedToTransferAdarCommission)?;
-            weight = weight.saturating_add(assets::weights::WeightInfo::<T>::transfer());
+            weight = weight.saturating_add(<T as assets::Config>::WeightInfo::transfer());
 
             Ok(PostDispatchInfo {
                 actual_weight: Some(weight),
