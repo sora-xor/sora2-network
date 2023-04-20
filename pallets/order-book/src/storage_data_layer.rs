@@ -39,7 +39,17 @@ use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
 
-pub struct StorageDataLayer<T: Config>(PhantomData<T>);
+pub struct StorageDataLayer<T: Config> {
+    _phantom: PhantomData<T>,
+}
+
+impl<T: Config> StorageDataLayer<T> {
+    pub fn new() -> Self {
+        Self {
+            _phantom: PhantomData,
+        }
+    }
+}
 
 impl<T: Config> StorageDataLayer<T> {
     fn remove_from_bids(

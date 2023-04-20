@@ -62,6 +62,7 @@ pub mod traits;
 pub mod types;
 
 pub use crate::order_book::{OrderBook, OrderBookStatus};
+use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::DataLayer;
@@ -426,16 +427,32 @@ pub mod pallet {
         pub fn place_limit_order(
             origin: OriginFor<T>,
             order_book_id: OrderBookId<AssetIdOf<T>>,
-            _price: OrderPrice,
-            _amount: OrderVolume,
-            _side: PriceVariant,
-            _lifespan: T::Moment,
+            price: OrderPrice,
+            amount: OrderVolume,
+            side: PriceVariant,
+            lifespan: T::Moment,
         ) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
-            let _order_book =
+            let who = ensure_signed(origin)?;
+            let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
-            // todo (m.tagirov)
-            todo!()
+            let dex_id = order_book.dex_id;
+            let order_id = order_book.next_order_id();
+            let now = pallet_timestamp::Pallet::<T>::now();
+            let order =
+                LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
+
+            let mut data = CacheDataLayer::<T>::new();
+            order_book.place_limit_order(order, &mut data)?;
+
+            data.commit();
+            <OrderBooks<T>>::insert(order_book_id, order_book);
+            Self::deposit_event(Event::<T>::OrderPlaced {
+                order_book_id: order_book_id,
+                dex_id: dex_id,
+                order_id: order_id,
+                owner_id: who,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(5)]

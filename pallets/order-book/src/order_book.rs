@@ -159,7 +159,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         data.insert_limit_order(&self.order_book_id, order)?;
-        todo!()
+        // todo (m.tagirov) lock liquidity
+        Ok(())
     }
 
     fn ensure_limit_order_valid(&self, order: &LimitOrder<T>) -> Result<(), DispatchError> {
