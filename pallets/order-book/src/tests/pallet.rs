@@ -459,6 +459,57 @@ fn should_not_delete_limit_order() {
     });
 }
 
+#[test]
+fn should_register_technical_account() {
+    ext().execute_with(|| {
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let accounts = [
+            (
+                common::DEXId::Polkaswap,
+                TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: VAL,
+                },
+            ),
+            (
+                common::DEXId::Polkaswap,
+                TradingPair {
+                    base_asset_id: XOR,
+                    target_asset_id: nft,
+                },
+            ),
+        ];
+
+        // register (on order book creation)
+        for (dex_id, trading_pair) in accounts {
+            OrderBook::register_tech_account(dex_id.into(), trading_pair).expect(&format!(
+                "Could not register account for dex_id: {:?}, pair: {:?}",
+                dex_id, trading_pair,
+            ));
+        }
+
+        // deregister (on order book removal)
+        for (dex_id, trading_pair) in accounts {
+            OrderBook::deregister_tech_account(dex_id.into(), trading_pair).expect(&format!(
+                "Could not deregister account for dex_id: {:?}, pair: {:?}",
+                dex_id, trading_pair,
+            ));
+        }
+    });
+}
+
 fn test_lock_unlock_same_account(
     dex_id: common::DEXId,
     trading_pair: TradingPair<AssetIdOf<Runtime>>,
