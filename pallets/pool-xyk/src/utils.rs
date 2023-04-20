@@ -41,10 +41,6 @@ use crate::bounds::*;
 use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 
 impl<T: Config> Pallet<T> {
-    pub fn decode_asset(asset: AssetIdOf<T>) -> TechAssetIdOf<T> {
-        Into::<TechAssetIdOf<T>>::into(asset)
-    }
-
     pub fn decide_is_fee_from_destination(
         base_asset_id: &AssetIdOf<T>,
         asset_a: &AssetIdOf<T>,
