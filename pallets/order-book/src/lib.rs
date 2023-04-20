@@ -529,7 +529,8 @@ impl<T: Config> Pallet<T> {
 
 // todo: make pub(tests) (k.ivanov)
 pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
-    /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`
+    /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
     fn lock_liquidity(
         dex_id: DEXId,
         account: &AccountId,
@@ -538,6 +539,8 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
         amount: Balance,
     ) -> Result<(), DispatchError>;
 
+    /// Unlock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
     fn unlock_liquidity(
         dex_id: DEXId,
         account: &AccountId,
@@ -605,7 +608,7 @@ impl<T: Config> Pallet<T> {
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
-        technical::Pallet::<T>::register_tech_account_id(tech_account)
+        technical::Pallet::<T>::deregister_tech_account_id(tech_account)
     }
 }
 

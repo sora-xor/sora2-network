@@ -803,7 +803,7 @@ pub enum TechPurpose<AssetId> {
     FeeCollectorForPair(TradingPair<AssetId>) = 1,
     XykLiquidityKeeper(TradingPair<AssetId>) = 2,
     Identifier(Vec<u8>) = 3,
-    OrderLiquidityKeeper(TradingPair<AssetId>) = 4,
+    OrderBookLiquidityKeeper(TradingPair<AssetId>) = 4,
 }
 
 /// Enum encoding of technical account id, pure and wrapped records.
@@ -891,7 +891,7 @@ impl<AccountId, AssetId, DEXId: Clone>
         dex_id: DEXId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
-        TechAccountId::Pure(dex_id, TechPurpose::OrderLiquidityKeeper(trading_pair))
+        TechAccountId::Pure(dex_id, TechPurpose::OrderBookLiquidityKeeper(trading_pair))
     }
 }
 
