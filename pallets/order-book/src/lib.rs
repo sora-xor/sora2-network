@@ -589,10 +589,10 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    // todo: make pub(tests) (k.ivanov)
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
-    pub fn register_tech_account(
+    #[cfg_attr(test, visibility::make(pub))]
+    fn register_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
@@ -600,10 +600,10 @@ impl<T: Config> Pallet<T> {
         technical::Pallet::<T>::register_tech_account_id(tech_account)
     }
 
-    // todo: make pub(tests) (k.ivanov)
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
-    pub fn deregister_tech_account(
+    #[cfg_attr(test, visibility::make(pub))]
+    fn deregister_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
