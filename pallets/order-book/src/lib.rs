@@ -567,6 +567,7 @@ impl<T: Config> Pallet<T> {
 
 // todo: make pub(tests) (k.ivanov)
 pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+    /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`
     fn lock_liquidity(
         dex_id: DEXId,
         account: &AccountId,
@@ -615,7 +616,7 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> <T as technical::Config>::TechAccountId {
-        // I'm not sure why tech
+        // Same as in xyk accounts
         let trading_pair = trading_pair.map(|a| a.into());
         <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
             dex_id,
@@ -624,6 +625,8 @@ impl<T: Config> Pallet<T> {
     }
 
     // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
     pub fn register_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
@@ -633,6 +636,8 @@ impl<T: Config> Pallet<T> {
     }
 
     // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
     pub fn deregister_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,

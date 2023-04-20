@@ -124,6 +124,11 @@ impl<T> TradingPair<T> {
     }
 }
 
+/// Enum to help choosing asset from [`TradingPair`].
+///
+/// Should help when we need to use asset id that must be from the
+/// pair. Instead of passing the pair with id and checking
+/// `pair.consists_of(id)`, we can pass the pair and `TradingPairSelector`
 #[derive(Clone)]
 pub enum TradingPairSelector {
     Base,
