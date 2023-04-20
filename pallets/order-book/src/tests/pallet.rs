@@ -558,6 +558,7 @@ fn should_lock_unlock_base_asset() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Base;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(
@@ -596,6 +597,7 @@ fn should_lock_unlock_other_asset() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(
@@ -640,6 +642,7 @@ fn should_lock_unlock_indivisible_nft() {
             target_asset_id: nft.clone(),
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(
@@ -678,6 +681,7 @@ fn should_not_lock_insufficient_base_asset() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Base;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_err!(
             OrderBook::lock_liquidity(
@@ -708,6 +712,7 @@ fn should_not_lock_insufficient_other_asset() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_err!(
             OrderBook::lock_liquidity(
@@ -746,6 +751,7 @@ fn should_not_lock_insufficient_nft() {
             target_asset_id: nft.clone(),
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_err!(
             OrderBook::lock_liquidity(
@@ -778,6 +784,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Base;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_ok!(OrderBook::lock_liquidity(
             common::DEXId::Polkaswap.into(),
@@ -817,6 +824,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             target_asset_id: VAL,
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_ok!(OrderBook::lock_liquidity(
             common::DEXId::Polkaswap.into(),
@@ -861,6 +869,7 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
             target_asset_id: nft.clone(),
         };
         let asset = TradingPairSelector::Target;
+        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
         assert_err!(
             OrderBook::unlock_liquidity(

@@ -623,7 +623,8 @@ impl<T: Config> Pallet<T> {
         )
     }
 
-    fn register_tech_account(
+    // todo: make pub(tests) (k.ivanov)
+    pub fn register_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
@@ -631,7 +632,8 @@ impl<T: Config> Pallet<T> {
         technical::Pallet::<T>::register_tech_account_id(tech_account)
     }
 
-    fn deregister_tech_account(
+    // todo: make pub(tests) (k.ivanov)
+    pub fn deregister_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
     ) -> Result<(), DispatchError> {
