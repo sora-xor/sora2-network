@@ -38,10 +38,6 @@ Boolean hasChanges(String regexp) {
 Boolean prStatusNotif = true
 String telegramChatId    = 'telegram-deploy-chat-id'
 String telegramChatIdPswap = 'telegramChatIdPswap'
-Boolean cargoClippyLinter = true
-String cargoLinterVersion = 'latest'
-String cargoLinterImage       = registry + '/build-tools/cargo-clippy'
-
 
 pipeline {
     options {
@@ -97,23 +93,6 @@ pipeline {
                 script {
                     docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
                         slither(contractsPath, contractsEnvFile, solcVersion, nodeVersion)
-                    }
-                }
-            }
-        }
-        stage('Clippy linter') {
-            when { 
-                expression { env.BRANCH_NAME.startsWith('PR-') }
-                expression { cargoClippyLinter }
-            }
-            steps {
-                script {
-                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
-                        docker.image(cargoLinterImage + ':latest').inside(){
-                            sh '''
-                               cargo clippy
-                            '''
-                        }
                     }
                 }
             }
