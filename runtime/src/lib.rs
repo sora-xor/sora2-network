@@ -250,10 +250,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 49,
+    spec_version: 51,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 49,
+    transaction_version: 51,
     state_version: 0,
 };
 
@@ -924,7 +924,7 @@ impl assets::Config for Runtime {
     type BuyBackLiquidityProxy = liquidity_proxy::Pallet<Runtime>;
     type Currency = currencies::Pallet<Runtime>;
     type GetTotalBalance = GetTotalBalance;
-    type WeightInfo = assets::weights::WeightInfo<Runtime>;
+    type WeightInfo = assets::weights::SubstrateWeight<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {
@@ -965,7 +965,7 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
-    type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
+    type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1011,7 +1011,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type PrimaryMarketXST = xst::Pallet<Runtime>;
     type SecondaryMarket = pool_xyk::Pallet<Runtime>;
-    type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
+    type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type GetADARAccountId = GetADARAccountId;
 }
@@ -1066,7 +1066,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
+    type WeightInfo = iroha_migration::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_identity::Config for Runtime {
@@ -1156,7 +1156,7 @@ where
 
 impl referrals::Config for Runtime {
     type ReservesAcc = ReferralsReservesAcc;
-    type WeightInfo = referrals::weights::WeightInfo<Runtime>;
+    type WeightInfo = referrals::weights::SubstrateWeight<Runtime>;
 }
 
 impl rewards::Config for Runtime {
@@ -1167,7 +1167,7 @@ impl rewards::Config for Runtime {
     const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = rewards::weights::WeightInfo<Runtime>;
+    type WeightInfo = rewards::weights::SubstrateWeight<Runtime>;
 }
 
 // Multiplied flat fees implementation for the selected extrinsics.
@@ -1358,7 +1358,7 @@ impl xor_fee::Config for Runtime {
     type CustomFees = XorFee;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type SessionManager = Staking;
-    type WeightInfo = xor_fee::weights::WeightInfo<Runtime>;
+    type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
     type WithdrawFee = WithdrawFee;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
 }
@@ -1535,7 +1535,7 @@ impl eth_bridge::Config for Runtime {
     type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = GetEthNetworkId;
-    type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
+    type WeightInfo = eth_bridge::weights::SubstrateWeight<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
     type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
     type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
@@ -1547,7 +1547,7 @@ impl eth_bridge::Config for Runtime {
 #[cfg(feature = "private-net")]
 impl faucet::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = faucet::weights::WeightInfo<Runtime>;
+    type WeightInfo = faucet::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1680,7 +1680,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
-    type WeightInfo = pswap_distribution::weights::WeightInfo<Runtime>;
+    type WeightInfo = pswap_distribution::weights::SubstrateWeight<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
@@ -1767,7 +1767,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
-    type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
+    type WeightInfo = multicollateral_bonding_curve_pool::weights::SubstrateWeight<Runtime>;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type BuyBackXSTPercent = GetTBCBuyBackXSTPercent;
 }
@@ -1782,7 +1782,7 @@ impl xst::Config for Runtime {
     type GetXSTPoolPermissionedTechAccountId = GetXSTPoolPermissionedTechAccountId;
     type EnsureDEXManager = DEXManager;
     type PriceToolsPallet = PriceTools;
-    type WeightInfo = xst::weights::WeightInfo<Runtime>;
+    type WeightInfo = xst::weights::SubstrateWeight<Runtime>;
     type Oracle = OracleProxy;
     type Symbol = <Runtime as band::Config>::Symbol;
 }
@@ -1818,13 +1818,13 @@ impl vested_rewards::Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
+    type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
 }
 
 impl price_tools::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
-    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+    type WeightInfo = price_tools::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -1898,7 +1898,7 @@ parameter_types! {
 impl ceres_launchpad::Config for Runtime {
     const MILLISECONDS_PER_DAY: Moment = 86_400_000;
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ceres_launchpad::weights::WeightInfo<Runtime>;
+    type WeightInfo = ceres_launchpad::weights::SubstrateWeight<Runtime>;
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1907,7 +1907,7 @@ impl ceres_staking::Config for Runtime {
     type CeresPerDay = CeresPerDay;
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
-    type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
+    type WeightInfo = ceres_staking::weights::SubstrateWeight<Runtime>;
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
@@ -1916,19 +1916,19 @@ impl ceres_liquidity_locker::Config for Runtime {
     type XYKPool = PoolXYK;
     type DemeterFarmingPlatform = DemeterFarmingPlatform;
     type CeresAssetId = CeresAssetId;
-    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
+    type WeightInfo = ceres_liquidity_locker::weights::SubstrateWeight<Runtime>;
 }
 
 impl ceres_token_locker::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
-    type WeightInfo = ceres_token_locker::weights::WeightInfo<Runtime>;
+    type WeightInfo = ceres_token_locker::weights::SubstrateWeight<Runtime>;
 }
 
 impl ceres_governance_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type CeresAssetId = CeresAssetId;
-    type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
+    type WeightInfo = ceres_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1939,13 +1939,13 @@ impl demeter_farming_platform::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type DemeterAssetId = DemeterAssetId;
     const BLOCKS_PER_HOUR_AND_A_HALF: BlockNumber = 3 * HOURS / 2;
-    type WeightInfo = demeter_farming_platform::weights::WeightInfo<Runtime>;
+    type WeightInfo = demeter_farming_platform::weights::SubstrateWeight<Runtime>;
 }
 
 impl oracle_proxy::Config for Runtime {
     type Symbol = Symbol;
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = oracle_proxy::weights::WeightInfo<Runtime>;
+    type WeightInfo = oracle_proxy::weights::SubstrateWeight<Runtime>;
     type BandChainOracle = band::Pallet<Runtime>;
 }
 
@@ -1956,7 +1956,7 @@ parameter_types! {
 impl band::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Symbol = Symbol;
-    type WeightInfo = band::weights::WeightInfo<Runtime>;
+    type WeightInfo = band::weights::SubstrateWeight<Runtime>;
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type UnixTime = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
@@ -1971,7 +1971,7 @@ impl hermes_governance_platform::Config for Runtime {
     const MAX_DURATION_OF_POLL: Moment = 604_800_000;
     type RuntimeEvent = RuntimeEvent;
     type HermesAssetId = HermesAssetId;
-    type WeightInfo = hermes_governance_platform::weights::WeightInfo<Runtime>;
+    type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(feature = "wip")] // order-book
@@ -1986,7 +1986,7 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
-    type WeightInfo = order_book::weights::WeightInfo<Runtime>;
+    type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

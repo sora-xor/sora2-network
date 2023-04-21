@@ -63,6 +63,7 @@ use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
+pub use weights::WeightInfo;
 #[cfg(feature = "std")]
 use {
     common::USDT,
@@ -70,19 +71,6 @@ use {
 };
 
 pub mod migrations;
-
-pub trait WeightInfo {
-    fn on_initialize(_elems: u32) -> Weight;
-    fn initialize_pool() -> Weight;
-    fn set_reference_asset() -> Weight;
-    fn set_optional_reward_multiplier() -> Weight;
-    fn set_price_change_config() -> Weight;
-    fn set_price_bias() -> Weight;
-    fn quote() -> Weight;
-    fn exchange() -> Weight;
-    fn can_exchange() -> Weight;
-    fn check_rewards() -> Weight;
-}
 
 type Assets<T> = assets::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;

@@ -108,35 +108,7 @@ use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-
-pub trait WeightInfo {
-    fn register_bridge() -> Weight;
-    fn add_asset() -> Weight;
-    fn add_sidechain_token() -> Weight;
-    fn transfer_to_sidechain() -> Weight;
-    fn request_from_sidechain() -> Weight;
-    fn add_peer() -> Weight;
-    fn remove_peer() -> Weight;
-    fn force_add_peer() -> Weight;
-    fn prepare_for_migration() -> Weight;
-    fn migrate() -> Weight;
-    fn register_incoming_request() -> Weight;
-    fn finalize_incoming_request() -> Weight;
-    fn approve_request() -> Weight;
-    fn approve_request_finalize() -> Weight;
-    fn abort_request() -> Weight;
-    fn import_incoming_request(is_ok: bool) -> Weight {
-        let weight = Self::register_incoming_request()
-            + if is_ok {
-                Self::finalize_incoming_request()
-            } else {
-                Self::abort_request()
-            };
-        weight
-    }
-    fn remove_sidechain_asset() -> Weight;
-    fn register_existing_sidechain_asset() -> Weight;
-}
+pub use weights::WeightInfo;
 
 type EthAddress = H160;
 
@@ -353,6 +325,7 @@ pub mod pallet {
     use crate::offchain::SignatureParams;
     use crate::util::get_bridge_account;
     use codec::Codec;
+    use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use frame_support::log;
     use frame_support::pallet_prelude::*;
@@ -464,7 +437,8 @@ pub mod pallet {
         /// - `initial_peers` - a set of initial network peers.
         #[transactional]
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn register_bridge(
             origin: OriginFor<T>,
             bridge_contract_address: EthAddress,
@@ -496,7 +470,8 @@ pub mod pallet {
         /// - `network_id` - network identifier to which the asset should be added.
         #[transactional]
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn add_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -529,7 +504,8 @@ pub mod pallet {
         /// - `network_id` - network identifier.
         #[transactional]
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
             token_address: EthAddress,
@@ -688,7 +664,8 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn add_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
@@ -736,7 +713,8 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn remove_peer(
             origin: OriginFor<T>,
             account_id: T::AccountId,
@@ -803,7 +781,8 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
@@ -841,7 +820,8 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::migrate())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn migrate(
             origin: OriginFor<T>,
             new_contract_address: EthAddress,
@@ -897,7 +877,15 @@ pub mod pallet {
         ///
         /// Can only be called by a bridge account.
         #[pallet::call_index(11)]
-        #[pallet::weight(<T as Config>::WeightInfo::import_incoming_request(incoming_request_result.is_ok()))]
+        #[pallet::weight({
+            <T as Config>::WeightInfo::register_incoming_request().saturating_add(
+                if incoming_request_result.is_ok() {
+                    <T as Config>::WeightInfo::finalize_incoming_request()
+                } else {
+                    <T as Config>::WeightInfo::abort_request()
+                }
+            )
+        })]
         pub fn import_incoming_request(
             origin: OriginFor<T>,
             load_incoming_request: LoadIncomingRequest<T>,
@@ -969,7 +957,8 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(14)]
-        #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn force_add_peer(
             origin: OriginFor<T>,
             who: T::AccountId,
@@ -994,7 +983,8 @@ pub mod pallet {
         ///
         /// Can only be called by root.
         #[pallet::call_index(15)]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_sidechain_asset())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn remove_sidechain_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -1016,7 +1006,8 @@ pub mod pallet {
         ///
         /// Can only be called by root.
         #[pallet::call_index(16)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        // eth-bridge pallet will be deprecated soon, so we set const weight here
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,

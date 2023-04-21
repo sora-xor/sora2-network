@@ -32,7 +32,6 @@
 
 use common::{balance, AssetInfoProvider, Balance, HERMES_ASSET_ID, PSWAP, VAL, XOR};
 use frame_support::ensure;
-use frame_support::weights::Weight;
 use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
 
@@ -44,12 +43,7 @@ mod mock;
 mod tests;
 
 pub mod weights;
-
-pub trait WeightInfo {
-    fn transfer() -> Weight;
-    fn reset_rewards() -> Weight;
-    fn update_limit() -> Weight;
-}
+pub use weights::WeightInfo;
 
 type Assets<T> = assets::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
