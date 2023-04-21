@@ -73,14 +73,7 @@ pub struct FullDeps<C, P> {
 }
 
 #[cfg(feature = "ready-to-test")]
-pub fn add_ready_for_test_rpc(
-    rpc: RpcExtension,
-) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
-    Ok(rpc)
-}
-
-#[cfg(feature = "wip")]
-pub fn add_wip_rpc<C, B>(
+pub fn add_ready_for_test_rpc<C, B>(
     mut rpc: RpcExtension,
     backend: Arc<B>,
     client: Arc<C>,
@@ -116,6 +109,13 @@ where
         )?;
     }
     rpc.merge(BeefyLightClientClient::new(client).into_rpc())?;
+    Ok(rpc)
+}
+
+#[cfg(feature = "wip")]
+pub fn add_wip_rpc(
+    rpc: RpcExtension,
+) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>> {
     Ok(rpc)
 }
 

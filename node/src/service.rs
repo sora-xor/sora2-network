@@ -338,7 +338,7 @@ pub fn new_partial(
     let rpc_extensions_builder = {
         let client = client.clone();
         let pool = transaction_pool.clone();
-        #[cfg(feature = "wip")]
+        #[cfg(feature = "ready-to-test")]
         let backend = backend.clone();
 
         move |deny_unsafe,
@@ -358,10 +358,10 @@ pub fn new_partial(
             let rpc = crate::rpc::create_full(deps)?;
 
             #[cfg(feature = "wip")]
-            let rpc = crate::rpc::add_wip_rpc(rpc, backend.clone(), client.clone())?;
+            let rpc = crate::rpc::add_wip_rpc(rpc)?;
 
             #[cfg(feature = "ready-to-test")]
-            let rpc = crate::rpc::add_ready_for_test_rpc(rpc)?;
+            let rpc = crate::rpc::add_ready_for_test_rpc(rpc, backend.clone(), client.clone())?;
 
             Ok(rpc)
         }
