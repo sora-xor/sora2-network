@@ -6,6 +6,8 @@ chain="local"
 
 execution="--execution native"
 
+keep_db=0
+
 if which gawk > /dev/null 2>&1; then
 	awk="gawk"
 else
@@ -44,6 +46,8 @@ chain="staging"
 chain="fork.json"
   -e, --execution-wasm               Use wasm runtime
 execution="--execution wasm --wasm-execution compiled"
+  -k, --keep-db                      Keep previous chain state
+keep_db=1
 EOF
 `
 eval "$getopt_code"
@@ -77,8 +81,9 @@ function local_id() {
 function logger_for_first_node() {
 	tee $1
 }
-
-find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-local/network {}/chains/sora-substrate-local/db \;
+if [ $keep_db -eq 0 ]; then
+  find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-local/network {}/chains/sora-substrate-local/db \;
+fi
 
 port="10000"
 wsport="9944"
