@@ -1,4 +1,4 @@
-@Library('jenkins-library@feature/dops-2390/cleaning_ci')
+@Library('jenkins-library')
 
 String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
@@ -40,6 +40,7 @@ String telegramChatId    = 'telegram-deploy-chat-id'
 String telegramChatIdPswap = 'telegramChatIdPswap'
 Boolean cargoClippyLinter = true
 String cargoLinterVersion = 'latest'
+String cargoLinterImage       = registry + '/build-tools/cargo-clippy'
 
 
 pipeline {
@@ -100,6 +101,23 @@ pipeline {
                 }
             }
         }
+        stage('Clippy linter') {
+            when { 
+                expression { env.BRANCH_NAME.startsWith('PR-') }
+                expression { cargoClippyLinter }
+            }
+            steps {
+                script {
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
+                        docker.image(cargoLinterImage + ':latest').inside(){
+                            sh '''
+                               cargo clippy
+                            '''
+                        }
+                    }
+                }
+            }
+        }
         stage('Build & Tests') {
             environment {
                 PACKAGE = 'framenode-runtime'
@@ -129,17 +147,17 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
+                                    rm -rf ~/.cargo/.package-cache
                                     cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
                                     mv ./target/release/relayer ./relayer.bin
                                     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-                                    subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
-                                    subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
+                                    subwasm --json info framenode_runtime.compact.compressed.wasm > ${wasmReportFile}
+                                    subwasm metadata framenode_runtime.compact.compressed.wasm > ${palletListFile}
                                     set +e
-                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm
                                     if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi
                                 """
                                 archiveArtifacts artifacts:
