@@ -3,16 +3,26 @@ use framenode_runtime::{
     ResolveTime, Symbol,
 };
 use oracle_proxy_rpc::OracleProxyRuntimeApi;
-use prometheus_endpoint::{register, Gauge, PrometheusError, Registry, U64};
+use prometheus_endpoint::{register, Gauge, Opts, PrometheusError, Registry, U64};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;
-use std::error::Error;
+use std::collections::BTreeMap;
 use std::sync::Arc;
+
+#[derive(PartialEq)]
+enum SymbolStatus {
+    Outdated,
+    UpToDate,
+    InvalidTime,
+}
 
 pub struct Metrics<C> {
     pub client: Arc<C>,
+    pub registry: Arc<Registry>,
     pub outdated_symbols: Gauge<U64>,
+    pub invalid_symbols: Gauge<U64>,
+    pub symbols_update_timestamps: BTreeMap<String, Gauge<U64>>,
     pub period: std::time::Duration,
 }
 
@@ -23,21 +33,32 @@ where
     C::Api: OracleProxyRuntimeApi<Block, Symbol, ResolveTime>,
 {
     pub fn register(
-        registry: &Registry,
+        registry: Arc<Registry>,
         client: Arc<C>,
         period: std::time::Duration,
     ) -> Result<Self, PrometheusError> {
+        let outdated_symbols = register(
+            Gauge::new("data_feed_outdated_symbols", "Number of outdated symbols")?,
+            &registry,
+        )?;
+        let invalid_symbols = register(
+            Gauge::new(
+                "data_feed_invalid_symbols",
+                "Number of symbols with invalid timestamp",
+            )?,
+            &registry,
+        )?;
         Ok(Self {
             client,
-            outdated_symbols: register(
-                Gauge::new("data_feed_outdated_symbols", "Number of outdated symbols")?,
-                registry,
-            )?,
+            registry,
+            outdated_symbols,
+            invalid_symbols,
+            symbols_update_timestamps: BTreeMap::new(),
             period,
         })
     }
 
-    pub async fn check_outdated_symbols(&self) -> Result<u64, Box<dyn Error>> {
+    async fn get_symbols(&self) -> Result<BTreeMap<String, (SymbolStatus, u64)>, String> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(self.client.info().best_hash);
         let enabled_symbols = api
@@ -46,31 +67,92 @@ where
             .map_err(|dispatch_error| format!("Dispatch error: {:?}", dispatch_error))?;
 
         let outdated_threshold: u128 = 300 * 1000; // 5 minutes in seconds
-        let outdated_symbols = enabled_symbols
+
+        let enabled_symbols_info = enabled_symbols
             .iter()
-            .filter(|(_, last_updated)| {
+            .map(|(symbol, last_updated)| {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .expect("Time went backwards")
                     .as_millis();
-                now.checked_sub(*last_updated as u128).map_or_else(
-                    || {
-                        log::error!("Symbol last_updated field is greater than current time");
-                        false
+                let current_status = now.checked_sub(*last_updated as u128).map_or_else(
+                    || SymbolStatus::InvalidTime,
+                    |current_period| {
+                        if current_period > outdated_threshold {
+                            SymbolStatus::Outdated
+                        } else {
+                            SymbolStatus::UpToDate
+                        }
                     },
-                    |current_period| current_period > outdated_threshold,
-                )
-            })
-            .count() as u64;
+                );
 
-        Ok(outdated_symbols)
+                (symbol.to_string(), (current_status, *last_updated))
+            })
+            .collect::<BTreeMap<String, (SymbolStatus, u64)>>();
+
+        Ok(enabled_symbols_info)
     }
 
-    pub async fn run(self) {
+    fn create_symbol_last_updated_gauge(
+        &self,
+        symbol: &str,
+    ) -> Result<Gauge<U64>, PrometheusError> {
+        let opts = Opts::new(
+            "data_feed_symbol_last_updated",
+            "Timestamp of symbol last update",
+        )
+        .const_label("symbol_name", symbol.to_string());
+
+        let gauge = register(Gauge::<U64>::with_opts(opts)?, &self.registry)?;
+        Ok(gauge)
+    }
+
+    async fn set_symbol_last_update(
+        &mut self,
+        symbol: &str,
+        last_updated: u64,
+    ) -> Result<(), String> {
+        if !self.symbols_update_timestamps.contains_key(symbol) {
+            let gauge = self
+                .create_symbol_last_updated_gauge(symbol)
+                .map_err(|e| format!("Prometheus gauge creation error: {:?}", e))?;
+            self.symbols_update_timestamps
+                .insert(symbol.to_string(), gauge);
+        }
+        self.symbols_update_timestamps
+            .get_mut(symbol)
+            .ok_or_else(|| {
+                format!(
+                    "data_feed_symbol_last_updated Gauge not found for symbol: {:?}",
+                    symbol
+                )
+            })?
+            .set(last_updated);
+        Ok(())
+    }
+
+    pub async fn run(mut self) {
         loop {
-            match self.check_outdated_symbols().await {
-                Ok(outdated_symbols_count) => {
+            match self.get_symbols().await {
+                Ok(enabled_symbols_info) => {
+                    let outdated_symbols_count: u64 = enabled_symbols_info
+                        .iter()
+                        .filter(|(_, (status, _))| *status == SymbolStatus::Outdated)
+                        .count() as u64;
+
+                    let invalid_symbols_count: u64 = enabled_symbols_info
+                        .iter()
+                        .filter(|(_, (status, _))| *status == SymbolStatus::InvalidTime)
+                        .count() as u64;
+
                     self.outdated_symbols.set(outdated_symbols_count);
+                    self.invalid_symbols.set(invalid_symbols_count);
+
+                    for (symbol, (_, last_updated)) in enabled_symbols_info {
+                        if let Err(err) = self.set_symbol_last_update(&symbol, last_updated).await {
+                            log::error!("Failed to set symbol update timestamp: {}", err);
+                        }
+                    }
                 }
                 Err(err) => {
                     log::error!("Failed to check outdated symbols: {:?}", err);

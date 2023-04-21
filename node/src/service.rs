@@ -263,7 +263,7 @@ pub fn new_partial(
         .prometheus_registry()
         .and_then(|registry| {
             crate::data_feed_metrics::Metrics::register(
-                registry,
+                Arc::new(registry.clone()),
                 client.clone(),
                 std::time::Duration::from_secs(6),
             )
