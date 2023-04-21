@@ -1,4 +1,4 @@
-@Library('jenkins-library')
+@Library('jenkins-library@feature/dops-2390/cleaning_ci')
 
 String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
@@ -38,6 +38,9 @@ Boolean hasChanges(String regexp) {
 Boolean prStatusNotif = true
 String telegramChatId    = 'telegram-deploy-chat-id'
 String telegramChatIdPswap = 'telegramChatIdPswap'
+Boolean cargoClippyLinter = true
+String cargoLinterVersion = 'latest'
+
 
 pipeline {
     options {
@@ -66,7 +69,6 @@ pipeline {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
                                 rm -rf ~/.cargo/.package-cache
-                                rm Cargo.lock
                                 cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -83,7 +85,7 @@ pipeline {
                 script {
                     sshagent(['soramitsu-bot-ssh']) {
                         sh """
-                        git submodule update --init --recursive
+                            git submodule update --init --recursive
                         """
                     }
                 }
@@ -147,7 +149,6 @@ pipeline {
                             docker.image(envImageName).inside() {
                                 sh '''
                                     rm -rf ~/.cargo/.package-cache
-                                    rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features \"private-net wip ready-to-test\"
