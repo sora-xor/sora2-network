@@ -84,6 +84,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
             !self.original_amount.is_zero(),
             Error::<T>::InvalidOrderAmount
         );
+        ensure!(!self.price.is_zero(), Error::<T>::InvalidLimitOrderPrice);
         Ok(())
     }
 

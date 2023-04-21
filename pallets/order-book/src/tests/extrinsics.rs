@@ -37,8 +37,8 @@ use common::{
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{OrderBook, OrderBookId, Pallet};
-use framenode_runtime::{order_book, Runtime};
+use framenode_runtime::order_book::{self, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::Runtime;
 use hex_literal::hex;
 
 type Assets = framenode_runtime::assets::Pallet<Runtime>;

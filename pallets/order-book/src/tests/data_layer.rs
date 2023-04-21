@@ -36,8 +36,8 @@ use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
-use framenode_runtime::order_book::{Config, DataLayer, LimitOrder, OrderBookId, Pallet};
-use framenode_runtime::{order_book, Runtime};
+use framenode_runtime::order_book::{self, Config, DataLayer, LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::Runtime;
 use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
 
