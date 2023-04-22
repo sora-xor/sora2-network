@@ -293,14 +293,14 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices> {
+    ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedBids<T>>::get(order_book_id)
     }
 
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices> {
+    ) -> MarketSide<T::MaxSidePriceCount> {
         <AggregatedAsks<T>>::get(order_book_id)
     }
 

@@ -91,13 +91,13 @@ where
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices>;
+    ) -> MarketSide<T::MaxSidePriceCount>;
 
     /// Returns all ask prices with their volumes
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices>;
+    ) -> MarketSide<T::MaxSidePriceCount>;
 
     /// Returns order ids of user
     fn get_user_limit_orders(

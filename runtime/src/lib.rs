@@ -1950,7 +1950,7 @@ impl order_book::Config for Runtime {
     type OrderId = u128;
     type MaxOpenedLimitOrdersPerUser = ConstU32<1000>; // TODO: order-book clarify
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
-    type MaxSidePrices = ConstU32<100000>; // TODO: order-book clarify
+    type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type EnsureTradingPairExists = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;

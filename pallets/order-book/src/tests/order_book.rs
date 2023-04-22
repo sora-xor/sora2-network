@@ -31,14 +31,16 @@
 #![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, DEXId, PriceVariant, VAL, XOR};
+use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
+use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
     self, Config, DataLayer, LimitOrder, OrderBook, OrderBookId, OrderBookStatus,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
+use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
 
 type E = order_book::Error<Runtime>;
@@ -50,6 +52,20 @@ fn alice() -> <Runtime as frame_system::Config>::AccountId {
 
 fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
+}
+
+fn generate_account(seed: usize) -> <Runtime as frame_system::Config>::AccountId {
+    let mut adr = [0u8; 32];
+
+    let mut value = seed;
+    let mut id = 0;
+    while value != 0 {
+        adr[31 - id] = (value % 256) as u8;
+        value = value / 256;
+        id += 1;
+    }
+
+    <Runtime as frame_system::Config>::AccountId::new(adr)
 }
 
 // Fills the order book
@@ -247,13 +263,6 @@ fn should_increment_order_id() {
     assert_eq!(order_book.last_order_id, 9);
 }
 
-// todo
-// place_limit_order:
-// ensure_limit_order_valid & nft
-// check_restrictions
-// cross_spread
-// success: insert order & liquidity locked & nft
-
 #[test]
 fn should_place_limit_order() {
     ext().execute_with(|| {
@@ -341,13 +350,73 @@ fn should_place_limit_order() {
 #[test]
 fn should_place_nft_limit_order() {
     ext().execute_with(|| {
-        // todo
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let owner = alice();
+        frame_system::Pallet::<Runtime>::inc_providers(&owner);
+
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &owner,
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: nft,
+        };
+
+        let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
+
+        let order_id = 11;
+        let price = balance!(10);
+        let amount = balance!(1);
+
+        // new order
+        let order = LimitOrder::<Runtime>::new(
+            order_id,
+            owner.clone(),
+            PriceVariant::Sell,
+            price,
+            amount,
+            10,
+            10000,
+        );
+
+        // place new order
+        assert_ok!(order_book.place_limit_order(order, &mut data));
+
+        // check
+        assert_eq!(
+            data.get_asks(&order_book_id, &price).unwrap(),
+            vec![order_id]
+        );
+        assert_eq!(
+            data.get_aggregated_asks(&order_book_id),
+            BTreeMap::from([(price, amount)])
+        );
+        assert_eq!(
+            data.get_user_limit_orders(&owner, &order_book_id).unwrap(),
+            vec![order_id]
+        );
+
+        let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
+            &order_book_id.target_asset_id,
+            &owner,
+        )
+        .unwrap();
+        assert_eq!(balance, balance!(1)); // 0 todo (m.tagirov) lock liquidity
     })
 }
 
 #[test]
 fn should_not_place_limit_order_when_status_doesnt_allow() {
-    // todo
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -392,27 +461,283 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
 #[test]
 fn should_not_place_invalid_limit_order() {
     ext().execute_with(|| {
-        // todo
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+
+        let order = LimitOrder::<Runtime>::new(
+            1,
+            alice(),
+            PriceVariant::Buy,
+            balance!(10),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let mut wrong_price_order = order.clone();
+        wrong_price_order.price = balance!(10) + order_book.tick_size / 100;
+        assert_err!(
+            order_book.place_limit_order(wrong_price_order, &mut data),
+            E::InvalidLimitOrderPrice
+        );
+
+        let mut too_small_amount_order = order.clone();
+        too_small_amount_order.amount = order_book.min_lot_size / 2;
+        assert_err!(
+            order_book.place_limit_order(too_small_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut too_big_amount_order = order.clone();
+        too_big_amount_order.amount = order_book.max_lot_size + 1;
+        assert_err!(
+            order_book.place_limit_order(too_big_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut wrong_amount_order = order.clone();
+        wrong_amount_order.amount = balance!(100) + order_book.step_lot_size / 100;
+        assert_err!(
+            order_book.place_limit_order(wrong_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
     })
 }
 
 #[test]
 fn should_not_place_invalid_nft_limit_order() {
     ext().execute_with(|| {
-        // todo
+        let mut data = StorageDataLayer::<Runtime>::new();
+        frame_system::Pallet::<Runtime>::inc_providers(&alice());
+
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: nft,
+        };
+
+        let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
+
+        let order = LimitOrder::<Runtime>::new(
+            1,
+            alice(),
+            PriceVariant::Buy,
+            balance!(10),
+            balance!(1),
+            10,
+            10000,
+        );
+
+        let mut wrong_price_order = order.clone();
+        wrong_price_order.price = balance!(10) + order_book.tick_size / 100;
+        assert_err!(
+            order_book.place_limit_order(wrong_price_order, &mut data),
+            E::InvalidLimitOrderPrice
+        );
+
+        let mut too_small_amount_order = order.clone();
+        too_small_amount_order.amount = balance!(0.5);
+        assert_err!(
+            order_book.place_limit_order(too_small_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut too_big_amount_order = order.clone();
+        too_big_amount_order.amount = order_book.max_lot_size + 1;
+        assert_err!(
+            order_book.place_limit_order(too_big_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
+
+        let mut wrong_amount_order = order.clone();
+        wrong_amount_order.amount = balance!(1) - order_book.step_lot_size / 100;
+        assert_err!(
+            order_book.place_limit_order(wrong_amount_order, &mut data),
+            E::InvalidOrderAmount
+        );
     })
 }
 
 #[test]
-fn should_not_place_limit_order_that_doesnt_meet_restrictions() {
+fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
     ext().execute_with(|| {
-        // todo
+        let mut data = CacheDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+
+        let mut order = LimitOrder::<Runtime>::new(
+            0,
+            alice(),
+            PriceVariant::Buy,
+            balance!(10),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let max_orders_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
+
+        for _ in 0..max_orders_per_user {
+            order.id += 1;
+            order.price += balance!(1);
+            assert_ok!(order_book.place_limit_order(order.clone(), &mut data));
+        }
+
+        order.id += 1;
+        order.price += balance!(1);
+        assert_err!(
+            order_book.place_limit_order(order, &mut data),
+            E::UserHasMaxCountOfOpenedOrders
+        );
     })
 }
 
 #[test]
-fn should_not_place_limit_order_in_spread() {
-    // todo
+fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_price() {
+    ext().execute_with(|| {
+        let mut data = CacheDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+        let max_orders_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
+
+        let mut buy_order = LimitOrder::<Runtime>::new(
+            0,
+            alice(),
+            PriceVariant::Buy,
+            balance!(10),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let mut sell_order = LimitOrder::<Runtime>::new(
+            max_orders_for_price as u128 + 1000,
+            alice(),
+            PriceVariant::Sell,
+            balance!(11),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        for i in 0..max_orders_for_price {
+            // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+            let account = generate_account(i as usize);
+
+            buy_order.id += 1;
+            buy_order.owner = account.clone();
+            sell_order.id += 1;
+            sell_order.owner = account;
+
+            assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+            assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
+        }
+
+        buy_order.id += 1;
+        sell_order.id += 1;
+        assert_err!(
+            order_book.place_limit_order(buy_order, &mut data),
+            E::PriceReachedMaxCountOfLimitOrders
+        );
+        assert_err!(
+            order_book.place_limit_order(sell_order, &mut data),
+            E::PriceReachedMaxCountOfLimitOrders
+        );
+    })
+}
+
+#[test]
+#[ignore] // it works, but takes a lot of time
+fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
+    ext().execute_with(|| {
+        let mut data = CacheDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+        let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
+
+        let mut buy_order = LimitOrder::<Runtime>::new(
+            0,
+            alice(),
+            PriceVariant::Buy,
+            balance!(1000),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let mut sell_order = LimitOrder::<Runtime>::new(
+            max_prices_for_side as u128 + 1000,
+            alice(),
+            PriceVariant::Sell,
+            balance!(1001),
+            balance!(100),
+            10,
+            10000,
+        );
+
+        for i in 0..max_prices_for_side {
+            // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+            let account = generate_account(i as usize);
+
+            buy_order.id += 1;
+            buy_order.owner = account.clone();
+            buy_order.price -= order_book.tick_size;
+
+            sell_order.id += 1;
+            sell_order.owner = account;
+            sell_order.price += order_book.tick_size;
+
+            assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+            assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
+        }
+
+        buy_order.id += 1;
+        sell_order.id += 1;
+        assert_err!(
+            order_book.place_limit_order(buy_order, &mut data),
+            E::OrderBookReachedMaxCoundOfPricesForSide
+        );
+        assert_err!(
+            order_book.place_limit_order(sell_order, &mut data),
+            E::OrderBookReachedMaxCoundOfPricesForSide
+        );
+    })
+}
+
+#[test]
+fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -424,5 +749,103 @@ fn should_not_place_limit_order_in_spread() {
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
 
         fill_order_book(&order_book_id, &mut data);
+
+        let max_price_shift = <Runtime as Config>::MAX_PRICE_SHIFT;
+
+        // values from fill_order_book()
+        let bes_bid_price = balance!(10);
+        let bes_ask_price = balance!(11);
+
+        let wrong_buy_price =
+            bes_bid_price - max_price_shift * bes_bid_price - order_book.tick_size;
+        let mut buy_order = LimitOrder::<Runtime>::new(
+            101,
+            alice(),
+            PriceVariant::Buy,
+            wrong_buy_price,
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let wrong_sell_price =
+            bes_ask_price + max_price_shift * bes_ask_price + order_book.tick_size;
+        let mut sell_order = LimitOrder::<Runtime>::new(
+            102,
+            alice(),
+            PriceVariant::Sell,
+            wrong_sell_price,
+            balance!(100),
+            10,
+            10000,
+        );
+
+        assert_err!(
+            order_book.place_limit_order(buy_order.clone(), &mut data),
+            E::InvalidLimitOrderPrice
+        );
+        assert_err!(
+            order_book.place_limit_order(sell_order.clone(), &mut data),
+            E::InvalidLimitOrderPrice
+        );
+
+        // fix prices, now they are on the max distance from the spread
+        buy_order.price = bes_bid_price - max_price_shift * bes_bid_price;
+        sell_order.price = bes_ask_price + max_price_shift * bes_ask_price;
+
+        assert_ok!(order_book.place_limit_order(buy_order.clone(), &mut data));
+        assert_ok!(order_book.place_limit_order(sell_order.clone(), &mut data));
+    })
+}
+
+#[test]
+fn should_not_place_limit_order_in_spread() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base_asset_id: XOR.into(),
+            target_asset_id: VAL.into(),
+        };
+
+        let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
+
+        fill_order_book(&order_book_id, &mut data);
+
+        let buy_price = balance!(11.1); // above the spread, in the asks zone
+        let buy_order = LimitOrder::<Runtime>::new(
+            101,
+            alice(),
+            PriceVariant::Buy,
+            buy_price,
+            balance!(100),
+            10,
+            10000,
+        );
+
+        let sell_price = balance!(9.9); // below the spread, in the bids zone
+        let sell_order = LimitOrder::<Runtime>::new(
+            102,
+            alice(),
+            PriceVariant::Sell,
+            sell_price,
+            balance!(100),
+            10,
+            10000,
+        );
+
+        // Stop & OnlyCancel statuses don't allow to place limit orders
+        // Trade status should proceed another market mechanism
+        // This test case is reachable only for PlaceAndCancel status
+        order_book.status = OrderBookStatus::PlaceAndCancel;
+
+        assert_err!(
+            order_book.place_limit_order(buy_order, &mut data),
+            E::InvalidLimitOrderPrice
+        );
+        assert_err!(
+            order_book.place_limit_order(sell_order, &mut data),
+            E::InvalidLimitOrderPrice
+        );
     });
 }

@@ -144,7 +144,7 @@ pub mod pallet {
             + scale_info::TypeInfo;
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
-        type MaxSidePrices: Get<u32>;
+        type MaxSidePriceCount: Get<u32>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -210,7 +210,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         OrderBookId<AssetIdOf<T>>,
-        MarketSide<T::MaxSidePrices>,
+        MarketSide<T::MaxSidePriceCount>,
         ValueQuery,
     >;
 
@@ -220,7 +220,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         OrderBookId<AssetIdOf<T>>,
-        MarketSide<T::MaxSidePrices>,
+        MarketSide<T::MaxSidePriceCount>,
         ValueQuery,
     >;
 

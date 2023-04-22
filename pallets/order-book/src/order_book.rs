@@ -202,7 +202,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 let agg_bids = data.get_aggregated_bids(&self.order_book_id);
                 ensure!(
-                    agg_bids.len() < T::MaxSidePrices::get() as usize,
+                    agg_bids.len() < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCoundOfPricesForSide
                 );
 
@@ -224,7 +224,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
                 let agg_asks = data.get_aggregated_asks(&self.order_book_id);
                 ensure!(
-                    agg_asks.len() < T::MaxSidePrices::get() as usize,
+                    agg_asks.len() < T::MaxSidePriceCount::get() as usize,
                     Error::<T>::OrderBookReachedMaxCoundOfPricesForSide
                 );
 

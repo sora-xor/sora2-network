@@ -54,10 +54,16 @@ pub struct CacheDataLayer<T: Config> {
         PriceOrders<T::OrderId, T::MaxLimitOrdersForPrice>,
         Asks<T>,
     >,
-    aggregated_bids:
-        CacheStorageMap<OrderBookId<AssetIdOf<T>>, MarketSide<T::MaxSidePrices>, AggregatedBids<T>>,
-    aggregated_asks:
-        CacheStorageMap<OrderBookId<AssetIdOf<T>>, MarketSide<T::MaxSidePrices>, AggregatedAsks<T>>,
+    aggregated_bids: CacheStorageMap<
+        OrderBookId<AssetIdOf<T>>,
+        MarketSide<T::MaxSidePriceCount>,
+        AggregatedBids<T>,
+    >,
+    aggregated_asks: CacheStorageMap<
+        OrderBookId<AssetIdOf<T>>,
+        MarketSide<T::MaxSidePriceCount>,
+        AggregatedAsks<T>,
+    >,
     user_limit_orders: CacheStorageDoubleMap<
         T::AccountId,
         OrderBookId<AssetIdOf<T>>,
@@ -416,7 +422,7 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn get_aggregated_bids(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices> {
+    ) -> MarketSide<T::MaxSidePriceCount> {
         self.aggregated_bids
             .get(order_book_id)
             .cloned()
@@ -426,7 +432,7 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
     fn get_aggregated_asks(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-    ) -> MarketSide<T::MaxSidePrices> {
+    ) -> MarketSide<T::MaxSidePriceCount> {
         self.aggregated_asks
             .get(order_book_id)
             .cloned()
