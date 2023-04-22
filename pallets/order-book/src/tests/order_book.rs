@@ -168,8 +168,8 @@ fn fill_order_book(
 #[test]
 fn should_create_new() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-        base_asset_id: XOR.into(),
-        target_asset_id: VAL.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
     };
 
     let expected = OrderBook::<Runtime> {
@@ -199,8 +199,8 @@ fn should_create_new() {
 #[test]
 fn should_create_default() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-        base_asset_id: XOR.into(),
-        target_asset_id: VAL.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
     };
 
     let expected = OrderBook::<Runtime> {
@@ -223,8 +223,8 @@ fn should_create_default() {
 #[test]
 fn should_create_default_nft() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-        base_asset_id: XOR.into(),
-        target_asset_id: VAL.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
     };
 
     let expected = OrderBook::<Runtime> {
@@ -247,8 +247,8 @@ fn should_create_default_nft() {
 #[test]
 fn should_increment_order_id() {
     let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-        base_asset_id: XOR.into(),
-        target_asset_id: VAL.into(),
+        base: VAL.into(),
+        quote: XOR.into(),
     };
 
     let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -269,8 +269,8 @@ fn should_place_limit_order() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -285,7 +285,7 @@ fn should_place_limit_order() {
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             owner.clone(),
-            order_book_id.base_asset_id,
+            order_book_id.quote,
             balance!(10000).try_into().unwrap()
         ));
 
@@ -296,11 +296,9 @@ fn should_place_limit_order() {
         let user_orders_before = data
             .get_user_limit_orders(&owner, &order_book_id)
             .unwrap_or_default();
-        let balance_before = <Runtime as Config>::AssetInfoProvider::free_balance(
-            &order_book_id.base_asset_id,
-            &owner,
-        )
-        .unwrap();
+        let balance_before =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
+                .unwrap();
 
         // new order
         let order = LimitOrder::<Runtime>::new(
@@ -336,11 +334,9 @@ fn should_place_limit_order() {
             expected_user_orders
         );
 
-        let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
-            &order_book_id.base_asset_id,
-            &owner,
-        )
-        .unwrap();
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
+                .unwrap();
         //let expected_balance = balance_before - amount; // todo (m.tagirov) lock liquidity
         let expected_balance = balance_before;
         assert_eq!(balance, expected_balance);
@@ -368,8 +364,8 @@ fn should_place_nft_limit_order() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft,
+            base: nft,
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
@@ -406,11 +402,9 @@ fn should_place_nft_limit_order() {
             vec![order_id]
         );
 
-        let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
-            &order_book_id.target_asset_id,
-            &owner,
-        )
-        .unwrap();
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &owner)
+                .unwrap();
         assert_eq!(balance, balance!(1)); // 0 todo (m.tagirov) lock liquidity
     })
 }
@@ -421,8 +415,8 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -464,8 +458,8 @@ fn should_not_place_invalid_limit_order() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -529,8 +523,8 @@ fn should_not_place_invalid_nft_limit_order() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft,
+            base: nft,
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default_nft(order_book_id, DEX.into());
@@ -581,8 +575,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
         let mut data = CacheDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -620,8 +614,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
         let mut data = CacheDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -680,8 +674,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
         let mut data = CacheDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -742,8 +736,8 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
@@ -804,8 +798,8 @@ fn should_not_place_limit_order_in_spread() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());

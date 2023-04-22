@@ -69,8 +69,8 @@ fn should_work_as_cache() {
         let mut data = CacheDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -156,8 +156,8 @@ fn should_work_as_storage() {
         let mut data = StorageDataLayer::<Runtime>::new();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -236,8 +236,8 @@ fn storage_should_insert_limit_order() {
 fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_buy_id = 1;
@@ -380,8 +380,8 @@ fn storage_should_not_insert_limit_order() {
 fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let owner = alice();
@@ -432,8 +432,8 @@ fn storage_should_delete_limit_order() {
 fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_buy_id1 = 1;
@@ -879,8 +879,8 @@ fn storage_should_not_delete_limit_order() {
 fn should_not_delete_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -907,8 +907,8 @@ fn storage_should_update_limit_order() {
 fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -1038,8 +1038,8 @@ fn storage_should_update_limit_order_with_zero_amount() {
 fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -1150,8 +1150,8 @@ fn storage_should_not_update_unknown_limit_order() {
 fn should_not_update_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -1179,8 +1179,8 @@ fn storage_should_not_update_equal_limit_order() {
 fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;
@@ -1223,8 +1223,8 @@ fn storage_should_not_update_limit_order_with_bigger_amount() {
 fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         let order_id = 1;

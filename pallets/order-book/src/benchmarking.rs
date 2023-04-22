@@ -42,6 +42,7 @@ use crate::{Config, Event, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
 use framenode_runtime::order_book::{Config, Event, OrderBook, OrderBookId, Pallet};
 
+use assets::AssetIdOf;
 use codec::Decode;
 use common::{balance, AssetName, AssetSymbol, DEXId, XOR};
 use frame_benchmarking::benchmarks;
@@ -89,16 +90,16 @@ benchmarks! {
         )
         .unwrap();
 
-        let order_book_id = OrderBookId::<T> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft.into(),
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: nft,
+            quote: XOR.into(),
         };
 
         TradingPair::<T>::register(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
-            order_book_id.base_asset_id,
-            order_book_id.target_asset_id
+            order_book_id.quote,
+            order_book_id.base
         ).unwrap();
     }: {
         OrderBookPallet::<T>::create_orderbook(

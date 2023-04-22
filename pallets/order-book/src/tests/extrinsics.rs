@@ -61,8 +61,8 @@ fn bob() -> <Runtime as frame_system::Config>::AccountId {
 fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: XOR.into(),
+            base: XOR.into(),
+            quote: XOR.into(),
         };
 
         assert_err!(
@@ -77,11 +77,11 @@ fn should_not_create_order_book_with_same_assets() {
 }
 
 #[test]
-fn should_not_create_order_book_with_wrong_base_asset() {
+fn should_not_create_order_book_with_wrong_quote_asset() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: VAL.into(),
-            target_asset_id: XOR.into(),
+            base: XOR.into(),
+            quote: VAL.into(),
         };
 
         assert_err!(
@@ -103,8 +103,8 @@ fn should_not_create_order_book_with_non_existed_asset() {
         ));
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: wrong_asset.into(),
+            base: wrong_asset.into(),
+            quote: XOR.into(),
         };
 
         assert_err!(
@@ -137,8 +137,8 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: new_asset.into(),
+            base: new_asset.into(),
+            quote: XOR.into(),
         };
 
         assert_err!(
@@ -156,8 +156,8 @@ fn should_not_create_order_book_with_non_existed_trading_pair() {
 fn should_create_order_book_for_regular_assets() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -177,8 +177,8 @@ fn should_create_order_book_for_regular_assets() {
 fn should_not_create_order_book_that_already_exists() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
         };
 
         assert_ok!(OrderBookPallet::create_orderbook(
@@ -218,15 +218,15 @@ fn should_not_create_order_book_for_user_without_nft() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft.into(),
+            base: nft,
+            quote: XOR.into(),
         };
 
         assert_ok!(TradingPair::register(
             RawOrigin::Signed(creator.clone()).into(),
             DEX.into(),
-            order_book_id.base_asset_id,
-            order_book_id.target_asset_id
+            order_book_id.quote,
+            order_book_id.base
         ));
 
         assert_err!(
@@ -260,15 +260,15 @@ fn should_not_create_order_book_for_nft_owner_without_nft() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft.into(),
+            base: nft,
+            quote: XOR.into(),
         };
 
         assert_ok!(TradingPair::register(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
-            order_book_id.base_asset_id,
-            order_book_id.target_asset_id
+            order_book_id.quote,
+            order_book_id.base
         ));
 
         // caller creates NFT and then send it to another user.
@@ -320,15 +320,15 @@ fn should_create_order_book_for_nft() {
         .unwrap();
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base_asset_id: XOR.into(),
-            target_asset_id: nft.into(),
+            base: nft,
+            quote: XOR.into(),
         };
 
         assert_ok!(TradingPair::register(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
-            order_book_id.base_asset_id,
-            order_book_id.target_asset_id
+            order_book_id.quote,
+            order_book_id.base
         ));
 
         assert_ok!(OrderBookPallet::create_orderbook(

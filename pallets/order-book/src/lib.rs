@@ -336,39 +336,39 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
-                order_book_id.base_asset_id != order_book_id.target_asset_id,
+                order_book_id.base != order_book_id.quote,
                 Error::<T>::ForbiddenToCreateOrderBookWithSameAssets
             );
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            // the base asset of DEX must be a quote asset of order book
             ensure!(
-                order_book_id.base_asset_id == dex_info.base_asset_id,
+                order_book_id.quote == dex_info.base_asset_id,
                 Error::<T>::NotAllowedBaseAsset
             );
-            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.target_asset_id)?;
+            T::AssetInfoProvider::ensure_asset_exists(&order_book_id.base)?;
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &dex_id,
-                &order_book_id.base_asset_id.into(),
-                &order_book_id.target_asset_id.into(),
+                &order_book_id.quote.into(),
+                &order_book_id.base.into(),
             )?;
             ensure!(
                 !<OrderBooks<T>>::contains_key(order_book_id),
                 Error::<T>::OrderBookAlreadyExists
             );
 
-            let order_book =
-                if T::AssetInfoProvider::get_asset_info(&order_book_id.target_asset_id).2 != 0 {
-                    // regular asset
-                    OrderBook::<T>::default(order_book_id, dex_id)
-                } else {
-                    // nft
-                    // ensure the user has nft
-                    ensure!(
-                        T::AssetInfoProvider::total_balance(&order_book_id.target_asset_id, &who)?
-                            > Balance::zero(),
-                        Error::<T>::UserHasNoNft
-                    );
-                    OrderBook::<T>::default_nft(order_book_id, dex_id)
-                };
+            let order_book = if T::AssetInfoProvider::get_asset_info(&order_book_id.base).2 != 0 {
+                // regular asset
+                OrderBook::<T>::default(order_book_id, dex_id)
+            } else {
+                // nft
+                // ensure the user has nft
+                ensure!(
+                    T::AssetInfoProvider::total_balance(&order_book_id.base, &who)?
+                        > Balance::zero(),
+                    Error::<T>::UserHasNoNft
+                );
+                OrderBook::<T>::default_nft(order_book_id, dex_id)
+            };
 
             <OrderBooks<T>>::insert(order_book_id, order_book);
 

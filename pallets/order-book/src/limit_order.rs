@@ -46,9 +46,16 @@ where
     pub id: T::OrderId,
     pub owner: T::AccountId,
     pub side: PriceVariant,
+
+    /// Price is specified in OrderBookId `quote` asset.
+    /// It should be a base asset of DEX.
     pub price: OrderPrice,
+
     pub original_amount: OrderVolume,
+
+    /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
+
     pub time: T::Moment,
     pub lifespan: T::Moment,
 }

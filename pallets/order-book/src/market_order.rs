@@ -28,7 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::OrderVolume;
+use crate::{OrderBookId, OrderVolume};
+use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::SwapAmount;
 use common::PriceVariant;
@@ -41,6 +42,8 @@ where
 {
     pub owner: T::AccountId,
     pub side: PriceVariant,
-    pub asset: T::AssetId,
+    pub order_book_id: OrderBookId<AssetIdOf<T>>,
+
+    /// Amount of OrderBookId `base` asset
     pub amount: SwapAmount<OrderVolume>,
 }

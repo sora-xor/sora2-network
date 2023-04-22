@@ -28,10 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, TradingPair};
-use frame_support::{BoundedBTreeMap, BoundedVec};
+use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 
-pub type OrderBookId<AssetId> = TradingPair<AssetId>;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 pub type OrderPrice = Balance;
 pub type OrderVolume = Balance;
 pub type PriceOrders<OrderId, MaxLimitOrdersForPrice> = BoundedVec<OrderId, MaxLimitOrdersForPrice>;
@@ -39,3 +42,34 @@ pub type MarketSide<MaxSidePriceCount> =
     BoundedBTreeMap<OrderPrice, OrderVolume, MaxSidePriceCount>;
 pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
     BoundedVec<OrderId, MaxOpenedLimitOrdersPerUser>;
+
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    Hash,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OrderBookId<AssetId> {
+    /// Base asset.
+    pub base: AssetId,
+    /// Quote asset. It should be a base asset of DEX.
+    pub quote: AssetId,
+}
+
+impl<AssetId> From<TradingPair<AssetId>> for OrderBookId<AssetId> {
+    fn from(trading_pair: TradingPair<AssetId>) -> Self {
+        Self {
+            base: trading_pair.target_asset_id,
+            quote: trading_pair.base_asset_id,
+        }
+    }
+}
