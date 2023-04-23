@@ -33,7 +33,6 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
-use frame_support::sp_runtime::SaturatedConversion;
 use frame_support::traits::UnixTime;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
@@ -93,7 +92,7 @@ impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
             return Ok(None);
         };
 
-        let current_time = T::UnixTime::now().as_millis().saturated_into::<u64>();
+        let current_time = T::UnixTime::now().as_secs();
         let stale_period = T::GetBandRateStalePeriod::get();
         let current_period = current_time
             .checked_sub(rate.last_updated)

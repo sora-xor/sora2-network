@@ -55,7 +55,7 @@ frame_support::construct_runtime!(
 );
 
 frame_support::parameter_types! {
-    pub const GetRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+    pub const GetRateStalePeriod: u64 = 60*5; // 5 minutes
     pub const MinimumPeriod: u64 = 5;
 }
 

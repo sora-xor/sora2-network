@@ -450,7 +450,7 @@ fn quote_invalid_rate_should_fail() {
         )
         .expect("Failed to relay rates");
 
-        Timestamp::set_timestamp(GetRateStalePeriod::get() + 10);
+        Timestamp::set_timestamp(GetRateStalePeriod::get() * 1000 + 10);
 
         assert_eq!(
             <Band as DataFeed<String, Rate, u64>>::quote(&"USD".to_owned()),
