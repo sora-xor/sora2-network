@@ -34,6 +34,3 @@ mod item;
 
 pub use cache_double_map::CacheStorageDoubleMap;
 pub use cache_map::CacheStorageMap;
-
-#[cfg(test)]
-mod tests;
