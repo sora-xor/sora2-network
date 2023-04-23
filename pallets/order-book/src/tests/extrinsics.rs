@@ -32,17 +32,23 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, VAL, XOR};
+use common::{
+    balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant,
+    DEFAULT_BALANCE_PRECISION, VAL, XOR,
+};
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{OrderBook, OrderBookId};
+use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId};
 use framenode_runtime::Runtime;
 use hex_literal::hex;
+use sp_core::Get;
+use sp_std::collections::btree_map::BTreeMap;
 
 type Assets = framenode_runtime::assets::Pallet<Runtime>;
 type TradingPair = framenode_runtime::trading_pair::Pallet<Runtime>;
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
+type Timestamp = pallet_timestamp::Pallet<Runtime>;
 
 #[test]
 fn should_not_create_order_book_with_same_assets() {
@@ -328,5 +334,253 @@ fn should_create_order_book_for_nft() {
             OrderBookPallet::order_books(order_book_id).unwrap(),
             OrderBook::default_nft(order_book_id, DEX.into())
         );
+    });
+}
+
+#[test]
+fn should_not_place_limit_order_in_unknown_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(alice()).into(),
+                order_book_id,
+                balance!(10),
+                balance!(100),
+                PriceVariant::Buy,
+                1000
+            ),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_place_limit_order() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let price = balance!(10);
+        let amount = balance!(100);
+        let lifespan = 10000;
+        let now = 1234;
+
+        Timestamp::set_timestamp(now);
+
+        // fix state before
+        let bids_before = OrderBookPallet::bids(&order_book_id, &price).unwrap_or_default();
+        let agg_bids_before = OrderBookPallet::aggregated_bids(&order_book_id);
+        let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
+        let user_orders_before =
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
+        let balance_before =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap();
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            order_book_id,
+            price,
+            amount,
+            PriceVariant::Buy,
+            lifespan
+        ));
+
+        let order_id = get_last_order_id(order_book_id).unwrap();
+
+        // check
+        let expected_order = LimitOrder::<Runtime>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            now,
+            lifespan,
+        );
+
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+
+        let mut expected_bids = bids_before.clone();
+        assert_ok!(expected_bids.try_push(order_id));
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &price).unwrap(),
+            expected_bids
+        );
+
+        let expected_price_volume = price_volume_before + amount;
+        let mut expected_agg_bids = agg_bids_before.clone();
+        assert_ok!(expected_agg_bids.try_insert(price, expected_price_volume));
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            expected_agg_bids
+        );
+
+        let mut expected_user_orders = user_orders_before.clone();
+        assert_ok!(expected_user_orders.try_push(order_id));
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            expected_user_orders
+        );
+
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap();
+        //let expected_balance = balance_before - amount; // todo (m.tagirov) lock liquidity
+        let expected_balance = balance_before;
+        assert_eq!(balance, expected_balance);
+    });
+}
+
+#[test]
+fn should_place_limit_order_with_nft() {
+    ext().execute_with(|| {
+        let caller = alice();
+        frame_system::Pallet::<Runtime>::inc_providers(&caller);
+
+        let nft = Assets::register_from(
+            &caller,
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(1),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft,
+            quote: XOR.into(),
+        };
+
+        assert_ok!(TradingPair::register(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            order_book_id.quote,
+            order_book_id.base
+        ));
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        let price = balance!(10);
+        let amount = balance!(1);
+        let lifespan = 10000;
+        let now = 1234;
+
+        Timestamp::set_timestamp(now);
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            order_book_id,
+            price,
+            amount,
+            PriceVariant::Sell,
+            lifespan
+        ));
+
+        let order_id = get_last_order_id(order_book_id).unwrap();
+
+        // check
+        let expected_order = LimitOrder::<Runtime>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Sell,
+            price,
+            amount,
+            now,
+            lifespan,
+        );
+
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+
+        assert_eq!(
+            OrderBookPallet::asks(&order_book_id, &price).unwrap(),
+            vec![order_id]
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_asks(&order_book_id),
+            BTreeMap::from([(price, amount)])
+        );
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            vec![order_id]
+        );
+
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
+                .unwrap();
+        assert_eq!(balance, balance!(1)); // 0 todo (m.tagirov) lock liquidity
+    });
+}
+
+#[test]
+#[ignore] // it works, but takes a lot of time
+fn should_place_a_lot_of_orders() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+
+        let mut buy_price = balance!(1000);
+        let mut sell_price = balance!(1001);
+
+        let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
+
+        for i in 0..max_prices_for_side {
+            // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+            let account = generate_account(i);
+
+            buy_price -= order_book.tick_size;
+            sell_price += order_book.tick_size;
+
+            assert_ok!(OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(account.clone()).into(),
+                order_book_id,
+                buy_price,
+                balance!(10),
+                PriceVariant::Buy,
+                10000
+            ));
+
+            assert_ok!(OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(account).into(),
+                order_book_id,
+                sell_price,
+                balance!(10),
+                PriceVariant::Sell,
+                10000
+            ));
+        }
     });
 }

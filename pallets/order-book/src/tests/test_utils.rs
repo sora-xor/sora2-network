@@ -31,7 +31,8 @@
 use assets::AssetIdOf;
 use common::{balance, DEXId, PriceVariant};
 use frame_support::assert_ok;
-use framenode_runtime::order_book::{self, DataLayer, LimitOrder, OrderBookId, Pallet};
+use frame_system::RawOrigin;
+use framenode_runtime::order_book::{self, Config, OrderBookId, Pallet};
 use framenode_runtime::Runtime;
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -73,10 +74,15 @@ pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::Account
 //   9.8 |  139.9 | buy2, buy3
 //   9.5 |  264.3 | buy4, buy5, buy6
 //          Bids
-pub fn fill_order_book(
-    order_book_id: &OrderBookId<AssetIdOf<Runtime>>,
-    data: &mut impl DataLayer<Runtime>,
-) {
+pub fn create_and_fill_order_book(order_book_id: OrderBookId<AssetIdOf<Runtime>>) {
+    assert_ok!(OrderBookPallet::create_orderbook(
+        RawOrigin::Signed(bob()).into(),
+        DEX.into(),
+        order_book_id
+    ));
+
+    let lifespan = 10000;
+
     // prices
     let bp1 = balance!(10);
     let bp2 = balance!(9.8);
@@ -99,50 +105,133 @@ pub fn fill_order_book(
     let amount11 = balance!(205.5);
     let amount12 = balance!(13.7);
 
-    // orders
-    let buy1 = LimitOrder::<Runtime>::new(1, bob(), PriceVariant::Buy, bp1, amount1, 10, 10000);
-    let buy2 = LimitOrder::<Runtime>::new(2, bob(), PriceVariant::Buy, bp2, amount2, 10, 10000);
-    let buy3 = LimitOrder::<Runtime>::new(3, bob(), PriceVariant::Buy, bp2, amount3, 10, 10000);
-    let buy4 = LimitOrder::<Runtime>::new(4, bob(), PriceVariant::Buy, bp3, amount4, 10, 10000);
-    let buy5 = LimitOrder::<Runtime>::new(5, bob(), PriceVariant::Buy, bp3, amount5, 10, 10000);
-    let buy6 = LimitOrder::<Runtime>::new(6, bob(), PriceVariant::Buy, bp3, amount6, 10, 10000);
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp1,
+        amount1,
+        PriceVariant::Buy,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp2,
+        amount2,
+        PriceVariant::Buy,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp2,
+        amount3,
+        PriceVariant::Buy,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp3,
+        amount4,
+        PriceVariant::Buy,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp3,
+        amount5,
+        PriceVariant::Buy,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        bp3,
+        amount6,
+        PriceVariant::Buy,
+        lifespan
+    ));
 
-    let sell1 = LimitOrder::<Runtime>::new(7, bob(), PriceVariant::Sell, sp1, amount7, 10, 10000);
-    let sell2 = LimitOrder::<Runtime>::new(8, bob(), PriceVariant::Sell, sp2, amount8, 10, 10000);
-    let sell3 = LimitOrder::<Runtime>::new(9, bob(), PriceVariant::Sell, sp2, amount9, 10, 10000);
-    let sell4 = LimitOrder::<Runtime>::new(10, bob(), PriceVariant::Sell, sp3, amount10, 10, 10000);
-    let sell5 = LimitOrder::<Runtime>::new(11, bob(), PriceVariant::Sell, sp3, amount11, 10, 10000);
-    let sell6 = LimitOrder::<Runtime>::new(12, bob(), PriceVariant::Sell, sp3, amount12, 10, 10000);
-
-    // inserts
-    assert_ok!(data.insert_limit_order(&order_book_id, buy1));
-    assert_ok!(data.insert_limit_order(&order_book_id, buy2));
-    assert_ok!(data.insert_limit_order(&order_book_id, buy3));
-    assert_ok!(data.insert_limit_order(&order_book_id, buy4));
-    assert_ok!(data.insert_limit_order(&order_book_id, buy5));
-    assert_ok!(data.insert_limit_order(&order_book_id, buy6));
-
-    assert_ok!(data.insert_limit_order(&order_book_id, sell1));
-    assert_ok!(data.insert_limit_order(&order_book_id, sell2));
-    assert_ok!(data.insert_limit_order(&order_book_id, sell3));
-    assert_ok!(data.insert_limit_order(&order_book_id, sell4));
-    assert_ok!(data.insert_limit_order(&order_book_id, sell5));
-    assert_ok!(data.insert_limit_order(&order_book_id, sell6));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp1,
+        amount7,
+        PriceVariant::Sell,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp2,
+        amount8,
+        PriceVariant::Sell,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp2,
+        amount9,
+        PriceVariant::Sell,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp3,
+        amount10,
+        PriceVariant::Sell,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp3,
+        amount11,
+        PriceVariant::Sell,
+        lifespan
+    ));
+    assert_ok!(OrderBookPallet::place_limit_order(
+        RawOrigin::Signed(bob()).into(),
+        order_book_id,
+        sp3,
+        amount12,
+        PriceVariant::Sell,
+        lifespan
+    ));
 
     // check
-    assert_eq!(data.get_bids(&order_book_id, &bp1).unwrap(), vec![1]);
-    assert_eq!(data.get_bids(&order_book_id, &bp2).unwrap(), vec![2, 3]);
-    assert_eq!(data.get_bids(&order_book_id, &bp3).unwrap(), vec![4, 5, 6]);
-
-    assert_eq!(data.get_asks(&order_book_id, &sp1).unwrap(), vec![7]);
-    assert_eq!(data.get_asks(&order_book_id, &sp2).unwrap(), vec![8, 9]);
     assert_eq!(
-        data.get_asks(&order_book_id, &sp3).unwrap(),
+        OrderBookPallet::bids(&order_book_id, &bp1).unwrap(),
+        vec![1]
+    );
+    assert_eq!(
+        OrderBookPallet::bids(&order_book_id, &bp2).unwrap(),
+        vec![2, 3]
+    );
+    assert_eq!(
+        OrderBookPallet::bids(&order_book_id, &bp3).unwrap(),
+        vec![4, 5, 6]
+    );
+
+    assert_eq!(
+        OrderBookPallet::asks(&order_book_id, &sp1).unwrap(),
+        vec![7]
+    );
+    assert_eq!(
+        OrderBookPallet::asks(&order_book_id, &sp2).unwrap(),
+        vec![8, 9]
+    );
+    assert_eq!(
+        OrderBookPallet::asks(&order_book_id, &sp3).unwrap(),
         vec![10, 11, 12]
     );
 
     assert_eq!(
-        data.get_aggregated_bids(&order_book_id),
+        OrderBookPallet::aggregated_bids(&order_book_id),
         BTreeMap::from([
             (bp1, amount1),
             (bp2, amount2 + amount3),
@@ -150,11 +239,21 @@ pub fn fill_order_book(
         ])
     );
     assert_eq!(
-        data.get_aggregated_asks(&order_book_id),
+        OrderBookPallet::aggregated_asks(&order_book_id),
         BTreeMap::from([
             (sp1, amount7),
             (sp2, amount8 + amount9),
             (sp3, amount10 + amount11 + amount12)
         ])
     );
+}
+
+pub fn get_last_order_id(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+) -> Option<<Runtime as Config>::OrderId> {
+    if let Some(order_book) = OrderBookPallet::order_books(order_book_id) {
+        Some(order_book.last_order_id)
+    } else {
+        None
+    }
 }
