@@ -63,7 +63,7 @@ pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::Account
     <Runtime as frame_system::Config>::AccountId::new(adr)
 }
 
-// Fills the order book
+// Creates and fills the order book
 // price | volume | orders
 //          Asks
 //  11.5 |  255.8 | sell4, sell5, sell6

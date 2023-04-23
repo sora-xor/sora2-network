@@ -38,19 +38,20 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, OrderBook, OrderBookId, Pallet};
+use crate::{Config, Event, LimitOrder, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
-use framenode_runtime::order_book::{Config, Event, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::order_book::{Config, Event, LimitOrder, OrderBook, OrderBookId, Pallet};
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{balance, AssetName, AssetSymbol, DEXId, XOR};
+use common::{balance, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 
 use assets::Pallet as Assets;
 use frame_system::Pallet as FrameSystem;
+use pallet_timestamp::Pallet as Timestamp;
 use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
@@ -61,12 +62,181 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
+
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
+}
+
+// Creates and fills the order book
+// price | volume | orders
+//          Asks
+//  11.5 |  255.8 | sell4, sell5, sell6
+//  11.2 |  178.6 | sell2, sell3
+//  11.0 |  176.3 | sell1
+//  spread
+//  10.0 |  168.5 | buy1
+//   9.8 |  139.9 | buy2, buy3
+//   9.5 |  264.3 | buy4, buy5, buy6
+//          Bids
+fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>>) {
+    OrderBookPallet::<T>::create_orderbook(
+        RawOrigin::Signed(bob::<T>()).into(),
+        DEX.into(),
+        order_book_id,
+    )
+    .unwrap();
+
+    let lifespan: <T as pallet_timestamp::Config>::Moment = 10000u32.into();
+
+    // prices
+    let bp1 = balance!(10);
+    let bp2 = balance!(9.8);
+    let bp3 = balance!(9.5);
+    let sp1 = balance!(11);
+    let sp2 = balance!(11.2);
+    let sp3 = balance!(11.5);
+
+    // amounts
+    let amount1 = balance!(168.5);
+    let amount2 = balance!(95.2);
+    let amount3 = balance!(44.7);
+    let amount4 = balance!(56.4);
+    let amount5 = balance!(89.9);
+    let amount6 = balance!(115);
+    let amount7 = balance!(176.3);
+    let amount8 = balance!(85.4);
+    let amount9 = balance!(93.2);
+    let amount10 = balance!(36.6);
+    let amount11 = balance!(205.5);
+    let amount12 = balance!(13.7);
+
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp1,
+        amount1,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp2,
+        amount2,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp2,
+        amount3,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp3,
+        amount4,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp3,
+        amount5,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        bp3,
+        amount6,
+        PriceVariant::Buy,
+        lifespan,
+    )
+    .unwrap();
+
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp1,
+        amount7,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp2,
+        amount8,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp2,
+        amount9,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp3,
+        amount10,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp3,
+        amount11,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+    OrderBookPallet::<T>::place_limit_order(
+        RawOrigin::Signed(bob::<T>()).into(),
+        order_book_id,
+        sp3,
+        amount12,
+        PriceVariant::Sell,
+        lifespan,
+    )
+    .unwrap();
+}
+
+fn get_last_order_id<T: Config>(
+    order_book_id: OrderBookId<AssetIdOf<T>>,
+) -> Option<<T as Config>::OrderId> {
+    if let Some(order_book) = OrderBookPallet::<T>::order_books(order_book_id) {
+        Some(order_book.last_order_id)
+    } else {
+        None
+    }
 }
 
 benchmarks! {
@@ -139,10 +309,50 @@ benchmarks! {
     }
 
     place_limit_order {
+        let caller = alice::<T>();
+
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let price = balance!(10);
+        let amount = balance!(100);
+        let lifespan: <T as pallet_timestamp::Config>::Moment = 10000u32.into();
+        let now: <T as pallet_timestamp::Config>::Moment = 1234u32.into();
+
+        Timestamp::<T>::set_timestamp(now);
+
+        create_and_fill_order_book::<T>(order_book_id);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::place_limit_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            order_book_id,
+            price,
+            amount,
+            PriceVariant::Buy,
+            lifespan
+        ).unwrap();
     }
     verify {
+        let order_id = get_last_order_id::<T>(order_book_id).unwrap();
+
+        assert_last_event::<T>(Event::<T>::OrderPlaced{order_book_id: order_book_id, dex_id: DEX.into(), order_id: order_id, owner_id: caller.clone()}.into());
+
+        let expected_order = LimitOrder::<T>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            now,
+            lifespan,
+        );
+
+        assert_eq!(
+            OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
     }
 
     cancel_limit_order {
