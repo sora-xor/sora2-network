@@ -90,7 +90,7 @@ impl Config for Runtime {
 }
 
 frame_support::parameter_types! {
-    pub const GetBandRateStalePeriod: u64 = 5*60*1000; // 5 minutes
+    pub const GetBandRateStalePeriod: u64 = 5*60; // 5 minutes
     pub const MinimumPeriod: u64 = 5;
 }
 
