@@ -30,6 +30,7 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
@@ -38,11 +39,3 @@ use framenode_runtime::order_book::{self, Config, LimitOrder, OrderBookId, Palle
 use framenode_runtime::Runtime;
 use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
-
-type OrderBook = Pallet<Runtime>;
-
-fn alice() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
-}
-
-type E = order_book::Error<Runtime>;

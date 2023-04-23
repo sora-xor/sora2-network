@@ -30,24 +30,17 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
-use framenode_runtime::order_book::{self, Config, DataLayer, LimitOrder, OrderBookId, Pallet};
+use framenode_runtime::order_book::{Config, DataLayer, LimitOrder, OrderBookId};
 use framenode_runtime::Runtime;
 use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
-
-type OrderBook = Pallet<Runtime>;
-
-fn alice() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
-}
-
-type E = order_book::Error<Runtime>;
 
 trait StoragePush {
     fn push_to_storage(&mut self);
@@ -110,41 +103,44 @@ fn should_work_as_cache() {
         );
 
         // check storage before commit
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id), None);
-        assert_eq!(OrderBook::bids(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::limit_orders(order_book_id, order_id), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::user_limit_orders(&owner, order_book_id), None);
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&owner, order_book_id),
+            None
+        );
 
         // check storage after commit
         data.commit();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
     });
@@ -198,24 +194,24 @@ fn should_work_as_storage() {
 
         // check storage
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
     });
@@ -292,24 +288,24 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_buy_id).unwrap(),
             order_buy
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_buy_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_buy_id]
         );
 
@@ -343,23 +339,23 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_buy_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price).unwrap(),
+            OrderBookPallet::asks(order_book_id, price).unwrap(),
             vec![order_sell_id]
         );
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_buy_id, order_sell_id]
         );
     });
@@ -567,47 +563,47 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id1).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_buy_id1).unwrap(),
             order_buy1
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id2).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_buy_id2).unwrap(),
             order_buy2
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id1).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id1).unwrap(),
             order_sell1
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id2).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id2).unwrap(),
             order_sell2
         );
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id3).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id3).unwrap(),
             order_sell3
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
+            OrderBookPallet::bids(order_book_id, price1).unwrap(),
             vec![order_buy_id1, order_buy_id2]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price1, 2 * amount)])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, price1).unwrap(),
             vec![order_sell_id1, order_sell_id2]
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, price2).unwrap(),
             vec![order_sell_id3]
         );
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price1, 2 * amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![
                 order_buy_id1,
                 order_buy_id2,
@@ -650,29 +646,32 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id1), None);
         assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id1),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::bids(order_book_id, price1).unwrap(),
             vec![order_buy_id1, order_buy_id2]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price1, 2 * amount)])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, price1).unwrap(),
             vec![order_sell_id2]
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, price2).unwrap(),
             vec![order_sell_id3]
         );
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id1, order_buy_id2, order_sell_id2, order_sell_id3]
         );
 
@@ -710,29 +709,32 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id1), None);
         assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_buy_id1),
+            None
+        );
+        assert_eq!(
+            OrderBookPallet::bids(order_book_id, price1).unwrap(),
             vec![order_buy_id2]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price1, amount)])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, price1).unwrap(),
             vec![order_sell_id2]
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, price2).unwrap(),
             vec![order_sell_id3]
         );
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_buy_id2, order_sell_id2, order_sell_id3]
         );
 
@@ -764,26 +766,29 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id2), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::limit_orders(order_book_id, order_buy_id2),
+            None
+        );
+        assert_eq!(OrderBookPallet::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, price1).unwrap(),
             vec![order_sell_id2]
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
+            OrderBookPallet::asks(order_book_id, price2).unwrap(),
             vec![order_sell_id3]
         );
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_sell_id2, order_sell_id3]
         );
 
@@ -812,23 +817,26 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id3), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id3),
+            None
+        );
+        assert_eq!(OrderBookPallet::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
+            OrderBookPallet::asks(order_book_id, price1).unwrap(),
             vec![order_sell_id2]
         );
-        assert_eq!(OrderBook::asks(order_book_id, price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price2), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([(price1, amount)])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
             vec![order_sell_id2]
         );
 
@@ -848,19 +856,25 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id2), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::limit_orders(order_book_id, order_sell_id2),
+            None
+        );
+        assert_eq!(OrderBookPallet::bids(order_book_id, price1), None);
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price1), None);
-        assert_eq!(OrderBook::asks(order_book_id, price2), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price1), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price2), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::user_limit_orders(&owner, &order_book_id), None);
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id),
+            None
+        );
     });
 }
 
@@ -952,24 +966,24 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
 
@@ -1000,24 +1014,24 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, new_amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
     });
@@ -1083,24 +1097,24 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         data.push_to_storage();
 
         assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_id).unwrap(),
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             order
         );
         assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
+            OrderBookPallet::bids(order_book_id, price).unwrap(),
             vec![order_id]
         );
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([(price, amount)])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
 
@@ -1120,18 +1134,21 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
         // check storage
         data.push_to_storage();
 
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_id), None);
-        assert_eq!(OrderBook::bids(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::limit_orders(order_book_id, order_id), None);
+        assert_eq!(OrderBookPallet::bids(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
+            OrderBookPallet::aggregated_bids(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
+        assert_eq!(OrderBookPallet::asks(order_book_id, price), None);
         assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
+            OrderBookPallet::aggregated_asks(order_book_id),
             BTreeMap::from([])
         );
-        assert_eq!(OrderBook::user_limit_orders(&owner, order_book_id), None);
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&owner, order_book_id),
+            None
+        );
     });
 }
 

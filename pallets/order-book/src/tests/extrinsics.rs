@@ -30,32 +30,19 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::{
-    balance, AssetId32, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, VAL, XOR,
-};
+use common::{balance, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{self, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::order_book::{OrderBook, OrderBookId};
 use framenode_runtime::Runtime;
 use hex_literal::hex;
 
 type Assets = framenode_runtime::assets::Pallet<Runtime>;
-type OrderBookPallet = Pallet<Runtime>;
 type TradingPair = framenode_runtime::trading_pair::Pallet<Runtime>;
 type FrameSystem = framenode_runtime::frame_system::Pallet<Runtime>;
-
-type E = order_book::Error<Runtime>;
-pub const DEX: DEXId = DEXId::Polkaswap;
-
-fn alice() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
-}
-
-fn bob() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
-}
 
 #[test]
 fn should_not_create_order_book_with_same_assets() {
