@@ -149,8 +149,11 @@ pipeline {
                                     rm -rf ~/.cargo/.package-cache
                                     rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
+                                    SKIP_WASM_BUILD=1
+                                    cargo check
+                                    cargo check --features private-net,ready-to-test
+                                    cargo check --features private-net,ready-to-test,wip
                                     cargo test
-                                    cargo test --features \"private-net wip ready-to-test\"
                                     cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                                 '''
                             }

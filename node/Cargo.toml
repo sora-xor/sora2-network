@@ -133,17 +133,17 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
+]
+
+ready-to-test = [
+    "framenode-chain-spec/ready-to-test",
+    "framenode-runtime/ready-to-test",
     "beefy-light-client",
     "beefy-light-client-rpc",
     "substrate-bridge-channel-rpc",
     "evm-bridge-proxy-rpc",
     "leaf-provider-rpc",
     "bridge-channel-rpc",
-]
-
-ready-to-test = [
-    "framenode-chain-spec/ready-to-test",
-    "framenode-runtime/ready-to-test",
 ]
 
 runtime-benchmarks = [
