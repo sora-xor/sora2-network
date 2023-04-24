@@ -36,9 +36,11 @@ use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutc
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
+    ToOrderTechUnitFromDEXAndTradingPair,
 };
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_std::vec::Vec;
@@ -72,12 +74,17 @@ pub mod pallet {
     };
     use frame_system::pallet_prelude::*;
 
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + pallet_timestamp::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
+    {
         const MAX_ORDER_LIFETIME: Self::Moment;
         const MAX_OPENED_LIMIT_ORDERS_COUNT: u32;
 
@@ -287,6 +294,7 @@ pub mod pallet {
                 !<OrderBooks<T>>::contains_key(order_book_id),
                 Error::<T>::OrderBookAlreadyExists
             );
+            Self::register_tech_account(dex_id.clone(), order_book_id.clone())?;
 
             let order_book =
                 if T::AssetInfoProvider::get_asset_info(&order_book_id.target_asset_id).2 != 0 {
@@ -317,9 +325,11 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::delete_orderbook())]
         pub fn delete_orderbook(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<T>,
+            dex_id: T::DEXId,
+            order_book_id: OrderBookId<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            Self::deregister_tech_account(dex_id.clone(), order_book_id.clone())?;
             // todo (m.tagirov)
             todo!()
         }
@@ -515,23 +525,90 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
+}
 
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+    /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
     fn lock_liquidity(
-        _account: &T::AccountId,
-        _asset: &T::AssetId,
-        _amount: Balance,
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+
+    /// Unlock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
+    fn unlock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        trading_pair: common::TradingPair<AssetId>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
+    fn lock_liquidity(
+        dex_id: T::DEXId,
+        account: &T::AccountId,
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
     ) -> Result<(), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        let asset_id = trading_pair.select(asset);
+        technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
     }
 
     fn unlock_liquidity(
-        _account: &T::AccountId,
-        _asset: &T::AssetId,
-        _amount: Balance,
+        dex_id: T::DEXId,
+        account: &T::AccountId,
+        trading_pair: OrderBookId<T>,
+        asset: common::TradingPairSelector,
+        amount: Balance,
     ) -> Result<(), DispatchError> {
-        // todo (m.tagirov)
-        todo!()
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        let asset_id = trading_pair.select(asset);
+        technical::Pallet::<T>::transfer_out(asset_id, &tech_account, account, amount.into())
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    fn tech_account_for_order_book(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> <T as technical::Config>::TechAccountId {
+        // Same as in xyk accounts
+        let trading_pair = trading_pair.map(|a| a.into());
+        <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
+            dex_id,
+            trading_pair,
+        )
+    }
+
+    // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
+    pub fn register_tech_account(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::register_tech_account_id(tech_account)
+    }
+
+    // todo: make pub(tests) (k.ivanov)
+    /// Validity of asset ids (for example, to have the same base asset
+    /// for dex and pair) should be done beforehand
+    pub fn deregister_tech_account(
+        dex_id: T::DEXId,
+        trading_pair: OrderBookId<T>,
+    ) -> Result<(), DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(dex_id, trading_pair);
+        technical::Pallet::<T>::deregister_tech_account_id(tech_account)
     }
 }
 
