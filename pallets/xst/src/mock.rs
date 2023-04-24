@@ -57,6 +57,7 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -93,7 +94,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub const GetBandRateStalePeriod: u64 = 60*5; // 5 minutes
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -197,7 +198,7 @@ impl band::Config for Runtime {
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type UnixTime = Timestamp;
+    type Time = Timestamp;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -344,7 +345,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
+    type Moment = Moment;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();

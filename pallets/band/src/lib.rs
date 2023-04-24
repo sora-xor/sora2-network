@@ -33,7 +33,7 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
-use frame_support::traits::UnixTime;
+use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
@@ -52,6 +52,9 @@ pub mod weights;
 /// Multiplier to convert rates from precision = 9 (which band team use)
 /// to precision = 18 (which we use)
 pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
+
+/// Multiplier to convert rate last_update timestamp to Moment
+pub const MILLISECS_MULTIPLIER: u64 = 1_000;
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
@@ -92,11 +95,22 @@ impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
             return Ok(None);
         };
 
-        let current_time = T::UnixTime::now().as_secs();
+        let current_time = T::Time::now();
         let stale_period = T::GetBandRateStalePeriod::get();
-        let current_period = current_time
-            .checked_sub(rate.last_updated)
-            .ok_or(Error::<T, I>::RateHasInvalidTimestamp)?;
+        // could not convert u64 to Moment directly, this workaround solves this
+        let last_updated = rate
+            .last_updated
+            .saturating_mul(MILLISECS_MULTIPLIER)
+            .try_into()
+            .map_err(|_| "Can't cast u64 to <<T as Config<I>>::Time as Time>::Moment")
+            .unwrap();
+
+        ensure!(
+            last_updated <= current_time,
+            Error::<T, I>::RateHasInvalidTimestamp
+        );
+
+        let current_period = current_time - last_updated;
 
         ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
 
@@ -145,9 +159,9 @@ pub mod pallet {
         type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
         /// Rate expiration period in seconds.
         #[pallet::constant]
-        type GetBandRateStalePeriod: Get<u64>;
+        type GetBandRateStalePeriod: Get<<<Self as pallet::Config<I>>::Time as Time>::Moment>;
         /// Time used for checking if rate expired
-        type UnixTime: UnixTime;
+        type Time: Time;
     }
 
     #[pallet::storage]
