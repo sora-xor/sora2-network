@@ -11,6 +11,9 @@ use frame_support::{
     traits::GetStorageVersion as _,
 };
 
+#[cfg(feature = "try-runtime")]
+use sp_std::prelude::Vec;
+
 #[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo, Default)]
 pub struct OldDistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
@@ -68,7 +71,7 @@ where
             Pallet::<T>::on_chain_storage_version() == 2,
             "must upgrade linearly"
         );
-        Ok(vec![])
+        Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
