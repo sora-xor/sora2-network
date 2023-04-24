@@ -9,8 +9,9 @@
     "rust-analyzer.diagnostics.experimental.enable": false,
     "rust-analyzer.cargo.features": [
         "private-net",
-        "runtime-benchmarks",
         "wip",
+        "ready-to-test",
+        "runtime-benchmarks",
         "try-runtime",
     ]
 }
