@@ -505,8 +505,16 @@ pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {
     fn to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -> Self;
 }
 
-pub trait ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
-    fn to_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair) -> Self;
+pub trait ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+    fn to_xyk_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair)
+        -> Self;
+}
+
+pub trait ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+    fn to_order_tech_unit_from_dex_and_trading_pair(
+        dex_id: DEXId,
+        trading_pair: TradingPair,
+    ) -> Self;
 }
 
 /// PureOrWrapped is reflexive.

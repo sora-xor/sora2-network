@@ -32,5 +32,5 @@ mod data_layer;
 mod extrinsics;
 mod limit_order;
 mod order_book;
-//mod pallet;
+mod pallet;
 mod test_utils;

@@ -42,6 +42,7 @@ use frame_support::traits::{Get, OnInitialize};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use pool_xyk::PoolProviders;
+use pswap_distribution::DistributionWeightParams;
 use pswap_distribution::{Call, ClaimableShares, ShareholderAccounts};
 use sp_std::prelude::*;
 use traits::MultiCurrencyExtended;
@@ -72,7 +73,75 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
-fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32) {
+fn setup_benchmark_pool_xyk<T: Config + pool_xyk::Config>() {
+    #[cfg(not(test))]
+    {
+        use common::{XOR, XST};
+        let authority = alice::<T>();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            PSWAP.into(),
+        )
+        .unwrap();
+        pool_xyk::Pallet::<T>::initialize_pool(
+            RawOrigin::Signed(authority.clone()).into(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            XST.into(),
+        )
+        .unwrap();
+        Assets::<T>::mint_to(&XOR.into(), &authority, &authority, balance!(20000)).unwrap();
+        Assets::<T>::mint_to(&XST.into(), &authority, &authority, balance!(100000)).unwrap();
+        Assets::<T>::mint_to(&PSWAP.into(), &authority, &authority, balance!(1000000)).unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            XST.into(),
+            balance!(10000),
+            balance!(100000),
+            balance!(10000),
+            balance!(100000),
+        )
+        .unwrap();
+        pool_xyk::Pallet::<T>::deposit_liquidity_unchecked(
+            authority.clone(),
+            common::DEXId::Polkaswap.into(),
+            XOR.into(),
+            PSWAP.into(),
+            balance!(10000),
+            balance!(1000000),
+            balance!(10000),
+            balance!(1000000),
+        )
+        .unwrap();
+    }
+}
+
+fn add_subscribtion<T: Config + pool_xyk::Config>(pool_index: u128, shareholders: u128) {
+    let authority = alice::<T>();
+    let pool_fee_account = create_account::<T>(b"pool_fee".to_vec(), pool_index);
+    frame_system::Pallet::<T>::inc_providers(&pool_fee_account);
+    let pool_account = create_account::<T>(b"pool".to_vec(), pool_index);
+    frame_system::Pallet::<T>::inc_providers(&pool_account);
+    Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
+    PSwap::<T>::subscribe(
+        pool_fee_account,
+        common::DEXId::Polkaswap.into(),
+        pool_account.clone(),
+        None,
+    )
+    .unwrap();
+    for j in 0u128..shareholders {
+        let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
+        frame_system::Pallet::<T>::inc_providers(&liquidity_provider);
+        pool_xyk::Pallet::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
+    }
+}
+
+fn prepare_for_distribution<T: Config + pool_xyk::Config>(weight_params: DistributionWeightParams) {
     let authority = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&authority);
     Permissions::<T>::assign_permission(
@@ -82,32 +151,42 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
         permissions::Scope::Unlimited,
     )
     .unwrap();
-    for i in 1u128..10 {
-        let pool_fee_account = create_account::<T>(b"pool_fee".to_vec(), i);
-        frame_system::Pallet::<T>::inc_providers(&pool_fee_account);
-        let pool_account = create_account::<T>(b"pool".to_vec(), i);
-        frame_system::Pallet::<T>::inc_providers(&pool_account);
-        Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
-        PSwap::<T>::subscribe(
-            pool_fee_account,
-            common::DEXId::Polkaswap.into(),
-            pool_account.clone(),
-            Some(distribution_freq.into()),
-        )
-        .unwrap();
-        for j in 1u128..1000 {
-            let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            frame_system::Pallet::<T>::inc_providers(&liquidity_provider);
-            pool_xyk::Pallet::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
-        }
+    setup_benchmark_pool_xyk::<T>();
+    let mut pool_index = 0;
+    frame_system::Pallet::<T>::set_block_number(0u32.into());
+    for i in 0..weight_params.distributed {
+        let shareholders = if i + 1 == weight_params.distributed {
+            let remaining = weight_params.shareholders
+                - (weight_params.shareholders / weight_params.distributed)
+                    * (weight_params.distributed - 1);
+            remaining
+        } else {
+            weight_params.shareholders / weight_params.distributed
+        };
+        add_subscribtion::<T>(pool_index, shareholders as u128);
+        pool_index += 1;
+    }
+    frame_system::Pallet::<T>::set_block_number(1u32.into());
+    for _ in 0..weight_params.skipped {
+        add_subscribtion::<T>(pool_index, 10);
+        pool_index += 1;
     }
 }
 
-fn validate_distribution<T: Config>() {
-    for i in 1u128..10 {
-        let pool_account = create_account::<T>(b"pool".to_vec(), i);
-        for j in 1u128..1000 {
-            let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
+fn validate_distribution<T: Config>(weight_params: DistributionWeightParams) {
+    for i in 0..weight_params.distributed {
+        let pool_account = create_account::<T>(b"pool".to_vec(), i as u128);
+        let shareholders = if i + 1 == weight_params.distributed {
+            let remaining = weight_params.shareholders
+                - (weight_params.shareholders / weight_params.distributed)
+                    * (weight_params.distributed - 1);
+            remaining
+        } else {
+            weight_params.shareholders / weight_params.distributed
+        };
+
+        for j in 0..shareholders {
+            let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j as u128);
             frame_system::Pallet::<T>::inc_providers(&liquidity_provider);
             let _ =
                 PSwap::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
@@ -141,24 +220,22 @@ benchmarks! {
         assert_eq!(ClaimableShares::<T>::get(), fixed!(0));
     }
 
-    on_initialize_intensive {
-        let distribution_freq = 15u32;
-        prepare_for_distribution::<T>(distribution_freq);
+    on_initialize {
+        let a in 1..50;
+        let b in 1..10;
+        let c in 10..100;
+        let weight_params = DistributionWeightParams {
+            skipped: a,
+            distributed: b,
+            shareholders: c
+        };
+        prepare_for_distribution::<T>(weight_params.clone());
+        let distribution_freq = T::GetDefaultSubscriptionFrequency::get();
     }: {
-        PSwap::<T>::on_initialize(distribution_freq.into());
+        PSwap::<T>::on_initialize(distribution_freq);
     }
     verify {
-        validate_distribution::<T>();
-    }
-
-    on_initialize_regular {
-        let distribution_freq = 15u32;
-        prepare_for_distribution::<T>(distribution_freq - 1u32);
-    }: {
-        PSwap::<T>::on_initialize(distribution_freq.into());
-    }
-    verify {
-        // nothing but checks is performed
+        validate_distribution::<T>(weight_params);
     }
 }
 

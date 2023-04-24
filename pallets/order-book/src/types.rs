@@ -73,3 +73,12 @@ impl<AssetId> From<TradingPair<AssetId>> for OrderBookId<AssetId> {
         }
     }
 }
+
+impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
+    fn from(order_book_id: OrderBookId<AssetId>) -> Self {
+        Self {
+            base_asset_id: order_book_id.quote,
+            target_asset_id: order_book_id.base,
+        }
+    }
+}

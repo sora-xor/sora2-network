@@ -48,7 +48,6 @@ mod tests;
 pub mod migration;
 
 use codec::{Decode, Encode};
-use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
@@ -77,15 +76,7 @@ const MAX_SELL_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197
 /// Max percentage difference for average value between blocks when price goes up for sell price.
 const MAX_SELL_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00002); // 0.002%
 
-pub trait WeightInfo {
-    fn on_initialize(elems_active: u32, elems_updated: u32) -> Weight;
-}
-
-impl crate::WeightInfo for () {
-    fn on_initialize(_elems_active: u32, _elems_updated: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 pub struct PriceInfo {
