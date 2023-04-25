@@ -28,7 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{CurrencyLocker, DataLayer, Error, LimitOrder, OrderBookId, OrderPrice, OrderVolume};
+use crate::{
+    CurrencyLocker, CurrencyUnlocker, DataLayer, Error, LimitOrder, OrderBookId, OrderPrice,
+    OrderVolume,
+};
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{balance, PriceVariant};
@@ -172,6 +175,35 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         )?;
 
         data.insert_limit_order(&self.order_book_id, order)?;
+        Ok(())
+    }
+
+    pub fn cancel_limit_order<Unlocker>(
+        &self,
+        order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+    {
+        ensure!(
+            self.status == OrderBookStatus::Trade
+                || self.status == OrderBookStatus::PlaceAndCancel
+                || self.status == OrderBookStatus::OnlyCancel,
+            Error::<T>::CancellationOfLimitOrdersIsForbidden
+        );
+
+        let (lock_asset, lock_amount) = order.appropriate_asset_and_amount(&self.order_book_id)?;
+
+        Unlocker::unlock_liquidity(
+            self.dex_id,
+            &order.owner,
+            self.order_book_id,
+            lock_asset,
+            lock_amount,
+        )?;
+
+        data.delete_limit_order(&self.order_book_id, order.id)?;
         Ok(())
     }
 

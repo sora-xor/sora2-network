@@ -118,7 +118,10 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), DispatchError>;
+}
 
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(
