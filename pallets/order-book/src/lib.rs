@@ -591,7 +591,7 @@ impl<T: Config> Pallet<T> {
 
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
-    #[cfg_attr(test, visibility::make(pub))]
+    #[cfg_attr(feature = "test", visibility::make(pub))]
     fn register_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
@@ -602,7 +602,7 @@ impl<T: Config> Pallet<T> {
 
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
-    #[cfg_attr(test, visibility::make(pub))]
+    #[cfg_attr(feature = "test", visibility::make(pub))]
     fn deregister_tech_account(
         dex_id: T::DEXId,
         trading_pair: OrderBookId<T>,
