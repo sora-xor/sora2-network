@@ -46,7 +46,6 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::fail;
 use frame_support::traits::{Get, IsType};
-use frame_support::weights::Weight;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{CheckedSub, Zero};
 use sp_runtime::{Permill, Perquintill};
@@ -117,12 +116,7 @@ pub struct CrowdloanUserInfo<AssetId> {
     rewarded: Vec<(AssetId, Balance)>,
 }
 
-pub trait WeightInfo {
-    fn claim_rewards() -> Weight;
-    fn update_rewards(n: u32) -> Weight;
-    fn register_crowdloan(m: u32) -> Weight;
-    fn claim_crowdloan_rewards() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> Pallet<T> {
     /// Stores a new reward for a given account_id, supported by a reward reason.

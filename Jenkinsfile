@@ -66,7 +66,6 @@ pipeline {
                         docker.image(cargoAuditImage + ':latest').inside(){
                             sh '''
                                 rm -rf ~/.cargo/.package-cache
-                                rm Cargo.lock
                                 cargo audit  > cargoAuditReport.txt || exit 0
                             '''
                             archiveArtifacts artifacts: "cargoAuditReport.txt"
@@ -83,7 +82,7 @@ pipeline {
                 script {
                     sshagent(['soramitsu-bot-ssh']) {
                         sh """
-                        git submodule update --init --recursive
+                            git submodule update --init --recursive
                         """
                     }
                 }
@@ -111,7 +110,7 @@ pipeline {
                         if (getPushVersion(pushTags)) {
                             docker.image(envImageName).inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
-                                    featureList = 'private-net runtime-benchmarks main-net-coded'
+                                    featureList = 'private-net runtime-benchmarks'
                                     sudoCheckStatus = 101
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
@@ -127,17 +126,17 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
+                                    rm -rf ~/.cargo/.package-cache
                                     cargo test  --release --features \"private-net runtime-benchmarks\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
                                     mv ./target/release/relayer ./relayer.bin
                                     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-                                    subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
-                                    subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
+                                    subwasm --json info framenode_runtime.compact.compressed.wasm > ${wasmReportFile}
+                                    subwasm metadata framenode_runtime.compact.compressed.wasm > ${palletListFile}
                                     set +e
-                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm
                                     if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi
                                 """
                                 archiveArtifacts artifacts:
@@ -147,7 +146,6 @@ pipeline {
                             docker.image(envImageName).inside() {
                                 sh '''
                                     rm -rf ~/.cargo/.package-cache
-                                    rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
                                     cargo test
                                     cargo test --features \"private-net wip ready-to-test\"

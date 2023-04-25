@@ -82,14 +82,7 @@ pub use operations::*;
 
 const MIN_LIQUIDITY: u128 = 1000;
 
-pub trait WeightInfo {
-    fn swap_pair() -> Weight;
-    fn deposit_liquidity() -> Weight;
-    fn withdraw_liquidity() -> Weight;
-    fn initialize_pool() -> Weight;
-    fn can_exchange() -> Weight;
-    fn quote() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
@@ -345,10 +338,9 @@ impl<T: Config> Pallet<T> {
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
         let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
-            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
-                base_asset_id: trading_pair.base_asset_id.into(),
-                target_asset_id: trading_pair.target_asset_id.into(),
-            }),
+            TechAccountId::Pure(_, TechPurpose::XykLiquidityKeeper(trading_pair)) => {
+                Ok(trading_pair.map(|a| a.into()))
+            }
             _ => Err(Error::<T>::PoolIsInvalid.into()),
         }
     }

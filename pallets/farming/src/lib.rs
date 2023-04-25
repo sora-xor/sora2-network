@@ -58,12 +58,7 @@ use common::prelude::{FixedWrapper, QuoteAmount};
 use common::{balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated};
 
 pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
-
-pub trait WeightInfo {
-    fn refresh_pool(a: u32) -> Weight;
-    fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight;
-    fn vest_account_rewards(a: u32) -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> OnPoolCreated for Pallet<T> {
     type AccountId = AccountIdOf<T>;
