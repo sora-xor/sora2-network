@@ -10,6 +10,9 @@ use sp_runtime::traits::Block as BlockT;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// Multiplier to convert rate last_update timestamp in seconds to millis
+const MILLISECS_MULTIPLIER: u128 = 1_000;
+
 #[derive(PartialEq)]
 enum SymbolStatus {
     Outdated,
@@ -66,16 +69,17 @@ where
             .map_err(|rpc_error| format!("RPC error: {:?}", rpc_error))?
             .map_err(|dispatch_error| format!("Dispatch error: {:?}", dispatch_error))?;
 
-        let outdated_threshold: u128 = 300 * 1000; // 5 minutes in seconds
+        let outdated_threshold: u128 = 300 * MILLISECS_MULTIPLIER; // 5 minutes in milliseconds
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis();
 
         let enabled_symbols_info = enabled_symbols
             .iter()
             .map(|(symbol, last_updated)| {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .expect("Time went backwards")
-                    .as_millis();
-                let current_status = now.checked_sub(*last_updated as u128).map_or_else(
+                let last_updated_timestamp = (*last_updated as u128) * MILLISECS_MULTIPLIER;
+                let current_status = now.checked_sub(last_updated_timestamp).map_or_else(
                     || SymbolStatus::InvalidTime,
                     |current_period| {
                         if current_period > outdated_threshold {
@@ -155,7 +159,7 @@ where
                     }
                 }
                 Err(err) => {
-                    log::error!("Failed to check outdated symbols: {:?}", err);
+                    log::error!("Failed to get oracle symbols: {:?}", err);
                 }
             }
 

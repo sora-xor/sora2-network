@@ -265,7 +265,7 @@ pub fn new_partial(
             crate::data_feed_metrics::Metrics::register(
                 Arc::new(registry.clone()),
                 client.clone(),
-                Duration::from_secs(300),
+                Duration::from_secs(6),
             )
             .map_err(|e| {
                 log::error!("Failed to register metrics: {:?}", e);
