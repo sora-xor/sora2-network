@@ -66,7 +66,7 @@ pub use crate::order_book::{OrderBook, OrderBookStatus};
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::DataLayer;
+pub use traits::{CurrencyLocker, DataLayer};
 pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
 pub use weights::WeightInfo;
 
@@ -292,6 +292,8 @@ pub mod pallet {
         PriceReachedMaxCountOfLimitOrders,
         /// It is impossible to place the limit order because bounds of the max count of prices for the side have been reached
         OrderBookReachedMaxCoundOfPricesForSide,
+        /// An error occurred while calculating the amount
+        AmountCalculationFailed,
     }
 
     #[pallet::call]
@@ -324,7 +326,6 @@ pub mod pallet {
                 !<OrderBooks<T>>::contains_key(order_book_id),
                 Error::<T>::OrderBookAlreadyExists
             );
-            Self::register_tech_account(dex_id.clone(), order_book_id.clone())?;
 
             let order_book = if T::AssetInfoProvider::get_asset_info(&order_book_id.base).2 != 0 {
                 // regular asset
@@ -341,6 +342,7 @@ pub mod pallet {
             };
 
             <OrderBooks<T>>::insert(order_book_id, order_book);
+            Self::register_tech_account(dex_id, order_book_id)?;
 
             Self::deposit_event(Event::<T>::OrderBookCreated {
                 order_book_id: order_book_id,
@@ -415,7 +417,7 @@ pub mod pallet {
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 
             let mut data = CacheDataLayer::<T>::new();
-            order_book.place_limit_order(order, &mut data)?;
+            order_book.place_limit_order::<Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
@@ -440,29 +442,6 @@ pub mod pallet {
             todo!()
         }
     }
-}
-
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
-    /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
-    /// The assets are taken from `account`.
-    fn lock_liquidity(
-        dex_id: DEXId,
-        account: &AccountId,
-        order_book_id: OrderBookId<AssetId>,
-        asset_id: &AssetId,
-        amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
-
-    /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
-    /// The assets are taken from `account`.
-    fn unlock_liquidity(
-        dex_id: DEXId,
-        account: &AccountId,
-        order_book_id: OrderBookId<AssetId>,
-        asset_id: &AssetId,
-        amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
 }
 
 impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {

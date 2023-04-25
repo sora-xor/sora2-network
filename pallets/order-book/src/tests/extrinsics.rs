@@ -40,7 +40,7 @@ use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId};
-use framenode_runtime::Runtime;
+use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
 use sp_core::Get;
 use sp_std::collections::btree_map::BTreeMap;
@@ -369,6 +369,7 @@ fn should_place_limit_order() {
         };
 
         create_and_fill_order_book(order_book_id);
+        fill_balance(caller.clone(), order_book_id);
 
         let price = balance!(10);
         let amount = balance!(100);
@@ -409,6 +410,8 @@ fn should_place_limit_order() {
             lifespan,
         );
 
+        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+
         assert_eq!(
             OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
             expected_order
@@ -439,8 +442,7 @@ fn should_place_limit_order() {
         let balance =
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
                 .unwrap();
-        //let expected_balance = balance_before - amount; // todo (m.tagirov) lock liquidity
-        let expected_balance = balance_before;
+        let expected_balance = balance_before - appropriate_amount;
         assert_eq!(balance, expected_balance);
     });
 }
@@ -462,6 +464,13 @@ fn should_place_limit_order_with_nft() {
             None,
         )
         .unwrap();
+
+        assert_ok!(assets::Pallet::<Runtime>::update_balance(
+            RuntimeOrigin::root(),
+            caller.clone(),
+            XOR,
+            balance!(1000000).try_into().unwrap()
+        ));
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: nft,
@@ -531,7 +540,7 @@ fn should_place_limit_order_with_nft() {
         let balance =
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &caller)
                 .unwrap();
-        assert_eq!(balance, balance!(1)); // 0 todo (m.tagirov) lock liquidity
+        assert_eq!(balance, balance!(0));
     });
 }
 
@@ -560,6 +569,8 @@ fn should_place_a_lot_of_orders() {
         for i in 0..max_prices_for_side {
             // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
             let account = generate_account(i);
+
+            fill_balance(account.clone(), order_book_id);
 
             buy_price -= order_book.tick_size;
             sell_price += order_book.tick_size;

@@ -28,8 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Error, OrderPrice, OrderVolume};
+use crate::{Error, OrderBookId, OrderPrice, OrderVolume};
+use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::prelude::FixedWrapper;
 use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
@@ -101,5 +103,44 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
 
     pub fn is_empty(&self) -> bool {
         self.amount.is_zero()
+    }
+
+    /// Returns appropriate amount of asset.
+    /// Used to get total amount of associated asset to lock.
+    ///
+    /// If order is Buy - it means user wants to buy `amount` of `base` asset for `quote` asset at the `price`
+    /// In this case we need to lock `quote` asset and the appropriate amount of `quote` asset is returned.
+    ///
+    /// If order is Sell - it means user wants to sell `amount` of `base` asset that they have for `quote` asset at the `price`
+    /// In this case we need to lock `base` asset and the appropriate amount of `base` asset is returned.
+    pub fn appropriate_amount(&self) -> Result<OrderVolume, DispatchError> {
+        let appropriate_amount = match self.side {
+            PriceVariant::Buy => (FixedWrapper::from(self.price) * FixedWrapper::from(self.amount))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+            PriceVariant::Sell => self.amount,
+        };
+        Ok(appropriate_amount)
+    }
+
+    /// Returns appropriate asset and it's amount.
+    /// Used to get proper asset and the total amount to lock.
+    ///
+    /// If order is Buy - it means user wants to buy `amount` of `base` asset for `quote` asset at the `price`
+    /// In this case we need to lock `quote` asset. The `quote` asset and it's amount are returned.
+    ///
+    /// If order is Sell - it means user wants to sell `amount` of `base` asset that they have for `quote` asset at the `price`
+    /// In this case we need to lock `base` asset. The `base` asset and it's amount are returned.
+    pub fn appropriate_asset_and_amount<'a>(
+        &'a self,
+        order_book_id: &'a OrderBookId<AssetIdOf<T>>,
+    ) -> Result<(&AssetIdOf<T>, OrderVolume), DispatchError> {
+        let appropriate_amount = self.appropriate_amount()?;
+        let appropriate_asset = match self.side {
+            PriceVariant::Buy => &order_book_id.quote,
+            PriceVariant::Sell => &order_book_id.base,
+        };
+
+        Ok((appropriate_asset, appropriate_amount))
     }
 }

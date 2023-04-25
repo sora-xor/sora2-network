@@ -106,3 +106,26 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>>,
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }
+
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+    /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
+    fn lock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        order_book_id: OrderBookId<AssetId>,
+        asset_id: &AssetId,
+        amount: OrderVolume,
+    ) -> Result<(), DispatchError>;
+
+    /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
+    /// The assets are taken from `account`.
+    fn unlock_liquidity(
+        dex_id: DEXId,
+        account: &AccountId,
+        order_book_id: OrderBookId<AssetId>,
+        asset_id: &AssetId,
+        amount: OrderVolume,
+    ) -> Result<(), DispatchError>;
+}

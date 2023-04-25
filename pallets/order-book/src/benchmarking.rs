@@ -44,7 +44,7 @@ use framenode_runtime::order_book::{Config, Event, LimitOrder, OrderBook, OrderB
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{balance, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
+use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -91,6 +91,22 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
         RawOrigin::Signed(bob::<T>()).into(),
         DEX.into(),
         order_book_id,
+    )
+    .unwrap();
+
+    Assets::<T>::update_balance(
+        RawOrigin::Root.into(),
+        bob::<T>(),
+        order_book_id.quote,
+        balance!(1000000).try_into().unwrap(),
+    )
+    .unwrap();
+
+    Assets::<T>::update_balance(
+        RawOrigin::Root.into(),
+        bob::<T>(),
+        order_book_id.base,
+        balance!(1000000).try_into().unwrap(),
     )
     .unwrap();
 
@@ -316,6 +332,15 @@ benchmarks! {
             quote: XOR.into(),
         };
 
+        Assets::<T>::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            order_book_id.quote,
+            balance!(1000000).try_into().unwrap()
+        ).unwrap();
+
+        let balance_before = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+
         let price = balance!(10);
         let amount = balance!(100);
         let lifespan: <T as pallet_timestamp::Config>::Moment = 10000u32.into();
@@ -353,6 +378,11 @@ benchmarks! {
             OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap(),
             expected_order
         );
+
+        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+        let balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+        let expected_balance = balance_before - appropriate_amount;
+        assert_eq!(balance, expected_balance);
     }
 
     cancel_limit_order {

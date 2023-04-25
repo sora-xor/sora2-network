@@ -33,7 +33,7 @@ use common::{balance, DEXId, PriceVariant};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use framenode_runtime::order_book::{self, Config, OrderBookId, Pallet};
-use framenode_runtime::Runtime;
+use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
 pub type E = order_book::Error<Runtime>;
@@ -63,6 +63,25 @@ pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::Account
     <Runtime as frame_system::Config>::AccountId::new(adr)
 }
 
+pub fn fill_balance(
+    account: <Runtime as frame_system::Config>::AccountId,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+) {
+    assert_ok!(assets::Pallet::<Runtime>::update_balance(
+        RuntimeOrigin::root(),
+        account.clone(),
+        order_book_id.base,
+        balance!(1000000).try_into().unwrap()
+    ));
+
+    assert_ok!(assets::Pallet::<Runtime>::update_balance(
+        RuntimeOrigin::root(),
+        account,
+        order_book_id.quote,
+        balance!(1000000).try_into().unwrap()
+    ));
+}
+
 // Creates and fills the order book
 // price | volume | orders
 //          Asks
@@ -80,6 +99,8 @@ pub fn create_and_fill_order_book(order_book_id: OrderBookId<AssetIdOf<Runtime>>
         DEX.into(),
         order_book_id
     ));
+
+    fill_balance(bob(), order_book_id);
 
     let lifespan = 10000;
 
