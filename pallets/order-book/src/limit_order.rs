@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Error, OrderBookId, OrderPrice, OrderVolume};
+use crate::{Error, MomentOf, OrderBookId, OrderPrice, OrderVolume};
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::FixedWrapper;
@@ -36,6 +36,7 @@ use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Time;
 use sp_runtime::traits::Zero;
 
 /// GTC Limit Order
@@ -58,8 +59,8 @@ where
     /// Amount of OrderBookId `base` asset
     pub amount: OrderVolume,
 
-    pub time: T::Moment,
-    pub lifespan: T::Moment,
+    pub time: MomentOf<T>,
+    pub lifespan: MomentOf<T>,
 }
 
 impl<T: crate::Config + Sized> LimitOrder<T> {
@@ -69,8 +70,8 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         side: PriceVariant,
         price: OrderPrice,
         amount: OrderVolume,
-        time: T::Moment,
-        lifespan: T::Moment,
+        time: MomentOf<T>,
+        lifespan: MomentOf<T>,
     ) -> Self {
         Self {
             id: id,
@@ -98,7 +99,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
     }
 
     pub fn is_expired(&self) -> bool {
-        pallet_timestamp::Pallet::<T>::now() > self.time + self.lifespan
+        T::Time::now() > self.time + self.lifespan
     }
 
     pub fn is_empty(&self) -> bool {

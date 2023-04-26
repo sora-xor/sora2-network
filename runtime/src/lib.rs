@@ -1987,6 +1987,7 @@ impl order_book::Config for Runtime {
     type EnsureTradingPairExists = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
+    type Time = Timestamp;
     type WeightInfo = order_book::weights::SubstrateWeight<Runtime>;
 }
 

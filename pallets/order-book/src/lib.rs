@@ -40,7 +40,7 @@ use common::{
 };
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Get;
+use frame_support::traits::{Get, Time};
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::Perbill;
@@ -72,6 +72,8 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
+pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -90,11 +92,9 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
-    {
-        const MAX_ORDER_LIFETIME: Self::Moment;
-        const MIN_ORDER_LIFETIME: Self::Moment;
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+        const MAX_ORDER_LIFETIME: MomentOf<Self>;
+        const MIN_ORDER_LIFETIME: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -129,6 +129,7 @@ pub mod pallet {
             Description,
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type Time: Time;
         type WeightInfo: WeightInfo;
     }
 
@@ -405,14 +406,14 @@ pub mod pallet {
             price: OrderPrice,
             amount: OrderVolume,
             side: PriceVariant,
-            lifespan: T::Moment,
+            lifespan: MomentOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
-            let now = pallet_timestamp::Pallet::<T>::now();
+            let now = T::Time::now();
             let order =
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 
