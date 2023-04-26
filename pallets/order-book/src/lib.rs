@@ -40,7 +40,7 @@ use common::{
 };
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Get;
+use frame_support::traits::{Get, Time};
 use frame_support::weights::Weight;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::Perbill;
@@ -72,6 +72,8 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
+pub type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -90,11 +92,9 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + pallet_timestamp::Config + technical::Config
-    {
-        const MAX_ORDER_LIFETIME: Self::Moment;
-        const MIN_ORDER_LIFETIME: Self::Moment;
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+        const MAX_ORDER_LIFETIME: MomentOf<Self>;
+        const MIN_ORDER_LIFETIME: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -129,6 +129,7 @@ pub mod pallet {
             Description,
         >;
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<Self::AssetId>>;
+        type Time: Time;
         type WeightInfo: WeightInfo;
     }
 
@@ -291,7 +292,7 @@ pub mod pallet {
         /// It is impossible to place the limit order because bounds of the max count of orders at the current price have been reached
         PriceReachedMaxCountOfLimitOrders,
         /// It is impossible to place the limit order because bounds of the max count of prices for the side have been reached
-        OrderBookReachedMaxCoundOfPricesForSide,
+        OrderBookReachedMaxCountOfPricesForSide,
         /// An error occurred while calculating the amount
         AmountCalculationFailed,
         /// Unauthorized action
@@ -347,8 +348,8 @@ pub mod pallet {
             Self::register_tech_account(dex_id, order_book_id)?;
 
             Self::deposit_event(Event::<T>::OrderBookCreated {
-                order_book_id: order_book_id,
-                dex_id: dex_id,
+                order_book_id,
+                dex_id,
                 creator: who,
             });
             Ok(().into())
@@ -407,14 +408,14 @@ pub mod pallet {
             price: OrderPrice,
             amount: OrderVolume,
             side: PriceVariant,
-            lifespan: T::Moment,
+            lifespan: MomentOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let mut order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
-            let now = pallet_timestamp::Pallet::<T>::now();
+            let now = T::Time::now();
             let order =
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 
@@ -424,9 +425,9 @@ pub mod pallet {
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::deposit_event(Event::<T>::OrderPlaced {
-                order_book_id: order_book_id,
-                dex_id: dex_id,
-                order_id: order_id,
+                order_book_id,
+                dex_id,
+                order_id,
                 owner_id: who,
             });
             Ok(().into())

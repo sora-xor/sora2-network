@@ -28,17 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::cache_storage::item::{Item, State};
+use crate::cache_storage::item::Item;
 use codec::{FullCodec, FullEncode};
 use frame_support::StorageMap;
 use sp_std::cmp::Ord;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 
+/// CacheStorageMap is a wrapper of StorageMap that follows the idea one read, one write the same data.
 pub struct CacheStorageMap<Key, Value, Storage>
 where
     Key: Ord + FullEncode + Clone,
-    Value: FullCodec + Clone,
+    Value: FullCodec + Clone + PartialEq,
     Storage: StorageMap<Key, Value>,
 {
     cache: BTreeMap<Key, Option<Item<Value>>>,
@@ -48,7 +49,7 @@ where
 impl<Key: Ord, Value, Storage> CacheStorageMap<Key, Value, Storage>
 where
     Key: Ord + FullEncode + Clone,
-    Value: FullCodec + Clone,
+    Value: FullCodec + Clone + PartialEq,
     Storage: StorageMap<Key, Value>,
 {
     pub fn new() -> Self {
@@ -61,7 +62,7 @@ where
     pub fn contains_key(&self, key: &Key) -> bool {
         if let Some(maybe_item) = self.cache.get(key) {
             if let Some(item) = maybe_item {
-                item.state != State::Removed
+                *item != Item::Removed
             } else {
                 false
             }
@@ -70,68 +71,83 @@ where
         }
     }
 
+    /// Returns tha cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageMap caches it and returns.
+    /// If `Storage` has no the value, the None is kept and returned.
+    ///
+    /// When client calls `get` with the same `key` again,
+    /// the cached value or None is returned without trying to get it from `Storage`.
     pub fn get(&mut self, key: &Key) -> Option<&Value> {
-        if !self.cache.contains_key(&key) {
-            if let Ok(value) = Storage::try_get(key.clone()) {
-                self.cache.insert(key.clone(), Some(Item::cache(value)));
-            } else {
-                self.cache.insert(key.clone(), None);
-            }
-        }
-
-        if let Some(Some(item)) = self.cache.get(key) {
-            if item.state != State::Removed {
-                Some(&item.value)
-            } else {
-                None
+        if let Some(item) = self.cache.entry(key.clone()).or_insert_with(|| {
+            Storage::try_get(key)
+                .ok()
+                .map(|value| Item::Original(value))
+        }) {
+            match item {
+                Item::Original(value) => Some(value),
+                Item::Updated(value) => Some(value),
+                Item::Removed => None,
             }
         } else {
             None
         }
     }
 
+    /// Sets the value and mark it as `Updated`
     pub fn set(&mut self, key: Key, value: Value) {
-        self.cache.insert(key, Some(Item::new(value)));
+        self.cache.insert(key, Some(Item::Updated(value)));
     }
 
+    /// Marks the cached value as `Removed`. Now the None will be returned for `get` with the same `key`
+    /// If there is no this cached value, then None is kept or `Removed` if `Storage` contains it.
     pub fn remove(&mut self, key: &Key) {
-        if let Some(maybe_item) = self.cache.get_mut(key) {
-            if let Some(item) = maybe_item {
-                item.remove()
-            }
-        } else {
-            if let Ok(value) = Storage::try_get(key) {
-                self.cache.insert(key.clone(), Some(Item::removed(value)));
-            } else {
-                self.cache.insert(key.clone(), None);
-            }
-        }
+        self.cache
+            .entry(key.clone())
+            .and_modify(|maybe_item| {
+                if let Some(item) = maybe_item {
+                    *item = Item::Removed
+                }
+            })
+            .or_insert_with(|| {
+                if Storage::contains_key(key) {
+                    Some(Item::Removed)
+                } else {
+                    None
+                }
+            });
     }
 
+    /// Syncs all the data with `Storage`.
+    /// Inserts in `Storage` all values are marked as `Updated` and marks them as `Original`.
+    /// Removes from `Storage` all values are marked as `Removed`.
+    /// Does nothing with `Original` values.
+    /// And then removes all non-`Original` values.
     pub fn commit(&mut self) {
         for (key, maybe_item) in self.cache.iter_mut() {
             if let Some(item) = maybe_item {
-                match item.state {
-                    State::Updated => {
-                        Storage::insert(key, item.value.clone());
-                        item.state = State::Original;
+                match item {
+                    Item::Updated(value) => {
+                        Storage::insert(key, value.clone());
+                        *item = Item::Original(value.clone());
                     }
-                    State::Removed => {
+                    Item::Removed => {
                         Storage::remove(key);
                     }
-                    State::Original => {}
+                    Item::Original(_) => {}
                 }
             }
         }
         self.cache.retain(|_, v| {
-            if let Some(value) = v {
-                value.state == State::Original
+            if let Some(Item::Original(_)) = v {
+                true
             } else {
                 false
             }
         });
     }
 
+    /// Resets the cache
     pub fn reset(&mut self) {
         self.cache.clear();
     }

@@ -30,7 +30,7 @@
 
 use crate::{self as xstpool, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, FixedWrapper, PriceToolsPallet};
+use common::prelude::{Balance, PriceToolsPallet};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     FromGenericPair, PredefinedAssetId, PriceVariant, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, USDT,
@@ -57,6 +57,7 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -93,7 +94,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
     pub const MinimumPeriod: u64 = 5;
-    pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             crate::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -197,7 +198,7 @@ impl band::Config for Runtime {
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
-    type UnixTime = Timestamp;
+    type Time = Timestamp;
 }
 
 impl oracle_proxy::Config for Runtime {
@@ -344,7 +345,7 @@ impl pool_xyk::Config for Runtime {
 }
 
 impl pallet_timestamp::Config for Runtime {
-    type Moment = u64;
+    type Moment = Moment;
     type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
@@ -359,18 +360,11 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ();
 }
 
-pub fn set_mock_price<T: Config>(
-    asset_id: &AssetId,
-    price: Balance,
-    buy_ratio: Balance,
-    sell_ratio: Balance,
-) where
+pub fn set_mock_price<T: Config>(asset_id: &AssetId, price_buy: Balance, price_sell: Balance)
+where
     T: price_tools::Config + assets::Config<AssetId = common::AssetId32<PredefinedAssetId>>,
 {
     let _ = price_tools::Pallet::<T>::register_asset(asset_id);
-
-    let price_buy = (FixedWrapper::from(price) * buy_ratio).into_balance();
-    let price_sell = (FixedWrapper::from(price) * sell_ratio).into_balance();
 
     for _ in 0..31 {
         price_tools::Pallet::<T>::incoming_spot_price(
@@ -396,7 +390,7 @@ pub struct ExtBuilder {
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     // Vec<(AssetId, Price, Buy fee ratio, Sell fee ratio)>
-    initial_prices: Vec<(AssetId, Balance, Balance, Balance)>,
+    initial_prices: Vec<(AssetId, Balance, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -487,11 +481,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             initial_prices: vec![
-                (VAL, balance!(2), balance!(0.993), balance!(1.007)),
-                (XST, balance!(0.64), balance!(0.993), balance!(1.007)),
-                (XSTUSD, balance!(100), balance!(1), balance!(1)),
-                (DAI, balance!(100), balance!(1), balance!(1)),
-                (PSWAP, balance!(10), balance!(0.993), balance!(1.007)),
+                (XST, balance!(0.6), balance!(0.5)),
+                (DAI, balance!(110), balance!(90)),
+                (USDT, balance!(200), balance!(190)),
             ],
         }
     }
@@ -604,8 +596,8 @@ impl ExtBuilder {
         ext.execute_with(|| {
             self.initial_prices
                 .into_iter()
-                .for_each(|(asset_id, price, buy_r, sell_r)| {
-                    set_mock_price::<Runtime>(&asset_id, price, buy_r, sell_r)
+                .for_each(|(asset_id, price_buy, price_sell)| {
+                    set_mock_price::<Runtime>(&asset_id, price_buy, price_sell)
                 })
         });
         ext

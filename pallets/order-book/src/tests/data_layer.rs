@@ -879,18 +879,18 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
 }
 
 #[test]
-fn cache_should_not_delete_limit_order() {
+fn cache_should_not_delete_unknown_limit_order() {
     let mut cache = CacheDataLayer::<Runtime>::new();
-    should_not_delete_limit_order(&mut cache);
+    should_not_delete_unknown_limit_order(&mut cache);
 }
 
 #[test]
-fn storage_should_not_delete_limit_order() {
+fn storage_should_not_delete_unknown_limit_order() {
     let mut storage = StorageDataLayer::<Runtime>::new();
-    should_not_delete_limit_order(&mut storage);
+    should_not_delete_unknown_limit_order(&mut storage);
 }
 
-fn should_not_delete_limit_order(data: &mut impl DataLayer<Runtime>) {
+fn should_not_delete_unknown_limit_order(data: &mut impl DataLayer<Runtime>) {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
