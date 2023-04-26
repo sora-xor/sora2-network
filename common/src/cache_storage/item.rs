@@ -29,41 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum State {
-    Original,
-    Updated,
+pub enum Item<Value: PartialEq> {
+    Original(Value),
+    Updated(Value),
     Removed,
-}
-
-#[derive(Clone)]
-pub struct Item<Value: Clone> {
-    pub value: Value,
-    pub state: State,
-}
-
-impl<Value: Clone> Item<Value> {
-    pub fn new(value: Value) -> Self {
-        Self {
-            value: value,
-            state: State::Updated,
-        }
-    }
-
-    pub fn cache(value: Value) -> Self {
-        Self {
-            value: value,
-            state: State::Original,
-        }
-    }
-
-    pub fn removed(value: Value) -> Self {
-        Self {
-            value: value,
-            state: State::Removed,
-        }
-    }
-
-    pub fn remove(&mut self) {
-        self.state = State::Removed;
-    }
 }
