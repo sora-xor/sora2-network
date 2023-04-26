@@ -31,15 +31,16 @@
 #![cfg(feature = "wip")] // order-book
 
 use assets::AssetIdOf;
-use common::{balance, DEXId, PriceVariant};
+use common::{balance, Balance, DEXId, PriceVariant};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
-use framenode_runtime::order_book::{self, Config, OrderBookId, Pallet};
+use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, Pallet};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_std::collections::btree_map::BTreeMap;
 
 pub type E = order_book::Error<Runtime>;
 pub const DEX: DEXId = DEXId::Polkaswap;
+pub const INIT_BALANCE: Balance = balance!(1000000);
 
 pub type OrderBookPallet = Pallet<Runtime>;
 
@@ -73,14 +74,14 @@ pub fn fill_balance(
         RuntimeOrigin::root(),
         account.clone(),
         order_book_id.base,
-        balance!(1000000).try_into().unwrap()
+        INIT_BALANCE.try_into().unwrap()
     ));
 
     assert_ok!(assets::Pallet::<Runtime>::update_balance(
         RuntimeOrigin::root(),
         account,
         order_book_id.quote,
-        balance!(1000000).try_into().unwrap()
+        INIT_BALANCE.try_into().unwrap()
     ));
 }
 
@@ -95,7 +96,9 @@ pub fn fill_balance(
 //   9.8 |  139.9 | buy2, buy3
 //   9.5 |  264.3 | buy4, buy5, buy6
 //          Bids
-pub fn create_and_fill_order_book(order_book_id: OrderBookId<AssetIdOf<Runtime>>) {
+pub fn create_and_fill_order_book(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+) -> OrderBook<Runtime> {
     assert_ok!(OrderBookPallet::create_orderbook(
         RawOrigin::Signed(bob()).into(),
         DEX.into(),
@@ -269,6 +272,8 @@ pub fn create_and_fill_order_book(order_book_id: OrderBookId<AssetIdOf<Runtime>>
             (sp3, amount10 + amount11 + amount12)
         ])
     );
+
+    OrderBookPallet::order_books(order_book_id).unwrap()
 }
 
 pub fn get_last_order_id(

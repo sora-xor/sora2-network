@@ -469,7 +469,7 @@ fn should_place_limit_order_with_nft() {
             RuntimeOrigin::root(),
             caller.clone(),
             XOR,
-            balance!(1000000).try_into().unwrap()
+            INIT_BALANCE.try_into().unwrap()
         ));
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
