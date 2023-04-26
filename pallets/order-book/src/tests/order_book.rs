@@ -623,11 +623,11 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
         sell_order.id += 1;
         assert_err!(
             order_book.place_limit_order::<OrderBookPallet>(buy_order, &mut data),
-            E::OrderBookReachedMaxCoundOfPricesForSide
+            E::OrderBookReachedMaxCountOfPricesForSide
         );
         assert_err!(
             order_book.place_limit_order::<OrderBookPallet>(sell_order, &mut data),
-            E::OrderBookReachedMaxCoundOfPricesForSide
+            E::OrderBookReachedMaxCountOfPricesForSide
         );
     })
 }

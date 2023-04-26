@@ -291,7 +291,7 @@ pub mod pallet {
         /// It is impossible to place the limit order because bounds of the max count of orders at the current price have been reached
         PriceReachedMaxCountOfLimitOrders,
         /// It is impossible to place the limit order because bounds of the max count of prices for the side have been reached
-        OrderBookReachedMaxCoundOfPricesForSide,
+        OrderBookReachedMaxCountOfPricesForSide,
         /// An error occurred while calculating the amount
         AmountCalculationFailed,
     }
@@ -345,8 +345,8 @@ pub mod pallet {
             Self::register_tech_account(dex_id, order_book_id)?;
 
             Self::deposit_event(Event::<T>::OrderBookCreated {
-                order_book_id: order_book_id,
-                dex_id: dex_id,
+                order_book_id,
+                dex_id,
                 creator: who,
             });
             Ok(().into())
@@ -422,9 +422,9 @@ pub mod pallet {
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::deposit_event(Event::<T>::OrderPlaced {
-                order_book_id: order_book_id,
-                dex_id: dex_id,
-                order_id: order_id,
+                order_book_id,
+                dex_id,
+                order_id,
                 owner_id: who,
             });
             Ok(().into())

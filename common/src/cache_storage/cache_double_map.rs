@@ -35,6 +35,7 @@ use sp_std::cmp::Ord;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 
+/// CacheStorageDoubleMap is a wrapper of StorageDoubleMap that follows the idea one read, one write the same data.
 pub struct CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
     Key1: Ord + FullEncode + Clone,
@@ -73,6 +74,13 @@ where
         Storage::contains_key(key1, key2)
     }
 
+    /// Returns tha cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageDoubleMap caches it and returns.
+    /// If `Storage` has no the value, the None is kept and returned.
+    ///
+    /// When client calls `get` with the same `keys` again,
+    /// the cached value or None is returned without trying to get it from `Storage`.
     pub fn get(&mut self, key1: &Key1, key2: &Key2) -> Option<&Value> {
         if let Some(item) = self
             .cache
@@ -95,6 +103,7 @@ where
         }
     }
 
+    /// Sets the value and mark it as `Updated`
     pub fn set(&mut self, key1: &Key1, key2: &Key2, value: Value) {
         self.cache
             .entry(key1.clone())
@@ -102,6 +111,8 @@ where
             .insert(key2.clone(), Some(Item::Updated(value)));
     }
 
+    /// Marks the cached value as `Removed`. Now the None will be returned for `get` with the same keys
+    /// If there is no this cached value, then None is kept or `Removed` if `Storage` contains it.
     pub fn remove(&mut self, key1: &Key1, key2: &Key2) {
         self.cache
             .entry(key1.clone())
@@ -121,6 +132,11 @@ where
             });
     }
 
+    /// Syncs all the data with `Storage`.
+    /// Inserts in `Storage` all values are marked as `Updated` and marks them as `Original`.
+    /// Removes from `Storage` all values are marked as `Removed`.
+    /// Does nothing with `Original` values.
+    /// And then removes all non-`Original` values.
     pub fn commit(&mut self) {
         for (key1, second_map) in self.cache.iter_mut() {
             for (key2, maybe_item) in second_map.iter_mut() {

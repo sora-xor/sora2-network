@@ -35,6 +35,7 @@ use sp_std::cmp::Ord;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
 
+/// CacheStorageMap is a wrapper of StorageMap that follows the idea one read, one write the same data.
 pub struct CacheStorageMap<Key, Value, Storage>
 where
     Key: Ord + FullEncode + Clone,
@@ -70,6 +71,13 @@ where
         }
     }
 
+    /// Returns tha cached value if it is,
+    /// otherwise tries to get the value from `Storage`.
+    /// If `Storage` has the value, CacheStorageMap caches it and returns.
+    /// If `Storage` has no the value, the None is kept and returned.
+    ///
+    /// When client calls `get` with the same `key` again,
+    /// the cached value or None is returned without trying to get it from `Storage`.
     pub fn get(&mut self, key: &Key) -> Option<&Value> {
         if let Some(item) = self.cache.entry(key.clone()).or_insert_with(|| {
             Storage::try_get(key)
@@ -86,10 +94,13 @@ where
         }
     }
 
+    /// Sets the value and mark it as `Updated`
     pub fn set(&mut self, key: Key, value: Value) {
         self.cache.insert(key, Some(Item::Updated(value)));
     }
 
+    /// Marks the cached value as `Removed`. Now the None will be returned for `get` with the same `key`
+    /// If there is no this cached value, then None is kept or `Removed` if `Storage` contains it.
     pub fn remove(&mut self, key: &Key) {
         self.cache
             .entry(key.clone())
@@ -107,6 +118,11 @@ where
             });
     }
 
+    /// Syncs all the data with `Storage`.
+    /// Inserts in `Storage` all values are marked as `Updated` and marks them as `Original`.
+    /// Removes from `Storage` all values are marked as `Removed`.
+    /// Does nothing with `Original` values.
+    /// And then removes all non-`Original` values.
     pub fn commit(&mut self) {
         for (key, maybe_item) in self.cache.iter_mut() {
             if let Some(item) = maybe_item {
@@ -131,6 +147,7 @@ where
         });
     }
 
+    /// Resets the cache
     pub fn reset(&mut self) {
         self.cache.clear();
     }
