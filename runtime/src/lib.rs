@@ -1950,7 +1950,7 @@ impl oracle_proxy::Config for Runtime {
 }
 
 parameter_types! {
-    pub const GetBandRateStalePeriod: u64 = 60*5*1000; // 5 minutes
+    pub const GetBandRateStalePeriod: Moment = 60*5*1000; // 5 minutes
 }
 
 impl band::Config for Runtime {
@@ -1958,7 +1958,7 @@ impl band::Config for Runtime {
     type Symbol = Symbol;
     type WeightInfo = band::weights::SubstrateWeight<Runtime>;
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
-    type UnixTime = Timestamp;
+    type Time = Timestamp;
     type GetBandRateStalePeriod = GetBandRateStalePeriod;
 }
 
