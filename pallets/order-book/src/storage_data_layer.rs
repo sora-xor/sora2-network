@@ -38,6 +38,7 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
 pub struct StorageDataLayer<T: Config> {
     _phantom: PhantomData<T>,

@@ -33,6 +33,7 @@ use crate::{
 };
 use assets::AssetIdOf;
 use frame_support::sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 /// This trait is used by Order Book as a storage to get limit orders and their derived data and to change them
 pub trait DataLayer<T>
