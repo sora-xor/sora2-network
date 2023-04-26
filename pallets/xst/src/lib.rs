@@ -38,6 +38,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod test_utils;
+
 pub mod migrations;
 
 use core::convert::TryInto;
@@ -51,8 +54,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
-    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    PriceVariant, Rate, RewardReason, DAI, XSTUSD,
+    DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
+    RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -164,6 +167,13 @@ pub mod pallet {
             reference_asset_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+
+            Assets::<T>::ensure_asset_exists(&reference_asset_id)?;
+            ensure!(
+                Assets::<T>::get_asset_info(&reference_asset_id).2 != 0,
+                Error::<T>::IndivisibleReferenceAsset
+            );
+
             ReferenceAssetId::<T>::put(reference_asset_id.clone());
             Self::deposit_event(Event::ReferenceAssetChanged(reference_asset_id));
             Ok(().into())
@@ -338,6 +348,10 @@ pub mod pallet {
         OracleQuoteError,
         /// Invalid fee ratio value.
         InvalidFeeRatio,
+        /// Reference asset must be divisible
+        IndivisibleReferenceAsset,
+        /// Synthetic asset must be divisible
+        CantEnableIndivisibleAsset,
     }
 
     /// Synthetic assets and their reference symbols.
@@ -423,15 +437,6 @@ pub mod pallet {
 
 #[allow(non_snake_case)]
 impl<T: Config> Pallet<T> {
-    #[inline]
-    #[allow(unused)]
-    fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
-        LiquiditySourceFilter::with_forbidden(
-            DEXId::Polkaswap.into(),
-            [LiquiditySourceType::XSTPool].into(),
-        )
-    }
-
     fn enable_synthetic_asset_unchecked(
         synthetic_asset_id: T::AssetId,
         reference_symbol: T::Symbol,
@@ -449,6 +454,10 @@ impl<T: Config> Pallet<T> {
             Self::ensure_symbol_exists(&reference_symbol)?;
 
             Assets::<T>::ensure_asset_exists(&synthetic_asset_id)?;
+            ensure!(
+                Assets::<T>::get_asset_info(&synthetic_asset_id).2 != 0,
+                Error::<T>::CantEnableIndivisibleAsset
+            );
 
             Self::enable_synthetic_trading_pair(synthetic_asset_id)?;
 
@@ -500,8 +509,21 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Buys the main asset (e.g., XST).
-    /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
+    /// Calculates and returns the buying amount of synthetic main asset if the selling amount of synthetic asset is provided.
+    /// In case if buying amount of synthetic main asset is provided, returns selling amount of synthetic asset.
+    ///
+    /// ## Amount calculation
+    /// ### Main asset price calculation
+    /// main_asset_price is calculated by [`Self::reference_price`] supplied with Buy variant.
+    ///
+    /// amount_in is the amount of the synthetic asset we want to sell
+    /// amount_out is calculated and it is the amount of the synthetic main asset we want to buy
+    ///
+    /// ### desired_amount_in variant
+    /// returns amount_out = amount_in * synthetic_asset_price / main_asset_price
+    ///
+    /// ### desired_amount_out variant
+    /// returns amount_in = amount_out * main_asset_price / synthetic_asset_price
     pub fn buy_price(
         main_asset_id: &T::AssetId,
         synthetic_asset_id: &T::AssetId,
@@ -536,17 +558,21 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Calculates and returns the current sell price, assuming that input is the main asset and output is the collateral asset.
+    /// Calculates and returns the selling amount of synthetic main asset if the buying amount of synthetic asset is provided.
+    /// In case if selling amount of synthetic main asset is provided, returns buying amount of synthetic asset.
     ///
-    /// To calculate sell price for a specific amount of assets:
-    /// 1. Current reserves of collateral token are taken
-    /// 2. Same amount by value is assumed for main asset
-    ///   2.1 Values are compared via getting prices for both main and collateral tokens with regard to another token
-    ///       called reference token which is set for particular pair. This should be e.g. stablecoin DAI.
-    ///   2.2 Reference price for base token is taken as 80% of current bonding curve buy price.
-    ///   2.3 Reference price for collateral token is taken as current market price, i.e., price for 1 token on liquidity proxy.
-    /// 3. Given known reserves for main and collateral, output collateral amount is calculated by applying x*y=k model resulting
-    ///    in curve-like dependency.
+    /// ## Amount calculation
+    /// ### Main asset price calculation
+    /// main_asset_price is calculated by [`Self::reference_price`] supplied with Sell variant.
+    ///
+    /// amount_in is the amount of the synthetic asset we want to buy
+    /// amount_out is calculated and it is the amount of the synthetic main asset we want to sell
+    ///
+    /// ### desired_amount_in variant
+    /// returns amount_out = amount_in * main_asset_price / synthetic_asset_price
+    ///
+    /// ### desired_amount_out variant
+    /// returns amount_in = amount_out * synthetic_asset_price / main_asset_price
     pub fn sell_price(
         main_asset_id: &T::AssetId,
         synthetic_asset_id: &T::AssetId,
@@ -727,10 +753,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// This function is used by `exchange` function to burn `input_amount` derived from `amount` of `main_asset_id`
-    /// and mint calculated amount of `synthetic_asset_id` to the receiver from reserves.
-    ///
-    /// If there's not enough reserves in the pool, `NotEnoughReserves` error will be returned.
-    ///
+    /// and mint calculated amount of `synthetic_asset_id` to the receiver.
     fn swap_mint_burn_assets(
         _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
@@ -797,11 +820,27 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// XOR quotes (there can be only single token chosen as reference for all comparisons).
-    /// The reference token here is expected to be DAI.
+    /// This function is used to determine particular synthetic asset price in terms of a reference asset.
+    /// The price for synthetics is calculated only for synthetic main asset. For other synthetics it is either
+    /// hardcoded or fetched via OracleProxy.
+    ///
+    /// The reference token here is expected to be DAI (or any other USD stablecoin).
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
+    ///
+    /// ## Synthetic main asset price calculation
+    /// REF - reference asset
+    /// MAIN - synthetic main asset
+    ///
+    /// ### Buy synthetic main asset variant
+    /// Equivalent to REF -> XOR -> MAIN swap quote (buying XOR with REF and selling XOR to MAIN).
+    /// Therefore the price is calculated as REF_buy_price_tools_price / MAIN_sell_price_tools_price
+    ///
+    /// ### Sell synthetic main asset variant
+    /// Equivalent to MAIN -> XOR -> REF swap quote (buying XOR with MAIN and selling XOR to REF).
+    /// Therefore the price is calculated as REF_sell_price_tools_price / MAIN_buy_price_tools_price
+    ///
+    /// Refer to price-tools pallet documentation for clarification.
     fn reference_price(
         asset_id: &T::AssetId,
         price_variant: PriceVariant,
@@ -813,34 +852,22 @@ impl<T: Config> Pallet<T> {
             // XSTUSD is a special case because it is equal to the reference asset, DAI
             id if id == &XSTUSD.into() || id == &reference_asset_id => Ok(balance!(1)),
             id if id == &synthetic_base_asset_id => {
-                // We don't let the price of XST w.r.t. DAI go under $3, to prevent manipulation attacks
-                T::PriceToolsPallet::get_average_price(id, &reference_asset_id, price_variant).map(
-                    |avg| {
-                        if reference_asset_id == DAI.into() {
-                            avg.max(SyntheticBaseAssetFloorPrice::<T>::get())
-                        } else {
-                            avg
-                        }
-                    },
-                )
+                // We don't let the price of XST w.r.t. reference asset go under $3, to prevent manipulation attacks
+                T::PriceToolsPallet::get_average_price(id, &reference_asset_id, price_variant)
+                    .map(|avg| avg.max(SyntheticBaseAssetFloorPrice::<T>::get()))
             }
             id => {
                 let symbol = EnabledSynthetics::<T>::get(id)
                     .ok_or(Error::<T>::SyntheticDoesNotExist)?
                     .reference_symbol;
-                let price = FixedWrapper::from(balance!(T::Oracle::quote(&symbol)?
+                T::Oracle::quote(&symbol)?
                     .map(|rate| rate.value)
-                    .ok_or(Error::<T>::OracleQuoteError)?));
-                // Just for convenience. Right now will always return 1.
-                let reference_asset_price =
-                    FixedWrapper::from(Self::reference_price(&reference_asset_id, price_variant)?);
-                (price / reference_asset_price)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
+                    .ok_or(Error::<T>::OracleQuoteError.into())
             }
         }
     }
 
+    /// Check if any symbol rate is present in OracleProxy
     fn ensure_symbol_exists(reference_symbol: &T::Symbol) -> Result<(), DispatchError> {
         if *reference_symbol == common::SymbolName::usd().into() {
             return Ok(());
@@ -896,48 +923,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
     }
 
-    /// Get spot price of tokens based on desired amount.
-    ///
-    /// ## How it works
-    ///
-    /// The implementation of this method might be quite confusing, so
-    /// let's review it in details.
-    ///
-    /// We have `input_asset_id` and `output_asset_id`. Let's call them $Id_{in}$ and $Id_{out}$ respectively.
-    ///
-    /// Also in the pallet there is a base synthetic asset ($b$, for example XST) and some other synthetic ($s$, XSTUSD or other similar assets).
-    ///
-    /// There are 2 cases:
-    /// 1. $Id_{in}=b$ and $Id_{out}=s$, we are **sell**ing (giving) base asset $b$ to get some other synthetic asset $s$.
-    /// 1. $Id_{in}=s$ and $Id_{out}=b$, we are **buy**ing (getting) base asset $b$ by giving some other synthetic asset $s$.
-    ///
-    /// For each of them we have 2 cases:
-    /// 1. `WithDesiredInput`
-    /// 1. `WithDesiredOutput`
-    ///
-    /// Also there are corresponding asset amount calculation funcitons:
-    ///
-    /// | name                 | direc-tion | description                                                                                                                  | in-code representation                               |
-    /// |----------------------|------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-    /// | $sell_{out}(x_{in})$ | $b$ -> $s$ | Calculate how much $s$ (secondary synthetic asset) we will get if we sell $x_{in}$ amount of $b$ (base/main synthetic asset) | `Self::decide_sell_amounts()`, `WithDesiredInput`  |
-    /// | $sell_{in}(x_{out})$ | $b$ -> $s$ | Calculate how much $b$ we need to sell to get $x_{out}$ amount of $s$                                                        | `Self::decide_sell_amounts()`, `WithDesiredOutput` |
-    /// | $buy_{out}(x_{in})$  | $s$ -> $b$ | Calculate how much $b$ we will buy (get) if we give $x_{in}$ amount of $s$                                                   | `Self::decide_buy_amounts()`, `WithDesiredInput`   |
-    /// | $buy_{in}(x_{out})$  | $s$ -> $b$ | Calculate how much $s$ we need to give to buy (get) $x_{out}$ amount of $b$                                                  | `Self::decide_buy_amounts()`, `WithDesiredOutput`  |
-    ///
-    /// Let's list the formulae for each combination:
-    /// * $fee_\\%$ is fee percentage that is set up in the pallet
-    /// * $fee$ calculated fee
-    /// * $A_{in}$ calculated input
-    /// * $A_{out}$ calculated output
-    ///
-    /// | quote direction   | *given*            | $fee$                                                      | $A_{in}$                              | $A_{out}$                            |
-    /// |-------------------|--------------------|------------------------------------------------------------|---------------------------------------|--------------------------------------|
-    /// | $b \rightarrow s$ | $A_{in}$ (in $b$)  | $A_{in} \cdot fee_\\%$                                      | $A_{in}$                              | $sell_{out}(A_{in}(1-fee_\\%))$       |
-    /// | $b \rightarrow s$ | $A_{out}$ (in $s$) | $\frac{sell_{in}(A_{out})}{1-fee_\\%} - sell_{in}(A_{out})$ | $\frac{sell_{in}(A_{out})}{1-fee_\\%}$ | $A_{out}$                            |
-    /// | $s \rightarrow b$ | $A_{in}$  (in $s$) | $fee_\\% \cdot buy_{out}(A_{in})$                           | $A_{in}$                              | $(1-fee_\\%) \cdot buy_{out}(A_{in})$ |
-    /// | $s \rightarrow b$ | $A_{out}$ (in $b$) | $\frac{A_{out}}{1-fee_\\%} - A_{out}$                       | $buy_{in}(\frac{A_{out}}{1-fee_\\%})$  | $A_{out}$                            |
-    ///
-    /// [here is a rendered version in case the docs above are unreadable](https://hackmd.io/@jTXlKyDTTYuWUChtsJYcCg/SJ5ItHw12)
+    /// Get spot price of synthetic tokens based on desired amount.
     fn quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
@@ -963,10 +949,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 <T as pallet::Config>::PriceToolsPallet::get_average_price(
                     synthetic_base_asset_id,
                     &T::GetBaseAssetId::get(),
-                    // Since `Buy` is more expensive, it seems logical to
-                    // show this amount in order to not accidentally lie
-                    // about the price.
-                    PriceVariant::Buy,
+                    // Since `Sell` is more expensive in case if we are selling XST
+                    // (x XST -> y XOR; y XOR -> x' XST, x' < x),
+                    // it seems logical to show this amount in order
+                    // to not accidentally lie about the price.
+                    PriceVariant::Sell,
                 )?
                 .into();
             (fee_amount * output_to_base)
