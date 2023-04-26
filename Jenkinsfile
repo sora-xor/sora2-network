@@ -3,6 +3,7 @@
 def pipeline = new org.rust.substratePipeline(steps: this,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$',
       initSubmodules: true,
-      staticScanner: true
+      staticScanner: true,
+      substrate: true
 )
 pipeline.runPipeline()
