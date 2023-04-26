@@ -527,8 +527,8 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+#[cfg_attr(feature = "test", visibility::make(pub))]
+trait CurrencyLocker<AccountId, AssetId, DEXId> {
     /// Lock `amount` of liquidity in `trading_pair`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn lock_liquidity(
