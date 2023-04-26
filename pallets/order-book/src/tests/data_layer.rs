@@ -44,16 +44,22 @@ use sp_std::collections::btree_map::BTreeMap;
 
 trait StoragePush {
     fn push_to_storage(&mut self);
+    fn reset(&mut self);
 }
 
 impl<T: Config> StoragePush for CacheDataLayer<T> {
     fn push_to_storage(&mut self) {
         self.commit();
     }
+
+    fn reset(&mut self) {
+        self.reset();
+    }
 }
 
 impl<T: Config> StoragePush for StorageDataLayer<T> {
     fn push_to_storage(&mut self) {}
+    fn reset(&mut self) {}
 }
 
 #[test]
@@ -214,6 +220,115 @@ fn should_work_as_storage() {
             OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_id]
         );
+    });
+}
+
+#[test]
+fn cache_should_get_all_limit_orders() {
+    let mut cache = CacheDataLayer::<Runtime>::new();
+    should_get_all_limit_orders(&mut cache);
+}
+
+#[test]
+fn storage_should_get_all_limit_orders() {
+    let mut storage = StorageDataLayer::<Runtime>::new();
+    should_get_all_limit_orders(&mut storage);
+}
+
+fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush)) {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_buy_id1 = 1;
+        let order_buy_id2 = 2;
+        let order_sell_id1 = 3;
+        let order_sell_id2 = 4;
+        let order_sell_id3 = 5;
+        let owner = alice();
+        let price1 = balance!(12);
+        let price2 = balance!(13);
+        let amount = balance!(10);
+
+        let order_buy1 = LimitOrder::<Runtime> {
+            id: order_buy_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_buy2 = LimitOrder::<Runtime> {
+            id: order_buy_id2,
+            owner: owner.clone(),
+            side: PriceVariant::Buy,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell1 = LimitOrder::<Runtime> {
+            id: order_sell_id1,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell2 = LimitOrder::<Runtime> {
+            id: order_sell_id2,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price1,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        let order_sell3 = LimitOrder::<Runtime> {
+            id: order_sell_id3,
+            owner: owner.clone(),
+            side: PriceVariant::Sell,
+            price: price2,
+            original_amount: amount,
+            amount: amount,
+            time: 10,
+            lifespan: 1000,
+        };
+
+        // add orders
+        assert_ok!(data.insert_limit_order(&order_book_id, order_buy1.clone()));
+        assert_ok!(data.insert_limit_order(&order_book_id, order_buy2.clone()));
+        assert_ok!(data.insert_limit_order(&order_book_id, order_sell1.clone()));
+        assert_ok!(data.insert_limit_order(&order_book_id, order_sell2.clone()));
+        assert_ok!(data.insert_limit_order(&order_book_id, order_sell3.clone()));
+
+        data.push_to_storage();
+        data.reset();
+
+        let mut orders = data.get_all_limit_orders(&order_book_id);
+        orders.sort_by(|a, b| a.id.cmp(&b.id));
+
+        let expected_orders = vec![
+            order_buy1,
+            order_buy2,
+            order_sell1,
+            order_sell2,
+            order_sell3,
+        ];
+
+        assert_eq!(orders, expected_orders);
     });
 }
 
