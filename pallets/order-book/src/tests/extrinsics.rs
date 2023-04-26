@@ -595,3 +595,122 @@ fn should_place_a_lot_of_orders() {
         }
     });
 }
+
+#[test]
+fn should_not_cancel_unknown_limit_order() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let unknown_order_id = 1234;
+
+        assert_err!(
+            OrderBookPallet::cancel_limit_order(
+                RawOrigin::Signed(caller).into(),
+                order_book_id,
+                unknown_order_id
+            ),
+            E::UnknownLimitOrder
+        );
+    });
+}
+
+#[test]
+fn should_not_cancel_not_own_limit_order() {
+    ext().execute_with(|| {
+        let caller = alice(); // but owner is Bob
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let order_id = 1;
+
+        assert_err!(
+            OrderBookPallet::cancel_limit_order(
+                RawOrigin::Signed(caller).into(),
+                order_book_id,
+                order_id
+            ),
+            E::Unauthorized
+        );
+    });
+}
+
+#[test]
+fn should_cancel_limit_order() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+
+        let order_id = 5;
+
+        let order = OrderBookPallet::limit_orders(&order_book_id, order_id).unwrap();
+
+        // fix state before
+        let bids_before = OrderBookPallet::bids(&order_book_id, &order.price).unwrap_or_default();
+        let agg_bids_before = OrderBookPallet::aggregated_bids(&order_book_id);
+        let price_volume_before = agg_bids_before
+            .get(&order.price)
+            .cloned()
+            .unwrap_or_default();
+        let user_orders_before =
+            OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap_or_default();
+        let balance_before = <Runtime as Config>::AssetInfoProvider::free_balance(
+            &order_book_id.quote,
+            &order.owner,
+        )
+        .unwrap();
+
+        // cancel the limit order
+        assert_ok!(OrderBookPallet::cancel_limit_order(
+            RawOrigin::Signed(order.owner.clone()).into(),
+            order_book_id,
+            order_id
+        ));
+
+        let appropriate_amount = order.appropriate_amount().unwrap();
+
+        // check
+        let mut expected_bids = bids_before.clone();
+        expected_bids.retain(|&id| id != order.id);
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &order.price).unwrap(),
+            expected_bids
+        );
+
+        let expected_price_volume = price_volume_before - order.amount;
+        let mut expected_agg_bids = agg_bids_before.clone();
+        assert_ok!(expected_agg_bids.try_insert(order.price, expected_price_volume));
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            expected_agg_bids
+        );
+
+        let mut expected_user_orders = user_orders_before.clone();
+        expected_user_orders.retain(|&id| id != order.id);
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap(),
+            expected_user_orders
+        );
+
+        let balance = <Runtime as Config>::AssetInfoProvider::free_balance(
+            &order_book_id.quote,
+            &order.owner,
+        )
+        .unwrap();
+        let expected_balance = balance_before + appropriate_amount;
+        assert_eq!(balance, expected_balance);
+    });
+}
