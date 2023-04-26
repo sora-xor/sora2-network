@@ -12,5 +12,6 @@
         "runtime-benchmarks",
         "wip",
         "try-runtime",
+        "test",
     ]
 }
