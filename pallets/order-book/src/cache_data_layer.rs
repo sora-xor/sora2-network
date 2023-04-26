@@ -278,6 +278,14 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         }
     }
 
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>> {
+        let orders = self.limit_orders.get_by_prefix(order_book_id);
+        orders.into_values().collect()
+    }
+
     fn insert_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,

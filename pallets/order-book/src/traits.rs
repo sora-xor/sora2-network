@@ -46,6 +46,12 @@ where
         order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError>;
 
+    /// Returns all limit orders of order book
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>>;
+
     /// Inserts limit order consistently in all necessary storages.
     /// Must check before call. If returns error, it means we have problems with data consistency.
     /// If order_id already exists - returns error. Use `update_limit_order` to update the existing order.

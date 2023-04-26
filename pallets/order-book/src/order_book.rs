@@ -193,6 +193,34 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::CancellationOfLimitOrdersIsForbidden
         );
 
+        self.cancel_limit_order_unchecked::<Unlocker>(order, data)
+    }
+
+    pub fn cancel_all_limit_orders<Unlocker>(
+        &self,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<usize, DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+    {
+        let orders = data.get_all_limit_orders(&self.order_book_id);
+        let count = orders.len();
+
+        for order in orders {
+            self.cancel_limit_order_unchecked::<Unlocker>(order, data)?;
+        }
+
+        Ok(count)
+    }
+
+    fn cancel_limit_order_unchecked<Unlocker>(
+        &self,
+        order: LimitOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<(), DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+    {
         let (lock_asset, lock_amount) = order.appropriate_asset_and_amount(&self.order_book_id)?;
 
         Unlocker::unlock_liquidity(

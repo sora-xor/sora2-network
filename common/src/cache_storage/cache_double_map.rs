@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::cache_storage::item::Item;
-use codec::{FullCodec, FullEncode};
-use frame_support::StorageDoubleMap;
+use codec::FullCodec;
+use frame_support::storage::IterableStorageDoubleMap;
 use sp_std::cmp::Ord;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::marker::PhantomData;
@@ -38,10 +38,10 @@ use sp_std::marker::PhantomData;
 /// CacheStorageDoubleMap is a wrapper of StorageDoubleMap that follows the idea one read, one write the same data.
 pub struct CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
-    Key1: Ord + FullEncode + Clone,
-    Key2: Ord + FullEncode + Clone,
+    Key1: Ord + FullCodec + Clone,
+    Key2: Ord + FullCodec + Clone,
     Value: FullCodec + Clone + PartialEq,
-    Storage: StorageDoubleMap<Key1, Key2, Value>,
+    Storage: IterableStorageDoubleMap<Key1, Key2, Value>,
 {
     cache: BTreeMap<Key1, BTreeMap<Key2, Option<Item<Value>>>>,
     _phantom: PhantomData<Storage>,
@@ -49,10 +49,10 @@ where
 
 impl<Key1, Key2, Value, Storage> CacheStorageDoubleMap<Key1, Key2, Value, Storage>
 where
-    Key1: Ord + FullEncode + Clone,
-    Key2: Ord + FullEncode + Clone,
+    Key1: Ord + FullCodec + Clone,
+    Key2: Ord + FullCodec + Clone,
     Value: FullCodec + Clone + PartialEq,
-    Storage: StorageDoubleMap<Key1, Key2, Value>,
+    Storage: IterableStorageDoubleMap<Key1, Key2, Value>,
 {
     pub fn new() -> Self {
         Self {
@@ -93,14 +93,33 @@ where
                     .map(|value| Item::Original(value))
             })
         {
-            match item {
-                Item::Original(value) => Some(value),
-                Item::Updated(value) => Some(value),
-                Item::Removed => None,
-            }
+            item.value()
         } else {
             None
         }
+    }
+
+    /// Loads and returns all values by `key1`.
+    /// Values of `Removed` items are omitted.
+    pub fn get_by_prefix(&mut self, key1: &Key1) -> BTreeMap<Key2, Value> {
+        self.load(key1);
+        let mut result = BTreeMap::new();
+        for (key2, value) in self
+            .cache
+            .entry(key1.clone())
+            .or_default()
+            .iter()
+            .filter_map(|(key2, maybe_item)| {
+                if let Some(Some(value)) = maybe_item.clone().map(|item| item.value().cloned()) {
+                    Some((key2, value))
+                } else {
+                    None
+                }
+            })
+        {
+            result.insert(key2.clone(), value);
+        }
+        result
     }
 
     /// Sets the value and mark it as `Updated`
@@ -166,5 +185,17 @@ where
 
     pub fn reset(&mut self) {
         self.cache.clear();
+    }
+
+    /// Loads and caches all values from `Storage` by `key1`.
+    /// The existing cache value has higher priority and is not overwritten by the `Storage` value.
+    fn load(&mut self, key1: &Key1) {
+        let second_map = self.cache.entry(key1.clone()).or_default();
+
+        for (key2, value) in Storage::iter_prefix(key1) {
+            second_map
+                .entry(key2)
+                .or_insert(Some(Item::Original(value)));
+        }
     }
 }

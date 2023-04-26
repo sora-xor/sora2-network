@@ -170,6 +170,17 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         }
     }
 
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>> {
+        let mut orders = Vec::new();
+        for order in <LimitOrders<T>>::iter_prefix_values(order_book_id) {
+            orders.push(order);
+        }
+        orders
+    }
+
     fn insert_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
