@@ -71,7 +71,7 @@ where
         }
     }
 
-    /// Returns tha cached value if it is,
+    /// Returns the cached value if it is,
     /// otherwise tries to get the value from `Storage`.
     /// If `Storage` has the value, CacheStorageMap caches it and returns.
     /// If `Storage` has no the value, the None is kept and returned.

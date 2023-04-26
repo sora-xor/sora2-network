@@ -38,20 +38,22 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, LimitOrder, OrderBook, OrderBookId, Pallet};
+use crate::{Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
-use framenode_runtime::order_book::{Config, Event, LimitOrder, OrderBook, OrderBookId, Pallet};
+use framenode_runtime::order_book::{
+    Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet,
+};
 
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
+use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 
 use assets::Pallet as Assets;
 use frame_system::Pallet as FrameSystem;
-use pallet_timestamp::Pallet as Timestamp;
 use trading_pair::Pallet as TradingPair;
 use Pallet as OrderBookPallet;
 
@@ -110,7 +112,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     )
     .unwrap();
 
-    let lifespan: <T as pallet_timestamp::Config>::Moment = 10000u32.into();
+    let lifespan: MomentOf<T> = 10000u32.into();
 
     // prices
     let bp1 = balance!(10);
@@ -343,10 +345,8 @@ benchmarks! {
 
         let price = balance!(10);
         let amount = balance!(100);
-        let lifespan: <T as pallet_timestamp::Config>::Moment = 10000u32.into();
-        let now: <T as pallet_timestamp::Config>::Moment = 1234u32.into();
-
-        Timestamp::<T>::set_timestamp(now);
+        let lifespan: MomentOf<T> = 10000u32.into();
+        let now = <<T as Config>::Time as Time>::now();
 
         create_and_fill_order_book::<T>(order_book_id);
     }: {
