@@ -216,13 +216,13 @@ pub mod pallet {
             creator: T::AccountId,
         },
 
-        /// Order book is deleted by Council
+        /// Order book is deleted
         OrderBookDeleted {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
         },
 
-        /// Order book attributes are updated by Council
+        /// Order book attributes are updated
         OrderBookUpdated {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
@@ -238,6 +238,14 @@ pub mod pallet {
 
         /// User canceled their limit order
         OrderCanceled {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            dex_id: T::DEXId,
+            order_id: T::OrderId,
+            owner_id: T::AccountId,
+        },
+
+        /// The order has reached the end of its lifespan
+        OrderExpired {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
             order_id: T::OrderId,
