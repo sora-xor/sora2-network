@@ -41,7 +41,7 @@ use common::{
 use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
-use frame_support::weights::Weight;
+use frame_support::weights::{Weight, WeightMeter};
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
 use sp_runtime::Perbill;
 use sp_std::vec::Vec;
@@ -80,7 +80,7 @@ pub mod pallet {
     use common::DEXInfo;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
-        Blake2_128Concat,
+        Blake2_128Concat, Twox128,
     };
     use frame_system::pallet_prelude::*;
 
@@ -114,6 +114,7 @@ pub mod pallet {
         type MaxOpenedLimitOrdersPerUser: Get<u32>;
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
+        type MaxExpiringOrdersPerBlock: Get<u32>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -203,6 +204,16 @@ pub mod pallet {
         Blake2_128Concat,
         OrderBookId<AssetIdOf<T>>,
         UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>,
+        OptionQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn expired_orders_at)]
+    pub type ExpirationsAgenda<T: Config> = StorageMap<
+        _,
+        Twox128,
+        T::BlockNumber,
+        BoundedVec<(OrderBookId<AssetIdOf<T>>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         OptionQuery,
     >;
 
@@ -530,6 +541,35 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         technical::Pallet::<T>::deregister_tech_account_id(tech_account)
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    fn service_expirations(now: T::BlockNumber) {
+        let Some(expired_orders) = <ExpirationsAgenda<T>>::take(now) else {
+            return;
+        };
+        let mut data_layer = CacheDataLayer::<T>::new();
+        let mut stuck_orders = Vec::new();
+
+        for (order_book_id, order_id) in expired_orders {
+            let Some(order) = <LimitOrders<T>>::get(&order_book_id, &order_id) else {
+                debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
+                continue;
+            };
+            let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
+                debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
+                continue;
+            };
+
+            if let Err(e) = order_book.cancel_limit_order_unchecked::<Self>(order, &mut data_layer)
+            {
+                stuck_orders.push((order_book_id, order_id, e));
+            }
+
+            // todo: do something with stuck orders
+        }
+        data_layer.commit();
     }
 }
 

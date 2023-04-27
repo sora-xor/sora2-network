@@ -213,7 +213,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(count)
     }
 
-    fn cancel_limit_order_unchecked<Unlocker>(
+    pub fn cancel_limit_order_unchecked<Unlocker>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
