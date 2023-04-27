@@ -453,9 +453,9 @@ pub mod pallet {
             order_book.cancel_limit_order::<Self>(order, &mut data)?;
             data.commit();
             Self::deposit_event(Event::<T>::OrderCanceled {
-                order_book_id: order_book_id,
-                dex_id: dex_id,
-                order_id: order_id,
+                order_book_id,
+                dex_id,
+                order_id,
                 owner_id: who,
             });
             Ok(().into())
