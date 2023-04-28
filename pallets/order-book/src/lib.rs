@@ -262,6 +262,13 @@ pub mod pallet {
             order_id: T::OrderId,
             owner_id: T::AccountId,
         },
+
+        /// Failed to cancel expired order
+        ExpirationFailure {
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            order_id: T::OrderId,
+            error: DispatchError,
+        },
     }
 
     #[pallet::error]
@@ -550,7 +557,6 @@ impl<T: Config> Pallet<T> {
             return;
         };
         let mut data_layer = CacheDataLayer::<T>::new();
-        let mut stuck_orders = Vec::new();
 
         for (order_book_id, order_id) in expired_orders {
             let Some(order) = <LimitOrders<T>>::get(&order_book_id, &order_id) else {
@@ -558,16 +564,19 @@ impl<T: Config> Pallet<T> {
                 continue;
             };
             let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-                debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
+                debug_assert!(false, "removal of order book did not cleanup expiration schedule");
                 continue;
             };
 
-            if let Err(e) = order_book.cancel_limit_order_unchecked::<Self>(order, &mut data_layer)
+            if let Err(error) =
+                order_book.cancel_limit_order_unchecked::<Self>(order, &mut data_layer)
             {
-                stuck_orders.push((order_book_id, order_id, e));
+                Self::deposit_event(Event::<T>::ExpirationFailure {
+                    order_book_id,
+                    order_id,
+                    error,
+                });
             }
-
-            // todo: do something with stuck orders
         }
         data_layer.commit();
     }
