@@ -28,13 +28,32 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod beefy_syncer;
-pub mod ethereum;
-pub mod ethereum_messages;
-pub mod justification;
-pub mod messages_subscription;
-pub mod multisig_messages;
-pub mod parachain;
-pub mod parachain_messages;
-pub mod substrate;
-pub mod substrate_messages;
+use sp_core::ecdsa;
+
+use crate::cli::prelude::*;
+use crate::relay::multisig_messages::RelayBuilder;
+
+#[derive(Args, Clone, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(long)]
+    signer: String,
+}
+
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let receiver = self.sub.get_signed_substrate().await?;
+        let sender = receiver.clone();
+        let signer = ecdsa::Pair::from_string(&self.signer, None)?;
+        let messages_relay = RelayBuilder::new()
+            .with_sender_client(sender)
+            .with_receiver_client(receiver)
+            .with_signer(signer)
+            .build()
+            .await
+            .context("build sora to sora relay")?;
+        messages_relay.run().await?;
+        Ok(())
+    }
+}

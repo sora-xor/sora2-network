@@ -28,13 +28,54 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod beefy_syncer;
-pub mod ethereum;
-pub mod ethereum_messages;
-pub mod justification;
-pub mod messages_subscription;
-pub mod multisig_messages;
-pub mod parachain;
-pub mod parachain_messages;
-pub mod substrate;
-pub mod substrate_messages;
+use crate::cli::prelude::*;
+use bridge_types::H160;
+use substrate_gen::runtime;
+
+#[derive(Args, Clone, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    eth: EthereumClient,
+    /// InboundChannel contract address
+    #[clap(long)]
+    inbound_channel: H160,
+    /// OutboundChannel contract address
+    #[clap(long)]
+    outbound_channel: H160,
+}
+
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_unsigned_ethereum().await?;
+        let sub = self.sub.get_signed_substrate().await?;
+
+        let network_id = eth.get_chainid().await?;
+
+        let is_channel_registered = sub
+            .storage_fetch(
+                &mainnet_runtime::storage()
+                    .bridge_inbound_channel()
+                    .channel_addresses(&network_id),
+                (),
+            )
+            .await?
+            .is_some();
+        if !is_channel_registered {
+            let call = runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeInboundChannel(
+                runtime::runtime_types::bridge_inbound_channel::pallet::Call::register_channel {
+                    network_id,
+                    inbound_channel: self.inbound_channel,
+                    outbound_channel: self.outbound_channel,
+                },
+            );
+            info!("Sudo call extrinsic: {:?}", call);
+            sub.submit_extrinsic(&runtime::tx().sudo().sudo(call))
+                .await?;
+        } else {
+            info!("Channel already registered");
+        }
+        Ok(())
+    }
+}

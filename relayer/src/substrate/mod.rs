@@ -216,7 +216,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn substrate_bridge_commitments(
         &self,
         hash: H256,
-    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment<Balance>> {
+    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment> {
         Ok(
             substrate_bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
                 .await?
@@ -438,11 +438,18 @@ impl<T: ConfigExt> SignedClient<T> {
             .api()
             .tx()
             .sign_and_submit_then_watch_default(xt, self)
-            .await?
+            .await
+            .map_err(|e| {
+                error!("sign and submit then watch error: {:?}", e);
+                e
+            })
+            .context("sign and submit then watch")?
             .wait_for_in_block()
-            .await?
+            .await
+            .context("wait for in block")?
             .wait_for_success()
-            .await?;
+            .await
+            .context("wait for success")?;
         log_extrinsic_events::<T>(res);
         Ok(())
     }

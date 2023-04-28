@@ -29,11 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
+use bridge_types::log::Log;
 use eth_trie::Trie;
 use ethers::prelude::*;
 use futures::stream::FuturesOrdered;
 use futures::TryStreamExt;
-use rlp::{Encodable, RlpStream};
+use rlp::RlpStream;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -108,37 +109,11 @@ impl From<&TransactionReceipt> for TransactionOutcome {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct LogEntry {
-    address: H160,
-    topics: Vec<H256>,
-    data: Vec<u8>,
-}
-
-impl Encodable for LogEntry {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(3);
-        s.append(&self.address);
-        s.append_list(&self.topics);
-        s.append(&self.data);
-    }
-}
-
-impl From<&Log> for LogEntry {
-    fn from(log: &Log) -> Self {
-        Self {
-            address: log.address,
-            topics: log.topics.clone(),
-            data: log.data.to_vec(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LegacyReceipt {
     pub gas_used: U256,
     pub log_bloom: Bloom,
-    pub logs: Vec<LogEntry>,
+    pub logs: Vec<Log>,
     pub outcome: TransactionOutcome,
 }
 
@@ -147,7 +122,15 @@ impl From<&TransactionReceipt> for LegacyReceipt {
         Self {
             gas_used: t.cumulative_gas_used,
             log_bloom: t.logs_bloom,
-            logs: t.logs.iter().map(|x| x.into()).collect(),
+            logs: t
+                .logs
+                .iter()
+                .map(|l| Log {
+                    address: l.address,
+                    data: l.data.as_ref().to_vec(),
+                    topics: l.topics.clone(),
+                })
+                .collect(),
             outcome: t.into(),
         }
     }

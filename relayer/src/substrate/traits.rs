@@ -1,13 +1,14 @@
-use std::time::Duration;
+use std::{collections::BTreeSet, time::Duration};
 
 use crate::prelude::*;
-use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_common::{
     beefy_types::{BeefyMMRLeaf, Commitment, ValidatorProof, ValidatorSet},
     simplified_proof::Proof,
 };
-use bridge_types::{types::ParachainMessage, GenericNetworkId, SubNetworkId, H256};
-use common::Balance;
+use bridge_types::{
+    substrate::BridgeMessage, types::AuxiliaryDigest, GenericNetworkId, SubNetworkId, H256,
+};
+use sp_core::ecdsa;
 use sp_runtime::{
     traits::{AtLeast32BitUnsigned, Member},
     DeserializeOwned,
@@ -61,6 +62,8 @@ pub trait ConfigExt: Clone + core::fmt::Debug {
 }
 
 pub trait SenderConfig: ConfigExt + 'static {
+    type SubmitSignature: Encode;
+
     fn current_validator_set() -> StaticStorageAddress<DecodeStaticType<ValidatorSet>, Yes, Yes, ()>;
 
     fn next_validator_set() -> StaticStorageAddress<DecodeStaticType<ValidatorSet>, Yes, Yes, ()>;
@@ -72,11 +75,27 @@ pub trait SenderConfig: ConfigExt + 'static {
     fn bridge_outbound_nonce(
         network_id: GenericNetworkId,
     ) -> StaticStorageAddress<DecodeStaticType<u64>, Yes, Yes, Yes>;
+
+    fn approvals(
+        network_id: GenericNetworkId,
+        message: H256,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes>;
+
+    fn peers(
+        network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes>;
+
+    fn submit_signature(
+        network_id: GenericNetworkId,
+        message: H256,
+        signature: ecdsa::Signature,
+    ) -> StaticTxPayload<Self::SubmitSignature>;
 }
 
 pub trait ReceiverConfig: ConfigExt {
     type SubmitSignatureCommitment: Encode;
     type SubmitMessagesCommitment: Encode;
+    type MultiProof;
 
     fn submit_signature_commitment(
         network_id: SubNetworkId,
@@ -88,7 +107,8 @@ pub trait ReceiverConfig: ConfigExt {
 
     fn submit_messages_commitment(
         network_id: SubNetworkId,
-        message: ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>,
+        message: Vec<BridgeMessage>,
+        proof: Self::MultiProof,
     ) -> StaticTxPayload<Self::SubmitMessagesCommitment>;
 
     fn current_validator_set(
@@ -108,6 +128,17 @@ pub trait ReceiverConfig: ConfigExt {
     ) -> StaticStorageAddress<DecodeStaticType<u64>, Yes, Yes, Yes>;
 
     fn network_id() -> StaticStorageAddress<DecodeStaticType<SubNetworkId>, Yes, Yes, ()>;
+
+    fn peers(
+        network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes>;
+
+    fn beefy_proof(proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof;
+
+    fn multisig_proof(
+        digest: AuxiliaryDigest,
+        signatures: Vec<ecdsa::Signature>,
+    ) -> Self::MultiProof;
 }
 
 impl ConfigExt for ParachainConfig {
@@ -135,6 +166,8 @@ impl ConfigExt for MainnetConfig {
 }
 
 impl SenderConfig for ParachainConfig {
+    type SubmitSignature = ();
+
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()> {
         parachain_runtime::storage().session().current_index()
     }
@@ -168,9 +201,32 @@ impl SenderConfig for ParachainConfig {
             .beefy_mmr()
             .beefy_next_authorities()
     }
+
+    fn approvals(
+        _network_id: GenericNetworkId,
+        _message: H256,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes> {
+        todo!()
+    }
+
+    fn peers(
+        _network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes> {
+        todo!()
+    }
+
+    fn submit_signature(
+        _network_id: GenericNetworkId,
+        _message: H256,
+        _signature: ecdsa::Signature,
+    ) -> StaticTxPayload<Self::SubmitSignature> {
+        todo!()
+    }
 }
 
 impl SenderConfig for MainnetConfig {
+    type SubmitSignature = mainnet_runtime::bridge_data_signer::calls::Approve;
+
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()> {
         mainnet_runtime::storage().session().current_index()
     }
@@ -204,6 +260,33 @@ impl SenderConfig for MainnetConfig {
             .mmr_leaf()
             .beefy_next_authorities()
     }
+
+    fn approvals(
+        network_id: GenericNetworkId,
+        message: H256,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes> {
+        mainnet_runtime::storage()
+            .bridge_data_signer()
+            .approvals(network_id, message)
+    }
+
+    fn peers(
+        network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes> {
+        mainnet_runtime::storage()
+            .bridge_data_signer()
+            .peers(network_id)
+    }
+
+    fn submit_signature(
+        network_id: GenericNetworkId,
+        message: H256,
+        signature: ecdsa::Signature,
+    ) -> StaticTxPayload<Self::SubmitSignature> {
+        mainnet_runtime::tx()
+            .bridge_data_signer()
+            .approve(network_id, message, signature)
+    }
 }
 
 impl ReceiverConfig for MainnetConfig {
@@ -212,6 +295,8 @@ impl ReceiverConfig for MainnetConfig {
 
     type SubmitMessagesCommitment =
         mainnet_runtime::substrate_bridge_inbound_channel::calls::Submit;
+
+    type MultiProof = mainnet_runtime::runtime_types::framenode_runtime::MultiProof;
 
     fn submit_signature_commitment(
         network_id: SubNetworkId,
@@ -233,11 +318,12 @@ impl ReceiverConfig for MainnetConfig {
 
     fn submit_messages_commitment(
         network_id: SubNetworkId,
-        message: ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>,
+        message: Vec<BridgeMessage>,
+        proof: Self::MultiProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitMessagesCommitment> {
         mainnet_runtime::tx()
             .substrate_bridge_inbound_channel()
-            .submit(network_id, message)
+            .submit(network_id, message, proof)
     }
 
     fn current_validator_set(
@@ -276,6 +362,30 @@ impl ReceiverConfig for MainnetConfig {
         mainnet_runtime::storage()
             .beefy_light_client()
             .this_network_id()
+    }
+
+    fn peers(
+        network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes> {
+        mainnet_runtime::storage()
+            .multisig_verifier()
+            .peer_keys(network_id)
+    }
+
+    fn beefy_proof(proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof {
+        mainnet_runtime::runtime_types::framenode_runtime::MultiProof::Beefy(proof)
+    }
+
+    fn multisig_proof(
+        digest: AuxiliaryDigest,
+        signatures: Vec<ecdsa::Signature>,
+    ) -> Self::MultiProof {
+        mainnet_runtime::runtime_types::framenode_runtime::MultiProof::Multisig(
+            mainnet_runtime::runtime_types::multisig_verifier::Proof {
+                digest,
+                proof: signatures,
+            },
+        )
     }
 }
 
@@ -286,6 +396,8 @@ impl ReceiverConfig for ParachainConfig {
     type SubmitMessagesCommitment =
         parachain_runtime::substrate_bridge_inbound_channel::calls::Submit;
 
+    type MultiProof = beefy_light_client::SubstrateBridgeMessageProof;
+
     fn submit_signature_commitment(
         network_id: SubNetworkId,
         commitment: Commitment,
@@ -305,12 +417,14 @@ impl ReceiverConfig for ParachainConfig {
     }
 
     fn submit_messages_commitment(
-        network_id: SubNetworkId,
-        message: ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>,
+        _network_id: SubNetworkId,
+        _message: Vec<BridgeMessage>,
+        _proof: Self::MultiProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitMessagesCommitment> {
-        parachain_runtime::tx()
-            .substrate_bridge_inbound_channel()
-            .submit(network_id, message)
+        todo!();
+        // parachain_runtime::tx()
+        //     .substrate_bridge_inbound_channel()
+        //     .submit(network_id, message, proof)
     }
 
     fn current_validator_set(
@@ -349,5 +463,22 @@ impl ReceiverConfig for ParachainConfig {
         parachain_runtime::storage()
             .beefy_light_client()
             .this_network_id()
+    }
+
+    fn peers(
+        _network_id: GenericNetworkId,
+    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes> {
+        todo!()
+    }
+
+    fn beefy_proof(proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof {
+        proof
+    }
+
+    fn multisig_proof(
+        _digest: AuxiliaryDigest,
+        _signatures: Vec<ecdsa::Signature>,
+    ) -> Self::MultiProof {
+        todo!()
     }
 }

@@ -43,9 +43,9 @@ use bridge_types::ethashproof::{
     DoubleNodeWithMerkleProof as EthashProofData, EthashProver, MixNonce,
 };
 use bridge_types::traits::Verifier;
-use bridge_types::types::{Message, Proof};
+use bridge_types::types::Proof;
 pub use bridge_types::Header as EthereumHeader;
-use bridge_types::{EVMChainId, HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
+use bridge_types::{EVMChainId, HeaderId as EthereumHeaderId, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 
@@ -103,6 +103,7 @@ pub mod pallet {
     use super::*;
 
     use bridge_types::network_config::{Consensus, NetworkConfig as EthNetworkConfig};
+    use bridge_types::GenericNetworkId;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -1031,20 +1032,22 @@ pub mod pallet {
         })
     }
 
-    impl<T: Config> Verifier<EVMChainId, Message> for Pallet<T> {
-        type Result = (Log, u64);
+    impl<T: Config> Verifier for Pallet<T> {
+        type Proof = Proof;
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
         fn verify(
-            network_id: EVMChainId,
-            message: &Message,
-        ) -> Result<Self::Result, DispatchError> {
-            let (receipt, timestamp) = Self::verify_receipt_inclusion(network_id, &message.proof)?;
+            network_id: GenericNetworkId,
+            message_hash: H256,
+            proof: &Self::Proof,
+        ) -> DispatchResult {
+            let network_id = network_id.evm().ok_or(Error::<T>::NetworkNotFound)?;
+            let (receipt, timestamp) = Self::verify_receipt_inclusion(network_id, proof)?;
 
             log::trace!(
                 target: "ethereum-light-client",
                 "Verified receipt inclusion for transaction at index {} in block {}",
-                message.proof.tx_index, message.proof.block_hash,
+                proof.tx_index, proof.block_hash,
             );
 
             // Check transaction status according https://eips.ethereum.org/EIPS/eip-658
@@ -1052,23 +1055,21 @@ pub mod pallet {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Receipt has failed status for transaction at index {} in block {}",
-                    message.proof.tx_index, message.proof.block_hash,
+                    proof.tx_index, proof.block_hash,
                 );
                 return Err(Error::<T>::InvalidProof.into());
             }
 
-            let log: Log = rlp::decode(&message.data).map_err(|_| Error::<T>::DecodeFailed)?;
-
-            if !receipt.contains_log(&log) {
+            if !receipt.contains_hashed_log(message_hash) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Event log not found in receipt for transaction at index {} in block {}",
-                    message.proof.tx_index, message.proof.block_hash,
+                    proof.tx_index, proof.block_hash,
                 );
                 return Err(Error::<T>::InvalidProof.into());
             }
 
-            Ok((log, timestamp))
+            Ok(())
         }
     }
 }

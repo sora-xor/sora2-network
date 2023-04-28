@@ -28,13 +28,39 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod beefy_syncer;
-pub mod ethereum;
-pub mod ethereum_messages;
-pub mod justification;
-pub mod messages_subscription;
-pub mod multisig_messages;
-pub mod parachain;
-pub mod parachain_messages;
-pub mod substrate;
-pub mod substrate_messages;
+use crate::cli::prelude::*;
+use bridge_types::H160;
+
+#[derive(Args, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    eth: EthereumClient,
+    /// EthApp contract address
+    #[clap(long)]
+    eth_app: H160,
+}
+
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let eth = self.eth.get_signed_ethereum().await?;
+        let eth_app = ethereum_gen::ETHApp::new(self.eth_app.clone(), eth.inner());
+        let inbound_channel_address = eth_app.inbound().call().await?;
+        let outbound_channel_address = eth_app.outbound().call().await?;
+        let inbound_channel =
+            ethereum_gen::InboundChannel::new(inbound_channel_address, eth.inner());
+        let outbound_channel =
+            ethereum_gen::OutboundChannel::new(outbound_channel_address, eth.inner());
+        for call in [inbound_channel.reset(), outbound_channel.reset()] {
+            info!("Reset {:?}", call.tx.to());
+            let call = call.legacy().from(eth.address());
+            debug!("Static call: {:?}", call);
+            call.call().await?;
+            debug!("Send transaction");
+            let pending = call.send().await?;
+            debug!("Pending transaction: {:?}", pending);
+            let result = pending.await?;
+            debug!("Confirmed: {:?}", result);
+        }
+        Ok(())
+    }
+}

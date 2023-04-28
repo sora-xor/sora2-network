@@ -33,8 +33,6 @@
     derive_for_all_types = "Clone"
 )]
 pub mod parachain_runtime {
-    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
-    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -49,6 +47,8 @@ pub mod parachain_runtime {
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
+    use ::bridge_types::substrate::BridgeMessage;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
@@ -57,8 +57,6 @@ pub mod parachain_runtime {
     use ::bridge_types::types::LeafExtraData;
     #[subxt(substitute_type = "bridge_types::types::Message")]
     use ::bridge_types::types::Message;
-    #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
-    use ::bridge_types::types::ParachainMessage;
     #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
     use ::bridge_types::GenericNetworkId;
     #[subxt(substitute_type = "bridge_types::header::Header")]

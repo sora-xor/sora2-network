@@ -28,13 +28,32 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod beefy_syncer;
-pub mod ethereum;
-pub mod ethereum_messages;
-pub mod justification;
-pub mod messages_subscription;
-pub mod multisig_messages;
-pub mod parachain;
-pub mod parachain_messages;
-pub mod substrate;
-pub mod substrate_messages;
+mod evm;
+mod parachain;
+mod sora;
+
+use crate::cli::prelude::*;
+use clap::*;
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Commands {
+    /// EVM relay
+    #[clap(subcommand)]
+    EVM(evm::Commands),
+    /// Parachain relay
+    #[clap(subcommand)]
+    Parachain(parachain::Commands),
+    /// Parachain relay
+    #[clap(subcommand)]
+    Sora(sora::Commands),
+}
+
+impl Commands {
+    pub async fn run(&self) -> AnyResult<()> {
+        match self {
+            Commands::EVM(cmd) => cmd.run().await,
+            Commands::Parachain(cmd) => cmd.run().await,
+            Commands::Sora(cmd) => cmd.run().await,
+        }
+    }
+}

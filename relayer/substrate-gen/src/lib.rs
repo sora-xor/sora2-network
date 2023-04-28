@@ -72,8 +72,8 @@ pub mod runtime {
     use crate::BridgeSignatureVersion;
     #[subxt(substitute_type = "eth_bridge::offchain::SignatureParams")]
     use crate::SignatureParams;
-    #[subxt(substitute_type = "beefy_light_client::ProvedSubstrateBridgeMessage")]
-    use ::beefy_light_client::ProvedSubstrateBridgeMessage;
+    #[subxt(substitute_type = "beefy_light_client::SubstrateBridgeMessageProof")]
+    use ::beefy_light_client::SubstrateBridgeMessageProof;
     #[subxt(substitute_type = "bridge_common::beefy_types::BeefyMMRLeaf")]
     use ::bridge_common::beefy_types::BeefyMMRLeaf;
     #[subxt(substitute_type = "bridge_common::beefy_types::Commitment")]
@@ -86,8 +86,12 @@ pub mod runtime {
     use ::bridge_common::simplified_proof::Proof;
     #[subxt(substitute_type = "bridge_types::ethashproof::DoubleNodeWithMerkleProof")]
     use ::bridge_types::ethashproof::DoubleNodeWithMerkleProof;
+    #[subxt(substitute_type = "bridge_types::log::Log")]
+    use ::bridge_types::log::Log;
     #[subxt(substitute_type = "bridge_types::network_config::NetworkConfig")]
     use ::bridge_types::network_config::NetworkConfig;
+    #[subxt(substitute_type = "bridge_types::substrate::BridgeMessage")]
+    use ::bridge_types::substrate::BridgeMessage;
     #[subxt(substitute_type = "bridge_types::types::AssetKind")]
     use ::bridge_types::types::AssetKind;
     #[subxt(substitute_type = "bridge_types::types::AuxiliaryDigest")]
@@ -98,6 +102,8 @@ pub mod runtime {
     use ::bridge_types::types::Message;
     #[subxt(substitute_type = "bridge_types::types::ParachainMessage")]
     use ::bridge_types::types::ParachainMessage;
+    #[subxt(substitute_type = "bridge_types::types::Proof")]
+    use ::bridge_types::types::Proof;
     #[subxt(substitute_type = "bridge_types::GenericNetworkId")]
     use ::bridge_types::GenericNetworkId;
     #[subxt(substitute_type = "bridge_types::header::Header")]
@@ -128,6 +134,8 @@ pub mod runtime {
     use ::sp_beefy::Commitment;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
+    #[subxt(substitute_type = "sp_core::ecdsa::Signature")]
+    use ::sp_core::ecdsa::Signature;
     #[subxt(substitute_type = "primitive_types::H160")]
     use ::sp_core::H160;
     #[subxt(substitute_type = "primitive_types::H256")]
@@ -140,6 +148,10 @@ pub mod runtime {
     use ::sp_runtime::MultiSignature;
     #[subxt(substitute_type = "sp_runtime::MultiSigner")]
     use ::sp_runtime::MultiSigner;
+    #[subxt(substitute_type = "sp_core::bounded::bounded_btree_set::BoundedBTreeSet")]
+    use ::std::collections::btree_set::BTreeSet;
+    #[subxt(substitute_type = "sp_core::bounded::bounded_vec::BoundedVec")]
+    use ::std::vec::Vec;
     #[subxt(substitute_type = "sp_runtime::bounded::bounded_vec::BoundedVec")]
     use ::std::vec::Vec;
 }

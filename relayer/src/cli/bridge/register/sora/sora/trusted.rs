@@ -28,61 +28,61 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod cli;
-mod ethereum;
-mod relay;
-mod substrate;
-use clap::StructOpt;
-use prelude::*;
+use sp_core::{crypto::Ss58Codec, ecdsa};
 
-#[macro_use]
-extern crate log;
+use crate::cli::prelude::*;
 
-#[macro_use]
-extern crate anyhow;
-
-#[tokio::main]
-async fn main() -> AnyResult<()> {
-    init_log();
-    let cli = cli::Cli::parse();
-    debug!("Cli: {:?}", cli);
-    cli.run().await.map_err(|e| {
-        error!("Relayer returned error: {:?}", e);
-        e
-    })?;
-    Ok(())
+#[derive(Args, Clone, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(long)]
+    peers: Vec<String>,
 }
 
-fn init_log() {
-    if std::env::var_os("RUST_LOG").is_none() {
-        env_logger::builder().parse_filters("info").init();
-    } else {
-        env_logger::init();
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sub = self.sub.get_signed_substrate().await?;
+
+        let peers = self
+            .peers
+            .iter()
+            .map(|peer| ecdsa::Public::from_string(peer.as_str()))
+            .try_fold(vec![], |mut acc, peer| -> AnyResult<Vec<ecdsa::Public>> {
+                acc.push(peer?);
+                Ok(acc)
+            })?;
+
+        let network_id = sub
+            .storage_fetch(
+                &mainnet_runtime::storage()
+                    .multisig_verifier()
+                    .this_network_id(),
+                (),
+            )
+            .await?
+            .ok_or(anyhow!("Network id not found"))?;
+
+        let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeDataSigner(
+            mainnet_runtime::runtime_types::bridge_data_signer::pallet::Call::register_network {
+                network_id,
+                peers: peers.clone(),
+            },
+        );
+        info!("Submit sudo call: {call:?}");
+        let call = mainnet_runtime::tx().sudo().sudo(call);
+        sub.submit_extrinsic(&call).await?;
+
+        let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::MultisigVerifier(
+            mainnet_runtime::runtime_types::multisig_verifier::pallet::Call::initialize {
+                network_id,
+                keys: peers,
+            },
+        );
+        info!("Submit sudo call: {call:?}");
+        let call = mainnet_runtime::tx().sudo().sudo(call);
+        sub.submit_extrinsic(&call).await?;
+
+        Ok(())
     }
-}
-
-pub mod prelude {
-    pub use crate::ethereum::{
-        SignedClient as EthSignedClient, UnsignedClient as EthUnsignedClient,
-    };
-    pub use crate::substrate::runtime::runtime_types as sub_types;
-    pub use crate::substrate::traits::{
-        ConfigExt, MainnetConfig, ParachainConfig, ReceiverConfig, SenderConfig,
-    };
-    pub use crate::substrate::types::{mainnet_runtime, parachain_runtime};
-    pub use crate::substrate::{
-        event_to_string as sub_event_to_string, log_extrinsic_events as sub_log_extrinsic_events,
-        SignedClient as SubSignedClient, UnsignedClient as SubUnsignedClient,
-    };
-    pub use anyhow::{Context, Result as AnyResult};
-    pub use codec::{Decode, Encode};
-    pub use hex_literal::hex;
-    pub use http::Uri;
-    pub use serde::{Deserialize, Serialize};
-    pub use sp_core::Pair as CryptoPair;
-    pub use sp_runtime::traits::Hash;
-    pub use sp_runtime::traits::Header as HeaderT;
-    pub use substrate_gen::runtime;
-    pub use substrate_gen::runtime::runtime_types::framenode_runtime::MultiProof as VerifierMultiProof;
-    pub use url::Url;
 }

@@ -208,19 +208,21 @@ try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = 
 
 pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
-# [patch."https://github.com/sora-xor/sora2-common.git"]
-# beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
-# beefy-light-client-rpc = { path = "../sora2-common/pallets/beefy-light-client/rpc" }
-# beefy-light-client-runtime-api = { path = "../sora2-common/pallets/beefy-light-client/runtime-api" }
-# leaf-provider = { path = "../sora2-common/pallets/leaf-provider" }
-# leaf-provider-rpc = { path = "../sora2-common/pallets/leaf-provider/rpc" }
-# leaf-provider-runtime-api = { path = "../sora2-common/pallets/leaf-provider/runtime-api" }
-# bridge-common = { path = "../sora2-common/pallets/bridge-common" }
-# dispatch = { path = "../sora2-common/pallets/dispatch" }
-# substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
-# substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# substrate-bridge-channel-rpc = { path = "../sora2-common/pallets/substrate-channel/rpc" }
-# bridge-types = { path = "../sora2-common/pallets/types" }
+[patch."https://github.com/sora-xor/sora2-common.git"]
+beefy-light-client = { path = "../sora2-common-2/pallets/beefy-light-client" }
+beefy-light-client-rpc = { path = "../sora2-common-2/pallets/beefy-light-client/rpc" }
+beefy-light-client-runtime-api = { path = "../sora2-common-2/pallets/beefy-light-client/runtime-api" }
+leaf-provider = { path = "../sora2-common-2/pallets/leaf-provider" }
+leaf-provider-rpc = { path = "../sora2-common-2/pallets/leaf-provider/rpc" }
+leaf-provider-runtime-api = { path = "../sora2-common-2/pallets/leaf-provider/runtime-api" }
+bridge-common = { path = "../sora2-common-2/pallets/bridge-common" }
+dispatch = { path = "../sora2-common-2/pallets/dispatch" }
+substrate-bridge-app = { path = "../sora2-common-2/pallets/substrate-app" }
+substrate-bridge-channel = { path = "../sora2-common-2/pallets/substrate-channel" }
+substrate-bridge-channel-rpc = { path = "../sora2-common-2/pallets/substrate-channel/rpc" }
+bridge-types = { path = "../sora2-common-2/pallets/types" }
+bridge-data-signer = { path = "../sora2-common-2/pallets/data-signer" }
+multisig-verifier = { path = "../sora2-common-2/pallets/multisig-verifier" }
 
 [workspace]
 members = [
