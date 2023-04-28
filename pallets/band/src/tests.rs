@@ -460,7 +460,7 @@ fn quote_invalid_rate_should_fail() {
         Band::relay(
             RuntimeOrigin::signed(relayer),
             vec![("RUB".to_owned(), 1)],
-            GetRateStalePeriod::get() + 20,
+            60 * 5 + 1,
             0,
         )
         .expect("Failed to relay rates");
