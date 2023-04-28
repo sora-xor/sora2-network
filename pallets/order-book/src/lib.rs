@@ -220,6 +220,7 @@ pub mod pallet {
         OrderBookDeleted {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
+            count_of_canceled_orders: u32,
         },
 
         /// Order book attributes are updated by Council
@@ -364,9 +365,22 @@ pub mod pallet {
             ensure_root(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            let dex_id = order_book.dex_id;
+
+            let mut data = CacheDataLayer::<T>::new();
+            let count_of_canceled_orders =
+                order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
+
+            data.commit();
+            <OrderBooks<T>>::remove(order_book_id);
+
             Self::deregister_tech_account(order_book.dex_id, order_book_id)?;
-            // todo (m.tagirov)
-            todo!()
+            Self::deposit_event(Event::<T>::OrderBookDeleted {
+                order_book_id,
+                dex_id,
+                count_of_canceled_orders,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(2)]
