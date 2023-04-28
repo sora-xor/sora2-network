@@ -129,7 +129,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
-        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
+        Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade || self.status == OrderBookStatus::PlaceAndCancel,
@@ -184,7 +184,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
     {
         ensure!(
             self.status == OrderBookStatus::Trade
@@ -201,7 +201,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
     {
         let orders = data.get_all_limit_orders(&self.order_book_id);
         let count = orders.len();
@@ -219,7 +219,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         data: &mut impl DataLayer<T>,
     ) -> Result<(), DispatchError>
     where
-        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError>,
     {
         let (lock_asset, lock_amount) = order.appropriate_asset_and_amount(&self.order_book_id)?;
 

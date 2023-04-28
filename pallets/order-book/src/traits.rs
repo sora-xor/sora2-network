@@ -115,7 +115,7 @@ where
 }
 
 // todo: make pub(tests) (k.ivanov)
-pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn lock_liquidity(
@@ -124,11 +124,11 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
+    ) -> Result<(), Error>;
 }
 
 // todo: make pub(tests) (k.ivanov)
-pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
+pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(
@@ -137,5 +137,5 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
         order_book_id: OrderBookId<AssetId>,
         asset_id: &AssetId,
         amount: OrderVolume,
-    ) -> Result<(), DispatchError>;
+    ) -> Result<(), Error>;
 }

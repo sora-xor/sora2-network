@@ -489,7 +489,7 @@ pub mod pallet {
     }
 }
 
-impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
+impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId, DispatchError> for Pallet<T> {
     fn lock_liquidity(
         dex_id: T::DEXId,
         account: &T::AccountId,
@@ -502,7 +502,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T>
     }
 }
 
-impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
+impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId, DispatchError> for Pallet<T> {
     fn unlock_liquidity(
         dex_id: T::DEXId,
         account: &T::AccountId,
