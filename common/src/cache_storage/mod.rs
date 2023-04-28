@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod data_layer;
-mod extrinsics;
-mod limit_order;
-mod order_book;
-mod pallet;
-mod test_utils;
+pub mod cache_double_map;
+pub mod cache_map;
+mod item;
+
+pub use cache_double_map::CacheStorageDoubleMap;
+pub use cache_map::CacheStorageMap;
