@@ -43,7 +43,7 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{DispatchResult, Perbill};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -551,8 +551,25 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> Pallet<T> {
-    fn service_expirations(now: T::BlockNumber) {
+pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
+    fn service(now: BlockNumber);
+    fn schedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
+    ) -> Result<(), Error>;
+    fn unschedule(
+        when: BlockNumber,
+        order_book_id: OrderBookId,
+        order_id: OrderId,
+    ) -> Result<(), Error>;
+}
+
+impl<T: Config>
+    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, DispatchError>
+    for Pallet<T>
+{
+    fn service(now: T::BlockNumber) {
         let Some(expired_orders) = <ExpirationsAgenda<T>>::take(now) else {
             return;
         };
@@ -579,6 +596,22 @@ impl<T: Config> Pallet<T> {
             }
         }
         data_layer.commit();
+    }
+
+    fn schedule(
+        when: T::BlockNumber,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_id: T::OrderId,
+    ) -> DispatchResult {
+        todo!()
+    }
+
+    fn unschedule(
+        when: T::BlockNumber,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_id: T::OrderId,
+    ) -> Result<(), DispatchError> {
+        todo!()
     }
 }
 
