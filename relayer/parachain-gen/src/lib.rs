@@ -75,6 +75,8 @@ pub mod parachain_runtime {
     use ::sp_beefy::Commitment;
     #[subxt(substitute_type = "sp_core::ecdsa::Public")]
     use ::sp_core::ecdsa::Public;
+    #[subxt(substitute_type = "sp_core::ecdsa::Signature")]
+    use ::sp_core::ecdsa::Signature;
     #[subxt(substitute_type = "primitive_types::H160")]
     use ::sp_core::H160;
     #[subxt(substitute_type = "primitive_types::H256")]
@@ -87,6 +89,10 @@ pub mod parachain_runtime {
     use ::sp_runtime::MultiSignature;
     #[subxt(substitute_type = "sp_runtime::MultiSigner")]
     use ::sp_runtime::MultiSigner;
+    #[subxt(substitute_type = "sp_core::bounded::bounded_btree_set::BoundedBTreeSet")]
+    use ::std::collections::btree_set::BTreeSet;
+    #[subxt(substitute_type = "sp_core::bounded::bounded_vec::BoundedVec")]
+    use ::std::vec::Vec;
     #[subxt(substitute_type = "sp_runtime::bounded::bounded_vec::BoundedVec")]
     use ::std::vec::Vec;
 }

@@ -28,31 +28,34 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod evm;
-mod parachain;
-mod sora;
+use sp_core::ecdsa;
 
 use crate::cli::prelude::*;
-use clap::*;
+use crate::relay::multisig_messages::RelayBuilder;
 
-#[derive(Debug, Subcommand)]
-pub(crate) enum Commands {
-    /// EVM relay
-    EVM(evm::Command),
-    /// Sora relay
-    #[clap(subcommand)]
-    Sora(sora::Commands),
-    /// Parachain relay
-    #[clap(subcommand)]
-    Parachain(parachain::Commands),
+#[derive(Args, Clone, Debug)]
+pub(crate) struct Command {
+    #[clap(flatten)]
+    sub: SubstrateClient,
+    #[clap(flatten)]
+    para: ParachainClient,
+    #[clap(long)]
+    signer: String,
 }
 
-impl Commands {
-    pub async fn run(&self) -> AnyResult<()> {
-        match self {
-            Commands::EVM(cmd) => cmd.run().await,
-            Commands::Sora(cmd) => cmd.run().await,
-            Commands::Parachain(cmd) => cmd.run().await,
-        }
+impl Command {
+    pub(super) async fn run(&self) -> AnyResult<()> {
+        let sender = self.para.get_signed_substrate().await?;
+        let receiver = self.sub.get_signed_substrate().await?;
+        let signer = ecdsa::Pair::from_string(&self.signer, None)?;
+        let messages_relay = RelayBuilder::new()
+            .with_sender_client(sender)
+            .with_receiver_client(receiver)
+            .with_signer(signer)
+            .build()
+            .await
+            .context("build sora to sora relay")?;
+        messages_relay.run().await?;
+        Ok(())
     }
 }

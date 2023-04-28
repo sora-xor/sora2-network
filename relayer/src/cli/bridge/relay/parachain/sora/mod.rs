@@ -28,31 +28,25 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod evm;
-mod parachain;
-mod sora;
+mod beefy;
+mod trusted;
 
 use crate::cli::prelude::*;
 use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
-    EVM(evm::Command),
-    /// Sora relay
-    #[clap(subcommand)]
-    Sora(sora::Commands),
-    /// Parachain relay
-    #[clap(subcommand)]
-    Parachain(parachain::Commands),
+    /// SORA to SORA relay with trusted peers
+    Trusted(trusted::Command),
+    /// SORA to SORA relay with BEEFY proofs
+    BEEFY(beefy::Command),
 }
 
 impl Commands {
     pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Commands::EVM(cmd) => cmd.run().await,
-            Commands::Sora(cmd) => cmd.run().await,
-            Commands::Parachain(cmd) => cmd.run().await,
+            Commands::Trusted(cmd) => cmd.run().await,
+            Commands::BEEFY(cmd) => cmd.run().await,
         }
     }
 }

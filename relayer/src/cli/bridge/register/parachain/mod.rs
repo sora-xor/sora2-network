@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod beefy;
+mod trusted;
 
 use crate::cli::prelude::*;
 use clap::*;
@@ -37,12 +38,14 @@ use clap::*;
 pub(crate) enum Commands {
     /// Sora relay
     BEEFY(beefy::Command),
+    Trusted(trusted::Command),
 }
 
 impl Commands {
     pub async fn run(&self) -> AnyResult<()> {
         match self {
             Commands::BEEFY(cmd) => cmd.run().await,
+            Commands::Trusted(cmd) => cmd.run().await,
         }
     }
 }

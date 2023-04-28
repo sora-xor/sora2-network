@@ -216,7 +216,9 @@ where
                 commitment.messages,
                 R::multisig_proof(digest, approvals),
             );
-            self.receiver.submit_extrinsic(&call).await?;
+            if let Err(err) = self.receiver.submit_extrinsic(&call).await {
+                error!("Failed to submit messages, probably another relayer already submitted it: {:?}", err);
+            }
         }
         Ok(())
     }

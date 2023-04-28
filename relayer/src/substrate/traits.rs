@@ -166,7 +166,7 @@ impl ConfigExt for MainnetConfig {
 }
 
 impl SenderConfig for ParachainConfig {
-    type SubmitSignature = ();
+    type SubmitSignature = parachain_runtime::bridge_data_signer::calls::Approve;
 
     fn current_session_index() -> StaticStorageAddress<DecodeStaticType<u32>, Yes, Yes, ()> {
         parachain_runtime::storage().session().current_index()
@@ -203,24 +203,30 @@ impl SenderConfig for ParachainConfig {
     }
 
     fn approvals(
-        _network_id: GenericNetworkId,
-        _message: H256,
+        network_id: GenericNetworkId,
+        message: H256,
     ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes> {
-        todo!()
+        parachain_runtime::storage()
+            .bridge_data_signer()
+            .approvals(network_id, message)
     }
 
     fn peers(
-        _network_id: GenericNetworkId,
+        network_id: GenericNetworkId,
     ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes> {
-        todo!()
+        parachain_runtime::storage()
+            .bridge_data_signer()
+            .peers(network_id)
     }
 
     fn submit_signature(
-        _network_id: GenericNetworkId,
-        _message: H256,
-        _signature: ecdsa::Signature,
+        network_id: GenericNetworkId,
+        message: H256,
+        signature: ecdsa::Signature,
     ) -> StaticTxPayload<Self::SubmitSignature> {
-        todo!()
+        parachain_runtime::tx()
+            .bridge_data_signer()
+            .approve(network_id, message, signature)
     }
 }
 
@@ -396,7 +402,7 @@ impl ReceiverConfig for ParachainConfig {
     type SubmitMessagesCommitment =
         parachain_runtime::substrate_bridge_inbound_channel::calls::Submit;
 
-    type MultiProof = beefy_light_client::SubstrateBridgeMessageProof;
+    type MultiProof = parachain_runtime::runtime_types::multisig_verifier::Proof;
 
     fn submit_signature_commitment(
         network_id: SubNetworkId,
@@ -417,14 +423,13 @@ impl ReceiverConfig for ParachainConfig {
     }
 
     fn submit_messages_commitment(
-        _network_id: SubNetworkId,
-        _message: Vec<BridgeMessage>,
-        _proof: Self::MultiProof,
+        network_id: SubNetworkId,
+        message: Vec<BridgeMessage>,
+        proof: Self::MultiProof,
     ) -> subxt::tx::StaticTxPayload<Self::SubmitMessagesCommitment> {
-        todo!();
-        // parachain_runtime::tx()
-        //     .substrate_bridge_inbound_channel()
-        //     .submit(network_id, message, proof)
+        parachain_runtime::tx()
+            .substrate_bridge_inbound_channel()
+            .submit(network_id, message, proof)
     }
 
     fn current_validator_set(
@@ -466,19 +471,24 @@ impl ReceiverConfig for ParachainConfig {
     }
 
     fn peers(
-        _network_id: GenericNetworkId,
+        network_id: GenericNetworkId,
     ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes> {
-        todo!()
+        parachain_runtime::storage()
+            .multisig_verifier()
+            .peer_keys(network_id)
     }
 
-    fn beefy_proof(proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof {
-        proof
+    fn beefy_proof(_proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof {
+        unimplemented!()
     }
 
     fn multisig_proof(
-        _digest: AuxiliaryDigest,
-        _signatures: Vec<ecdsa::Signature>,
+        digest: AuxiliaryDigest,
+        signatures: Vec<ecdsa::Signature>,
     ) -> Self::MultiProof {
-        todo!()
+        parachain_runtime::runtime_types::multisig_verifier::Proof {
+            digest,
+            proof: signatures,
+        }
     }
 }
