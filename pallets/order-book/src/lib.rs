@@ -43,7 +43,7 @@ use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
-use sp_runtime::{DispatchResult, Perbill};
+use sp_runtime::Perbill;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -214,7 +214,7 @@ pub mod pallet {
         Twox128,
         T::BlockNumber,
         BoundedVec<(OrderBookId<AssetIdOf<T>>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
-        OptionQuery,
+        ValueQuery,
     >;
 
     #[pallet::event]
@@ -565,18 +565,26 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
     ) -> Result<(), Error>;
 }
 
+enum SchedulerError {
+    /// Expiration schedule for this block is full
+    BlockScheduleFull,
+    /// Could not find expiration in given block schedule
+    ExpirationNotFound,
+}
+
 impl<T: Config>
-    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, DispatchError>
+    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
     for Pallet<T>
 {
     fn service(now: T::BlockNumber) {
-        let Some(expired_orders) = <ExpirationsAgenda<T>>::take(now) else {
+        let expired_orders = <ExpirationsAgenda<T>>::take(now);
+        if expired_orders.is_empty() {
             return;
-        };
+        }
         let mut data_layer = CacheDataLayer::<T>::new();
 
         for (order_book_id, order_id) in expired_orders {
-            let Some(order) = <LimitOrders<T>>::get(&order_book_id, &order_id) else {
+            let Ok(order) = data_layer.get_limit_order(&order_book_id, order_id) else {
                 debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
                 continue;
             };
@@ -602,16 +610,26 @@ impl<T: Config>
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
-    ) -> DispatchResult {
-        todo!()
+    ) -> Result<(), SchedulerError> {
+        <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
+            block_expirations
+                .try_push((order_book_id, order_id))
+                .map_err(|_| SchedulerError::BlockScheduleFull)
+        })
     }
 
     fn unschedule(
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
-    ) -> Result<(), DispatchError> {
-        todo!()
+    ) -> Result<(), SchedulerError> {
+        <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
+            let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
+                return Err(SchedulerError::ExpirationNotFound);
+            };
+            block_expirations.remove(remove_index);
+            Ok(())
+        })
     }
 }
 
