@@ -103,23 +103,20 @@ where
     /// Values of `Removed` items are omitted.
     pub fn get_by_prefix(&mut self, key1: &Key1) -> BTreeMap<Key2, Value> {
         self.load(key1);
-        let mut result = BTreeMap::new();
-        for (key2, value) in self
-            .cache
-            .entry(key1.clone())
-            .or_default()
-            .iter()
-            .filter_map(|(key2, maybe_item)| {
-                if let Some(Some(value)) = maybe_item.clone().map(|item| item.value().cloned()) {
-                    Some((key2, value))
-                } else {
-                    None
-                }
-            })
-        {
-            result.insert(key2.clone(), value);
-        }
-        result
+        BTreeMap::from_iter(
+            self.cache
+                .entry(key1.clone())
+                .or_default()
+                .iter()
+                .filter_map(|(key2, maybe_item)| {
+                    if let Some(Some(value)) = maybe_item.clone().map(|item| item.value().cloned())
+                    {
+                        Some((key2.clone(), value))
+                    } else {
+                        None
+                    }
+                }),
+        )
     }
 
     /// Sets the value and mark it as `Updated`
