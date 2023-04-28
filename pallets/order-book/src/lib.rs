@@ -504,7 +504,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<
 }
 
 impl<T: Config> Pallet<T> {
-    fn tech_account_for_order_book(
+    pub fn tech_account_for_order_book(
         dex_id: T::DEXId,
         order_book_id: OrderBookId<AssetIdOf<T>>,
     ) -> <T as technical::Config>::TechAccountId {
