@@ -885,6 +885,11 @@ fn should_cancel_all_limit_orders() {
 
         let order_book = create_and_fill_order_book(order_book_id);
 
+        let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+            &OrderBookPallet::tech_account_for_order_book(DEX.into(), order_book_id.clone()),
+        )
+        .unwrap();
+
         // not empty at the beginning
         assert!(!data.get_all_limit_orders(&order_book_id).is_empty());
         assert!(!data.get_aggregated_bids(&order_book_id).is_empty());
@@ -906,6 +911,24 @@ fn should_cancel_all_limit_orders() {
             INIT_BALANCE
         );
 
+        // tech account keeps the locked assets
+        assert!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &tech_account
+            )
+            .unwrap()
+                > balance!(0)
+        );
+        assert!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &tech_account
+            )
+            .unwrap()
+                > balance!(0)
+        );
+
         // cancel all orders
         assert_ok!(order_book.cancel_all_limit_orders::<OrderBookPallet>(&mut data));
 
@@ -925,6 +948,24 @@ fn should_cancel_all_limit_orders() {
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
                 .unwrap(),
             INIT_BALANCE
+        );
+
+        // tech account balance is empty after canceling of all limit orders
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &tech_account
+            )
+            .unwrap(),
+            balance!(0)
+        );
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &tech_account
+            )
+            .unwrap(),
+            balance!(0)
         );
     });
 }
