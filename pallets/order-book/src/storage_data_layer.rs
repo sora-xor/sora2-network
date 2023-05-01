@@ -38,6 +38,7 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
 pub struct StorageDataLayer<T: Config> {
     _phantom: PhantomData<T>,
@@ -168,6 +169,17 @@ impl<T: Config> DataLayer<T> for StorageDataLayer<T> {
         } else {
             Err(Error::<T>::UnknownLimitOrder.into())
         }
+    }
+
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>> {
+        let mut orders = Vec::new();
+        for order in <LimitOrders<T>>::iter_prefix_values(order_book_id) {
+            orders.push(order);
+        }
+        orders
     }
 
     fn insert_limit_order(

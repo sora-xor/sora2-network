@@ -34,3 +34,13 @@ pub enum Item<Value: PartialEq> {
     Updated(Value),
     Removed,
 }
+
+impl<Value: PartialEq> Item<Value> {
+    pub fn value(&self) -> Option<&Value> {
+        match self {
+            Item::Original(value) => Some(value),
+            Item::Updated(value) => Some(value),
+            Item::Removed => None,
+        }
+    }
+}

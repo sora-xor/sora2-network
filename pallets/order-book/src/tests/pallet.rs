@@ -35,7 +35,7 @@ use assets::AssetIdOf;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{CurrencyLocker, OrderBookId};
+use framenode_runtime::order_book::{CurrencyLocker, CurrencyUnlocker, OrderBookId};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
 #[test]

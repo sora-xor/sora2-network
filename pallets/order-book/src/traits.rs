@@ -33,6 +33,7 @@ use crate::{
 };
 use assets::AssetIdOf;
 use frame_support::sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 /// This trait is used by Order Book as a storage to get limit orders and their derived data and to change them
 pub trait DataLayer<T>
@@ -45,6 +46,12 @@ where
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError>;
+
+    /// Returns all limit orders of order book
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>>;
 
     /// Inserts limit order consistently in all necessary storages.
     /// Must check before call. If returns error, it means we have problems with data consistency.
@@ -118,7 +125,10 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), DispatchError>;
+}
 
+// todo: make pub(tests) (k.ivanov)
+pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(
