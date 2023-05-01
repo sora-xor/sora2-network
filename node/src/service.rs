@@ -259,6 +259,27 @@ pub fn new_partial(
 
         log::info!("Ethereum bridge peer initialized");
     }
+    config
+        .prometheus_registry()
+        .and_then(|registry| {
+            crate::data_feed_metrics::Metrics::register(
+                Arc::new(registry.clone()),
+                client.clone(),
+                Duration::from_secs(6),
+            )
+            .map_err(|e| {
+                log::error!("Failed to register metrics: {:?}", e);
+            })
+            .ok()
+        })
+        .and_then(|metrics| {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "data-feed-metrics",
+                Some("data-feed-metrics"),
+                metrics.run(),
+            );
+            Some(())
+        });
 
     let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
