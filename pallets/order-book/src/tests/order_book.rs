@@ -640,7 +640,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             quote: XOR.into(),
         };
 
-        let order_book = create_and_fill_order_book(order_book_id);
+        let order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
 
         fill_balance(alice(), order_book_id);
 
@@ -702,7 +702,7 @@ fn should_not_place_limit_order_in_spread() {
             quote: XOR.into(),
         };
 
-        let mut order_book = create_and_fill_order_book(order_book_id);
+        let mut order_book = OrderBook::<Runtime>::default(order_book_id, DEX.into());
 
         let buy_price = balance!(11.1); // above the spread, in the asks zone
         let buy_order = LimitOrder::<Runtime>::new(
