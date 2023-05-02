@@ -13,12 +13,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn lock_tokens() -> Weight;
-    fn withdraw_tokens() -> Weight;
-    fn change_fee() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -45,8 +40,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
-    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
+    use common::{balance, AssetInfoProvider};
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
     use frame_system::ensure_signed;
@@ -58,6 +53,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"crstlock");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + timestamp::Config

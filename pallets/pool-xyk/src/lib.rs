@@ -42,9 +42,9 @@ use common::prelude::{
     Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
-    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
-    ToFeeAccount, TradingPair,
+    fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
+    LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
 
 mod aliases;
@@ -82,14 +82,7 @@ pub use operations::*;
 
 const MIN_LIQUIDITY: u128 = 1000;
 
-pub trait WeightInfo {
-    fn swap_pair() -> Weight;
-    fn deposit_liquidity() -> Weight;
-    fn withdraw_liquidity() -> Weight;
-    fn initialize_pool() -> Weight;
-    fn can_exchange() -> Weight;
-    fn quote() -> Weight;
-}
+pub use weights::WeightInfo;
 
 impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
@@ -345,10 +338,9 @@ impl<T: Config> Pallet<T> {
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
         let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
-            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
-                base_asset_id: trading_pair.base_asset_id.into(),
-                target_asset_id: trading_pair.target_asset_id.into(),
-            }),
+            TechAccountId::Pure(_, TechPurpose::XykLiquidityKeeper(trading_pair)) => {
+                Ok(trading_pair.map(|a| a.into()))
+            }
             _ => Err(Error::<T>::PoolIsInvalid.into()),
         }
     }
@@ -651,6 +643,8 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #392 use DexInfoProvider instead of dex-manager pallet
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -716,6 +710,8 @@ pub mod pallet {
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(input_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(input_asset_b).2 != 0,
@@ -758,6 +754,8 @@ pub mod pallet {
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
             let source = ensure_signed(origin)?;
+
+            // TODO: #395 use AssetInfoProvider instead of assets pallet
             ensure!(
                 assets::AssetInfos::<T>::get(output_asset_a).2 != 0
                     && assets::AssetInfos::<T>::get(output_asset_b).2 != 0,
@@ -798,6 +796,8 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
+
+                // TODO: #395 use AssetInfoProvider instead of assets pallet
                 ensure!(
                     assets::AssetInfos::<T>::get(asset_a).2 != 0
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,

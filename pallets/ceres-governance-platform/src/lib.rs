@@ -13,13 +13,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::Balance;
-use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn vote() -> Weight;
-    fn create_poll() -> Weight;
-    fn withdraw() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]

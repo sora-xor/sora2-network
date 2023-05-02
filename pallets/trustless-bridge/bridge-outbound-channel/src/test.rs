@@ -6,8 +6,8 @@ use bridge_types::traits::OutboundChannel;
 use bridge_types::{H160, H256};
 use common::mock::ExistentialDeposits;
 use common::{
-    Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PSWAP, VAL, XOR,
-    XST,
+    Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
+    PSWAP, VAL, XOR, XST,
 };
 use frame_support::assert_noop;
 use frame_support::dispatch::DispatchError;

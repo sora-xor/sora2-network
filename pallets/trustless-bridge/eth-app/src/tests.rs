@@ -5,7 +5,7 @@ use crate::mock::{
 use crate::{Addresses, Error};
 use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
 use bridge_types::H160;
-use common::{balance, XOR};
+use common::{balance, AssetInfoProvider, XOR};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchError;

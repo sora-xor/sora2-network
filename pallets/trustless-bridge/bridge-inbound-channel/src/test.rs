@@ -20,8 +20,8 @@ use bridge_types::{Log, H160, H256, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, PSWAP, VAL, XOR,
-    XST,
+    balance, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair,
+    PSWAP, VAL, XOR, XST,
 };
 use hex_literal::hex;
 

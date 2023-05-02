@@ -18,11 +18,9 @@
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
-use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
-use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
@@ -43,28 +41,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// Weight functions needed for this pallet.
-pub trait WeightInfo {
-    fn burn() -> Weight;
-    fn mint() -> Weight;
-    fn register_network() -> Weight;
-    fn register_network_with_existing_asset() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn burn() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn mint() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn register_network() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn register_network_with_existing_asset() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub mod weights;
+pub use weights::WeightInfo;
 
 pub use pallet::*;
 

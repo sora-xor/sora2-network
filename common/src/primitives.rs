@@ -30,12 +30,12 @@
 
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode, MaxEncodedLen};
-use core::fmt::Debug;
-use frame_support::dispatch::{DispatchError, TypeInfo};
-use frame_support::{ensure, RuntimeDebug};
+use core::{fmt::Debug, str::FromStr};
+use frame_support::dispatch::TypeInfo;
+use frame_support::traits::ConstU32;
+use frame_support::{ensure, BoundedVec, RuntimeDebug};
 use hex_literal::hex;
 use sp_core::H256;
-use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -46,7 +46,6 @@ use {
     serde::{Deserialize, Serialize},
     sp_std::convert::TryInto,
     sp_std::fmt::Display,
-    sp_std::str::FromStr,
     static_assertions::_core::fmt::Formatter,
 };
 
@@ -100,6 +99,7 @@ pub struct DEXInfo<AssetId> {
     RuntimeDebug,
     Hash,
     scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
@@ -112,6 +112,15 @@ pub struct TradingPair<AssetId> {
 impl<AssetId: Eq> TradingPair<AssetId> {
     pub fn consists_of(&self, asset_id: &AssetId) -> bool {
         &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
+    }
+}
+
+impl<T> TradingPair<T> {
+    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> TradingPair<U> {
+        TradingPair {
+            base_asset_id: f(self.base_asset_id),
+            target_asset_id: f(self.target_asset_id),
+        }
     }
 }
 
@@ -270,6 +279,24 @@ impl<AssetId> AssetId32<AssetId> {
         bytes[2] = asset_id as u8;
         Self::from_bytes(bytes)
     }
+
+    /// Construct asset id for synthetic asset using its `reference_symbol`
+    pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
+    where
+        Symbol: From<SymbolName> + PartialEq + Encode,
+    {
+        if *reference_symbol == SymbolName::usd().into() {
+            return Self::from_asset_id(PredefinedAssetId::XSTUSD);
+        }
+
+        let mut bytes = [0u8; 32];
+        let symbol_bytes = reference_symbol.encode();
+        let symbol_hash = sp_io::hashing::blake2_128(&symbol_bytes);
+        bytes[0] = 3;
+        bytes[2..18].copy_from_slice(&symbol_hash);
+
+        Self::from_bytes(bytes)
+    }
 }
 
 impl<AssetId> From<H256> for AssetId32<AssetId> {
@@ -300,12 +327,11 @@ where
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId> TryFrom<AssetId32<AssetId>> for TechAssetId<AssetId>
+impl<AssetId> From<AssetId32<AssetId>> for TechAssetId<AssetId>
 where
     TechAssetId<AssetId>: Decode,
 {
-    type Error = DispatchError;
-    fn try_from(compat: AssetId32<AssetId>) -> Result<Self, Self::Error> {
+    fn from(compat: AssetId32<AssetId>) -> Self {
         let can_fail = || {
             let code = compat.code;
             let end = (code[0] as usize) + 1;
@@ -314,15 +340,25 @@ where
             TechAssetId::<AssetId>::decode(&mut frag)
         };
         match can_fail() {
-            Ok(v) => Ok(v),
-            Err(_) => Ok(TechAssetId::<AssetId>::Escaped(compat.code)),
+            Ok(v) => v,
+            Err(_) => TechAssetId::<AssetId>::Escaped(compat.code),
         }
     }
 }
 
 /// DEX identifier.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
@@ -518,7 +554,12 @@ impl IsValid for Description {
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
 
-#[cfg(feature = "std")]
+impl SymbolName {
+    pub fn usd() -> Self {
+        Self::from_str("USD").expect("`USD` is a valid symbol name")
+    }
+}
+
 impl FromStr for SymbolName {
     type Err = &'static str;
 
@@ -551,6 +592,49 @@ impl IsValid for SymbolName {
                 .0
                 .iter()
                 .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+    }
+}
+
+const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
+
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct CrowdloanTag(pub BoundedVec<u8, ConstU32<CROWDLOAN_TAG_MAX_LENGTH>>);
+
+#[cfg(feature = "std")]
+impl FromStr for CrowdloanTag {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars = s
+            .chars()
+            .map(|un| un as u8)
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| "CrowdloanTag length out of bounds")?;
+        Ok(CrowdloanTag(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for CrowdloanTag {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for CrowdloanTag {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl IsValid for CrowdloanTag {
+    /// Same as for AssetSymbol
+    fn is_valid(&self) -> bool {
+        !self.0.is_empty() && self.0.is_ascii()
     }
 }
 
@@ -587,7 +671,17 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 
 /// Enumaration of all available liquidity sources.
 #[derive(
-    Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
@@ -683,11 +777,13 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 /// Code of purpose for technical account.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
 pub enum TechPurpose<AssetId> {
-    FeeCollector,
-    FeeCollectorForPair(TradingPair<AssetId>),
-    LiquidityKeeper(TradingPair<AssetId>),
-    Identifier(Vec<u8>),
+    FeeCollector = 0,
+    FeeCollectorForPair(TradingPair<AssetId>) = 1,
+    XykLiquidityKeeper(TradingPair<AssetId>) = 2,
+    Identifier(Vec<u8>) = 3,
+    OrderBookLiquidityKeeper(TradingPair<AssetId>) = 4,
 }
 
 /// Enum encoding of technical account id, pure and wrapped records.
@@ -744,7 +840,7 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
     fn to_fee_account(&self) -> Option<Self> {
         match self {
             TechAccountId::Pure(dex, purpose) => match purpose {
-                TechPurpose::LiquidityKeeper(tpair) => Some(TechAccountId::Pure(
+                TechPurpose::XykLiquidityKeeper(tpair) => Some(TechAccountId::Pure(
                     dex.clone(),
                     TechPurpose::FeeCollectorForPair(tpair.clone()),
                 )),
@@ -756,14 +852,26 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
 }
 
 impl<AccountId, AssetId, DEXId: Clone>
-    crate::traits::ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+    crate::traits::ToXykTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
     for TechAccountId<AccountId, AssetId, DEXId>
 {
-    fn to_tech_unit_from_dex_and_trading_pair(
+    fn to_xyk_tech_unit_from_dex_and_trading_pair(
         dex_id: DEXId,
         trading_pair: TradingPair<AssetId>,
     ) -> Self {
-        TechAccountId::Pure(dex_id.clone(), TechPurpose::LiquidityKeeper(trading_pair))
+        TechAccountId::Pure(dex_id, TechPurpose::XykLiquidityKeeper(trading_pair))
+    }
+}
+
+impl<AccountId, AssetId, DEXId: Clone>
+    crate::traits::ToOrderTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
+    for TechAccountId<AccountId, AssetId, DEXId>
+{
+    fn to_order_tech_unit_from_dex_and_trading_pair(
+        dex_id: DEXId,
+        trading_pair: TradingPair<AssetId>,
+    ) -> Self {
+        TechAccountId::Pure(dex_id, TechPurpose::OrderBookLiquidityKeeper(trading_pair))
     }
 }
 
@@ -963,7 +1071,9 @@ mod tests {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(
+    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 pub enum PriceVariant {
     Buy,
     Sell,

@@ -39,6 +39,7 @@ use sp_runtime::{
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+type Moment = u64;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -50,8 +51,14 @@ frame_support::construct_runtime!(
         System: frame_system,
         Band: band,
         OracleProxy: oracle_proxy,
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
     }
 );
+
+frame_support::parameter_types! {
+    pub const GetRateStalePeriod: Moment = 60*5*1000; // 5 minutes
+    pub const MinimumPeriod: u64 = 5;
+}
 
 impl system::Config for Runtime {
     type BaseCallFilter = frame_support::traits::Everything;
@@ -80,11 +87,20 @@ impl system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_timestamp::Config for Runtime {
+    type Moment = Moment;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
 impl Config for Runtime {
     type Symbol = String;
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = ();
     type OnNewSymbolsRelayedHook = oracle_proxy::Pallet<Runtime>;
+    type Time = Timestamp;
+    type GetBandRateStalePeriod = GetRateStalePeriod;
 }
 
 impl oracle_proxy::Config for Runtime {
