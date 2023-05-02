@@ -136,7 +136,7 @@ pipeline {
                                     subwasm --json info framenode_runtime.compact.compressed.wasm > ${wasmReportFile}
                                     subwasm metadata framenode_runtime.compact.compressed.wasm > ${palletListFile}
                                     set +e
-                                    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm
+                                    subwasm metadata -m Sudo ./framenode_runtime.compact.compressed.wasm
                                     if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi
                                 """
                                 archiveArtifacts artifacts:
