@@ -57,7 +57,6 @@ pub mod pallet {
         type Verifier: Verifier<EVMChainId, Message, Result = (Log, u64)>;
 
         /// Verifier module for message verification.
-        // TODO rename trait to BatchDispatched
         type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
 
         type Hashing: Hash<Output = H256>;
