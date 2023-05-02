@@ -11,7 +11,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       contractsPath: 'ethereum-bridge-contracts',
       contractsEnvFile: 'env.template',
       cargoDocImage: 'rust:1.62.0-slim-bullseye',
-      githubPrCreator: 'ubuntu:jammy-20221020'
+      githubPrCreator: 'ubuntu:jammy-20221020',
       substrate: true
 )
 pipeline.runPipeline()
