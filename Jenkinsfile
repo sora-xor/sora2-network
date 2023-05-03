@@ -16,7 +16,8 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       substrate: true,
       buildTestCmds: [
-          "if (dockerImageTag) {
+          """\
+          if (dockerImageTag) {
               if (steps.env.TAG_NAME =~ 'benchamarking.*') {
                 featureList = 'private-net runtime-benchmarks'
                 sudoCheckStatus = 101
@@ -62,7 +63,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 '''
               }
             }
-      "])
+      """])
       // cmds: '''
       //     if (dockerImageTag) {
       //         if (steps.env.TAG_NAME =~ 'benchamarking.*') {
