@@ -30,10 +30,8 @@
 
 #[rustfmt::skip]
 mod tests {
-    use core::str::FromStr;
-
-    use crate::{Error, Pallet, mock::*};
-    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, SymbolName, Oracle, PriceVariant, PredefinedAssetId, AssetId32};
+    use crate::{Error, Pallet, mock::*, test_utils::relay_symbol};
+    use common::{self, AssetName, AssetSymbol, AssetInfoProvider, DEXId, LiquiditySource, USDT, VAL, XOR, XST, XSTUSD, DAI, balance, fixed, GetMarketInfo, assert_approx_eq, prelude::{Balance, SwapAmount, QuoteAmount, FixedWrapper, }, PriceVariant, PredefinedAssetId, AssetId32};
     use frame_support::{assert_ok, assert_noop};
     use sp_arithmetic::traits::{Zero};
 
@@ -45,17 +43,33 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // base case for buy
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // amount out = 100_000 XST (A_out)
+            // amount in = (A_out * X) / S = (100_000 * 220) / 1 = 22_000_000 XSTUSD (A_in)
             assert_eq!(
                 XSTPool::buy_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(15516385.30287984111) // ~ (100000.0-100000.0*0.007)*156.25
+                fixed!(22000000.0) 
             );
 
             // base case for sell
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // amount out = 100_000 XSTUSD (A_out)
+            // amount in = (A_out * S) / X = (100_000 * 1) / 150 = 666.(6) XST (A_in) 
             assert_eq!(
                 XSTPool::sell_price(&XST, &XSTUSD, QuoteAmount::with_desired_output(balance!(100000)))
                     .expect("failed to calculate buy assets price"),
-                fixed!(635.520000000000000371) // ~ (100000+100000*0.007)/156.25
+                fixed!(666.666666666666666933),
             );
         });
     }
@@ -213,10 +227,10 @@ mod tests {
             .unwrap();
 
             let xstusd_balance_a = Assets::free_balance(&XSTUSD, &alice()).unwrap();
-            let xor_balance_a = Assets::free_balance(&XST, &alice()).unwrap();
+            let xst_balance_a = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_eq!(exchange_outcome_a.amount, xst_balance_a);
             assert_eq!(xstusd_balance_a, balance!(48000));
 
             // Buy with desired output
@@ -241,11 +255,11 @@ mod tests {
             .unwrap();
 
             let xstusd_balance_b = Assets::free_balance(&XSTUSD, &alice()).unwrap();
-            let xor_balance_b = Assets::free_balance(&XST, &alice()).unwrap();
+            let xst_balance_b = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
-            assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            assert_eq!(xstusd_balance_b, balance!(16759.165436044373306346));
+            assert_eq!(xst_balance_a + amount_b.clone(), xst_balance_b);
+            assert_eq!(xstusd_balance_b, xstusd_balance_a - quote_outcome_b.amount);
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -269,11 +283,11 @@ mod tests {
             .unwrap();
 
             let xstusd_balance_c = Assets::free_balance(&XSTUSD, &alice()).unwrap();
-            let xor_balance_c = Assets::free_balance(&XST, &alice()).unwrap();
+            let xst_balance_c = Assets::free_balance(&XST, &alice()).unwrap();
 
             assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
             assert_eq!(xstusd_balance_b + exchange_outcome_c.amount, xstusd_balance_c);
-            assert_eq!(xor_balance_b - amount_c.clone(), xor_balance_c.clone());
+            assert_eq!(xst_balance_b - amount_c.clone(), xst_balance_c.clone());
 
             // Sell with desired output
             let amount_d: Balance = balance!(100);
@@ -295,10 +309,10 @@ mod tests {
             )
             .unwrap();
             let xstusd_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
-            let xor_balance_d = Assets::free_balance(&XST, &alice()).unwrap();
+            let xst_balance_d = Assets::free_balance(&XST, &alice()).unwrap();
             assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
             assert_eq!(xstusd_balance_c - quote_outcome_d.amount, xstusd_balance_d);
-            assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
+            assert_eq!(xst_balance_c + amount_d.clone(), xst_balance_d);
         });
     }
 
@@ -324,20 +338,22 @@ mod tests {
                 true,
             )
             .unwrap();
-            assert_approx_eq!(price_a.fee, balance!(0.00666), balance!(0.000001));
-            assert_eq!(price_a.amount, balance!(0.640187763200000000));
 
-            // mock uses conversion with fee
-            let price_a_fee_without_fee = (
-                FixedWrapper::from(price_a.fee) / balance!(0.993)
-            ).into_balance();
-            // convert fee back to output_asset_id (XST) for comparison
-            let base_to_output: FixedWrapper = PriceTools::get_average_price(&XOR, &XST, common::PriceVariant::Buy)
-                .expect("Failed to convert fee back to synthetic base asset")
-                .into();
-            // mock returns get_average_price with fee, we want no fee for this comparison
-            let base_to_output_without_fee = base_to_output / balance!(0.993);
-            let price_a_fee_in_synthetic_base_asset = (price_a_fee_without_fee * base_to_output_without_fee).into_balance();
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount in = 100 XSTUSD (A_in)
+            // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
+            // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
+            // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.6 = 0.0050(45) XOR (since we are buying XOR with XST)
+            assert_approx_eq!(price_a.fee, balance!(0.005045454545454545), 2);
+            // amount out with deduced fee = A_out - F_xst = 0.(45) - 0.0030(27) = 0.4515(18) XST
+            assert_approx_eq!(price_a.amount, balance!(0.451518181818181818), 2);
+
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
@@ -347,8 +363,9 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
-            // more error, because more computations/roundings or larger coefficients
-            assert_approx_eq!(price_b.amount, price_a_fee_in_synthetic_base_asset + price_a.amount, balance!(0.000001));
+            // we need to convert XOR fee back to XST 
+            let xst_fee = (FixedWrapper::from(price_a.fee)*balance!(0.6)).into_balance();
+            assert_approx_eq!(price_b.amount, xst_fee + price_a.amount, 2);
 
             let (price_a, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -358,8 +375,20 @@ mod tests {
                 true,
             )
             .unwrap();
-            assert_approx_eq!(price_a.fee, balance!(1.04), balance!(0.001));
-            assert_eq!(price_a.amount, balance!(15620.417281977813346827));
+
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount out = 100 XST (A_in)
+            // deduced fee = A_out / (1 - F_r) - A_out = 100 / (1 - 0.00666) - 100 = 0.670465298890611 XST (F_xst)
+            // amount in = ((A_out + F_xst) * X) / S = ((100 + 0.670465298890611) * 220) / 1 = 22147.5023657559344 XSTUSD (A_in)
+            // deduced fee in XOR = F_xst / X_b = 0.670465298890611 / 0.6 = 1.11744216481768504 XOR (since we are buying XOR with XST)
+            assert_approx_eq!(price_a.fee, balance!(1.11744216481768504), 1000);
+            assert_approx_eq!(price_a.amount, balance!(22147.5023657559344), 1000_000);
 
             let (price_b, _) = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -370,7 +399,8 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_b.fee, balance!(0));
-            assert_eq!(price_b.amount, balance!(15516.38530287984111));
+            // amount out = A_out * X / S = 100 * 220 / 1 = 22000 XSTUSD
+            assert_eq!(price_b.amount, balance!(22000));
         });
     }
 
@@ -417,7 +447,19 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_approx_eq!(price_a.fee, balance!(0.00666), balance!(0.000000000000000002));
+            
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST buy price = D_b/X_s = 110/0.5 = 220 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount in = 100 XSTUSD (A_in)
+            // amount out = (A_in * S) / X = (100 * 1) / 220 = 0.(45) XST (A_out)
+            // deduced fee = A_out * F = 0.(45) * 0.00666 = 0.0030(27) XST (F_xst)
+            // deduced fee in XOR = F_xst / X_b = 0.0030(27) / 0.6 = 0.0050(45) XOR (since we are buying XOR with XST)
+            assert_approx_eq!(price_a.fee, balance!(0.005045454545454545), 2);
 
             // Sell
             let (price_c, _) = XSTPool::quote(
@@ -437,7 +479,20 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_approx_eq!(price_c.fee, balance!(0.0066), balance!(0.00002));
+
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            // 1 XSTUSD = 1 DAI (S)
+            // fee ratio for XSTUSD = 0.00666 (F_r)
+            // amount out = 100 XSTUSD (A_out)
+            // amount in = (A_out * S) / X = (100 * 1) / 150 = 0.(6) XST (A_in)
+            // deduced fee = A_in / (1 - F) - A_in = 0.(6) / (1 - 0.00666) - A_in ~ 0.004469768659270743 XST (F_xst)
+            // deduced fee in XOR = F_xst / X_b = 0.004469768659270743 / 0.6 ~ 0.007449614432117905 XOR
+            // (since we are buying XOR with XST)
+            assert_approx_eq!(price_c.fee, balance!(0.007449614432117905), 2);
         });
     }
 
@@ -553,11 +608,14 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
-            assert_eq!(price_before, fixed!(155.1638530287984111));
+            // 1 XOR = 0.5 XST in sell case
+            // 1 XOR = 110 DAI in buy case
+            // 1 XST = 110/0.5 = 220 DAI
+            assert_eq!(price_before, fixed!(220.)); 
 
-            XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(200)).expect("Failed to set floor price.");
+            XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(300)).expect("Failed to set floor price.");
             let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
-            assert_eq!(price_after, fixed!(200));
+            assert_eq!(price_after, fixed!(300));
         });
     }
 
@@ -573,14 +631,7 @@ mod tests {
     fn enable_and_disable_synthetic_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
-            let alice = alice();
-
-            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
-            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
-                .expect("Failed to add relayers");
-            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
-                .expect("Failed to relay");
+            let euro = relay_symbol("EURO", 2_000_000_000);
 
             let asset_id = AssetId32::<PredefinedAssetId>::from_synthetic_reference_symbol(&euro);
 
@@ -629,14 +680,7 @@ mod tests {
     fn set_synthetic_fee_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
-            let alice = alice();
-
-            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
-            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
-                .expect("Failed to add relayers");
-            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
-                .expect("Failed to relay");
+            let euro = relay_symbol("EURO", 2_000_000_000);
 
             XSTPool::register_synthetic_asset(
                 RuntimeOrigin::root(),
@@ -657,6 +701,17 @@ mod tests {
                 true
             )
             .expect("Failed to quote XST -> XSTEURO ");
+            
+            // 1 XOR = 0.5 XST in sell case (X_s)
+            // 1 XOR = 0.6 XST in buy case (X_b)
+            // 1 XOR = 110 DAI in buy case (D_b) (default reference unit in xstPool)
+            // 1 XOR = 90 DAI in sell case (D_s)
+            // 1 XST sell price = D_s/X_b = 90/0.6 = 150 DAI (X)
+            // 1 XSTEURO = 2 DAI (S)
+            // fee ratio for XSTUSD = 0. (F_r)
+            // amount in = 100 XST (A_in)
+            // amount out = (A_in * X) / S = (100 * 150) / 2 = 7500 XSTEURO (A_out)
+            assert_approx_eq!(swap_outcome_before.amount, balance!(7500), 10000);
             assert_eq!(swap_outcome_before.fee, 0);
 
 
@@ -679,7 +734,7 @@ mod tests {
             let xst_to_xor_price = PriceTools::get_average_price(
                 &XST.into(),
                 &XOR.into(),
-                PriceVariant::Buy,
+                PriceVariant::Sell,
             ).expect("Expected to calculate price XST->XOR");
             let expected_fee_amount = FixedWrapper::from(quote_amount.amount() / 2) * FixedWrapper::from(xst_to_xor_price);
 
@@ -692,15 +747,7 @@ mod tests {
     fn should_disallow_invalid_fee_ratio() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let euro = SymbolName::from_str("EURO").expect("Failed to parse `EURO` as a symbol name");
-            let alice = alice();
-
-            OracleProxy::enable_oracle(RuntimeOrigin::root(), Oracle::BandChainFeed).expect("Failed to enable `Band` oracle");
-            Band::add_relayers(RuntimeOrigin::root(), vec![alice.clone()])
-                .expect("Failed to add relayers");
-            Band::relay(RuntimeOrigin::signed(alice.clone()), vec![(euro.clone(), 1)], 0, 0)
-                .expect("Failed to relay");
-
+            let euro = relay_symbol("EURO", 2_000_000_000);
             assert_eq!(
                 XSTPool::register_synthetic_asset(
                     RuntimeOrigin::root(),
