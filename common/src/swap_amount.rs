@@ -32,7 +32,7 @@ use core::convert::{TryFrom, TryInto};
 use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
 use frame_support::RuntimeDebug;
@@ -288,7 +288,17 @@ pub enum SwapVariant {
 /// Used to identify intention of caller either to transfer tokens based on exact input amount or
 /// exact output amount.
 #[derive(
-    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum SwapAmount<AmountType> {
     WithDesiredInput {

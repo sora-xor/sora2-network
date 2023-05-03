@@ -30,434 +30,13 @@
 
 #![cfg(feature = "wip")] // order-book
 
+use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, TradingPair,
-    TradingPairSelector, VAL, XOR,
-};
+use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{CurrencyLocker, LimitOrder, OrderBookId, Pallet};
-use framenode_runtime::{order_book, Runtime, RuntimeOrigin};
-use sp_std::collections::btree_map::BTreeMap;
-
-type OrderBook = Pallet<Runtime>;
-
-fn alice() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([1u8; 32])
-}
-
-fn bob() -> <Runtime as frame_system::Config>::AccountId {
-    <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
-}
-
-type E = order_book::Error<Runtime>;
-
-#[test]
-fn should_insert_limit_order() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
-        };
-
-        let order_buy_id = 1;
-        let order_sell_id = 2;
-        let owner = alice();
-        let price = balance!(12);
-        let amount = balance!(10);
-
-        let order_buy = LimitOrder::<Runtime> {
-            id: order_buy_id,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        let order_sell = LimitOrder::<Runtime> {
-            id: order_sell_id,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy));
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id).unwrap(),
-            order_buy
-        );
-        assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
-            vec![order_buy_id]
-        );
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([(price, amount)])
-        );
-        assert_eq!(OrderBook::asks(order_book_id, price), None);
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
-            vec![order_buy_id]
-        );
-
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell));
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id).unwrap(),
-            order_sell
-        );
-        assert_eq!(
-            OrderBook::bids(order_book_id, price).unwrap(),
-            vec![order_buy_id]
-        );
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([(price, amount)])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price).unwrap(),
-            vec![order_sell_id]
-        );
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, order_book_id).unwrap(),
-            vec![order_buy_id, order_sell_id]
-        );
-    });
-}
-
-#[test]
-fn should_not_insert_limit_order() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
-        };
-
-        let order_id = 1;
-        let owner = alice();
-        let price = balance!(12);
-        let amount = balance!(10);
-
-        let order = LimitOrder::<Runtime> {
-            id: order_id,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        // Take actual values from `impl order_book::Config for Runtime`
-        // =min(MaxOpenedLimitOrdersForAllOrderBooksPerUser, MaxLimitOrdersForPrice)
-        let max = 10000;
-
-        for _ in 0..max {
-            assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order));
-        }
-
-        // Error if storage overflow
-        assert_err!(
-            OrderBook::insert_limit_order(&order_book_id, &order),
-            E::LimitOrderStorageOverflow
-        );
-    });
-}
-
-#[test]
-fn should_delete_limit_order_success() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
-        };
-
-        let order_buy_id1 = 1;
-        let order_buy_id2 = 2;
-        let order_sell_id1 = 3;
-        let order_sell_id2 = 4;
-        let order_sell_id3 = 5;
-        let owner = alice();
-        let price1 = balance!(12);
-        let price2 = balance!(13);
-        let amount = balance!(10);
-
-        let order_buy1 = LimitOrder::<Runtime> {
-            id: order_buy_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        let order_buy2 = LimitOrder::<Runtime> {
-            id: order_buy_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        let order_sell1 = LimitOrder::<Runtime> {
-            id: order_sell_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        let order_sell2 = LimitOrder::<Runtime> {
-            id: order_sell_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        let order_sell3 = LimitOrder::<Runtime> {
-            id: order_sell_id3,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price2,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            lifespan: 1000,
-        };
-
-        // add orders
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy1));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_buy2));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell1));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell2));
-        assert_ok!(OrderBook::insert_limit_order(&order_book_id, &order_sell3));
-
-        // check they added
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id1).unwrap(),
-            order_buy1
-        );
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_buy_id2).unwrap(),
-            order_buy2
-        );
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id1).unwrap(),
-            order_sell1
-        );
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id2).unwrap(),
-            order_sell2
-        );
-        assert_eq!(
-            OrderBook::limit_orders(order_book_id, order_sell_id3).unwrap(),
-            order_sell3
-        );
-        assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
-            vec![order_buy_id1, order_buy_id2]
-        );
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
-            vec![order_sell_id1, order_sell_id2]
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
-            vec![order_sell_id3]
-        );
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, 2 * amount), (price2, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![
-                order_buy_id1,
-                order_buy_id2,
-                order_sell_id1,
-                order_sell_id2,
-                order_sell_id3
-            ]
-        );
-
-        // delete order sell 1
-        assert_ok!(OrderBook::delete_limit_order(
-            &order_book_id,
-            order_sell_id1
-        ));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id1), None);
-        assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
-            vec![order_buy_id1, order_buy_id2]
-        );
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([(price1, 2 * amount)])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
-            vec![order_sell_id2]
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
-            vec![order_sell_id3]
-        );
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, amount), (price2, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_buy_id1, order_buy_id2, order_sell_id2, order_sell_id3]
-        );
-
-        // delete order buy 1
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id1));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id1), None);
-        assert_eq!(
-            OrderBook::bids(order_book_id, price1).unwrap(),
-            vec![order_buy_id2]
-        );
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([(price1, amount)])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
-            vec![order_sell_id2]
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
-            vec![order_sell_id3]
-        );
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, amount), (price2, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_buy_id2, order_sell_id2, order_sell_id3]
-        );
-
-        // delete order buy 2
-        assert_ok!(OrderBook::delete_limit_order(&order_book_id, order_buy_id2));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_buy_id2), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
-            vec![order_sell_id2]
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price2).unwrap(),
-            vec![order_sell_id3]
-        );
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, amount), (price2, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_sell_id2, order_sell_id3]
-        );
-
-        // delete order sell 3
-        assert_ok!(OrderBook::delete_limit_order(
-            &order_book_id,
-            order_sell_id3
-        ));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id3), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([])
-        );
-        assert_eq!(
-            OrderBook::asks(order_book_id, price1).unwrap(),
-            vec![order_sell_id2]
-        );
-        assert_eq!(OrderBook::asks(order_book_id, price2), None);
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([(price1, amount)])
-        );
-        assert_eq!(
-            OrderBook::user_limit_orders(&owner, &order_book_id).unwrap(),
-            vec![order_sell_id2]
-        );
-
-        // delete order sell 2
-        assert_ok!(OrderBook::delete_limit_order(
-            &order_book_id,
-            order_sell_id2
-        ));
-        assert_eq!(OrderBook::limit_orders(order_book_id, order_sell_id2), None);
-        assert_eq!(OrderBook::bids(order_book_id, price1), None);
-        assert_eq!(
-            OrderBook::aggregated_bids(order_book_id),
-            BTreeMap::from([])
-        );
-        assert_eq!(OrderBook::asks(order_book_id, price1), None);
-        assert_eq!(OrderBook::asks(order_book_id, price2), None);
-        assert_eq!(
-            OrderBook::aggregated_asks(order_book_id),
-            BTreeMap::from([])
-        );
-        assert_eq!(OrderBook::user_limit_orders(&owner, &order_book_id), None);
-    });
-}
-
-#[test]
-fn should_not_delete_limit_order() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<Runtime> {
-            base_asset_id: XOR.into(),
-            target_asset_id: VAL.into(),
-        };
-
-        let order_id = 1;
-
-        assert_err!(
-            OrderBook::delete_limit_order(&order_book_id, order_id),
-            E::DeleteLimitOrderError
-        );
-    });
-}
+use framenode_runtime::order_book::{CurrencyLocker, CurrencyUnlocker, OrderBookId};
+use framenode_runtime::{Runtime, RuntimeOrigin};
 
 #[test]
 fn should_register_technical_account() {
@@ -477,55 +56,56 @@ fn should_register_technical_account() {
 
         let accounts = [
             (
-                common::DEXId::Polkaswap,
-                TradingPair {
-                    base_asset_id: XOR,
-                    target_asset_id: VAL,
+                DEX,
+                OrderBookId::<AssetIdOf<Runtime>> {
+                    base: VAL.into(),
+                    quote: XOR.into(),
                 },
             ),
             (
-                common::DEXId::Polkaswap,
-                TradingPair {
-                    base_asset_id: XOR,
-                    target_asset_id: nft,
+                DEX,
+                OrderBookId::<AssetIdOf<Runtime>> {
+                    base: nft,
+                    quote: XOR.into(),
                 },
             ),
         ];
 
         // register (on order book creation)
-        for (dex_id, trading_pair) in accounts {
-            OrderBook::register_tech_account(dex_id.into(), trading_pair).expect(&format!(
+        for (dex_id, order_book_id) in accounts {
+            OrderBookPallet::register_tech_account(dex_id.into(), order_book_id).expect(&format!(
                 "Could not register account for dex_id: {:?}, pair: {:?}",
-                dex_id, trading_pair,
+                dex_id, order_book_id,
             ));
         }
 
         // deregister (on order book removal)
-        for (dex_id, trading_pair) in accounts {
-            OrderBook::deregister_tech_account(dex_id.into(), trading_pair).expect(&format!(
-                "Could not deregister account for dex_id: {:?}, pair: {:?}",
-                dex_id, trading_pair,
-            ));
+        for (dex_id, order_book_id) in accounts {
+            OrderBookPallet::deregister_tech_account(dex_id.into(), order_book_id).expect(
+                &format!(
+                    "Could not deregister account for dex_id: {:?}, pair: {:?}",
+                    dex_id, order_book_id,
+                ),
+            );
         }
     });
 }
 
 fn test_lock_unlock_same_account(
     dex_id: common::DEXId,
-    trading_pair: TradingPair<AssetIdOf<Runtime>>,
-    asset: TradingPairSelector,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let asset_id = trading_pair.select(asset.clone());
     let balance_before =
         assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
 
-    assert_ok!(OrderBook::lock_liquidity(
+    assert_ok!(OrderBookPallet::lock_liquidity(
         dex_id.into(),
         account,
-        trading_pair,
-        asset.clone(),
+        order_book_id,
+        asset_id,
         amount_to_lock
     ));
 
@@ -533,11 +113,11 @@ fn test_lock_unlock_same_account(
         assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
     assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
-    assert_ok!(OrderBook::unlock_liquidity(
+    assert_ok!(OrderBookPallet::unlock_liquidity(
         dex_id.into(),
         account,
-        trading_pair,
-        asset,
+        order_book_id,
+        asset_id,
         amount_to_lock
     ));
 
@@ -548,24 +128,23 @@ fn test_lock_unlock_same_account(
 
 fn test_lock_unlock_other_account(
     dex_id: common::DEXId,
-    trading_pair: TradingPair<AssetIdOf<Runtime>>,
-    asset: TradingPairSelector,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    asset_id: &AssetIdOf<Runtime>,
     amount_to_lock: Balance,
     lock_account: &<Runtime as frame_system::Config>::AccountId,
     unlock_account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let asset_id = trading_pair.select(asset.clone());
     let lock_account_balance_before =
         assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
     let unlock_account_balance_before =
         assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account)
             .expect("Asset must exist");
 
-    assert_ok!(OrderBook::lock_liquidity(
+    assert_ok!(OrderBookPallet::lock_liquidity(
         dex_id.into(),
         lock_account,
-        trading_pair,
-        asset.clone(),
+        order_book_id,
+        asset_id,
         amount_to_lock
     ));
 
@@ -576,11 +155,11 @@ fn test_lock_unlock_other_account(
         lock_account_balance_before - amount_to_lock
     );
 
-    assert_ok!(OrderBook::unlock_liquidity(
+    assert_ok!(OrderBookPallet::unlock_liquidity(
         dex_id.into(),
         unlock_account,
-        trading_pair,
-        asset,
+        order_book_id,
+        asset_id,
         amount_to_lock
     ));
 
@@ -604,31 +183,18 @@ fn should_lock_unlock_base_asset() {
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Base;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset.clone(),
-            amount_to_lock,
-            &alice(),
-        );
+        test_lock_unlock_same_account(DEX, order_book_id, &XOR, amount_to_lock, &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset,
-            amount_to_lock,
-            &alice(),
-            &bob(),
-        );
+        test_lock_unlock_other_account(DEX, order_book_id, &XOR, amount_to_lock, &alice(), &bob());
     });
 }
 
@@ -643,31 +209,18 @@ fn should_lock_unlock_other_asset() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset.clone(),
-            amount_to_lock,
-            &alice(),
-        );
+        test_lock_unlock_same_account(DEX, order_book_id, &VAL, amount_to_lock, &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset,
-            amount_to_lock,
-            &alice(),
-            &bob(),
-        );
+        test_lock_unlock_other_account(DEX, order_book_id, &VAL, amount_to_lock, &alice(), &bob());
     });
 }
 
@@ -688,31 +241,17 @@ fn should_lock_unlock_indivisible_nft() {
         )
         .unwrap();
 
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: nft.clone(),
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft.clone(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
-        test_lock_unlock_same_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset.clone(),
-            balance!(1),
-            &alice(),
-        );
+        test_lock_unlock_same_account(DEX, order_book_id, &nft, balance!(1), &alice());
 
         // Alice -> Bob (expected exchange mechanism)
-        test_lock_unlock_other_account(
-            common::DEXId::Polkaswap,
-            trading_pair,
-            asset,
-            balance!(1),
-            &alice(),
-            &bob(),
-        );
+        test_lock_unlock_other_account(DEX, order_book_id, &nft, balance!(1), &alice(), &bob());
     });
 }
 
@@ -727,19 +266,19 @@ fn should_not_lock_insufficient_base_asset() {
             XOR,
             amount_to_mint.try_into().unwrap()
         ));
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Base;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         assert_err!(
-            OrderBook::lock_liquidity(
-                common::DEXId::Polkaswap.into(),
+            OrderBookPallet::lock_liquidity(
+                DEX.into(),
                 &alice(),
-                trading_pair,
-                asset,
+                order_book_id,
+                &XOR,
                 amount_to_lock
             ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
@@ -758,19 +297,19 @@ fn should_not_lock_insufficient_other_asset() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         assert_err!(
-            OrderBook::lock_liquidity(
-                common::DEXId::Polkaswap.into(),
+            OrderBookPallet::lock_liquidity(
+                DEX.into(),
                 &alice(),
-                trading_pair,
-                asset,
+                order_book_id,
+                &VAL,
                 amount_to_lock
             ),
             tokens::Error::<Runtime>::BalanceTooLow
@@ -797,21 +336,14 @@ fn should_not_lock_insufficient_nft() {
         )
         .unwrap();
 
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: nft.clone(),
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft.clone(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         assert_err!(
-            OrderBook::lock_liquidity(
-                common::DEXId::Polkaswap.into(),
-                &caller,
-                trading_pair,
-                asset,
-                balance!(1)
-            ),
+            OrderBookPallet::lock_liquidity(DEX.into(), &caller, order_book_id, &nft, balance!(1)),
             tokens::Error::<Runtime>::BalanceTooLow
         );
     });
@@ -830,27 +362,26 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             amount_to_mint.try_into().unwrap()
         ));
 
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Base;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
-        assert_ok!(OrderBook::lock_liquidity(
-            common::DEXId::Polkaswap.into(),
+        assert_ok!(OrderBookPallet::lock_liquidity(
+            DEX.into(),
             &alice(),
-            trading_pair,
-            asset.clone(),
+            order_book_id,
+            &XOR,
             amount_to_lock
         ));
 
         assert_err!(
-            OrderBook::unlock_liquidity(
-                common::DEXId::Polkaswap.into(),
+            OrderBookPallet::unlock_liquidity(
+                DEX.into(),
                 &alice(),
-                trading_pair,
-                asset,
+                order_book_id,
+                &XOR,
                 amount_to_try_unlock
             ),
             pallet_balances::Error::<Runtime>::InsufficientBalance
@@ -870,27 +401,27 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             VAL,
             amount_to_mint.try_into().unwrap()
         ));
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: VAL,
-        };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
 
-        assert_ok!(OrderBook::lock_liquidity(
-            common::DEXId::Polkaswap.into(),
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+
+        assert_ok!(OrderBookPallet::lock_liquidity(
+            DEX.into(),
             &alice(),
-            trading_pair,
-            asset.clone(),
+            order_book_id,
+            &VAL,
             amount_to_lock
         ));
 
         assert_err!(
-            OrderBook::unlock_liquidity(
-                common::DEXId::Polkaswap.into(),
+            OrderBookPallet::unlock_liquidity(
+                DEX.into(),
                 &alice(),
-                trading_pair,
-                asset,
+                order_book_id,
+                &VAL,
                 amount_to_try_unlock
             ),
             tokens::Error::<Runtime>::BalanceTooLow
@@ -915,19 +446,18 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
         )
         .unwrap();
 
-        let trading_pair = TradingPair {
-            base_asset_id: XOR,
-            target_asset_id: nft.clone(),
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft.clone(),
+            quote: XOR.into(),
         };
-        let asset = TradingPairSelector::Target;
-        OrderBook::register_tech_account(common::DEXId::Polkaswap.into(), trading_pair).unwrap();
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
 
         assert_err!(
-            OrderBook::unlock_liquidity(
-                common::DEXId::Polkaswap.into(),
+            OrderBookPallet::unlock_liquidity(
+                DEX.into(),
                 &alice(),
-                trading_pair,
-                asset,
+                order_book_id,
+                &nft,
                 balance!(1)
             ),
             tokens::Error::<Runtime>::BalanceTooLow
