@@ -81,7 +81,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 featureList = 'include-real-files'
                 sudoCheckStatus = 101
               }
-              steps.sh '''
+              steps.sh """
                 cargo test  --release --features \"private-net runtime-benchmarks\"
                 rm -rf target
                 cargo build --release --features \"${featureList}\"
@@ -94,11 +94,11 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 set +e
                 subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                 if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";
-              '''
+              """
               steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
             } else {
               steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
-                steps.sh '''
+                steps.sh """
                   rm -rf ~/.cargo/.package-cache
                   rm Cargo.lock
                   cargo fmt -- --check > /dev/null
@@ -107,8 +107,9 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                   SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test,wip
                   cargo test
                   cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
-                '''
+                """
               }
-            }'''
+            }
+      '''
 )
 pipeline.runPipeline()
