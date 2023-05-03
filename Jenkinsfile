@@ -16,23 +16,10 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       substrate: true,
       buildTestCmds: [
-          "if (dockerImageTag) {
-              if (steps.env.TAG_NAME =~ 'benchamarking.*') {
-                featureList = 'private-net runtime-benchmarks'
-                sudoCheckStatus = 101
-              }
-              if (steps.env.TAG_NAME =~ 'stage.*') {
-                featureList = 'private-net include-real-files ready-to-test'
-                sudoCheckStatus = 0
-              }
-              if (steps.env.TAG_NAME =~ 'test.*') {
-                featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test'
-                sudoCheckStatus = 0
-              }
-              if (steps.env.TAG_NAME) {
-                featureList = 'include-real-files'
-                sudoCheckStatus = 101
-              }
+          "if (dockerImageTag) {if (steps.env.TAG_NAME =~ 'benchamarking.*') { featureList = 'private-net runtime-benchmarks' "sudoCheckStatus" = 101}
+              if (steps.env.TAG_NAME =~ 'stage.*') {featureList = 'private-net include-real-files ready-to-test' "sudoCheckStatus" = 0}
+              if (steps.env.TAG_NAME =~ 'test.*') {featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test' "sudoCheckStatus" = 0}
+              if (steps.env.TAG_NAME) {featureList = 'include-real-files' "sudoCheckStatus" = 101 }
               steps.sh '''
                 cargo test  --release --features \"private-net runtime-benchmarks\"
                 rm -rf target
@@ -48,8 +35,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";
               '''
               steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
-            } else {
-              steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
+            } else {steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
                 steps.sh '''
                   rm -rf ~/.cargo/.package-cache
                   rm Cargo.lock
