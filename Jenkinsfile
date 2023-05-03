@@ -27,7 +27,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
         "subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}",
         'set +e',
         'subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm',
-        'if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo 'sudo check is successful!'; else echo 'sudo check is failed!';'
+        'if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";'
       ],
       buildTestCmdsWithoutTag: [
         'rm -rf ~/.cargo/.package-cache',
