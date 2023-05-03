@@ -21,20 +21,21 @@ def pipeline = new org.rust.substratePipeline(steps: this,
               if (steps.env.TAG_NAME =~ 'benchamarking.*') {
                 featureList = 'private-net runtime-benchmarks'
                 sudoCheckStatus = 101
-              }
-              if (steps.env.TAG_NAME =~ 'stage.*') {
+              }"
+              "if (steps.env.TAG_NAME =~ 'stage.*') {
                 featureList = 'private-net include-real-files ready-to-test'
                 sudoCheckStatus = 0
-              }
-              if (steps.env.TAG_NAME =~ 'test.*') {
+              }"
+              "if (steps.env.TAG_NAME =~ 'test.*') {
                 featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test'
                 sudoCheckStatus = 0
-              }
-              if (steps.env.TAG_NAME) {
+              }"
+              "if (steps.env.TAG_NAME) {
                 featureList = 'include-real-files'
                 sudoCheckStatus = 101
-              }
-              "steps.sh '''
+              }"
+              "
+              steps.sh '''
                 cargo test  --release --features \"private-net runtime-benchmarks\"
                 rm -rf target
                 cargo build --release --features \"${featureList}\"
@@ -47,8 +48,8 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 set +e
                 subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                 if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";
-              '''"
-              "steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}""
+              '''
+              steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
             }" "else {
               steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
                 steps.sh '''
