@@ -16,10 +16,10 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       substrate: true,
       buildTestCmds: [
-          'if (dockerImageTag) {if (steps.env.TAG_NAME =~ 'benchamarking.*') { featureList = 'private-net runtime-benchmarks' 'sudoCheckStatus' = 101}
-              if (steps.env.TAG_NAME =~ 'stage.*') {featureList = 'private-net include-real-files ready-to-test' 'sudoCheckStatus' = 0}
-              if (steps.env.TAG_NAME =~ 'test.*') {featureList = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test' 'sudoCheckStatus' = 0}
-              if (steps.env.TAG_NAME) {featureList = 'include-real-files' 'sudoCheckStatus' = 101 }
+          "if (dockerImageTag) {if (steps.env.${TAG_NAME} =~ 'benchamarking.*') { ${featureList} = 'private-net runtime-benchmarks' "sudoCheckStatus" = 101}
+              if (steps.env.${TAG_NAME} =~ 'stage.*') {${featureList} = 'private-net include-real-files ready-to-test' "sudoCheckStatus" = 0}
+              if (steps.env.${TAG_NAME} =~ 'test.*') {${featureList} = 'private-net include-real-files reduced-pswap-reward-periods ready-to-test' "sudoCheckStatus" = 0}
+              if (steps.env.${TAG_NAME}) {${featureList} = 'include-real-files' "sudoCheckStatus" = 101 }
               steps.sh '''
                 cargo test  --release --features \"private-net runtime-benchmarks\"
                 rm -rf target
@@ -47,7 +47,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                   cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                 '''
               }
-            }'
+            }"
       ]
 )
 pipeline.runPipeline()
