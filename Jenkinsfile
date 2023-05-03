@@ -6,7 +6,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       palletListFile: 'pallet_list.txt',
       wasmReportFile: 'subwasm_report.json',
       rustcVersion: 'nightly-2021-12-10',
-      featureList: 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test',
+      //featureList: 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test',
       dockerImageTags: ['develop': 'dev', 'master': 'latest'],
       contractsPath: 'ethereum-bridge-contracts',
       contractsEnvFile: 'env.template',
@@ -18,7 +18,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       buildTestCmds: [
         'cargo test  --release --features \"private-net runtime-benchmarks\"',
         'rm -rf target'.
-        "cargo build --release --features \"${featureList}\"",
+        "cargo build --release --features \'${featureList}\'",
         'mv ./target/release/framenode .',
         'mv ./target/release/relayer ./relayer.bin',
         'mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm',
@@ -39,5 +39,5 @@ def pipeline = new org.rust.substratePipeline(steps: this,
         'cargo test',
         'cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"'
       ]
-      )
+)
 pipeline.runPipeline()
