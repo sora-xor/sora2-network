@@ -16,7 +16,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       appImageName: '',
       substrate: true,
       buildTestCmds: [
-          if (dockerImageTag) {
+          "if (dockerImageTag) {
             steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
               if (steps.env.TAG_NAME =~ 'benchamarking.*') {
                 featureList = 'private-net runtime-benchmarks'
@@ -63,7 +63,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                   cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                 '''
               }
-            }
+            }"
       ]
 )
 pipeline.runPipeline()
