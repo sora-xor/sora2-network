@@ -17,7 +17,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       substrate: true,
       buildTestCmds: [
         "\
-          if (dockerImageTag) {
+          "if (dockerImageTag) {
               if (steps.env.TAG_NAME =~ 'benchamarking.*') {
                 featureList = 'private-net runtime-benchmarks'
                 sudoCheckStatus = 101
@@ -34,7 +34,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 featureList = 'include-real-files'
                 sudoCheckStatus = 101
               }
-              steps.sh '''
+              "steps.sh '''
                 cargo test  --release --features \"private-net runtime-benchmarks\"
                 rm -rf target
                 cargo build --release --features \"${featureList}\"
@@ -47,9 +47,9 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 set +e
                 subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                 if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";
-              '''
-              steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
-            } else {
+              '''"
+              "steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}""
+            }" "else {
               steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
                 steps.sh '''
                   rm -rf ~/.cargo/.package-cache
@@ -62,7 +62,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                   cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
                 '''
               }
-            }
+            }"
       "
       ]
       // cmds: '''
