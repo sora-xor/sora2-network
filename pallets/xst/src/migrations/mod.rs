@@ -35,6 +35,9 @@ use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{log::info, traits::GetStorageVersion as _, weights::Weight};
 use sp_std::collections::btree_set::BTreeSet;
 
+#[cfg(feature = "try-runtime")]
+use sp_std::prelude::Vec;
+
 use crate::{EnabledSymbols, EnabledSynthetics as NewEnabledSynthetics, SyntheticInfo};
 
 #[frame_support::storage_alias]

@@ -32,13 +32,6 @@ docker compose <-f args> down
 docker compose <-f args> down -v 
 ```
 
-### Update cached dependencies
-
-```
-cargo chef prepare --recipe-path bridge-docker/recipe.json
-```
-
-
 ## Accounts
 
 ### Relayer

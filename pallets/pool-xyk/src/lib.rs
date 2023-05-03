@@ -338,10 +338,9 @@ impl<T: Config> Pallet<T> {
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
         let tech_acc = technical::Pallet::<T>::lookup_tech_account_id(pool_account)?;
         match tech_acc.into() {
-            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
-                base_asset_id: trading_pair.base_asset_id.into(),
-                target_asset_id: trading_pair.target_asset_id.into(),
-            }),
+            TechAccountId::Pure(_, TechPurpose::XykLiquidityKeeper(trading_pair)) => {
+                Ok(trading_pair.map(|a| a.into()))
+            }
             _ => Err(Error::<T>::PoolIsInvalid.into()),
         }
     }
