@@ -12,12 +12,11 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       contractsEnvFile: 'env.template',
       cargoDocImage: 'rust:1.62.0-slim-bullseye',
       githubPrCreator: 'ubuntu:jammy-20221020',
-      envImageName: '',
-      appImageName: '',
+      envImageName: registry + '/sora2/env:sub4',
+      appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       substrate: true,
       buildTestCmds: [
           "if (dockerImageTag) {
-            steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
               if (steps.env.TAG_NAME =~ 'benchamarking.*') {
                 featureList = 'private-net runtime-benchmarks'
                 sudoCheckStatus = 101
@@ -49,8 +48,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
                 if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";
               '''
               steps.archiveArtifacts "framenode_runtime.compact.wasm, framenode_runtime.compact.compressed.wasm, ${wasmReportFile}, ${palletListFile}"
-            }
-          } else {
+            } else {
               steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
                 steps.sh '''
                   rm -rf ~/.cargo/.package-cache
