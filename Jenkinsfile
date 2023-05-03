@@ -14,7 +14,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       githubPrCreator: 'ubuntu:jammy-20221020',
       envImageName: '',
       appImageName: '',
-      substrate: true
+      substrate: true,
       buildTestCmds: [
           if (dockerImageTag) {
             steps.docker.image(envImageName).inside('-v /var/run/docker.sock:/var/run/docker.sock') {
