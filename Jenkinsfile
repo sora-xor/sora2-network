@@ -1,10 +1,9 @@
 @Library('jenkins-library@feature/dops-2395/rust_library') _
 
-  String featureList
-
 def pipeline = new org.rust.substratePipeline(steps: this,
       disableSecretScanner: true,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$|.*Jenkinsfile\$',
+      featureList: 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test',
       palletListFile: 'pallet_list.txt',
       wasmReportFile: 'subwasm_report.json',
       rustcVersion: 'nightly-2021-12-10',
