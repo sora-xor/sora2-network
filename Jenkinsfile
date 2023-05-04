@@ -1,6 +1,6 @@
 @Library('jenkins-library@feature/dops-2395/rust_library') _
 
-def featureList               = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
+String featureList               = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
 
 def pipeline = new org.rust.substratePipeline(steps: this,
       disableSecretScanner: true,
@@ -8,7 +8,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       palletListFile: 'pallet_list.txt',
       wasmReportFile: 'subwasm_report.json',
       rustcVersion: 'nightly-2021-12-10',
-      featureList: ['private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'],
+      featureList: '',
       dockerImageTags: ['develop': 'dev', 'master': 'latest'],
       contractsPath: 'ethereum-bridge-contracts',
       contractsEnvFile: 'env.template',
