@@ -5,7 +5,7 @@ def palletListFile = 'pallet_list.txt'
 def wasmReportFile = 'subwasm_report.json'
 
 def pipeline = new org.rust.substratePipeline(steps: this,
-      disableSecretScanner: true,
+      disableSecretScanner: false,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$|.*Jenkinsfile\$',
       rustcVersion: 'nightly-2021-12-10',
       dockerImageTags: ['develop': 'dev', 'master': 'latest'],
@@ -20,6 +20,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       cargoDoc: true,
       sendMessage: true,
       buildTestCmds: [
+        'echo "with tag"',
         'cargo test  --release --features \"private-net runtime-benchmarks\"',
         'rm -rf target',
         "cargo build --release --features \'${featureList}\'",
@@ -34,6 +35,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
         'if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!";'
       ],
       buildTestCmdsWithoutTag: [
+        'echo "without tag"',
         'rm -rf ~/.cargo/.package-cache',
         'rm Cargo.lock',
         'cargo fmt -- --check > /dev/null',
