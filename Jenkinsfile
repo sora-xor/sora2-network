@@ -20,7 +20,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       buildTestCmds: [
         'cargo test  --release --features \"private-net runtime-benchmarks\"',
         'rm -rf target'.
-        'cargo build --release --features '${featureList}'',
+        "cargo build --release --features ${featureList}",
         'mv ./target/release/framenode .',
         'mv ./target/release/relayer ./relayer.bin',
         'mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm',
