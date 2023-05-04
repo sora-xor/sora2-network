@@ -1,6 +1,6 @@
 @Library('jenkins-library@feature/dops-2395/rust_library') _
 
-def featureList = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
+def featureList    = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
 def palletListFile = 'pallet_list.txt'
 def wasmReportFile = 'subwasm_report.json'
 
@@ -16,6 +16,9 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       envImageName: 'docker.soramitsu.co.jp/sora2/env:sub4',
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       substrate: true,
+      assignReviewers: true,
+      cargoDoc: true,
+      sendMessage: true,
       buildTestCmds: [
         'cargo test  --release --features \"private-net runtime-benchmarks\"',
         'rm -rf target',
