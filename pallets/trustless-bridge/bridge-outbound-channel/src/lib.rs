@@ -72,7 +72,7 @@ pub mod pallet {
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
-    use frame_support::log::debug;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -250,7 +250,7 @@ pub mod pallet {
             <ChannelNonces<T>>::mutate(network_id, |nonce| {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
-                    let batch_nonce = *nonce - 1;
+                    let batch_nonce = *nonce;
                     for i in 0..messages.len() {
                         T::MessageStatusNotifier::update_status(
                             GenericNetworkId::EVM(network_id),
@@ -284,7 +284,7 @@ pub mod pallet {
                     )
                 } else {
                     // TODO error handling
-                    debug!("Batch nonce overflow");
+                    warn!("Batch nonce overflow");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }
             })
@@ -392,7 +392,7 @@ pub mod pallet {
             };
 
             // batch nonce
-            let batch_nonce = <ChannelNonces<T>>::get(network_id);
+            let batch_nonce = <ChannelNonces<T>>::get(network_id) + 1;
             let message_nonce =
                 MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as MessageNonce;
 

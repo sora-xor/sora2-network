@@ -76,7 +76,7 @@ fn burn_successfull() {
             1000,
         )
         .unwrap();
-        let message_id = BridgeOutboundChannel::make_message_id(0, 0);
+        let message_id = BridgeOutboundChannel::make_message_id(1, 0);
         assert_eq!(
             Transactions::<Test>::get(
                 &caller,
@@ -95,11 +95,9 @@ fn burn_successfull() {
         );
         assert_event(crate::Event::RequestStatusUpdate(message_id, MessageStatus::InQueue).into());
         BridgeOutboundChannel::on_initialize(BridgeOutboundChannel::interval());
-        dbg!("event2");
         assert_event(
             crate::Event::RequestStatusUpdate(message_id, MessageStatus::Committed).into(),
         );
-        dbg!("assert");
         assert_eq!(
             Transactions::<Test>::get(
                 &caller,

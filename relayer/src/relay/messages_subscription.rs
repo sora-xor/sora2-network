@@ -7,7 +7,7 @@ use common::Balance;
 use futures::Stream;
 use futures::StreamExt;
 
-use crate::substrate::{binary_search_first_occurence, LeafProof};
+use crate::substrate::{binary_search_first_occurrence, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
 use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
@@ -142,7 +142,7 @@ async fn find_message_block<S: SenderConfig>(
         low,
         high
     );
-    let start_block = binary_search_first_occurence(low, high, nonce, |block| {
+    let start_block = binary_search_first_occurrence(low, high, nonce, |block| {
         let storage = &storage;
         async move {
             let nonce = sender.storage_fetch(storage, block).await?;
@@ -161,7 +161,7 @@ async fn find_commitment_with_nonce<S: SenderConfig>(
 ) -> AnyResult<Option<(BlockNumber<S>, H256)>> {
     let start_block = find_message_block(sender, network_id, nonce).await?;
     let start_block = if let Some(start_block) = start_block {
-        start_block + 1u32.into()
+        start_block
     } else {
         return Ok(None);
     };
