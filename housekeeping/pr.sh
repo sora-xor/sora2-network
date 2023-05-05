@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installing dependencies
 echo 'Installing dependencies'
+apt-get update
 apt-get install curl -y
 curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
 && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
