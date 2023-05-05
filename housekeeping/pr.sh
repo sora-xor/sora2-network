@@ -11,6 +11,10 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of
 && apt-get install gh -y \
 && apt-get install jq -y
 
+echo ${GH_EMAIL}
+echo ${GH_USER}
+echo ${GH_TOKEN}
+
 # git config
 echo 'git config'
 git config --global user.email ${GH_EMAIL}
