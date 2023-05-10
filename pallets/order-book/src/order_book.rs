@@ -29,11 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    CurrencyLocker, CurrencyUnlocker, DataLayer, Error, LimitOrder, OrderBookId, OrderPrice,
-    OrderVolume,
+    CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, OrderAmount,
+    OrderBookId, OrderPrice, OrderVolume,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
+use common::prelude::{FixedWrapper, QuoteAmount};
 use common::{balance, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
@@ -213,6 +214,157 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(count)
     }
 
+    pub fn calculate_deal(
+        &self,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+        amount: QuoteAmount<OrderVolume>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<DealInfo<AssetIdOf<T>>, DispatchError> {
+        let side = self.get_side(input_asset_id, output_asset_id)?;
+
+        let (base, quote) = match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => match side {
+                PriceVariant::Buy => self.sum_market(
+                    data.get_aggregated_asks(&self.order_book_id).iter(),
+                    Some(OrderAmount::Quote(desired_amount_in)),
+                )?,
+                PriceVariant::Sell => self.sum_market(
+                    data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+                    Some(OrderAmount::Base(desired_amount_in)),
+                )?,
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => match side {
+                PriceVariant::Buy => self.sum_market(
+                    data.get_aggregated_asks(&self.order_book_id).iter(),
+                    Some(OrderAmount::Base(desired_amount_out)),
+                )?,
+                PriceVariant::Sell => self.sum_market(
+                    data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+                    Some(OrderAmount::Quote(desired_amount_out)),
+                )?,
+            },
+        };
+
+        ensure!(
+            base > OrderVolume::zero() && quote > OrderVolume::zero(),
+            Error::<T>::InvalidOrderAmount
+        );
+
+        let (input_amount, output_amount) = match side {
+            PriceVariant::Buy => (quote, base),
+            PriceVariant::Sell => (base, quote),
+        };
+
+        let average_price = (FixedWrapper::from(quote) / FixedWrapper::from(base))
+            .try_into_balance()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+
+        Ok(DealInfo::<AssetIdOf<T>> {
+            input_asset_id: *input_asset_id,
+            input_amount,
+            output_asset_id: *output_asset_id,
+            output_amount,
+            average_price,
+            side,
+        })
+    }
+
+    pub fn get_side(
+        &self,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Result<PriceVariant, DispatchError> {
+        match self.order_book_id {
+            OrderBookId::<AssetIdOf<T>> { base, quote }
+                if base == *output_asset_id && quote == *input_asset_id =>
+            {
+                Ok(PriceVariant::Buy)
+            }
+            OrderBookId::<AssetIdOf<T>> { base, quote }
+                if base == *input_asset_id && quote == *output_asset_id =>
+            {
+                Ok(PriceVariant::Sell)
+            }
+            _ => Err(Error::<T>::InvalidAsset.into()),
+        }
+    }
+
+    /// Summarizes and returns `base` and `quote` volumes of market depth.
+    /// If `depth_limit` is defined, it counts the maximum possible `base` and `quote` volumes under the limit,
+    /// Otherwise returns the sum of whole market depth.
+    fn sum_market<'a>(
+        &self,
+        market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
+        depth_limit: Option<OrderAmount>,
+    ) -> Result<(OrderVolume, OrderVolume), DispatchError> {
+        let mut market_base_volume = OrderVolume::zero();
+        let mut market_quote_volume = OrderVolume::zero();
+
+        let mut enough_liquidity = false;
+
+        for (price, base_volume) in market_data {
+            let quote_volume = (FixedWrapper::from(*price) * FixedWrapper::from(*base_volume))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+
+            if let Some(limit) = depth_limit {
+                match limit {
+                    OrderAmount::Base(base_limit) => {
+                        if market_base_volume + base_volume > base_limit {
+                            let delta = self.align_amount(base_limit - market_base_volume);
+                            market_base_volume += delta;
+                            market_quote_volume += (FixedWrapper::from(*price)
+                                * FixedWrapper::from(delta))
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            enough_liquidity = true;
+                            break;
+                        }
+                    }
+                    OrderAmount::Quote(quote_limit) => {
+                        if market_quote_volume + quote_volume > quote_limit {
+                            // delta in base asset
+                            let delta = self.align_amount(
+                                (FixedWrapper::from(quote_limit - market_quote_volume)
+                                    / FixedWrapper::from(*price))
+                                .try_into_balance()
+                                .map_err(|_| Error::<T>::AmountCalculationFailed)?,
+                            );
+                            market_base_volume += delta;
+                            market_quote_volume += (FixedWrapper::from(*price)
+                                * FixedWrapper::from(delta))
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::AmountCalculationFailed)?;
+                            enough_liquidity = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            market_base_volume += base_volume;
+            market_quote_volume += quote_volume;
+        }
+
+        ensure!(
+            depth_limit.is_none() || enough_liquidity,
+            Error::<T>::NotEnoughLiquidity
+        );
+
+        Ok((market_base_volume, market_quote_volume))
+    }
+
+    pub fn align_amount(&self, amount: OrderVolume) -> OrderVolume {
+        let steps = (FixedWrapper::from(amount) / FixedWrapper::from(self.step_lot_size))
+            .try_into_balance()
+            .unwrap_or(0);
+        let aligned = (FixedWrapper::from(steps) * FixedWrapper::from(self.step_lot_size))
+            .try_into_balance()
+            .unwrap_or(0);
+        aligned
+    }
+
     fn cancel_limit_order_unchecked<Unlocker>(
         &self,
         order: LimitOrder<T>,
@@ -312,12 +464,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    fn best_bid(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
+    pub fn best_bid(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
         let bids = data.get_aggregated_bids(&self.order_book_id);
         bids.iter().max().map(|(k, v)| (*k, *v))
     }
 
-    fn best_ask(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
+    pub fn best_ask(&self, data: &mut impl DataLayer<T>) -> Option<(OrderPrice, OrderVolume)> {
         let asks = data.get_aggregated_asks(&self.order_book_id);
         asks.iter().min().map(|(k, v)| (*k, *v))
     }
