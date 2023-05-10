@@ -4,7 +4,7 @@ def featureList    = 'private-net include-real-files reduced-pswap-reward-period
 def palletListFile = 'pallet_list.txt'
 def wasmReportFile = 'subwasm_report.json'
 def sudoCheckStatus = 0
-Boolean prStatusNotif = true
+Boolean assignReviewers = true
 
 def pipeline = new org.rust.substratePipeline(steps: this,
       disableSecretScanner: false,
