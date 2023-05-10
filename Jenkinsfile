@@ -4,9 +4,9 @@ def featureList    = 'private-net include-real-files reduced-pswap-reward-period
 def palletListFile = 'pallet_list.txt'
 def wasmReportFile = 'subwasm_report.json'
 def sudoCheckStatus = 0
-Boolean assignReviewers = true
 
 def pipeline = new org.rust.substratePipeline(steps: this,
+      assignReviewers: true,
       disableSecretScanner: false,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$|.*Jenkinsfile\$',
       rustcVersion: 'nightly-2021-12-10',
@@ -20,7 +20,6 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       codeCoverage: true,
       staticScanner: true,
       substrate: true,
-      assignReviewers: true,
       cargoDoc: true,
       sendMessage: true,
       buildTestCmds: [
