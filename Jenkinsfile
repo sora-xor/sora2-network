@@ -22,7 +22,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       cargoDoc: true,
       sendMessage: true,
       buildTestCmds: [
-        'echo "with tag"',
+        // 'echo "with tag"',
         'cargo test  --release --features \"private-net runtime-benchmarks\"',
         'rm -rf target',
         "cargo build --release --features \'${featureList}\'",
@@ -37,7 +37,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
         'if [ \$(echo \$?) -eq \"${sudoCheckStatus}\" ]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi'
       ],
       buildTestCmdsWithoutTag: [
-        'echo "without tag"',
+        // 'echo "without tag"',
         'rm -rf ~/.cargo/.package-cache',
         'rm Cargo.lock',
         'cargo fmt -- --check > /dev/null',
