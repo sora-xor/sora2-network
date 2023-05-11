@@ -44,7 +44,7 @@ pub(crate) struct Command {
 impl Command {
     pub(super) async fn run(&self) -> AnyResult<()> {
         let receiver = self.sub.get_signed_substrate().await?;
-        let sender = receiver.clone();
+        let sender = receiver.clone().unsigned();
         let signer = ecdsa::Pair::from_string(&self.signer, None)?;
         let messages_relay = RelayBuilder::new()
             .with_sender_client(sender)

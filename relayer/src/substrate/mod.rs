@@ -395,6 +395,39 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn signed(self, signer: PairSigner<T>) -> AnyResult<SignedClient<T>> {
         SignedClient::<T>::new(self, signer).await
     }
+
+    pub async fn submit_unsigned_extrinsic<P: subxt::tx::TxPayload>(
+        &self,
+        xt: &P,
+    ) -> AnyResult<()> {
+        if let Some(validation) = xt.validation_details() {
+            debug!(
+                "Submitting extrinsic: {}::{}",
+                validation.pallet_name, validation.call_name
+            );
+        } else {
+            debug!("Submitting extrinsic without validation data");
+        }
+        let res = self
+            .api()
+            .tx()
+            .create_unsigned(xt)?
+            .submit_and_watch()
+            .await
+            .map_err(|e| {
+                error!("submit then watch error: {:?}", e);
+                e
+            })
+            .context("sign and submit then watch")?
+            .wait_for_in_block()
+            .await
+            .context("wait for in block")?
+            .wait_for_success()
+            .await
+            .context("wait for success")?;
+        log_extrinsic_events::<T>(res);
+        Ok(())
+    }
 }
 
 #[derive(Clone)]

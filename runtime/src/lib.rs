@@ -2244,6 +2244,11 @@ impl substrate_bridge_app::Config for Runtime {
 #[cfg(feature = "wip")] // Substrate bridge
 parameter_types! {
     pub const BridgeMaxPeers: u32 = 50;
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    // We don't want to have not relevant imports be stuck in transaction pool
+    // for too long
+    pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2256,6 +2261,8 @@ impl bridge_data_signer::Config for Runtime {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type MaxPeers = BridgeMaxPeers;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2385,7 +2392,7 @@ construct_runtime! {
         #[cfg(feature = "wip")] // Substrate bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
         #[cfg(feature = "wip")] // Substrate bridge
-        BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call} = 110,
+        BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
         #[cfg(feature = "wip")] // Substrate bridge
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
 

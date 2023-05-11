@@ -40,7 +40,7 @@ use sp_core::ecdsa;
 use sp_runtime::traits::Keccak256;
 
 pub struct RelayBuilder<S: SenderConfig, R: ReceiverConfig> {
-    sender: Option<SubSignedClient<S>>,
+    sender: Option<SubUnsignedClient<S>>,
     receiver: Option<SubSignedClient<R>>,
     signer: Option<ecdsa::Pair>,
 }
@@ -64,7 +64,7 @@ where
         Default::default()
     }
 
-    pub fn with_sender_client(mut self, sender: SubSignedClient<S>) -> Self {
+    pub fn with_sender_client(mut self, sender: SubUnsignedClient<S>) -> Self {
         self.sender = Some(sender);
         self
     }
@@ -101,7 +101,7 @@ where
 
 #[derive(Clone)]
 pub struct Relay<S: SenderConfig, R: ReceiverConfig> {
-    sender: SubSignedClient<S>,
+    sender: SubUnsignedClient<S>,
     receiver: SubSignedClient<R>,
     signer: ecdsa::Pair,
     receiver_network_id: SubNetworkId,
@@ -130,10 +130,11 @@ where
         let mut acceptable_approvals = vec![];
         for approval in approvals {
             let public = approval
+                .1
                 .recover_prehashed(&message.0)
                 .ok_or(anyhow!("Wrong signature in data signer pallet"))?;
             if peers.contains(&public) {
-                acceptable_approvals.push(approval);
+                acceptable_approvals.push(approval.1);
             }
         }
         Ok(acceptable_approvals)
@@ -172,7 +173,7 @@ where
         }
         let inbound_nonce = self.inbound_channel_nonce().await?;
         let mut subscription = super::messages_subscription::subscribe_message_commitments(
-            self.sender.clone().unsigned(),
+            self.sender.clone(),
             self.receiver_network_id.into(),
             inbound_nonce,
         );
@@ -193,7 +194,7 @@ where
                 let signature = self.signer.sign_prehashed(&digest_hash.0);
                 let call =
                     S::submit_signature(self.receiver_network_id.into(), digest_hash, signature);
-                self.sender.submit_extrinsic(&call).await?;
+                self.sender.submit_unsigned_extrinsic(&call).await?;
             }
             let approvals = self.approvals(digest_hash).await?;
             if (approvals.len() as u32) < bridge_types::utils::threshold(peers.len() as u32) {

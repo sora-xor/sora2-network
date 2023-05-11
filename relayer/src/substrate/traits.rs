@@ -1,4 +1,7 @@
-use std::{collections::BTreeSet, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 
 use crate::prelude::*;
 use bridge_common::{
@@ -79,7 +82,12 @@ pub trait SenderConfig: ConfigExt + 'static {
     fn approvals(
         network_id: GenericNetworkId,
         message: H256,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes>;
+    ) -> StaticStorageAddress<
+        DecodeStaticType<BTreeMap<ecdsa::Public, ecdsa::Signature>>,
+        Yes,
+        Yes,
+        Yes,
+    >;
 
     fn peers(
         network_id: GenericNetworkId,
@@ -205,10 +213,16 @@ impl SenderConfig for ParachainConfig {
     fn approvals(
         network_id: GenericNetworkId,
         message: H256,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes> {
-        parachain_runtime::storage()
-            .bridge_data_signer()
-            .approvals(network_id, message)
+    ) -> StaticStorageAddress<
+        DecodeStaticType<BTreeMap<ecdsa::Public, ecdsa::Signature>>,
+        Yes,
+        Yes,
+        Yes,
+    > {
+        todo!()
+        // parachain_runtime::storage()
+        //     .bridge_data_signer()
+        //     .approvals(network_id, message)
     }
 
     fn peers(
@@ -270,7 +284,12 @@ impl SenderConfig for MainnetConfig {
     fn approvals(
         network_id: GenericNetworkId,
         message: H256,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Signature>>, Yes, Yes, Yes> {
+    ) -> StaticStorageAddress<
+        DecodeStaticType<BTreeMap<ecdsa::Public, ecdsa::Signature>>,
+        Yes,
+        Yes,
+        Yes,
+    > {
         mainnet_runtime::storage()
             .bridge_data_signer()
             .approvals(network_id, message)

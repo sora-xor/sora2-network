@@ -89,6 +89,8 @@ pub mod parachain_runtime {
     use ::sp_runtime::MultiSignature;
     #[subxt(substitute_type = "sp_runtime::MultiSigner")]
     use ::sp_runtime::MultiSigner;
+    #[subxt(substitute_type = "sp_core::bounded::bounded_btree_map::BoundedBTreeMap")]
+    use ::std::collections::btree_map::BTreeMap;
     #[subxt(substitute_type = "sp_core::bounded::bounded_btree_set::BoundedBTreeSet")]
     use ::std::collections::btree_set::BTreeSet;
     #[subxt(substitute_type = "sp_core::bounded::bounded_vec::BoundedVec")]
