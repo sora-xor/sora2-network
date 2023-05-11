@@ -131,6 +131,16 @@ fn batch_dispatched_event_abi() -> Box<Event> {
                 name: "results_length".into(),
                 indexed: false,
             },
+            EventParam {
+                kind: ParamType::Uint(256),
+                name: "gas_spent".into(),
+                indexed: false,
+            },
+            EventParam {
+                kind: ParamType::Uint(256),
+                name: "base_fee".into(),
+                indexed: false,
+            },
         ],
         anonymous: false,
     })
@@ -148,6 +158,11 @@ pub struct BatchDispatched {
     pub results: u64,
     /// A number of messages in a batch.
     pub results_length: u64,
+    /// Gas spent for batch submission, but not a full gas for tx, at least 10500 gas should be
+    /// added.
+    pub gas_spent: u64,
+    /// Base fee in the block.
+    pub base_fee: u64,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
@@ -162,6 +177,8 @@ impl TryFrom<Log> for BatchDispatched {
         let mut relayer = None;
         let mut results = None;
         let mut results_length = None;
+        let mut gas_spent = None;
+        let mut base_fee = None;
         let log = get_batch_dispatched_event_abi()
             .parse_log((log.topics, log.data).into())
             .map_err(|_| BatchDispatchedEventDecodeError)?;
@@ -172,6 +189,8 @@ impl TryFrom<Log> for BatchDispatched {
                 "relayer" => relayer = param.value.into_address(),
                 "results" => results = param.value.into_uint().map(|x| x.low_u64()),
                 "results_length" => results_length = param.value.into_uint().map(|x| x.low_u64()),
+                "gas_spent" => gas_spent = param.value.into_uint().map(|x| x.low_u64()),
+                "base_fee" => base_fee = param.value.into_uint().map(|x| x.low_u64()),
                 _ => return Err(BatchDispatchedEventDecodeError),
             }
         }
@@ -182,6 +201,8 @@ impl TryFrom<Log> for BatchDispatched {
             batch_nonce: batch_nonce.ok_or(BatchDispatchedEventDecodeError)?,
             results: results.ok_or(BatchDispatchedEventDecodeError)?,
             results_length: results_length.ok_or(BatchDispatchedEventDecodeError)?,
+            gas_spent: gas_spent.ok_or(BatchDispatchedEventDecodeError)?,
+            base_fee: base_fee.ok_or(BatchDispatchedEventDecodeError)?,
         })
     }
 }

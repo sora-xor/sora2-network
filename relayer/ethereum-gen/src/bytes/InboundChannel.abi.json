@@ -36,6 +36,18 @@
         "internalType": "uint256",
         "name": "results_length",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "gas_spent",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "base_fee",
+        "type": "uint256"
       }
     ],
     "name": "BatchDispatched",

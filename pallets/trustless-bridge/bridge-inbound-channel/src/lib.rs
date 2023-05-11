@@ -254,8 +254,9 @@ pub mod pallet {
                     message_id,
                     ethereum_tx_hash,
                     batch_dispatched_event.relayer,
-                    U256::zero(),
-                    U256::zero(),
+                    // Since gas tracked during tx execution, some extra gas should be added
+                    U256::from(batch_dispatched_event.gas_spent + 10500),
+                    U256::from(batch_dispatched_event.base_fee),
                 );
 
                 let message_status = if (batch_dispatched_event.results & 1 << i) != 0 {

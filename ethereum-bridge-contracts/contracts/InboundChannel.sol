@@ -52,7 +52,17 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
     // Batch of messages was dispatched by relayer
     // - result - message results bitmap
     // - results_length - number of messages were dispatched
-    event BatchDispatched(uint64 batch_nonce, address relayer, uint256 results, uint256 results_length);
+    // - gas_spent - gas spent for batch submission. Since event emitted before tx committed, actual gas is greater
+    // (at least 10500 gas should be added).
+    // - base fee - current block base fee.
+    event BatchDispatched(
+        uint64 batch_nonce,
+        address relayer,
+        uint256 results,
+        uint256 results_length,
+        uint256 gas_spent,
+        uint256 base_fee
+    );
 
     constructor(address _beefyLightClient) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -78,6 +88,7 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
     ) external nonReentrant {
         require(batch.messages.length <= 256, "must be <= 256 messages in the batch");
 
+        batch_nonce = batch_nonce + 1;
         // Check batch nonce is correct for replay protection
         require(batch.nonce == batch_nonce + 1, "invalid batch nonce");
 
@@ -93,8 +104,14 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         );
 
         uint256 results = processMessages(payable(msg.sender), batch.messages);
-        emit BatchDispatched(batch_nonce, msg.sender, results, batch.messages.length);
-        batch_nonce = batch_nonce + 1;
+        emit BatchDispatched(
+            batch_nonce - 1,
+                msg.sender,
+                results,
+                batch.messages.length,
+                block.gaslimit - gasleft(),
+                block.basefee
+        );
     }
 
     function verifyMerkleLeaf(
