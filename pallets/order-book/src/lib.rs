@@ -41,6 +41,7 @@ use common::{
     ToOrderTechUnitFromDEXAndTradingPair,
 };
 use core::fmt::Debug;
+use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::Weight;
@@ -547,11 +548,15 @@ impl<T: Config> Pallet<T> {
         technical::Pallet::<T>::deregister_tech_account_id(tech_account)
     }
 
-    fn assemble_order_book_id(
+    pub fn assemble_order_book_id(
         dex_id: &T::DEXId,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> Option<OrderBookId<AssetIdOf<T>>> {
+        if input_asset_id == output_asset_id {
+            return None;
+        }
+
         let Ok(dex_info) = T::DexInfoProvider::get_dex_info(&dex_id) else {
             return None;
         };
@@ -718,6 +723,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 ),
             },
         };
+
+        ensure!(
+            target_amount > OrderVolume::zero(),
+            Error::<T>::InvalidOrderAmount
+        );
 
         let fee = 0; // todo (m.tagirov)
 

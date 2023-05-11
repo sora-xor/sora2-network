@@ -85,6 +85,18 @@ pub fn fill_balance(
     ));
 }
 
+pub fn create_empty_order_book(
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+) -> OrderBook<Runtime> {
+    assert_ok!(OrderBookPallet::create_orderbook(
+        RawOrigin::Signed(bob()).into(),
+        DEX.into(),
+        order_book_id
+    ));
+
+    OrderBookPallet::order_books(order_book_id).unwrap()
+}
+
 // Creates and fills the order book
 // price | volume | orders
 //          Asks
@@ -94,7 +106,7 @@ pub fn fill_balance(
 //  spread
 //  10.0 |  168.5 | buy1
 //   9.8 |  139.9 | buy2, buy3
-//   9.5 |  264.3 | buy4, buy5, buy6
+//   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
 pub fn create_and_fill_order_book(
     order_book_id: OrderBookId<AssetIdOf<Runtime>>,
@@ -117,13 +129,15 @@ pub fn create_and_fill_order_book(
     let sp2 = balance!(11.2);
     let sp3 = balance!(11.5);
 
-    // amounts
+    // buy amounts
     let amount1 = balance!(168.5);
     let amount2 = balance!(95.2);
     let amount3 = balance!(44.7);
     let amount4 = balance!(56.4);
     let amount5 = balance!(89.9);
     let amount6 = balance!(115);
+
+    // sell amounts
     let amount7 = balance!(176.3);
     let amount8 = balance!(85.4);
     let amount9 = balance!(93.2);

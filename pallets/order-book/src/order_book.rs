@@ -270,30 +270,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         })
     }
 
-    pub fn get_side(
-        &self,
-        input_asset_id: &AssetIdOf<T>,
-        output_asset_id: &AssetIdOf<T>,
-    ) -> Result<PriceVariant, DispatchError> {
-        match self.order_book_id {
-            OrderBookId::<AssetIdOf<T>> { base, quote }
-                if base == *output_asset_id && quote == *input_asset_id =>
-            {
-                Ok(PriceVariant::Buy)
-            }
-            OrderBookId::<AssetIdOf<T>> { base, quote }
-                if base == *input_asset_id && quote == *output_asset_id =>
-            {
-                Ok(PriceVariant::Sell)
-            }
-            _ => Err(Error::<T>::InvalidAsset.into()),
-        }
-    }
-
     /// Summarizes and returns `base` and `quote` volumes of market depth.
     /// If `depth_limit` is defined, it counts the maximum possible `base` and `quote` volumes under the limit,
     /// Otherwise returns the sum of whole market depth.
-    fn sum_market<'a>(
+    pub fn sum_market<'a>(
         &self,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         depth_limit: Option<OrderAmount>,
@@ -355,13 +335,29 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok((market_base_volume, market_quote_volume))
     }
 
+    pub fn get_side(
+        &self,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Result<PriceVariant, DispatchError> {
+        match self.order_book_id {
+            OrderBookId::<AssetIdOf<T>> { base, quote }
+                if base == *output_asset_id && quote == *input_asset_id =>
+            {
+                Ok(PriceVariant::Buy)
+            }
+            OrderBookId::<AssetIdOf<T>> { base, quote }
+                if base == *input_asset_id && quote == *output_asset_id =>
+            {
+                Ok(PriceVariant::Sell)
+            }
+            _ => Err(Error::<T>::InvalidAsset.into()),
+        }
+    }
+
     pub fn align_amount(&self, amount: OrderVolume) -> OrderVolume {
-        let steps = (FixedWrapper::from(amount) / FixedWrapper::from(self.step_lot_size))
-            .try_into_balance()
-            .unwrap_or(0);
-        let aligned = (FixedWrapper::from(steps) * FixedWrapper::from(self.step_lot_size))
-            .try_into_balance()
-            .unwrap_or(0);
+        let steps = amount / self.step_lot_size;
+        let aligned = steps * self.step_lot_size;
         aligned
     }
 
