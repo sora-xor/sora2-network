@@ -49,6 +49,9 @@ pub mod pallet {
     use frame_system::RawOrigin;
     use sp_runtime::traits::Hash;
 
+    /// Since gas from event is measured before tx is ended, extra gas should be added.
+    const GAS_EXTRA: u64 = 10500;
+
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -255,7 +258,7 @@ pub mod pallet {
                     ethereum_tx_hash,
                     batch_dispatched_event.relayer,
                     // Since gas tracked during tx execution, some extra gas should be added
-                    U256::from(batch_dispatched_event.gas_spent + 10500),
+                    U256::from(batch_dispatched_event.gas_spent + GAS_EXTRA),
                     U256::from(batch_dispatched_event.base_fee),
                 );
 
