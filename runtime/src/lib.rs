@@ -2024,7 +2024,7 @@ use bridge_types::{EVMChainId, SubNetworkId, CHANNEL_INDEXING_PREFIX, H256};
 #[cfg(feature = "wip")] // Bridges
 parameter_types! {
     pub const BridgeMaxMessagePayloadSize: u64 = 256;
-    pub const BridgeMaxMessagesPerCommit: u64 = 20;
+    pub const BridgeMaxMessagesPerCommit: u8 = 20;
     pub const BridgeMaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }

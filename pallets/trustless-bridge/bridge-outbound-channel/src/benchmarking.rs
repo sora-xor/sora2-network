@@ -15,7 +15,7 @@ benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
     // in queue are committed.
     on_initialize {
-        let m in 1 .. T::MaxMessagesPerCommit::get() as u32;
+        let m in 1 .. T::MaxMessagesPerCommit::get() as u8;
         let p in 0 .. T::MaxMessagePayloadSize::get() as u32;
 
         for _ in 0 .. m {

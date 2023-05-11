@@ -160,7 +160,7 @@ impl assets::Config for Test {
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 128;
-    pub const MaxMessagesPerCommit: u64 = 5;
+    pub const MaxMessagesPerCommit: u8 = 5;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(

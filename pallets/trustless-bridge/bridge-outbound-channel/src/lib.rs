@@ -90,10 +90,9 @@ pub mod pallet {
         /// Max bytes in a message payload
         type MaxMessagePayloadSize: Get<u64>;
 
-        // TODO check number on startup
         /// Max number of messages that can be queued and committed in one go for a given channel.
         /// Must be < 256
-        type MaxMessagesPerCommit: Get<u64>;
+        type MaxMessagesPerCommit: Get<u8>;
 
         /// Maximum gas limit for one message batch sent to Ethereum.
         type MaxTotalGasLimit: Get<u64>;
@@ -283,7 +282,6 @@ pub mod pallet {
                         average_payload_size as u32,
                     )
                 } else {
-                    // TODO error handling
                     warn!("Batch nonce overflow");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }
