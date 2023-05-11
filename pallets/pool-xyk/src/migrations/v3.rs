@@ -55,6 +55,8 @@ where
             return Weight::zero();
         }
 
+        info!("Migrating PoolXYK to v3");
+
         let swap_pairs_to_be_deleted: Vec<(T::AssetId, T::AssetId, T::DEXId)> = L::get();
 
         let resulting_weight = swap_pairs_to_be_deleted.into_iter().fold(
@@ -64,6 +66,10 @@ where
                     if let Some(pool_property) = Properties::<T>::get(&base_asset, &target_asset) {
                         pool_property.0
                     } else {
+                        info!(
+                        "Pool with base asset {:?} and target asset {:?} is not present, skipping",
+                        base_asset, target_asset
+                    );
                         return weight_acc.saturating_add(T::DbWeight::get().reads_writes(1, 0));
                     };
 

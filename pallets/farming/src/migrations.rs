@@ -92,6 +92,7 @@ pub mod v2 {
 }
 
 pub mod v3 {
+    use frame_support::log::info;
     use frame_support::traits::StorageVersion;
 
     use super::*;
@@ -111,6 +112,9 @@ pub mod v3 {
                     StorageVersion::get::<Pallet<T>>()
                 );
             }
+
+            info!("Migrating Farming to v3");
+
             let pools = P::get();
             let blocks = B::get();
 

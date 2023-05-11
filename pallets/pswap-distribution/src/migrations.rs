@@ -33,7 +33,7 @@ use core::marker::PhantomData;
 use frame_support::traits::OnRuntimeUpgrade;
 
 pub mod v2 {
-    use frame_support::traits::StorageVersion;
+    use frame_support::{log::info, traits::StorageVersion};
     use sp_std::prelude::Vec;
 
     use super::*;
@@ -52,6 +52,9 @@ pub mod v2 {
                     StorageVersion::get::<Pallet<T>>()
                 );
             }
+
+            info!("Migrating PswapDistribution to v2");
+
             let pools = G::get();
             let weight = pools
                 .iter()
