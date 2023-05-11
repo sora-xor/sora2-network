@@ -84,11 +84,7 @@ where
                 .ok()
                 .map(|value| Item::Original(value))
         }) {
-            match item {
-                Item::Original(value) => Some(value),
-                Item::Updated(value) => Some(value),
-                Item::Removed => None,
-            }
+            item.value()
         } else {
             None
         }

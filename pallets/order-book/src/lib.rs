@@ -66,7 +66,7 @@ pub use crate::order_book::{OrderBook, OrderBookStatus};
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, DataLayer};
+pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
 pub use weights::WeightInfo;
 
@@ -220,6 +220,7 @@ pub mod pallet {
         OrderBookDeleted {
             order_book_id: OrderBookId<AssetIdOf<T>>,
             dex_id: T::DEXId,
+            count_of_canceled_orders: u32,
         },
 
         /// Order book attributes are updated by Council
@@ -295,6 +296,8 @@ pub mod pallet {
         OrderBookReachedMaxCountOfPricesForSide,
         /// An error occurred while calculating the amount
         AmountCalculationFailed,
+        /// Unauthorized action
+        Unauthorized,
     }
 
     #[pallet::call]
@@ -362,9 +365,22 @@ pub mod pallet {
             ensure_root(origin)?;
             let order_book =
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            let dex_id = order_book.dex_id;
+
+            let mut data = CacheDataLayer::<T>::new();
+            let count_of_canceled_orders =
+                order_book.cancel_all_limit_orders::<Self>(&mut data)? as u32;
+
+            data.commit();
+            <OrderBooks<T>>::remove(order_book_id);
+
             Self::deregister_tech_account(order_book.dex_id, order_book_id)?;
-            // todo (m.tagirov)
-            todo!()
+            Self::deposit_event(Event::<T>::OrderBookDeleted {
+                order_book_id,
+                dex_id,
+                count_of_canceled_orders,
+            });
+            Ok(().into())
         }
 
         #[pallet::call_index(2)]
@@ -435,12 +451,28 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::cancel_limit_order())]
         pub fn cancel_limit_order(
             origin: OriginFor<T>,
-            _order_book_id: OrderBookId<AssetIdOf<T>>,
-            _order_id: T::OrderId,
+            order_book_id: OrderBookId<AssetIdOf<T>>,
+            order_id: T::OrderId,
         ) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
-            // todo (m.tagirov)
-            todo!()
+            let who = ensure_signed(origin)?;
+            let mut data = CacheDataLayer::<T>::new();
+            let order = data.get_limit_order(&order_book_id, order_id)?;
+
+            ensure!(order.owner == who, Error::<T>::Unauthorized);
+
+            let order_book =
+                <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+            let dex_id = order_book.dex_id;
+
+            order_book.cancel_limit_order::<Self>(order, &mut data)?;
+            data.commit();
+            Self::deposit_event(Event::<T>::OrderCanceled {
+                order_book_id,
+                dex_id,
+                order_id,
+                owner_id: who,
+            });
+            Ok(().into())
         }
     }
 }
@@ -456,7 +488,9 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T>
         let tech_account = Self::tech_account_for_order_book(dex_id, order_book_id);
         technical::Pallet::<T>::transfer_in(asset_id, account, &tech_account, amount.into())
     }
+}
 
+impl<T: Config> CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T> {
     fn unlock_liquidity(
         dex_id: T::DEXId,
         account: &T::AccountId,
@@ -470,7 +504,7 @@ impl<T: Config> CurrencyLocker<T::AccountId, T::AssetId, T::DEXId> for Pallet<T>
 }
 
 impl<T: Config> Pallet<T> {
-    fn tech_account_for_order_book(
+    pub fn tech_account_for_order_book(
         dex_id: T::DEXId,
         order_book_id: OrderBookId<AssetIdOf<T>>,
     ) -> <T as technical::Config>::TechAccountId {

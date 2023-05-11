@@ -51,6 +51,7 @@ use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use sp_runtime::traits::UniqueSaturatedInto;
 
 use assets::Pallet as Assets;
 use frame_system::Pallet as FrameSystem;
@@ -297,7 +298,14 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::OrderBookCreated{order_book_id: order_book_id, dex_id: DEX.into(), creator: caller}.into());
+        assert_last_event::<T>(
+            Event::<T>::OrderBookCreated {
+                order_book_id,
+                dex_id: DEX.into(),
+                creator: caller,
+            }
+            .into(),
+        );
 
         assert_eq!(
             OrderBookPallet::<T>::order_books(order_book_id).unwrap(),
@@ -306,10 +314,29 @@ benchmarks! {
     }
 
     delete_orderbook {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::delete_orderbook(
+            RawOrigin::Root.into(),
+            order_book_id
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderBookDeleted {
+                order_book_id,
+                dex_id: DEX.into(),
+                count_of_canceled_orders: 12,
+            }
+            .into(),
+        );
+
+        assert_eq!(OrderBookPallet::<T>::order_books(order_book_id), None);
     }
 
     update_orderbook {
@@ -362,7 +389,15 @@ benchmarks! {
     verify {
         let order_id = get_last_order_id::<T>(order_book_id).unwrap();
 
-        assert_last_event::<T>(Event::<T>::OrderPlaced{order_book_id: order_book_id, dex_id: DEX.into(), order_id: order_id, owner_id: caller.clone()}.into());
+        assert_last_event::<T>(
+            Event::<T>::OrderPlaced {
+                order_book_id,
+                dex_id: DEX.into(),
+                order_id,
+                owner_id: caller.clone(),
+            }
+            .into(),
+        );
 
         let expected_order = LimitOrder::<T>::new(
             order_id,
@@ -380,16 +415,49 @@ benchmarks! {
         );
 
         let appropriate_amount = expected_order.appropriate_amount().unwrap();
-        let balance = <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
+        let balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
         let expected_balance = balance_before - appropriate_amount;
         assert_eq!(balance, expected_balance);
     }
 
     cancel_limit_order {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        let order_id = 5u128.unique_saturated_into();
+
+        let order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
+
+        let balance_before =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::cancel_limit_order(
+            RawOrigin::Signed(order.owner.clone()).into(),
+            order_book_id,
+            order_id
+        ).unwrap();
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderCanceled {
+                order_book_id,
+                dex_id: DEX.into(),
+                order_id,
+                owner_id: order.owner.clone(),
+            }
+            .into(),
+        );
+
+        let appropriate_amount = order.appropriate_amount().unwrap();
+        let balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+        let expected_balance = balance_before + appropriate_amount;
+        assert_eq!(balance, expected_balance);
     }
 
     quote {

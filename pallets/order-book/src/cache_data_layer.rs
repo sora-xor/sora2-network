@@ -38,6 +38,7 @@ use common::PriceVariant;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::Zero;
+use sp_std::vec::Vec;
 
 pub struct CacheDataLayer<T: Config> {
     limit_orders:
@@ -276,6 +277,14 @@ impl<T: Config> DataLayer<T> for CacheDataLayer<T> {
         } else {
             Err(Error::<T>::UnknownLimitOrder.into())
         }
+    }
+
+    fn get_all_limit_orders(
+        &mut self,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+    ) -> Vec<LimitOrder<T>> {
+        let orders = self.limit_orders.get_by_prefix(order_book_id);
+        orders.into_values().collect()
     }
 
     fn insert_limit_order(
