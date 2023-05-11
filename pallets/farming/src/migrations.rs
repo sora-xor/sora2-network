@@ -90,3 +90,95 @@ pub mod v2 {
         }
     }
 }
+
+pub mod v3 {
+    use frame_support::traits::StorageVersion;
+
+    use super::*;
+
+    pub struct Migrate<T, P, B>(PhantomData<(T, P, B)>);
+
+    impl<T, P, B> OnRuntimeUpgrade for Migrate<T, P, B>
+    where
+        T: Config,
+        P: Get<Vec<(T::AccountId, T::AccountId)>>,
+        B: Get<Vec<T::BlockNumber>>,
+    {
+        fn on_runtime_upgrade() -> frame_support::weights::Weight {
+            if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(2) {
+                frame_support::log::error!(
+                    "Expected storage version 2, found {:?}, skipping migration",
+                    StorageVersion::get::<Pallet<T>>()
+                );
+            }
+            let pools = P::get();
+            let blocks = B::get();
+
+            let pools_weight = blocks
+                .iter()
+                .fold(Weight::zero(), |weight_acc, block_number| {
+                    Pools::<T>::mutate_exists(block_number, |pool_accounts| {
+                        if let Some(pool_accounts_vec) = pool_accounts {
+                            pools.iter().for_each(|(pool_account, _)| {
+                                pool_accounts_vec.retain(|account| account == pool_account)
+                            });
+                            if pool_accounts_vec.is_empty() {
+                                *pool_accounts = None
+                            };
+                        }
+                    });
+                    weight_acc.saturating_add(T::DbWeight::get().reads_writes(1, 1))
+                });
+
+            let pool_farmers_weight =
+                pools
+                    .iter()
+                    .fold(Weight::zero(), |weight_acc, (pool_account, _)| {
+                        PoolFarmers::<T>::remove(pool_account);
+                        weight_acc.saturating_add(T::DbWeight::get().reads_writes(0, 1))
+                    });
+
+            StorageVersion::new(2).put::<Pallet<T>>();
+            pools_weight
+                .saturating_add(pool_farmers_weight)
+                .saturating_add(T::DbWeight::get().reads_writes(0, 1))
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
+                "Wrong storage version before upgrade"
+            );
+            Ok(Vec::new())
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
+                "Wrong storage version after upgrade"
+            );
+            let pools = &P::get();
+            let blocks = B::get();
+
+            for block_number in blocks {
+                let pool_accounts_in_storage = Pools::<T>::get(block_number);
+                for (pool_account, _) in pools {
+                    frame_support::ensure!(
+                        !pool_accounts_in_storage.contains(pool_account),
+                        "Synthetic pools still referenced in Pools storage in Farming pallet"
+                    );
+                }
+            }
+
+            for (pool_account, _) in pools {
+                frame_support::ensure!(
+                    !PoolFarmers::<T>::contains_key(pool_account),
+                    "Synthetic pools still referenced in PoolFarmers storage in Farming pallet"
+                );
+            }
+            Ok(())
+        }
+    }
+}
