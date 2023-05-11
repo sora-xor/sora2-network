@@ -260,7 +260,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn enabled_sources)]
-    pub(super) type EnabledSources<T: Config> = StorageDoubleMap<
+    pub type EnabledSources<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
         T::DEXId,
