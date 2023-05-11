@@ -80,7 +80,7 @@ impl Command {
             parachain_runtime::runtime_types::parachain_template_runtime::RuntimeCall::MultisigVerifier(
                 parachain_runtime::runtime_types::multisig_verifier::pallet::Call::initialize {
                     network_id,
-                    keys: peers,
+                    peers,
                 },
             );
         info!("Submit sudo call: {call:?}");

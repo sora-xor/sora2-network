@@ -337,7 +337,8 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .api()
             .rpc()
             .block_hash(block_number.map(Into::into))
-            .await?
+            .await
+            .context("Get block hash")?
             .ok_or(anyhow::anyhow!("Block not found"))?;
         Ok(res.into())
     }
@@ -370,7 +371,13 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .api()
             .storage()
             .fetch(address, Some(hash.into()))
-            .await?;
+            .await
+            .context(format!(
+                "Fetch storage {}::{} at hash {:?}",
+                address.pallet_name(),
+                address.entry_name(),
+                hash
+            ))?;
         Ok(res)
     }
 
@@ -421,9 +428,17 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .context("sign and submit then watch")?
             .wait_for_in_block()
             .await
+            .map_err(|e| {
+                error!("wait for in block error: {:?}", e);
+                e
+            })
             .context("wait for in block")?
             .wait_for_success()
             .await
+            .map_err(|e| {
+                error!("wait for success error: {:?}", e);
+                e
+            })
             .context("wait for success")?;
         log_extrinsic_events::<T>(res);
         Ok(())

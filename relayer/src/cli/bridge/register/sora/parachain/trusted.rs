@@ -79,7 +79,7 @@ impl Command {
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::MultisigVerifier(
             mainnet_runtime::runtime_types::multisig_verifier::pallet::Call::initialize {
                 network_id,
-                keys: peers,
+                peers,
             },
         );
         info!("Submit sudo call: {call:?}");

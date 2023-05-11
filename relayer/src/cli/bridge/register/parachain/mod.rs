@@ -36,8 +36,9 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Sora relay
+    /// Initialize BEEFY light client for parachain
     BEEFY(beefy::Command),
+    /// Register trusted peers for parachain
     Trusted(trusted::Command),
 }
 

@@ -36,8 +36,9 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
+    /// Register SORA to parachain bridge with BEEFY proofs
     BEEFY(beefy::Command),
+    /// Register SORA to parachain bridge with trusted peers
     Trusted(trusted::Command),
 }
 

@@ -37,13 +37,13 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
+    /// Relay commands from EVM to another networks
     #[clap(subcommand)]
     EVM(evm::Commands),
-    /// Sora relay
+    /// Relay commands from SORA to another networks
     #[clap(subcommand)]
     Sora(sora::Commands),
-    /// Parachain relay
+    /// Relay commands from parachain to another networks
     #[clap(subcommand)]
     Parachain(parachain::Commands),
 }

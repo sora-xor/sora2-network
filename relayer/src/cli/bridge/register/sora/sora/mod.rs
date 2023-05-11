@@ -35,7 +35,7 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
+    /// Register SORA to SORA bridge with trusted peers
     Trusted(trusted::Command),
 }
 

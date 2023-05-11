@@ -60,7 +60,8 @@ impl Command {
                     .this_network_id(),
                 (),
             )
-            .await?
+            .await
+            .context("Fetch this network id")?
             .ok_or(anyhow!("Network id not found"))?;
 
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeDataSigner(
@@ -76,7 +77,7 @@ impl Command {
         let call = mainnet_runtime::runtime_types::framenode_runtime::RuntimeCall::MultisigVerifier(
             mainnet_runtime::runtime_types::multisig_verifier::pallet::Call::initialize {
                 network_id,
-                keys: peers,
+                peers,
             },
         );
         info!("Submit sudo call: {call:?}");

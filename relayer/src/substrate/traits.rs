@@ -139,7 +139,7 @@ pub trait ReceiverConfig: ConfigExt {
 
     fn peers(
         network_id: GenericNetworkId,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes>;
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes>;
 
     fn beefy_proof(proof: beefy_light_client::SubstrateBridgeMessageProof) -> Self::MultiProof;
 
@@ -391,7 +391,7 @@ impl ReceiverConfig for MainnetConfig {
 
     fn peers(
         network_id: GenericNetworkId,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes> {
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes> {
         mainnet_runtime::storage()
             .multisig_verifier()
             .peer_keys(network_id)
@@ -491,7 +491,7 @@ impl ReceiverConfig for ParachainConfig {
 
     fn peers(
         network_id: GenericNetworkId,
-    ) -> StaticStorageAddress<DecodeStaticType<Vec<ecdsa::Public>>, Yes, (), Yes> {
+    ) -> StaticStorageAddress<DecodeStaticType<BTreeSet<ecdsa::Public>>, Yes, (), Yes> {
         parachain_runtime::storage()
             .multisig_verifier()
             .peer_keys(network_id)

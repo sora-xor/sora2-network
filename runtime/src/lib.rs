@@ -2274,6 +2274,7 @@ impl multisig_verifier::Config for Runtime {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type MaxPeers = BridgeMaxPeers;
 }
 
 construct_runtime! {

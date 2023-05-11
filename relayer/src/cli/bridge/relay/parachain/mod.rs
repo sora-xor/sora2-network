@@ -36,10 +36,10 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Sora relay
+    /// Parachain to SORA relay commands
     #[clap(subcommand)]
     Sora(sora::Commands),
-    /// Parachain relay
+    /// Parachain to parachain relay commands
     #[clap(subcommand)]
     Parachain(parachain::Commands),
 }

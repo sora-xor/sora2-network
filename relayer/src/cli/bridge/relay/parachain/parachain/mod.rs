@@ -36,9 +36,10 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
-    BEEFY(beefy::Command),
+    /// Parachain to parachain relay with trusted peers
     Trusted(trusted::Command),
+    /// Parachain to parachain relay with BEEFY proofs
+    BEEFY(beefy::Command),
 }
 
 impl Commands {

@@ -223,20 +223,20 @@ pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "
 # bridge-types = { path = "../sora2-common-2/pallets/types" }
 # bridge-data-signer = { path = "../sora2-common-2/pallets/data-signer" }
 # multisig-verifier = { path = "../sora2-common-2/pallets/multisig-verifier" }
-beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
-multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "unsigned-approve-for-data-signer" }
+beefy-light-client = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+beefy-light-client-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+beefy-light-client-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+leaf-provider = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+leaf-provider-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+leaf-provider-runtime-api = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+bridge-common = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+dispatch = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+substrate-bridge-app = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+substrate-bridge-channel = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+substrate-bridge-channel-rpc = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+bridge-types = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+bridge-data-signer = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
+multisig-verifier = { git = "https://github.com/sora-xor//sora2-common.git", branch = "trusted_verifier" }
 
 [workspace]
 members = [

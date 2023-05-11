@@ -38,13 +38,13 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Sora relay
+    /// Register EVM app
     App(app::Command),
-    /// Sora relay
+    /// Register asset
     Asset(asset::Command),
-    /// EVM relay
+    /// Register Ethash light client
     Ethash(ethash::Command),
-    /// Parachain relay
+    /// Register EVM channel
     Channels(channels::Command),
 }
 

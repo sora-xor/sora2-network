@@ -36,9 +36,9 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// EVM relay
+    /// Reset BEEFY light client contract
     BEEFY(beefy::Command),
-    /// Parachain relay
+    /// Reset channels contracts
     Channels(channels::Command),
 }
 

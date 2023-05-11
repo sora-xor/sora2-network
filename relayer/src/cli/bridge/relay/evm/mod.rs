@@ -35,7 +35,7 @@ use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Sora relay
+    /// EVM to SORA relay
     Sora(sora::Command),
 }
 
