@@ -1052,6 +1052,9 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = order_book::Pallet<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {

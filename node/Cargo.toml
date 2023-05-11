@@ -133,6 +133,7 @@ private-net = [
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
+    "common/wip",
     "beefy-light-client",
     "beefy-light-client-rpc",
     "substrate-bridge-channel-rpc",

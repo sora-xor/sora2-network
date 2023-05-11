@@ -159,6 +159,9 @@ impl Config for Runtime {
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl tokens::Config for Runtime {
