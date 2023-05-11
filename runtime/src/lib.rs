@@ -966,6 +966,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::SubstrateWeight<Runtime>;
+    type XSTMarketInfo = XSTPool;
 }
 
 parameter_types! {

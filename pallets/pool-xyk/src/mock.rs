@@ -103,6 +103,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
         DemeterFarmingPlatform: demeter_farming_platform::{Pallet, Call, Storage, Event<T>},
+        XSTPool: xst::{Pallet, Storage},
     }
 }
 
@@ -262,6 +263,17 @@ impl demeter_farming_platform::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl xst::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type GetSyntheticBaseAssetId = ();
+    type GetXSTPoolPermissionedTechAccountId = ();
+    type EnsureDEXManager = ();
+    type PriceToolsPallet = ();
+    type Oracle = ();
+    type Symbol = common::SymbolName;
+    type WeightInfo = ();
+}
+
 impl Config for Runtime {
     const MIN_XOR: Balance = balance!(0.007);
     type RuntimeEvent = RuntimeEvent;
@@ -275,6 +287,7 @@ impl Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = XSTPool;
 }
 
 #[allow(non_snake_case)]
