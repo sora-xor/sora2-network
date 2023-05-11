@@ -47,7 +47,8 @@ where
             .collect()
     }
 }
-
+/// List of block numbers binded to pools with synthetic assets in Farming pallet
+/// This list contains block numbers for main, staging, and test environments
 pub struct FarmingPoolBlocksToInspect;
 
 impl Get<Vec<BlockNumber>> for FarmingPoolBlocksToInspect {
