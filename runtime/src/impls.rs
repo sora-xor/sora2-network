@@ -282,18 +282,16 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::BridgeCall::XCMApp(_msg) => {
-                // unimplemented!()
-                Ok(().into())
-            }
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
             bridge_types::substrate::BridgeCall::DataSigner(msg) => {
                 let call: bridge_data_signer::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::BridgeCall::MultisigVerifier(_) => {
-                // unimplemented!()
-                Ok(().into())
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
             }
         }
     }

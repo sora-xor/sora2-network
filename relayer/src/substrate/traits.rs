@@ -219,10 +219,9 @@ impl SenderConfig for ParachainConfig {
         Yes,
         Yes,
     > {
-        todo!()
-        // parachain_runtime::storage()
-        //     .bridge_data_signer()
-        //     .approvals(network_id, message)
+        parachain_runtime::storage()
+            .bridge_data_signer()
+            .approvals(network_id, message)
     }
 
     fn peers(
