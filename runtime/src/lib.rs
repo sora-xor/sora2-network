@@ -34,6 +34,7 @@
 
 extern crate alloc;
 use alloc::string::String;
+#[cfg(feature = "wip")] // Substrate bridge
 use bridge_types::traits::Verifier;
 
 mod bags_thresholds;
@@ -2175,14 +2176,17 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type Currency = Currencies;
 }
 
+#[cfg(feature = "wip")] // Substrate bridge
 pub struct MultiVerifier;
 
 #[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
+#[cfg(feature = "wip")] // Substrate bridge
 pub enum MultiProof {
     Beefy(<BeefyLightClient as Verifier>::Proof),
     Multisig(<MultisigVerifier as Verifier>::Proof),
 }
 
+#[cfg(feature = "wip")] // Substrate bridge
 impl Verifier for MultiVerifier {
     type Proof = MultiProof;
 
@@ -2214,8 +2218,10 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type WeightInfo = ();
 }
 
+#[cfg(feature = "wip")] // Substrate bridge
 pub struct AssetIdConverter;
 
+#[cfg(feature = "wip")] // Substrate bridge
 impl Convert<AssetId, H256> for AssetIdConverter {
     fn convert(a: AssetId) -> H256 {
         a.code.into()
