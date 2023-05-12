@@ -209,16 +209,12 @@ pub mod pallet {
 
         /// BatchDispatched event from InboundChannel on Ethereum found, the function verifies tx
         /// and changes all the batch messages statuses.
-        ///
-        /// - `ethereum_tx_hash`: tx hash on Ethereum
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::batch_dispatched())]
         pub fn batch_dispatched(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             message: Message,
-            // TODO ethereum_tx_hash not reliable
-            ethereum_tx_hash: H256,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
@@ -248,19 +244,18 @@ pub mod pallet {
 
             let network_id = GenericNetworkId::EVM(network_id);
 
+            T::GasTracker::record_tx_fee(
+                network_id,
+                batch_dispatched_event.batch_nonce,
+                batch_dispatched_event.relayer,
+                // Since gas tracked during tx execution, some extra gas should be added
+                U256::from(batch_dispatched_event.gas_spent + GAS_EXTRA),
+                U256::from(batch_dispatched_event.base_fee),
+            );
+
             for i in 0..batch_dispatched_event.results_length {
                 let message_id = MessageId::outbound_batched(batch_dispatched_event.batch_nonce, i)
                     .using_encoded(|v| <T as Config>::Hashing::hash(v));
-
-                T::GasTracker::record_tx_fee(
-                    network_id,
-                    message_id,
-                    ethereum_tx_hash,
-                    batch_dispatched_event.relayer,
-                    // Since gas tracked during tx execution, some extra gas should be added
-                    U256::from(batch_dispatched_event.gas_spent + GAS_EXTRA),
-                    U256::from(batch_dispatched_event.base_fee),
-                );
 
                 let message_status = if (batch_dispatched_event.results & 1 << i) != 0 {
                     MessageStatus::Done

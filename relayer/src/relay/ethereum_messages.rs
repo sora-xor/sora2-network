@@ -221,8 +221,6 @@ impl SubstrateMessagesRelay {
                     .await?
                     .expect("should exist");
 
-                let eth_tx_hash = meta.transaction_hash;
-
                 for log in tx.logs {
                     let raw_log = RawLog {
                         topics: log.topics.clone(),
@@ -244,7 +242,6 @@ impl SubstrateMessagesRelay {
                                         .batch_dispatched(
                                             self.network_id,
                                             message,
-                                            eth_tx_hash,
                                         ),
                                     &self.sub,
                                 )

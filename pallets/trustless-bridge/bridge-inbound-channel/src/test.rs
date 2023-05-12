@@ -553,7 +553,6 @@ fn test_batch_dispatched_wrong_event() {
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
             ),
             Error::<Test>::InvalidBatchDispatchedEvent
         );
@@ -579,7 +578,6 @@ fn test_batch_dispatched_with_invalid_source_channel() {
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
             ),
             Error::<Test>::InvalidSourceChannel
         );
@@ -604,7 +602,6 @@ fn test_batch_dispatched_with_invalid_nonce() {
             origin.clone(),
             BASE_NETWORK_ID,
             message.clone(),
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -615,7 +612,6 @@ fn test_batch_dispatched_with_invalid_nonce() {
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
             ),
             Error::<Test>::InvalidNonce
         );
@@ -640,7 +636,6 @@ fn test_batch_dispatched() {
             origin.clone(),
             BASE_NETWORK_ID,
             message_1,
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -658,7 +653,6 @@ fn test_batch_dispatched() {
             origin.clone(),
             BASE_NETWORK_ID,
             message_2,
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -683,7 +677,6 @@ fn test_batch_dispatched_refund() {
             origin,
             BASE_NETWORK_ID,
             message,
-            Default::default(),
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);

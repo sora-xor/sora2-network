@@ -193,16 +193,21 @@ pub mod pallet {
 }
 
 impl<T: Config> GasTracker<Balance> for Pallet<T> {
+    /// Records fee paid by relayer for message submission.
+    /// - network_id - ethereum network id,
+    /// - batch_nonce - batch nonce,
+    /// - ethereum_relayer_address - relayer that had paid for the batch submission,
+    /// - gas_used - gas paid for batch relaying,
+    /// - gas_price - ethereum base fee in the block when batch was submitted.
     fn record_tx_fee(
         network_id: GenericNetworkId,
-        message_id: H256,
-        ethereum_tx_hash: H256,
+        batch_nonce: u64,
         ethereum_relayer_address: Address,
         gas_used: U256,
         gas_price: U256,
     ) {
-        log::debug!("Record tx fee: message_id={}, ethereum_tx_hash={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
-            message_id,
+        log::debug!("Record tx fee: batch_nonce={}, ethereum_tx_hash={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
+            batch_id,
             ethereum_tx_hash,
             ethereum_relayer_address,
             gas_used,
