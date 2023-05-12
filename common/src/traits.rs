@@ -93,6 +93,56 @@ impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for 
     }
 }
 
+pub trait TradingPairSourceManager<DEXId, AssetId> {
+    fn list_enabled_sources_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError>;
+
+    fn is_source_enabled_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError>;
+
+    fn enable_source_for_trading_pair(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult;
+}
+
+impl<DEXId, AssetId> TradingPairSourceManager<DEXId, AssetId> for () {
+    fn list_enabled_sources_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn is_source_enabled_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn enable_source_for_trading_pair(
+        _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
+        _target_asset_id: &AssetId,
+        _source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
 /// Indicates that particular object can be used to perform exchanges.
 pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     /// Check if liquidity source provides an exchange from given input asset to output asset.

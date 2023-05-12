@@ -44,7 +44,8 @@ use common::{
     balance, fixed_wrapper, AccountIdOf, AssetInfoProvider, BuyBackHandler, DEXInfo, DexIdOf,
     DexInfoProvider, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityProxyTrait,
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet, XSTUSD,
+    LiquiditySourceType, RewardReason, TradingPair, TradingPairSourceManager, VestedRewardsPallet,
+    XSTUSD,
 };
 use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
@@ -1082,6 +1083,8 @@ impl<T: Config> Pallet<T> {
             .tuple_windows()
             .filter_map(|(from, to)| {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+
+                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     dex_id,
                     &pair.base_asset_id,
@@ -1101,6 +1104,8 @@ impl<T: Config> Pallet<T> {
         let sources_set = fallible_iterator::convert(path.to_vec().iter().tuple_windows().map(
             |(from, to)| -> Result<_, DispatchError> {
                 let pair = Self::weak_sort_pair(&dex_info, *from, *to);
+
+                // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
                 let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
                     &dex_id,
                     &pair.base_asset_id,
@@ -2121,6 +2126,7 @@ pub mod pallet {
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + assets::Config + trading_pair::Config

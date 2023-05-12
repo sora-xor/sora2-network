@@ -37,8 +37,8 @@ use common::prelude::{
 };
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
-    ToOrderTechUnitFromDEXAndTradingPair,
+    Description, DexInfoProvider, LiquiditySource, LiquiditySourceType, PriceVariant, RewardReason,
+    ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
 };
 use core::fmt::Debug;
 use frame_support::ensure;
@@ -125,6 +125,7 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
+        type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, Self::AssetId>;
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
             Self::AccountId,
@@ -354,6 +355,13 @@ pub mod pallet {
                 );
                 OrderBook::<T>::default_nft(order_book_id, dex_id)
             };
+
+            T::TradingPairSourceManager::enable_source_for_trading_pair(
+                &dex_id,
+                &order_book_id.quote,
+                &order_book_id.base,
+                LiquiditySourceType::OrderBook,
+            )?;
 
             <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::register_tech_account(dex_id, order_book_id)?;

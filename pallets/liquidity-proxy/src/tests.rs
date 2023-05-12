@@ -36,7 +36,7 @@ use common::prelude::{AssetName, AssetSymbol, Balance, QuoteAmount, SwapAmount};
 use common::{
     assert_approx_eq, balance, fixed, fixed_wrapper, AssetInfoProvider, BuyBackHandler, FilterMode,
     Fixed, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
-    RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
+    RewardReason, TradingPairSourceManager, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XST, XSTUSD,
 };
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
