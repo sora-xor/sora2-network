@@ -50,7 +50,8 @@ pub mod pallet {
     use sp_runtime::traits::Hash;
 
     /// Since gas from event is measured before tx is ended, extra gas should be added.
-    const GAS_EXTRA: u64 = 10500;
+    /// 20000 for storage gas_proof in map + ~17000 for emit BatchDispatched
+    const GAS_EXTRA: u64 = 37000;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
