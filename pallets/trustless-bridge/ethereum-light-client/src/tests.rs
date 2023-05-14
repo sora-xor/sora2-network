@@ -604,15 +604,6 @@ fn it_denies_receipt_inclusion_for_invalid_log() {
         initial_networks: vec![(EthNetworkConfig::Ropsten, finalized_header, 0u32.into())],
     })
     .execute_with(|| {
-        // let (message, proof) =
-        //     message_with_receipt_proof(Vec::new(), finalized_header_hash, receipt_proof.clone());
-        // let message_hash = Keccak256::hash_of(&message);
-        // Invalid log payload
-        // assert_err!(
-        //     Verifier::verify(network_id.into(), message_hash, &proof),
-        //     Error::<Test>::DecodeFailed,
-        // );
-
         // Valid log payload but doesn't exist in receipt
         let mut log = log_payload();
         log[3] = 204;
