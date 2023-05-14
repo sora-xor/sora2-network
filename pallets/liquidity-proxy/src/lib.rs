@@ -251,17 +251,29 @@ impl<T: Config> Pallet<T> {
         filter_mode: &FilterMode,
     ) -> bool {
         let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
+
+        #[allow(unused_mut)] // order-book
+        #[allow(unused_assignments)] // order-book
+        let mut is_order_book = false; // TODO remake
+
+        #[cfg(feature = "wip")] // order-book
+        {
+            is_order_book = selected_source_types.contains(&LiquiditySourceType::OrderBook);
+        }
+
         // check if user has selected only xyk either explicitly or by excluding other types
         // FIXME: such detection approach is unreliable, come up with better way
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
             && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
+            && !is_order_book
             && filter_mode == &FilterMode::AllowSelected
             || selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
                 && selected_source_types.contains(&LiquiditySourceType::XSTPool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
+                && !is_order_book
                 && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
         let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)

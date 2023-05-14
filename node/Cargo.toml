@@ -134,6 +134,8 @@ wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
     "common/wip",
+    "dex-api-rpc/wip",
+    "liquidity-proxy-rpc/wip",
     "beefy-light-client",
     "beefy-light-client-rpc",
     "substrate-bridge-channel-rpc",
