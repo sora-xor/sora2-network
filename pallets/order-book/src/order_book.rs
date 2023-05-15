@@ -123,7 +123,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.last_order_id
     }
 
-    pub fn place_limit_order<Locker>(
+    #[cfg_attr(feature = "test", visibility::make(pub))]
+    pub(crate) fn place_limit_order<Locker>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -178,7 +179,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(())
     }
 
-    pub fn cancel_limit_order<Unlocker>(
+    #[cfg_attr(feature = "test", visibility::make(pub))]
+    pub(crate) fn cancel_limit_order<Unlocker>(
         &self,
         order: LimitOrder<T>,
         data: &mut impl DataLayer<T>,
@@ -196,7 +198,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         self.cancel_limit_order_unchecked::<Unlocker>(order, data)
     }
 
-    pub fn cancel_all_limit_orders<Unlocker>(
+    #[cfg_attr(feature = "test", visibility::make(pub))]
+    pub(crate) fn cancel_all_limit_orders<Unlocker>(
         &self,
         data: &mut impl DataLayer<T>,
     ) -> Result<usize, DispatchError>

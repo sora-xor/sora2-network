@@ -114,8 +114,8 @@ where
     ) -> Option<UserOrders<T::OrderId, T::MaxOpenedLimitOrdersPerUser>>;
 }
 
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
+#[cfg_attr(feature = "test", visibility::make(pub))]
+pub(crate) trait CurrencyLocker<AccountId, AssetId, DEXId> {
     /// Lock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn lock_liquidity(
@@ -127,8 +127,8 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId> {
     ) -> Result<(), DispatchError>;
 }
 
-// todo: make pub(tests) (k.ivanov)
-pub trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
+#[cfg_attr(feature = "test", visibility::make(pub))]
+pub(crate) trait CurrencyUnlocker<AccountId, AssetId, DEXId> {
     /// Unlock `amount` of liquidity in `order_book_id`'s asset chosen by `asset`.
     /// The assets are taken from `account`.
     fn unlock_liquidity(

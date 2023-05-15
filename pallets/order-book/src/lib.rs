@@ -66,7 +66,9 @@ pub use crate::order_book::{OrderBook, OrderBookStatus};
 use cache_data_layer::CacheDataLayer;
 pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
-pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
+pub use traits::DataLayer;
+#[cfg_attr(feature = "test", visibility::make(pub))]
+use traits::{CurrencyLocker, CurrencyUnlocker};
 pub use types::{MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserOrders};
 pub use weights::WeightInfo;
 
