@@ -38,10 +38,10 @@ https://substrate.dev/docs/en/knowledgebase/getting-started/
 
 ```sh
 # all
-cargo test
+cargo test --features "test"
 
 # specific pallet
-cargo test -p assets
+cargo test -p assets --features "test"
 ```
 
 ### Run local network

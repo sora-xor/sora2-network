@@ -29,10 +29,10 @@ docker-build-debug:
 	@./scripts/docker_compose_up.sh --with-last-commit --run "cargo build"
 
 docker-test-release:
-	@./scripts/docker_compose_up.sh --with-last-commit --run "cargo test --release"
+	@./scripts/docker_compose_up.sh --with-last-commit --run "cargo test --release --features \"test\""
 
 docker-test-debug:
-	@./scripts/docker_compose_up.sh --with-last-commit --run "cargo test"
+	@./scripts/docker_compose_up.sh --with-last-commit --run "cargo test --features \"test\""
 
 cargo-build-release:
 	${RUN} "cargo build --release"
@@ -41,10 +41,10 @@ cargo-build-debug:
 	${RUN} "cargo build"
 
 cargo-test-release:
-	${RUN} "SKIP_WASM_BUILD=1 cargo test --release"
+	${RUN} "SKIP_WASM_BUILD=1 cargo test --release  --features \"test\""
 
 cargo-test-debug:
-	${RUN} "SKIP_WASM_BUILD=1 cargo test"
+	${RUN} "SKIP_WASM_BUILD=1 cargo test --features \"test\""
 
 cargo-check-release:
 	${RUN} "SKIP_WASM_BUILD=1 cargo check --release"

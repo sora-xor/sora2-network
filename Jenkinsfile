@@ -127,7 +127,7 @@ pipeline {
                                     sudoCheckStatus = 101
                                 }
                                 sh """
-                                    cargo test  --release --features \"private-net runtime-benchmarks\"
+                                    cargo test  --release --features \"private-net runtime-benchmarks test\"
                                     rm -rf target
                                     cargo build --release --features \"${featureList}\"
                                     mv ./target/release/framenode .
@@ -149,9 +149,9 @@ pipeline {
                                     rm -rf ~/.cargo/.package-cache
                                     rm Cargo.lock
                                     cargo fmt -- --check > /dev/null
-                                    cargo test
-                                    cargo test --features \"private-net wip ready-to-test\"
-                                    cargo test --features \"private-net wip ready-to-test runtime-benchmarks\"
+                                    cargo test --features \"test\"
+                                    cargo test --features \"test private-net wip ready-to-test\"
+                                    cargo test --features \"test private-net wip ready-to-test runtime-benchmarks\"
                                 '''
                             }
                         }
