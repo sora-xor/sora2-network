@@ -31,10 +31,9 @@
 #![cfg(feature = "wip")] // order-book
 
 use crate::tests::test_utils::*;
-use assets::AssetIdOf;
-use common::{balance, PriceVariant, VAL, XOR};
+use common::{balance, PriceVariant};
 use frame_support::{assert_err, assert_ok};
-use framenode_runtime::order_book::{Config, LimitOrder, OrderBookId};
+use framenode_runtime::order_book::{Config, LimitOrder, OrderAmount};
 use framenode_runtime::Runtime;
 
 #[test]
@@ -121,7 +120,29 @@ fn should_pass_valid_limit_order() {
 }
 
 #[test]
-fn should_return_appropriate_amount() {
+fn should_not_return_deal_amount_with_big_base_limit() {
+    let price = balance!(11);
+    let amount = balance!(100);
+    let base_amount_limit = balance!(101);
+
+    let buy_order =
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+
+    let sell_order =
+        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
+
+    assert_err!(
+        buy_order.deal_amount(Some(base_amount_limit)),
+        E::InvalidOrderAmount
+    );
+    assert_err!(
+        sell_order.deal_amount(Some(base_amount_limit)),
+        E::InvalidOrderAmount
+    );
+}
+
+#[test]
+fn should_return_deal_amount() {
     let price = balance!(11);
     let amount = balance!(100);
 
@@ -131,39 +152,25 @@ fn should_return_appropriate_amount() {
     let sell_order =
         LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
 
-    let buy_appropriate_amount = buy_order.appropriate_amount().unwrap();
-    let sell_appropriate_amount = sell_order.appropriate_amount().unwrap();
+    let full_buy_deal_amount = buy_order.deal_amount(None).unwrap();
+    let full_sell_deal_amount = sell_order.deal_amount(None).unwrap();
 
-    assert_eq!(buy_appropriate_amount, balance!(1100));
-    assert_eq!(sell_appropriate_amount, amount);
-}
+    assert_eq!(full_buy_deal_amount, OrderAmount::Quote(balance!(1100)));
+    assert_eq!(full_sell_deal_amount, OrderAmount::Base(amount));
 
-#[test]
-fn should_return_appropriate_asset_and_amount() {
-    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-        base: VAL.into(),
-        quote: XOR.into(),
-    };
+    let base_amount_limit = balance!(50);
+    let part_buy_deal_amount = buy_order.deal_amount(Some(base_amount_limit)).unwrap();
+    let part_sell_deal_amount = sell_order.deal_amount(Some(base_amount_limit)).unwrap();
 
-    let price = balance!(12.5);
-    let amount = balance!(100);
+    assert_eq!(part_buy_deal_amount, OrderAmount::Quote(balance!(550)));
+    assert_eq!(part_sell_deal_amount, OrderAmount::Base(base_amount_limit));
 
-    let buy_order =
-        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000);
+    let full_part_buy_deal_amount = buy_order.deal_amount(Some(amount)).unwrap();
+    let full_part_sell_deal_amount = sell_order.deal_amount(Some(amount)).unwrap();
 
-    let sell_order =
-        LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
-
-    let (buy_appropriate_asset, buy_appropriate_amount) = buy_order
-        .appropriate_asset_and_amount(&order_book_id)
-        .unwrap();
-    let (sell_appropriate_asset, sell_appropriate_amount) = sell_order
-        .appropriate_asset_and_amount(&order_book_id)
-        .unwrap();
-
-    assert_eq!(*buy_appropriate_asset, order_book_id.quote);
-    assert_eq!(buy_appropriate_amount, balance!(1250));
-
-    assert_eq!(*sell_appropriate_asset, order_book_id.base);
-    assert_eq!(sell_appropriate_amount, amount);
+    assert_eq!(
+        full_part_buy_deal_amount,
+        OrderAmount::Quote(balance!(1100))
+    );
+    assert_eq!(full_part_sell_deal_amount, OrderAmount::Base(amount));
 }

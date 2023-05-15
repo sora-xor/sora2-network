@@ -418,10 +418,10 @@ benchmarks! {
             expected_order
         );
 
-        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+        let deal_amount = *expected_order.deal_amount(None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
-        let expected_balance = balance_before - appropriate_amount;
+        let expected_balance = balance_before - deal_amount;
         assert_eq!(balance, expected_balance);
     }
 
@@ -457,10 +457,10 @@ benchmarks! {
             .into(),
         );
 
-        let appropriate_amount = order.appropriate_amount().unwrap();
+        let deal_amount = *order.deal_amount(None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
-        let expected_balance = balance_before + appropriate_amount;
+        let expected_balance = balance_before + deal_amount;
         assert_eq!(balance, expected_balance);
     }
 

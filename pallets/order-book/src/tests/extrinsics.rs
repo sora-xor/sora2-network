@@ -598,7 +598,7 @@ fn should_place_limit_order() {
             lifespan,
         );
 
-        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+        let deal_amount = *expected_order.deal_amount(None).unwrap().value();
 
         assert_eq!(
             OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
@@ -630,7 +630,7 @@ fn should_place_limit_order() {
         let balance =
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
                 .unwrap();
-        let expected_balance = balance_before - appropriate_amount;
+        let expected_balance = balance_before - deal_amount;
         assert_eq!(balance, expected_balance);
     });
 }
@@ -868,7 +868,7 @@ fn should_cancel_limit_order() {
             order_id
         ));
 
-        let appropriate_amount = order.appropriate_amount().unwrap();
+        let deal_amount = *order.deal_amount(None).unwrap().value();
 
         // check
         let mut expected_bids = bids_before.clone();
@@ -898,7 +898,7 @@ fn should_cancel_limit_order() {
             &order.owner,
         )
         .unwrap();
-        let expected_balance = balance_before + appropriate_amount;
+        let expected_balance = balance_before + deal_amount;
         assert_eq!(balance, expected_balance);
     });
 }

@@ -165,14 +165,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         }
 
-        let (lock_asset, lock_amount) = order.appropriate_asset_and_amount(&self.order_book_id)?;
+        let lock_amount = order.deal_amount(None)?;
+        let lock_asset = match lock_amount {
+            OrderAmount::Base(..) => &self.order_book_id.base,
+            OrderAmount::Quote(..) => &self.order_book_id.quote,
+        };
 
         Locker::lock_liquidity(
             self.dex_id,
             &order.owner,
             self.order_book_id,
             lock_asset,
-            lock_amount,
+            *lock_amount.value(),
         )?;
 
         data.insert_limit_order(&self.order_book_id, order)?;
@@ -369,14 +373,18 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
     {
-        let (lock_asset, lock_amount) = order.appropriate_asset_and_amount(&self.order_book_id)?;
+        let lock_amount = order.deal_amount(None)?;
+        let lock_asset = match lock_amount {
+            OrderAmount::Base(..) => &self.order_book_id.base,
+            OrderAmount::Quote(..) => &self.order_book_id.quote,
+        };
 
         Unlocker::unlock_liquidity(
             self.dex_id,
             &order.owner,
             self.order_book_id,
             lock_asset,
-            lock_amount,
+            *lock_amount.value(),
         )?;
 
         data.delete_limit_order(&self.order_book_id, order.id)?;

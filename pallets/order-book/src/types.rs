@@ -49,6 +49,15 @@ pub enum OrderAmount {
     Quote(OrderVolume),
 }
 
+impl OrderAmount {
+    pub fn value(&self) -> &OrderVolume {
+        match self {
+            OrderAmount::Base(value) => value,
+            OrderAmount::Quote(value) => value,
+        }
+    }
+}
+
 #[derive(
     Encode,
     Decode,

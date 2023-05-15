@@ -31,7 +31,6 @@
 use crate::{OrderBookId, OrderVolume};
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::prelude::SwapAmount;
 use common::PriceVariant;
 use core::fmt::Debug;
 
@@ -45,5 +44,5 @@ where
     pub order_book_id: OrderBookId<AssetIdOf<T>>,
 
     /// Amount of OrderBookId `base` asset
-    pub amount: SwapAmount<OrderVolume>,
+    pub amount: OrderVolume,
 }
