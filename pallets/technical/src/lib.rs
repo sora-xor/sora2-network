@@ -167,8 +167,9 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Register `TechAccountId` in storage map if it not exist.
-    #[cfg_attr(feature = "test", visibility::make(pub))]
-    fn register_tech_account_id_if_not_exist(tech_account_id: &T::TechAccountId) -> DispatchResult {
+    pub fn register_tech_account_id_if_not_exist(
+        tech_account_id: &T::TechAccountId,
+    ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::inc_providers(&account_id);
@@ -178,8 +179,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Deregister `TechAccountId` in storage map.
-    #[cfg_attr(feature = "test", visibility::make(pub))]
-    fn deregister_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
+    pub fn deregister_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
         if let Ok(_) = Self::lookup_tech_account_id(&account_id) {
             frame_system::Pallet::<T>::dec_providers(&account_id)?;
