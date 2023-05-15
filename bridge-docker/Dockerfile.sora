@@ -1,5 +1,4 @@
-FROM debian:bullseye-slim
-
+FROM debian:bullseye-slim AS rust
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rustup"
 ENV CARGO_HOME="/opt/cargo"
@@ -7,7 +6,6 @@ ENV PATH="$PATH:$CARGO_HOME/bin"
 ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV CC=clang-13
 ENV CXX=clang++-13
-
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
@@ -21,7 +19,6 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
 RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
     echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
@@ -32,7 +29,6 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2023-03-21
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain stable && \
@@ -40,16 +36,27 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-
 RUN cargo install cargo-chef
 
-RUN mkdir /app
+# generate recipe.json for dependency caching
+FROM rust AS planner
 WORKDIR /app
+COPY Cargo.lock /app
+COPY Cargo.toml /app
+COPY pallets /app/pallets
+COPY runtime /app/runtime
+COPY relayer /app/relayer
+COPY common /app/common
+COPY utils /app/utils
+COPY node /app/node
+RUN cargo chef prepare --recipe-path recipe.json
 
-COPY bridge-docker/recipe.json /app
-RUN cargo chef cook --release --features private-net,wip,ready-to-test --recipe-path /app/recipe.json
-
-# Build
+FROM rust AS builder
+WORKDIR /app
+COPY --from=planner /app/recipe.json recipe.json
+# cache dependencies build
+RUN cargo chef cook --release --features private-net,wip,ready-to-test --recipe-path recipe.json
+# build
 COPY Cargo.lock /app
 COPY Cargo.toml /app
 COPY pallets /app/pallets
@@ -59,5 +66,14 @@ COPY common /app/common
 COPY utils /app/utils
 COPY node /app/node
 COPY .hooks /app/.hooks
+RUN cargo build --release --features private-net,wip,ready-to-test
 
-RUN cargo build --release --features private-net,wip,ready-to-test && cp target/release/framenode target/release/relayer /usr/local/bin && rm -rf /app
+# runtime
+FROM debian:bullseye-slim
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    jq && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/framenode /app/target/release/relayer /usr/local/bin

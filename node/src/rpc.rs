@@ -110,7 +110,7 @@ where
     if let Some(storage) = backend.offchain_storage() {
         rpc.merge(BridgeChannelClient::new(storage.clone()).into_rpc())?;
         rpc.merge(
-            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer<Balance>>::into_rpc(
+            <SubstrateBridgeChannelClient<_> as SubstrateBridgeChannelAPIServer>::into_rpc(
                 SubstrateBridgeChannelClient::new(storage),
             ),
         )?;
