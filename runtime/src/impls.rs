@@ -262,13 +262,7 @@ impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImba
 
 #[cfg(feature = "wip")] // Substrate bridge
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
-pub struct DispatchableSubstrateBridgeCall(
-    bridge_types::substrate::SubstrateBridgeMessage<
-        crate::AccountId,
-        crate::AssetId,
-        crate::Balance,
-    >,
-);
+pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
 #[cfg(feature = "wip")] // Substrate bridge
 impl Dispatchable for DispatchableSubstrateBridgeCall {
@@ -283,13 +277,21 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
         frame_support::log::info!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
-            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(msg) => {
+            bridge_types::substrate::BridgeCall::SubstrateApp(msg) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = msg.into();
                 let call: crate::RuntimeCall = call.into();
                 call.dispatch(origin)
             }
-            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_msg) => {
-                unimplemented!()
+            bridge_types::substrate::BridgeCall::XCMApp(_msg) => unimplemented!(),
+            bridge_types::substrate::BridgeCall::DataSigner(msg) => {
+                let call: bridge_data_signer::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
+            }
+            bridge_types::substrate::BridgeCall::MultisigVerifier(msg) => {
+                let call: multisig_verifier::Call<crate::Runtime> = msg.into();
+                let call: crate::RuntimeCall = call.into();
+                call.dispatch(origin)
             }
         }
     }
@@ -323,8 +325,10 @@ pub struct SubstrateBridgeCallFilter;
 impl Contains<DispatchableSubstrateBridgeCall> for SubstrateBridgeCallFilter {
     fn contains(call: &DispatchableSubstrateBridgeCall) -> bool {
         match &call.0 {
-            bridge_types::substrate::SubstrateBridgeMessage::SubstrateApp(_) => true,
-            bridge_types::substrate::SubstrateBridgeMessage::XCMApp(_) => false,
+            bridge_types::substrate::BridgeCall::SubstrateApp(_) => true,
+            bridge_types::substrate::BridgeCall::XCMApp(_) => false,
+            bridge_types::substrate::BridgeCall::DataSigner(_) => true,
+            bridge_types::substrate::BridgeCall::MultisigVerifier(_) => true,
         }
     }
 }
