@@ -33,7 +33,6 @@ use std::collections::VecDeque;
 use super::beefy_syncer::BeefySyncer;
 use crate::prelude::*;
 use crate::substrate::{BlockNumber, OtherParams};
-use beefy_light_client::ProvedSubstrateBridgeMessage;
 use bridge_types::{SubNetworkId, H256};
 use futures::FutureExt;
 use futures::StreamExt;
@@ -145,12 +144,12 @@ where
 
         let payload = R::submit_messages_commitment(
             self.sender_network_id,
-            ProvedSubstrateBridgeMessage {
-                message: commitment_inner.messages,
+            commitment_inner.messages,
+            R::beefy_proof(beefy_light_client::SubstrateBridgeMessageProof {
                 proof: commitment.proof,
                 leaf: commitment.leaf,
                 digest: commitment.digest,
-            },
+            }),
         );
 
         info!("Sending channel commitment");

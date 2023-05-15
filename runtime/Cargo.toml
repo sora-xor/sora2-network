@@ -30,6 +30,8 @@ sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkad
 sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+bridge-data-signer = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
 beefy-light-client-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", branch = "develop", default-features = false, optional = true }
 
 ethereum-light-client = { path = "../pallets/trustless-bridge/ethereum-light-client", default-features = false, optional = true }
@@ -210,6 +212,8 @@ std = [
     "evm-bridge-proxy-runtime-api/std",
     "substrate-bridge-app/std",
     "substrate-bridge-channel/std",
+    "bridge-data-signer/std",
+    "multisig-verifier/std",
     "bridge-types/std",
     "farming/std",
     "farming-runtime-api/std",
@@ -316,7 +320,9 @@ wip = [
     "substrate-bridge-channel",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "bridge-types"
+    "bridge-types",
+    "bridge-data-signer",
+    "multisig-verifier",
 ]
 
 ready-to-test = [
@@ -462,5 +468,7 @@ try-runtime = [
     "pallet-election-provider-multi-phase/try-runtime",
     "pallet-bags-list/try-runtime",
     "pallet-mmr/try-runtime",
-    "pallet-beefy-mmr/try-runtime"
+    "pallet-beefy-mmr/try-runtime",
+    "bridge-data-signer/try-runtime",
+    "multisig-verifier/try-runtime"
 ]
