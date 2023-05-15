@@ -206,9 +206,9 @@ impl<T: Config> GasTracker<Balance> for Pallet<T> {
         gas_used: U256,
         gas_price: U256,
     ) {
-        log::debug!("Record tx fee: batch_nonce={}, ethereum_tx_hash={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
-            batch_id,
-            ethereum_tx_hash,
+        log::debug!(
+            "Record tx fee: batch_nonce={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
+            batch_nonce,
             ethereum_relayer_address,
             gas_used,
             gas_price,

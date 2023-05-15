@@ -755,6 +755,10 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                     get_account_id_from_seed::<sr25519::Public>("Relayer"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//1"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//2"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//3"),
+                    get_account_id_from_seed::<sr25519::Public>("Relayer//4"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -1146,6 +1150,8 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
+        #[cfg(feature = "wip")] // Substrate bridge
+        multisig_verifier: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge
         beefy_light_client: Default::default(),
         #[cfg(feature = "wip")] // Substrate bridge

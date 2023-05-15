@@ -20,9 +20,9 @@ services:
     networks:
       - bridgenet
 
-  relay-sora-parachain:
+  relay-sora-parachain-1:
     image: sora2/substrate-local
-    container_name: bridge-relay-sora-parachain
+    container_name: bridge-relay-sora-parachain-1
     restart: always
     build:
       context: ..
@@ -32,19 +32,31 @@ services:
     depends_on:
       register-substrate-bridge:
         condition: service_completed_successfully
-    command: ["relayer",
-        "--substrate-url", "ws://bridge-sora-alice:9944",
-        "--substrate-key", "//Relayer",
-        "--parachain-url", "ws://bridge-parachain-alice:9844",
-        "--parachain-key", "//Relayer",
-        "bridge", "relay", "sora-to-parachain", "-s"
+    command:
+      [
+        "relayer",
+        "--substrate-url",
+        "ws://bridge-sora-alice:9944",
+        "--substrate-key",
+        "//Relayer//1",
+        "--parachain-url",
+        "ws://bridge-parachain-alice:9844",
+        "--parachain-key",
+        "//Relayer//1",
+        "bridge",
+        "relay",
+        "sora",
+        "parachain",
+        "trusted",
+        "--signer",
+        "//Relay-key//1"
       ]
     networks:
       - bridgenet
 
-  relay-parachain-sora:
+  relay-sora-parachain-2:
     image: sora2/substrate-local
-    container_name: bridge-relay-parachain-sora
+    container_name: bridge-relay-sora-parachain-2
     restart: always
     build:
       context: ..
@@ -54,12 +66,92 @@ services:
     depends_on:
       register-substrate-bridge:
         condition: service_completed_successfully
-    command: ["relayer",
-        "--substrate-url", "ws://bridge-sora-alice:9944",
-        "--substrate-key", "//Relayer",
-        "--parachain-url", "ws://bridge-parachain-alice:9844",
-        "--parachain-key", "//Relayer",
-        "bridge", "relay", "parachain-to-sora", "-s"
+    command:
+      [
+        "relayer",
+        "--substrate-url",
+        "ws://bridge-sora-alice:9944",
+        "--substrate-key",
+        "//Relayer//2",
+        "--parachain-url",
+        "ws://bridge-parachain-alice:9844",
+        "--parachain-key",
+        "//Relayer//2",
+        "bridge",
+        "relay",
+        "sora",
+        "parachain",
+        "trusted",
+        "--signer",
+        "//Relay-key//2"
+      ]
+    networks:
+      - bridgenet
+
+  relay-parachain-sora-1:
+    image: sora2/substrate-local
+    container_name: bridge-relay-parachain-sora-1
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    environment:
+      - RUST_LOG=info,relayer=debug
+    depends_on:
+      register-substrate-bridge:
+        condition: service_completed_successfully
+    command:
+      [
+        "relayer",
+        "--substrate-url",
+        "ws://bridge-sora-alice:9944",
+        "--substrate-key",
+        "//Relayer//1",
+        "--parachain-url",
+        "ws://bridge-parachain-alice:9844",
+        "--parachain-key",
+        "//Relayer//1",
+        "bridge",
+        "relay",
+        "parachain",
+        "sora",
+        "trusted",
+        "--signer",
+        "//Relay-key//1"
+      ]
+    networks:
+      - bridgenet
+
+  relay-parachain-sora-2:
+    image: sora2/substrate-local
+    container_name: bridge-relay-parachain-sora-2
+    restart: always
+    build:
+      context: ..
+      dockerfile: bridge-docker/Dockerfile.sora
+    environment:
+      - RUST_LOG=info,relayer=debug
+    depends_on:
+      register-substrate-bridge:
+        condition: service_completed_successfully
+    command:
+      [
+        "relayer",
+        "--substrate-url",
+        "ws://bridge-sora-alice:9944",
+        "--substrate-key",
+        "//Relayer//2",
+        "--parachain-url",
+        "ws://bridge-parachain-alice:9844",
+        "--parachain-key",
+        "//Relayer//2",
+        "bridge",
+        "relay",
+        "parachain",
+        "sora",
+        "trusted",
+        "--signer",
+        "//Relay-key//2"
       ]
     networks:
       - bridgenet

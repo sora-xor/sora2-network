@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
 use bridge_types::{GenericNetworkId, H256};
-use common::Balance;
 use futures::Stream;
 use futures::StreamExt;
 
@@ -14,7 +13,7 @@ use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
 
 pub enum MessageCommitment {
     EVM(bridge_channel_rpc::Commitment),
-    Sub(substrate_bridge_channel_rpc::Commitment<Balance>),
+    Sub(substrate_bridge_channel_rpc::Commitment),
 }
 
 impl From<bridge_channel_rpc::Commitment> for MessageCommitment {
@@ -23,8 +22,8 @@ impl From<bridge_channel_rpc::Commitment> for MessageCommitment {
     }
 }
 
-impl From<substrate_bridge_channel_rpc::Commitment<Balance>> for MessageCommitment {
-    fn from(commitment: substrate_bridge_channel_rpc::Commitment<Balance>) -> Self {
+impl From<substrate_bridge_channel_rpc::Commitment> for MessageCommitment {
+    fn from(commitment: substrate_bridge_channel_rpc::Commitment) -> Self {
         Self::Sub(commitment)
     }
 }
@@ -37,13 +36,11 @@ pub struct MessageCommitmentWithProof<S: SenderConfig> {
     pub proof: bridge_common::simplified_proof::Proof<H256>,
 }
 
-pub async fn load_commitment_with_proof<S: SenderConfig>(
+pub async fn load_commitment<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
-    block_number: BlockNumber<S>,
     commitment_hash: H256,
-    latest_beefy_block: u32,
-) -> AnyResult<MessageCommitmentWithProof<S>> {
+) -> AnyResult<MessageCommitment> {
     let commitment = match network_id {
         GenericNetworkId::EVM(_) => sender.bridge_commitments(commitment_hash).await?.into(),
         GenericNetworkId::Sub(_) => sender
@@ -51,6 +48,15 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
             .await?
             .into(),
     };
+    Ok(commitment)
+}
+
+pub async fn load_digest<S: SenderConfig>(
+    sender: &SubUnsignedClient<S>,
+    network_id: GenericNetworkId,
+    block_number: BlockNumber<S>,
+    commitment_hash: H256,
+) -> AnyResult<AuxiliaryDigest> {
     let block_hash = sender.block_hash(block_number).await?;
     let digest = sender.auxiliary_digest(Some(block_hash)).await?;
     if digest.logs.is_empty() {
@@ -74,6 +80,18 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
             digest
         ));
     }
+    Ok(digest)
+}
+
+pub async fn load_commitment_with_proof<S: SenderConfig>(
+    sender: &SubUnsignedClient<S>,
+    network_id: GenericNetworkId,
+    block_number: BlockNumber<S>,
+    commitment_hash: H256,
+    latest_beefy_block: u32,
+) -> AnyResult<MessageCommitmentWithProof<S>> {
+    let commitment = load_commitment(sender, network_id, commitment_hash).await?;
+    let digest = load_digest(sender, network_id, block_number, commitment_hash).await?;
     let digest_hash = Keccak256::hash_of(&digest);
     trace!("Digest hash: {}", digest_hash);
     let leaf_proof = leaf_proof_with_digest(
@@ -139,7 +157,8 @@ async fn find_message_block<S: SenderConfig>(
     nonce: u64,
 ) -> AnyResult<Option<BlockNumber<S>>> {
     let storage = S::bridge_outbound_nonce(network_id);
-    let high = sender.block_number(()).await?;
+    let finalized_hash = sender.finalized_head().await?;
+    let high = sender.block_number(finalized_hash).await?;
 
     trace!(
         "Searching for message with nonce {} in block range {:?}..={:?}",

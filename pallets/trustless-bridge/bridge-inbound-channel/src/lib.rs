@@ -3,9 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use bridge_types::traits::{MessageDispatch, Verifier};
-use bridge_types::types::{
-    AdditionalEVMInboundData, AdditionalEVMOutboundData, Message, MessageId,
-};
+use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, MessageId};
 use bridge_types::EVMChainId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
@@ -47,7 +45,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
-    use sp_runtime::traits::Hash;
+    use sp_runtime::traits::{Hash, Keccak256};
 
     /// Since gas from event is measured before tx is ended, extra gas should be added.
     /// 20000 for storage gas_proof in map + ~17000 for emit BatchDispatched
@@ -58,7 +56,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Verifier module for message verification.
-        type Verifier: Verifier<EVMChainId, Message, Result = (Log, u64)>;
+        type Verifier: Verifier;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, EVMChainId, MessageId, AdditionalEVMInboundData>;
@@ -165,12 +163,14 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: EVMChainId,
-            message: Message,
+            log: Log,
+            proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
-            let (log, timestamp) = T::Verifier::verify(network_id, &message)?;
+            let log_hash = Keccak256::hash_of(&log);
+            T::Verifier::verify(network_id.into(), log_hash, &proof)?;
 
             // Decode log into an Envelope
             let envelope: Envelope<T> =
@@ -198,7 +198,8 @@ pub mod pallet {
             T::MessageDispatch::dispatch(
                 network_id,
                 message_id.into(),
-                timestamp,
+                // TODO: fix
+                Default::default(),
                 &envelope.payload,
                 AdditionalEVMInboundData {
                     source: envelope.source,
@@ -215,7 +216,8 @@ pub mod pallet {
         pub fn batch_dispatched(
             origin: OriginFor<T>,
             network_id: EVMChainId,
-            message: Message,
+            log: Log,
+            proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!(
@@ -223,7 +225,8 @@ pub mod pallet {
                 relayer
             );
             // submit message to verifier for verification
-            let (log, _timestamp) = T::Verifier::verify(network_id, &message)?;
+            let log_hash = Keccak256::hash_of(&log);
+            T::Verifier::verify(network_id.into(), log_hash, &proof)?;
             let batch_dispatched_event: BatchDispatched = BatchDispatched::try_from(log)
                 .map_err(|_| Error::<T>::InvalidBatchDispatchedEvent)?;
 
