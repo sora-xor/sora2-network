@@ -4,11 +4,6 @@ def featureList    = 'private-net include-real-files reduced-pswap-reward-period
 def palletListFile = 'pallet_list.txt'
 def wasmReportFile = 'subwasm_report.json'
 def sudoCheckStatus = 0
-def teamList = [
-    [name: 'devops-team', changes: ['Jenkinsfile', 'housekeeping'], chatId: telegramChatId],
-    [name: 'polkaswap-team', changes: ['pallets', 'liquidity-proxy', 'pallets'], chatId: telegramChatIdPswap],
-    [name: 'sora2-devs', changes: ['pallets', 'common', 'relayer', 'ethereum-bridge-contracts', 'node', 'runtime', 'bridge-docker', 'bridge-scripts', 'utils'], chatId: telegramChatId]
-]
 
 def pipeline = new org.rust.substratePipeline(steps: this,
       //assignReviewers: true,
