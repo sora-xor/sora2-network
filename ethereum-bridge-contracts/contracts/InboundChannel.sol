@@ -89,7 +89,7 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         LeafBytes calldata leafBytes,
         SimplifiedMMRProof calldata proof
     ) external nonReentrant {
-        require(batch.messages.length <= 256, "must be <= 256 messages in the batch");
+        require(batch.messages.length < 256, "must be < 256 messages in the batch");
 
         batch_nonce = batch_nonce + 1;
         // Check batch nonce is correct for replay protection
