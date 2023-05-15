@@ -72,6 +72,7 @@ pub type Migrations = (
     // We don't need this migration, so pass empty account list
     pallet_balances::migration::MigrateManyToTrackInactive<Runtime, EmptyAccountList>,
     multicollateral_bonding_curve_pool::migrations::v3::MigrateToV3<Runtime>,
+    xst::migrations::CustomSyntheticsUpgrade<Runtime>,
     farming::migrations::v3::Migrate<
         Runtime,
         XYKSyntheticPoolAccountList<Runtime>,
