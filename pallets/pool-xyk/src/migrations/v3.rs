@@ -73,9 +73,14 @@ where
                         return weight_acc.saturating_add(T::DbWeight::get().reads_writes(1, 0));
                     };
 
-                let weight_part: Weight = PoolProviders::<T>::iter_prefix(&pool_account).fold(
-                    Weight::zero(),
-                    |weight_acc, (user_account, lp_tokens)| {
+                info!("Pool with assets {:?} and {:?} reserves before liquidity withdrawal: {:?}", base_asset, target_asset, Reserves::<T>::get(&base_asset, &target_asset));
+
+                // For each liquidity holder we remove locks in ceres and demeter platforms and withdraw the corresponding amount of liquidity
+                // If there some error is encountered during withdrawal, we still process other liquidity holders
+                // but keeping the pool after this
+                let (weight_part, is_liquidity_withdrawal_ok): (Weight, bool) = PoolProviders::<T>::iter_prefix(&pool_account).fold(
+                    (Weight::zero(), true),
+                    |(weight_acc, _), (user_account, lp_tokens)| {
                         UserInfos::<T>::mutate(&user_account, |user_infos| {
                             for user_info in user_infos.iter_mut() {
                                 if user_info.is_farm == true
@@ -99,8 +104,7 @@ where
                             }
                         });
 
-                        // for staging and
-                        let _ = Pallet::<T>::withdraw_liquidity_unchecked(
+                        if let Err(_) = Pallet::<T>::withdraw_liquidity_unchecked(
                             user_account.clone(),
                             dex_id,
                             base_asset,
@@ -108,19 +112,31 @@ where
                             lp_tokens,
                             1,
                             1,
-                        );
-
-                        PoolProviders::<T>::remove(&pool_account, &user_account);
-
-                        if base_asset == XSTUSD.into() {
-                            AccountPools::<T>::remove(user_account, base_asset);
-                            weight_acc
-                                .saturating_add(T::DbWeight::get().reads_writes(3, 4))
-                                .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity())
+                        ) {
+                            info!("Error encountered during liquidity withdrawal for account {:?} in pool {:?}, skipping", user_account, pool_account);
+                            (
+                                weight_acc
+                                    .saturating_add(T::DbWeight::get().reads_writes(2, 2))
+                                    .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity()),
+                                false
+                            )
                         } else {
-                            weight_acc
-                                .saturating_add(T::DbWeight::get().reads_writes(3, 3))
-                                .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity())
+                            PoolProviders::<T>::remove(&pool_account, &user_account);
+
+                            // Account pools has mapping (account, base asset) -> BTreeSet of target assets
+                            // so we want to delete the entry for XSTUSD, since the pools involving
+                            // synthetics are invalid
+                            let weight_acc = if base_asset == XSTUSD.into() {
+                                AccountPools::<T>::remove(user_account, base_asset);
+                                weight_acc
+                                    .saturating_add(T::DbWeight::get().reads_writes(3, 4))
+                                    .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity())
+                            } else {
+                                weight_acc
+                                    .saturating_add(T::DbWeight::get().reads_writes(3, 3))
+                                    .saturating_add(<T as Config>::WeightInfo::withdraw_liquidity())
+                            };
+                            (weight_acc, true)
                         }
                     },
                 );
@@ -138,6 +154,13 @@ where
                         weight_acc.saturating_add(T::DbWeight::get().reads_writes(1, 1))
                     },
                 );
+
+                if !is_liquidity_withdrawal_ok {
+                    info!("Error encountered during liquidity withdrawal, the pool could not be deleted");
+                    return weight_acc
+                        .saturating_add(weight_part)
+                        .saturating_add(demeter_pools_weight_part)
+                }
 
                 let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
                     dex_id,
@@ -164,6 +187,7 @@ where
                 technical::Pallet::<T>::deregister_tech_account_id(tech_acc_id).unwrap();
                 technical::Pallet::<T>::deregister_tech_account_id(fee_acc_id).unwrap();
 
+                info!("Pool with assets {:?} and {:?} reserves after liquidity withdrawal: {:?}", base_asset, target_asset, Reserves::<T>::get(&base_asset, &target_asset));
                 Reserves::<T>::remove(&base_asset, &target_asset);
 
                 TotalIssuances::<T>::remove(&pool_account);
