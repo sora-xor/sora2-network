@@ -141,25 +141,10 @@ where
                     },
                 );
 
-                let demeter_pools_weight_part = Pools::<T>::iter_prefix(&target_asset).fold(
-                    Weight::zero(),
-                    |weight_acc, (reward_asset, mut pool_infos)| {
-                        for pool_info in pool_infos.iter_mut() {
-                            if pool_info.is_farm == true && pool_info.base_asset == base_asset {
-                                pool_info.is_removed = true;
-                                pool_info.total_tokens_in_pool = 0;
-                            }
-                        }
-                        <Pools<T>>::insert(&target_asset, &reward_asset, &pool_infos);
-                        weight_acc.saturating_add(T::DbWeight::get().reads_writes(1, 1))
-                    },
-                );
-
                 if !is_liquidity_withdrawal_ok {
                     info!("Error encountered during liquidity withdrawal, the pool could not be deleted");
                     return weight_acc
                         .saturating_add(weight_part)
-                        .saturating_add(demeter_pools_weight_part)
                 }
 
                 let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
@@ -194,7 +179,6 @@ where
 
                 weight_acc
                     .saturating_add(weight_part)
-                    .saturating_add(demeter_pools_weight_part)
                     .saturating_add(T::DbWeight::get().reads_writes(5, 8))
             },
         );
