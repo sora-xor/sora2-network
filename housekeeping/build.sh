@@ -6,7 +6,7 @@ RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 
 
-if [[ "$pushtags" -ne 'null' ]]; then
+if [[ "${pushtags}" -ne 'null' ]]; then
     if [[ $env.TAG_NAME =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
