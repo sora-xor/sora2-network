@@ -22,7 +22,7 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       cargoDoc: true,
       sendMessage: true,
       buildTestCmds: [
-        housekeeping/build.sh
+        'housekeeping/build.sh'
       ]
       // buildTestCmds: [
       //   // 'echo "with tag"',
