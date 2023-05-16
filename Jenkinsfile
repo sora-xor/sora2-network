@@ -6,7 +6,7 @@ def wasmReportFile = 'subwasm_report.json'
 def sudoCheckStatus = 0
 
 def pipeline = new org.rust.substratePipeline(steps: this,
-      //assignReviewers: true,
+      assignReviewers: true,
       disableSecretScanner: false,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$|.*Jenkinsfile\$',
       rustcVersion: 'nightly-2021-12-10',
@@ -20,7 +20,6 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       staticScanner: true,
       substrate: true,
       cargoDoc: true,
-      sendMessage: true,
       buildTestCmds: [
         'housekeeping/build.sh'
       ]
