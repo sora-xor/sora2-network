@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"ethereum_light_client":[["impl&lt;T: <a class=\"trait\" href=\"ethereum_light_client/pallet/trait.Config.html\" title=\"trait ethereum_light_client::pallet::Config\">Config</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.Into.html\" title=\"trait core::convert::Into\">Into</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u8.html\">u8</a>&gt; for <a class=\"enum\" href=\"ethereum_light_client/pallet/enum.Error.html\" title=\"enum ethereum_light_client::pallet::Error\">Error</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

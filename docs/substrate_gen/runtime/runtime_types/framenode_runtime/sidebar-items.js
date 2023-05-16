@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OriginCaller","RuntimeCall","RuntimeEvent"],"mod":["extensions","opaque"],"struct":["NposCompactSolution24","Runtime"]};

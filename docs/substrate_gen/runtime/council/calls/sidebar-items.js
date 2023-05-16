@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Close","CloseOldWeight","DisapproveProposal","Execute","Propose","SetMembers","TransactionApi","Vote"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ADAR_COMMISSION_RATIO","TECH_ACCOUNT_MAIN","TECH_ACCOUNT_PREFIX"],"mod":["pallet","weights"],"struct":["AggregatedSwapOutcome","BatchReceiverInfo","ExchangePath","LiquidityProxyBuyBackHandler","QuoteInfo","SwapBatchInfo"]};

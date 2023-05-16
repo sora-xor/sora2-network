@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ApprovalsCollected","CancellationFailed","IncomingRequestFinalizationFailed","IncomingRequestFinalized","RegisterRequestFailed","RequestAborted","RequestFinalizationFailed","RequestRegistered"]};

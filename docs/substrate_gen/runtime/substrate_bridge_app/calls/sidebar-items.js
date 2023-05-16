@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Burn","FinalizeAssetRegistration","Mint","RegisterSidechainAsset","RegisterThischainAsset","TransactionApi"]};

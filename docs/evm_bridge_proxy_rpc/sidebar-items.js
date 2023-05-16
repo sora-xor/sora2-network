@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AppsWithSupportedAssets","EvmBridgeProxyClient","NetworkIdWrapper"],"trait":["EvmBridgeProxyAPIClient","EvmBridgeProxyAPIServer","EvmBridgeProxyRuntimeAPI"]};

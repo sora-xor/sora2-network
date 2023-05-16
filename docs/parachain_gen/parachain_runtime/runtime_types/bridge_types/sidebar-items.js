@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GenericNetworkId","SubNetworkId"],"mod":["substrate","types"]};

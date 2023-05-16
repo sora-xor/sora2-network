@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"common":[],
+"framenode_runtime":[["impl <a class=\"trait\" href=\"framenode_runtime/trait.OnPswapBurned.html\" title=\"trait framenode_runtime::OnPswapBurned\">OnPswapBurned</a> for <a class=\"struct\" href=\"framenode_runtime/struct.RuntimeOnPswapBurnedAggregator.html\" title=\"struct framenode_runtime::RuntimeOnPswapBurnedAggregator\">RuntimeOnPswapBurnedAggregator</a>"]],
+"vested_rewards":[["impl&lt;T: <a class=\"trait\" href=\"vested_rewards/pallet/trait.Config.html\" title=\"trait vested_rewards::pallet::Config\">Config</a>&gt; OnPswapBurned for <a class=\"struct\" href=\"vested_rewards/pallet/struct.Pallet.html\" title=\"struct vested_rewards::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["EnableSyntheticAsset","InitializePool","SetReferenceAsset","SetSyntheticBaseAssetFloorPrice","TransactionApi"]};

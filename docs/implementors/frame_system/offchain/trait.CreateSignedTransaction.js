@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"framenode_runtime":[["impl&lt;LocalCall&gt; CreateSignedTransaction&lt;LocalCall&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.Runtime.html\" title=\"struct framenode_runtime::Runtime\">Runtime</a><span class=\"where fmt-newline\">where\n    <a class=\"enum\" href=\"framenode_runtime/enum.RuntimeCall.html\" title=\"enum framenode_runtime::RuntimeCall\">RuntimeCall</a>: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;LocalCall&gt;,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

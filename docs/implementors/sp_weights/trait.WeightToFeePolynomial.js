@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"xor_fee":[["impl&lt;T: <a class=\"trait\" href=\"xor_fee/pallet/trait.Config.html\" title=\"trait xor_fee::pallet::Config\">Config</a>&gt; WeightToFeePolynomial for <a class=\"struct\" href=\"xor_fee/pallet/struct.Pallet.html\" title=\"struct xor_fee::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

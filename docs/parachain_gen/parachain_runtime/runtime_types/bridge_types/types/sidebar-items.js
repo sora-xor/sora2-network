@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AssetKind","AuxiliaryDigestItem","MessageDirection"],"struct":["AuxiliaryDigest","LeafExtraData","MessageId","ParachainMessage"]};

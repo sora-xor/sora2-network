@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["FarmingClient"],"trait":["FarmingApiClient","FarmingApiServer","FarmingRuntimeApi"]};

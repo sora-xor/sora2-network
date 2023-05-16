@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BodyId","BodyPart","NetworkId"],"mod":["junction","multilocation"]};

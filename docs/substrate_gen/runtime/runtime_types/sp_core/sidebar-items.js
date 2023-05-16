@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Void"],"mod":["bounded","crypto","ecdsa","ed25519","offchain","sr25519"],"struct":["OpaquePeerId"]};

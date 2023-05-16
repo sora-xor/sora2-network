@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["AVG_BLOCK_SPAN"],"mod":["migration","pallet","weights"],"struct":["AggregatedPriceInfo","PriceInfo"]};

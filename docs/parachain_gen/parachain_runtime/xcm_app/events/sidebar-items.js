@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AssetAddedToChannel","AssetIdMappingError","AssetMappingChanged","AssetTransferred","MappingCreated","MappingDeleted","MultiAssetMappingError","MultilocationMappingError","MultilocationtMappingChanged","SubmittingToChannelError","TrasferringAssetError"]};
