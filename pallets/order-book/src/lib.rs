@@ -80,6 +80,7 @@ pub mod pallet {
     use common::DEXInfo;
     use frame_support::{
         pallet_prelude::{OptionQuery, *},
+        traits::Hooks,
         Blake2_128Concat, Twox128,
     };
     use frame_system::pallet_prelude::*;
@@ -324,6 +325,9 @@ pub mod pallet {
         /// Unauthorized action
         Unauthorized,
     }
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
