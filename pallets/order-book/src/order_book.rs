@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, OrderAmount,
-    OrderBookId, OrderPrice, OrderVolume,
+    CurrencyLocker, CurrencyUnlocker, DataLayer, DealInfo, Error, LimitOrder, MarketOrder,
+    MarketRole, OrderAmount, OrderBookId, OrderPrice, OrderVolume,
 };
 use assets::AssetIdOf;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -41,6 +41,7 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
 
 #[derive(
@@ -165,7 +166,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             }
         }
 
-        let lock_amount = order.deal_amount(None)?;
+        // necessary to lock the liquidity that taker should receive if execute the limit order
+        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
         let lock_asset = match lock_amount {
             OrderAmount::Base(..) => &self.order_book_id.base,
             OrderAmount::Quote(..) => &self.order_book_id.quote,
@@ -216,6 +218,119 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         }
 
         Ok(count)
+    }
+
+    pub fn execute_market_order<Unlocker>(
+        &self,
+        order: MarketOrder<T>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<OrderAmount, DispatchError>
+    where
+        Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
+    {
+        // todo verify market order
+        ensure!(
+            order.order_book_id == self.order_book_id,
+            Error::<T>::InvalidOrderBookId
+        );
+
+        let (deal_amount, limit_order_ids_to_delete, limit_orders_to_update, unlocks) =
+            match order.side {
+                PriceVariant::Buy => self.market_impact(
+                    order.side,
+                    order.amount,
+                    data.get_aggregated_asks(&self.order_book_id).iter(),
+                    data,
+                )?,
+                PriceVariant::Sell => self.market_impact(
+                    order.side,
+                    order.amount,
+                    data.get_aggregated_bids(&self.order_book_id).iter().rev(),
+                    data,
+                )?,
+            };
+
+        todo!()
+    }
+
+    fn market_impact<'a>(
+        &self,
+        side: PriceVariant,
+        impact_amount: OrderVolume,
+        market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
+        data: &mut impl DataLayer<T>,
+    ) -> Result<
+        (
+            OrderAmount,
+            Vec<T::OrderId>,
+            Vec<LimitOrder<T>>,
+            BTreeMap<T::AccountId, OrderVolume>,
+        ),
+        DispatchError,
+    > {
+        let mut impact_amount = impact_amount;
+        let mut deal_amount = OrderVolume::zero();
+        let mut limit_order_ids_to_delete = Vec::new();
+        let mut limit_orders_to_update = Vec::new();
+        let mut unlocks = BTreeMap::new();
+
+        for (price, _) in market_data {
+            let Some(asks) = data.get_limit_orders_by_price(&self.order_book_id, side.switch(), price) else {
+                return Err(Error::<T>::NotEnoughLiquidity.into());
+            };
+
+            for limit_order_id in asks.into_iter() {
+                let mut limit_order = data.get_limit_order(&self.order_book_id, limit_order_id)?;
+
+                if impact_amount >= limit_order.amount {
+                    impact_amount -= limit_order.amount;
+                    deal_amount += limit_order.deal_amount(MarketRole::Taker, None)?.value();
+                    let maker_payment = *limit_order.deal_amount(MarketRole::Maker, None)?.value();
+                    unlocks
+                        .entry(limit_order.owner)
+                        .and_modify(|payment| *payment += maker_payment)
+                        .or_insert(maker_payment);
+                    limit_order_ids_to_delete.push(limit_order.id);
+
+                    if impact_amount.is_zero() {
+                        break;
+                    }
+                } else {
+                    deal_amount += limit_order
+                        .deal_amount(MarketRole::Taker, Some(impact_amount))?
+                        .value();
+                    let maker_payment = *limit_order
+                        .deal_amount(MarketRole::Maker, Some(impact_amount))?
+                        .value();
+                    unlocks
+                        .entry(limit_order.owner.clone())
+                        .and_modify(|payment| *payment += maker_payment)
+                        .or_insert(maker_payment);
+                    limit_order.amount -= impact_amount;
+                    impact_amount = OrderVolume::zero();
+                    limit_orders_to_update.push(limit_order);
+                    break;
+                }
+            }
+
+            if impact_amount.is_zero() {
+                break;
+            }
+        }
+
+        ensure!(!impact_amount.is_zero(), Error::<T>::NotEnoughLiquidity);
+
+        let deal_amount = match side {
+            PriceVariant::Buy => OrderAmount::Base(deal_amount),
+            PriceVariant::Sell => OrderAmount::Quote(deal_amount),
+        };
+
+        Ok((
+            deal_amount,
+            limit_order_ids_to_delete,
+            limit_orders_to_update,
+            unlocks,
+        ))
     }
 
     pub fn calculate_deal(
@@ -373,7 +488,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     where
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
     {
-        let lock_amount = order.deal_amount(None)?;
+        let lock_amount = order.deal_amount(MarketRole::Taker, None)?;
         let lock_asset = match lock_amount {
             OrderAmount::Base(..) => &self.order_book_id.base,
             OrderAmount::Quote(..) => &self.order_book_id.quote,

@@ -40,7 +40,7 @@ use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{Config, LimitOrder, OrderBook, OrderBookId};
+use framenode_runtime::order_book::{Config, LimitOrder, MarketRole, OrderBook, OrderBookId};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
 use sp_core::Get;
@@ -598,7 +598,10 @@ fn should_place_limit_order() {
             lifespan,
         );
 
-        let deal_amount = *expected_order.deal_amount(None).unwrap().value();
+        let deal_amount = *expected_order
+            .deal_amount(MarketRole::Taker, None)
+            .unwrap()
+            .value();
 
         assert_eq!(
             OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
@@ -868,7 +871,7 @@ fn should_cancel_limit_order() {
             order_id
         ));
 
-        let deal_amount = *order.deal_amount(None).unwrap().value();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // check
         let mut expected_bids = bids_before.clone();

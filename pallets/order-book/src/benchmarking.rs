@@ -41,7 +41,7 @@
 use crate::{Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
 use framenode_runtime::order_book::{
-    Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet,
+    Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet,
 };
 
 use assets::AssetIdOf;
@@ -418,7 +418,7 @@ benchmarks! {
             expected_order
         );
 
-        let deal_amount = *expected_order.deal_amount(None).unwrap().value();
+        let deal_amount = *expected_order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller).unwrap();
         let expected_balance = balance_before - deal_amount;
@@ -457,7 +457,7 @@ benchmarks! {
             .into(),
         );
 
-        let deal_amount = *order.deal_amount(None).unwrap().value();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
         let balance =
             <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
         let expected_balance = balance_before + deal_amount;

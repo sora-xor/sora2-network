@@ -41,7 +41,8 @@ use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
-    Config, DataLayer, DealInfo, LimitOrder, OrderAmount, OrderBook, OrderBookId, OrderBookStatus,
+    Config, DataLayer, DealInfo, LimitOrder, MarketRole, OrderAmount, OrderBook, OrderBookId,
+    OrderBookStatus,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -185,7 +186,7 @@ fn should_place_limit_order() {
             10000,
         );
 
-        let deal_amount = *order.deal_amount(None).unwrap().value();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // place new order
         assert_ok!(order_book.place_limit_order::<OrderBookPallet>(order, &mut data));
@@ -780,7 +781,7 @@ fn should_cancel_limit_order() {
         // cancel the limit order
         assert_ok!(order_book.cancel_limit_order::<OrderBookPallet>(order.clone(), &mut data));
 
-        let deal_amount = *order.deal_amount(None).unwrap().value();
+        let deal_amount = *order.deal_amount(MarketRole::Taker, None).unwrap().value();
 
         // check
         let mut expected_bids = bids_before.clone();

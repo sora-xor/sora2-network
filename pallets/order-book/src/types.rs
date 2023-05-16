@@ -58,6 +58,12 @@ impl OrderAmount {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+pub enum MarketRole {
+    Maker,
+    Taker,
+}
+
 #[derive(
     Encode,
     Decode,

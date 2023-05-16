@@ -33,7 +33,7 @@
 use crate::tests::test_utils::*;
 use common::{balance, PriceVariant};
 use frame_support::{assert_err, assert_ok};
-use framenode_runtime::order_book::{Config, LimitOrder, OrderAmount};
+use framenode_runtime::order_book::{Config, LimitOrder, MarketRole, OrderAmount};
 use framenode_runtime::Runtime;
 
 #[test]
@@ -132,11 +132,19 @@ fn should_not_return_deal_amount_with_big_base_limit() {
         LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
 
     assert_err!(
-        buy_order.deal_amount(Some(base_amount_limit)),
+        buy_order.deal_amount(MarketRole::Maker, Some(base_amount_limit)),
         E::InvalidOrderAmount
     );
     assert_err!(
-        sell_order.deal_amount(Some(base_amount_limit)),
+        buy_order.deal_amount(MarketRole::Taker, Some(base_amount_limit)),
+        E::InvalidOrderAmount
+    );
+    assert_err!(
+        sell_order.deal_amount(MarketRole::Maker, Some(base_amount_limit)),
+        E::InvalidOrderAmount
+    );
+    assert_err!(
+        sell_order.deal_amount(MarketRole::Taker, Some(base_amount_limit)),
         E::InvalidOrderAmount
     );
 }
@@ -152,25 +160,71 @@ fn should_return_deal_amount() {
     let sell_order =
         LimitOrder::<Runtime>::new(2, alice(), PriceVariant::Sell, price, amount, 1000, 10000);
 
-    let full_buy_deal_amount = buy_order.deal_amount(None).unwrap();
-    let full_sell_deal_amount = sell_order.deal_amount(None).unwrap();
-
-    assert_eq!(full_buy_deal_amount, OrderAmount::Quote(balance!(1100)));
-    assert_eq!(full_sell_deal_amount, OrderAmount::Base(amount));
-
-    let base_amount_limit = balance!(50);
-    let part_buy_deal_amount = buy_order.deal_amount(Some(base_amount_limit)).unwrap();
-    let part_sell_deal_amount = sell_order.deal_amount(Some(base_amount_limit)).unwrap();
-
-    assert_eq!(part_buy_deal_amount, OrderAmount::Quote(balance!(550)));
-    assert_eq!(part_sell_deal_amount, OrderAmount::Base(base_amount_limit));
-
-    let full_part_buy_deal_amount = buy_order.deal_amount(Some(amount)).unwrap();
-    let full_part_sell_deal_amount = sell_order.deal_amount(Some(amount)).unwrap();
-
     assert_eq!(
-        full_part_buy_deal_amount,
+        buy_order.deal_amount(MarketRole::Maker, None).unwrap(),
+        OrderAmount::Base(amount)
+    );
+    assert_eq!(
+        buy_order.deal_amount(MarketRole::Taker, None).unwrap(),
         OrderAmount::Quote(balance!(1100))
     );
-    assert_eq!(full_part_sell_deal_amount, OrderAmount::Base(amount));
+    assert_eq!(
+        sell_order.deal_amount(MarketRole::Maker, None).unwrap(),
+        OrderAmount::Quote(balance!(1100))
+    );
+    assert_eq!(
+        sell_order.deal_amount(MarketRole::Taker, None).unwrap(),
+        OrderAmount::Base(amount)
+    );
+
+    let base_amount_limit = balance!(50);
+    assert_eq!(
+        buy_order
+            .deal_amount(MarketRole::Maker, Some(base_amount_limit))
+            .unwrap(),
+        OrderAmount::Base(base_amount_limit)
+    );
+    assert_eq!(
+        buy_order
+            .deal_amount(MarketRole::Taker, Some(base_amount_limit))
+            .unwrap(),
+        OrderAmount::Quote(balance!(550))
+    );
+    assert_eq!(
+        sell_order
+            .deal_amount(MarketRole::Maker, Some(base_amount_limit))
+            .unwrap(),
+        OrderAmount::Quote(balance!(550))
+    );
+    assert_eq!(
+        sell_order
+            .deal_amount(MarketRole::Taker, Some(base_amount_limit))
+            .unwrap(),
+        OrderAmount::Base(base_amount_limit)
+    );
+
+    assert_eq!(
+        buy_order
+            .deal_amount(MarketRole::Maker, Some(amount))
+            .unwrap(),
+        OrderAmount::Base(amount)
+    );
+    assert_eq!(
+        buy_order
+            .deal_amount(MarketRole::Taker, Some(amount))
+            .unwrap(),
+        OrderAmount::Quote(balance!(1100))
+    );
+    assert_eq!(
+        sell_order
+            .deal_amount(MarketRole::Maker, Some(amount))
+            .unwrap(),
+        OrderAmount::Quote(balance!(1100))
+    );
+    assert_eq!(
+        sell_order
+            .deal_amount(MarketRole::Taker, Some(amount))
+            .unwrap(),
+        OrderAmount::Base(amount)
+    );
 }
