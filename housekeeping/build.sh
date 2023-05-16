@@ -1,12 +1,12 @@
 #!/bin/bash
 
-PACKAGE = 'framenode-runtime'
-RUSTFLAGS = '-Dwarnings'
-RUNTIME_DIR = 'runtime'
-RUSTC_VERSION = ${rustcVersion}
+PACKAGE=framenode-runtime
+RUSTFLAGS='-Dwarnings'
+RUNTIME_DIR='runtime'
+RUSTC_VERSION=${rustcVersion}
 
 
-if [["$pushtags" =! 'null']]; then
+if [[ "$pushtags" =! 'null' ]]; then
     if [[ $env.TAG_NAME =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
