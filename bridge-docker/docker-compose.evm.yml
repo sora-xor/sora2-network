@@ -98,7 +98,7 @@ services:
     command: ["relayer",
         "--ethereum-url", "ws://bridge-geth:8545",
         "--substrate-url", "ws://bridge-sora-alice:9944",
-        "--substrate-key", "//Bob",
+        "--substrate-key", "//Relayer",
         "bridge", "relay", "ethereum",
         "--base-path", "/data"
       ]

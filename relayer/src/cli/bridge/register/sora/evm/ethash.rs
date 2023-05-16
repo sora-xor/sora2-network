@@ -30,7 +30,6 @@
 
 use crate::cli::prelude::*;
 use crate::ethereum::make_header;
-use bridge_types::H160;
 use substrate_gen::runtime;
 
 #[derive(Args, Clone, Debug)]
@@ -42,12 +41,6 @@ pub(crate) struct Command {
     /// Confirmations until block is considered finalized
     #[clap(long, short)]
     descendants_until_final: u64,
-    /// InboundChannel contract address
-    #[clap(long)]
-    inbound_channel: H160,
-    /// OutboundChannel contract address
-    #[clap(long)]
-    outbound_channel: H160,
     #[clap(flatten)]
     network: Network,
 }
@@ -92,30 +85,6 @@ impl Command {
                 .await?;
         } else {
             info!("Light client already registered");
-        }
-
-        let is_channel_registered = sub
-            .storage_fetch(
-                &mainnet_runtime::storage()
-                    .bridge_inbound_channel()
-                    .channel_addresses(&network_id),
-                (),
-            )
-            .await?
-            .is_some();
-        if !is_channel_registered {
-            let call = runtime::runtime_types::framenode_runtime::RuntimeCall::BridgeInboundChannel(
-                runtime::runtime_types::bridge_inbound_channel::pallet::Call::register_channel {
-                    network_id,
-                    inbound_channel: self.inbound_channel,
-                    outbound_channel: self.outbound_channel,
-                },
-            );
-            info!("Sudo call extrinsic: {:?}", call);
-            sub.submit_extrinsic(&runtime::tx().sudo().sudo(call))
-                .await?;
-        } else {
-            info!("Channel already registered");
         }
         Ok(())
     }

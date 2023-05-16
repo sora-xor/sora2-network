@@ -36,6 +36,7 @@ use common::{
     balance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, PriceVariant,
     DEFAULT_BALANCE_PRECISION, VAL, XOR,
 };
+use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
@@ -334,6 +335,193 @@ fn should_create_order_book_for_nft() {
             OrderBookPallet::order_books(order_book_id).unwrap(),
             OrderBook::default_nft(order_book_id, DEX.into())
         );
+    });
+}
+
+#[test]
+fn should_not_delete_order_book_by_not_root_origin() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::delete_orderbook(RawOrigin::Signed(alice()).into(), order_book_id),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn should_not_delete_unknown_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_err!(
+            OrderBookPallet::delete_orderbook(RuntimeOrigin::root(), order_book_id),
+            E::UnknownOrderBook
+        );
+    });
+}
+
+#[test]
+fn should_delete_order_book() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        let owner = bob();
+
+        let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+            &OrderBookPallet::tech_account_for_order_book(DEX.into(), order_book_id.clone()),
+        )
+        .unwrap();
+
+        // not empty at the beginning
+        assert!(!OrderBookPallet::aggregated_bids(&order_book_id).is_empty());
+        assert!(!OrderBookPallet::aggregated_asks(&order_book_id).is_empty());
+        assert!(!OrderBookPallet::user_limit_orders(&owner, &order_book_id)
+            .unwrap()
+            .is_empty());
+
+        // some balance is locked in limit orders
+        assert_ne!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &owner)
+                .unwrap(),
+            INIT_BALANCE
+        );
+        assert_ne!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
+                .unwrap(),
+            INIT_BALANCE
+        );
+
+        // tech account keeps the locked assets
+        assert!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &tech_account
+            )
+            .unwrap()
+                > balance!(0)
+        );
+        assert!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &tech_account
+            )
+            .unwrap()
+                > balance!(0)
+        );
+
+        // delete the order book
+        assert_ok!(OrderBookPallet::delete_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id
+        ));
+
+        // empty after canceling of all limit orders
+        assert!(OrderBookPallet::aggregated_bids(&order_book_id).is_empty());
+        assert!(OrderBookPallet::aggregated_asks(&order_book_id).is_empty());
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&owner, &order_book_id),
+            None
+        );
+
+        // locked balance is unlocked
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.base, &owner)
+                .unwrap(),
+            INIT_BALANCE
+        );
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &owner)
+                .unwrap(),
+            INIT_BALANCE
+        );
+
+        // tech account balance is empty after canceling of all limit orders
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.base,
+                &tech_account
+            )
+            .unwrap(),
+            balance!(0)
+        );
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(
+                &order_book_id.quote,
+                &tech_account
+            )
+            .unwrap(),
+            balance!(0)
+        );
+    });
+}
+
+#[test]
+#[ignore] // it works, but takes a lot of time
+fn should_delete_order_book_with_a_lot_of_orders() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(alice()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+
+        let mut buy_price = balance!(1000);
+        let mut sell_price = balance!(1001);
+
+        let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
+
+        for i in 0..max_prices_for_side {
+            // get new owner for each order to not get UserHasMaxCountOfOpenedOrders error
+            let account = generate_account(i);
+
+            fill_balance(account.clone(), order_book_id);
+
+            buy_price -= order_book.tick_size;
+            sell_price += order_book.tick_size;
+
+            assert_ok!(OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(account.clone()).into(),
+                order_book_id,
+                buy_price,
+                balance!(10),
+                PriceVariant::Buy,
+                10000
+            ));
+
+            assert_ok!(OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(account).into(),
+                order_book_id,
+                sell_price,
+                balance!(10),
+                PriceVariant::Sell,
+                10000
+            ));
+        }
+
+        // delete the order book
+        assert_ok!(OrderBookPallet::delete_orderbook(
+            RuntimeOrigin::root(),
+            order_book_id
+        ));
     });
 }
 

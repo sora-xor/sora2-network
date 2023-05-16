@@ -30,16 +30,26 @@
 
 use std::time::Duration;
 
-use bridge_types::types::{Message, Proof};
+use bridge_types::types::Proof;
 use bridge_types::EVMChainId;
 use ethers::abi::RawLog;
 
 use crate::ethereum::proof_loader::ProofLoader;
-use crate::ethereum::receipt::LogEntry;
 use crate::prelude::*;
+use bridge_types::log::Log;
+use ethers::prelude::Log as EthersLog;
 use ethers::prelude::*;
 
 const BLOCKS_TO_INITIAL_SEARCH: u64 = 49000; // Ethereum light client keep 50000 blocks
+
+/// A message relayed from Ethereum.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
+pub struct Message {
+    /// The raw message data.
+    pub data: Log,
+    /// Input to the message verifier
+    pub proof: Proof,
+}
 
 pub struct SubstrateMessagesRelay {
     sub: SubSignedClient<MainnetConfig>,
@@ -161,9 +171,11 @@ impl SubstrateMessagesRelay {
                             .api()
                             .tx()
                             .sign_and_submit_then_watch_default(
-                                &runtime::tx()
-                                    .bridge_inbound_channel()
-                                    .submit(self.network_id, message),
+                                &runtime::tx().bridge_inbound_channel().submit(
+                                    self.network_id,
+                                    message.data,
+                                    message.proof,
+                                ),
                                 &self.sub,
                             )
                             .await?
@@ -239,7 +251,7 @@ impl SubstrateMessagesRelay {
                             .sign_and_submit_then_watch_default(
                                 &runtime::tx()
                                     .bridge_inbound_channel()
-                                    .message_dispatched(self.network_id, message),
+                                    .message_dispatched(self.network_id, message.data, message.proof),
                                 &self.sub,
                             )
                             .await?
@@ -261,15 +273,20 @@ impl SubstrateMessagesRelay {
         Ok(())
     }
 
-    async fn make_message(&self, log: Log) -> AnyResult<Message> {
+    async fn make_message(&self, log: EthersLog) -> AnyResult<Message> {
         let block_hash = log.block_hash.unwrap();
         let tx_index = log.transaction_index.unwrap().as_usize();
         let proof = self
             .proof_loader
             .receipt_proof(block_hash, tx_index)
             .await?;
+        let log = Log {
+            address: log.address,
+            topics: log.topics,
+            data: log.data.as_ref().to_vec(),
+        };
         Ok(Message {
-            data: rlp::Encodable::rlp_bytes(&LogEntry::from(&log)).to_vec(),
+            data: log,
             proof: Proof {
                 block_hash,
                 tx_index: tx_index as u32,

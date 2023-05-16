@@ -46,7 +46,10 @@ async fn main() -> AnyResult<()> {
     init_log();
     let cli = cli::Cli::parse();
     debug!("Cli: {:?}", cli);
-    cli.run().await?;
+    cli.run().await.map_err(|e| {
+        error!("Relayer returned error: {:?}", e);
+        e
+    })?;
     Ok(())
 }
 
@@ -80,5 +83,6 @@ pub mod prelude {
     pub use sp_runtime::traits::Hash;
     pub use sp_runtime::traits::Header as HeaderT;
     pub use substrate_gen::runtime;
+    pub use substrate_gen::runtime::runtime_types::framenode_runtime::MultiProof as VerifierMultiProof;
     pub use url::Url;
 }
