@@ -659,16 +659,21 @@ impl<T: Config> Pallet<T> {
     ///
     /// Returns `true` if all expirations were processed and `false` if some expirations
     /// need to be retried with more available weight.
-    fn service_block(block: T::BlockNumber, weight: &mut WeightMeter) -> bool {
+    fn service_block(
+        data_layer: &mut CacheDataLayer<T>,
+        block: T::BlockNumber,
+        weight: &mut WeightMeter,
+    ) -> bool {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
             return false;
         }
+
         let mut expired_orders = <ExpirationsAgenda<T>>::take(block);
         if expired_orders.is_empty() {
             return true;
         }
-        let mut data_layer = CacheDataLayer::<T>::new();
-        // how many we can service with remaining weight
+        // how many we can service with remaining weight;
+        // the weight is consumed right away
         let to_service = Self::check_accrue_n(
             weight,
             <T as Config>::WeightInfo::service_single_expiration(),
@@ -680,10 +685,9 @@ impl<T: Config> Pallet<T> {
             if serviced >= to_service {
                 break;
             }
-            Self::service_single_expiration(&mut data_layer, order_book_id, order_id);
+            Self::service_single_expiration(data_layer, order_book_id, order_id);
             serviced += 1;
         }
-        data_layer.commit();
         postponed == 0
     }
 }
@@ -693,7 +697,6 @@ impl<T: Config>
     for Pallet<T>
 {
     fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
-        // use data_layer across the services;
         if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
             return;
         }
@@ -702,8 +705,9 @@ impl<T: Config>
         let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(now);
 
         let service_block_base_weight = <T as Config>::WeightInfo::service_block_base();
+        let mut data_layer = CacheDataLayer::<T>::new();
         while when <= now && weight.can_accrue(service_block_base_weight) {
-            if !Self::service_block(when, weight) {
+            if !Self::service_block(&mut data_layer, when, weight) {
                 incomplete_since = incomplete_since.min(when);
             }
             when.saturating_inc();
@@ -712,6 +716,7 @@ impl<T: Config>
         if incomplete_since <= now {
             IncompleteExpirationsSince::<T>::put(incomplete_since);
         }
+        data_layer.commit();
     }
 
     fn schedule(
