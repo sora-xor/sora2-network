@@ -37,7 +37,7 @@ use sp_std::prelude::Vec;
 
 use crate::{AccountPools, PoolProviders, Properties, Reserves, TotalIssuances, WeightInfo};
 use ceres_liquidity_locker::LockerData;
-use demeter_farming_platform::{Pools, UserInfos};
+use demeter_farming_platform::UserInfos;
 use trading_pair::EnabledSources;
 
 pub struct XYKPoolUpgrade<T, L>(core::marker::PhantomData<(T, L)>);
