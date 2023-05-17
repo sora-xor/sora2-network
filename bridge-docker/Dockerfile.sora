@@ -70,4 +70,10 @@ RUN cargo build --release --features private-net,wip,ready-to-test
 
 # runtime
 FROM debian:bullseye-slim
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    jq && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/framenode /app/target/release/relayer /usr/local/bin

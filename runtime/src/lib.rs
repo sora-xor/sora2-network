@@ -34,6 +34,8 @@
 
 extern crate alloc;
 use alloc::string::String;
+#[cfg(feature = "wip")] // Substrate bridge
+use bridge_types::traits::Verifier;
 
 mod bags_thresholds;
 /// Constant values used within the runtime.
@@ -56,7 +58,7 @@ use crate::impls::{
 };
 #[cfg(feature = "wip")]
 use bridge_types::{
-    types::{AdditionalEVMInboundData, LeafExtraData, ParachainMessage},
+    types::{AdditionalEVMInboundData, LeafExtraData},
     U256,
 };
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -2145,7 +2147,6 @@ impl evm_bridge_proxy::Config for Runtime {
 #[cfg(feature = "wip")] // Substrate bridge
 impl beefy_light_client::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Message = Vec<ParachainMessage<Balance>>;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
@@ -2165,9 +2166,7 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
 #[cfg(feature = "wip")] // Substrate bridge
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Verifier = BeefyLightClient;
-    type ProvedMessage =
-        beefy_light_client::ProvedSubstrateBridgeMessage<Vec<ParachainMessage<Balance>>>;
+    type Verifier = MultiVerifier;
     type MessageDispatch = SubstrateDispatch;
     type WeightInfo = ();
     type FeeAssetId = FeeCurrency;
@@ -2175,6 +2174,32 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
     type TreasuryAccountId = GetTreasuryAccountId;
     type FeeConverter = FeeConverter;
     type Currency = Currencies;
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+pub struct MultiVerifier;
+
+#[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
+#[cfg(feature = "wip")] // Substrate bridge
+pub enum MultiProof {
+    Beefy(<BeefyLightClient as Verifier>::Proof),
+    Multisig(<MultisigVerifier as Verifier>::Proof),
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl Verifier for MultiVerifier {
+    type Proof = MultiProof;
+
+    fn verify(
+        network_id: bridge_types::GenericNetworkId,
+        message: H256,
+        proof: &Self::Proof,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        match proof {
+            MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
+            MultiProof::Multisig(proof) => MultisigVerifier::verify(network_id, message, proof),
+        }
+    }
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2188,8 +2213,19 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type AuxiliaryDigestHandler = LeafProvider;
+    type BalanceConverter = sp_runtime::traits::Identity;
     type Currency = Currencies;
     type WeightInfo = ();
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+pub struct AssetIdConverter;
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl Convert<AssetId, H256> for AssetIdConverter {
+    fn convert(a: AssetId) -> H256 {
+        a.code.into()
+    }
 }
 
 #[cfg(feature = "wip")] // Substrate bridge
@@ -2205,7 +2241,46 @@ impl substrate_bridge_app::Config for Runtime {
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type Currency = Currencies;
     type AssetRegistry = BridgeAssetRegistryImpl;
+    type AccountIdConverter = sp_runtime::traits::Identity;
+    type AssetIdConverter = AssetIdConverter;
+    type BalanceConverter = sp_runtime::traits::Identity;
     type WeightInfo = ();
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+parameter_types! {
+    pub const BridgeMaxPeers: u32 = 50;
+    // Not as important as some essential transactions (e.g. im_online or similar ones)
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    // We don't want to have not relevant imports be stuck in transaction pool
+    // for too long
+    pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl bridge_data_signer::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+    type MaxPeers = BridgeMaxPeers;
+    type UnsignedPriority = DataSignerPriority;
+    type UnsignedLongevity = DataSignerLongevity;
+}
+
+#[cfg(feature = "wip")] // Substrate bridge
+impl multisig_verifier::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type CallOrigin = dispatch::EnsureAccount<
+        SubNetworkId,
+        (),
+        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+    >;
+    type OutboundChannel = SubstrateBridgeOutboundChannel;
+    type MaxPeers = BridgeMaxPeers;
 }
 
 construct_runtime! {
@@ -2323,6 +2398,10 @@ construct_runtime! {
         SubstrateDispatch: dispatch::<Instance2>::{Pallet, Storage, Event<T>, Origin<T>} = 108,
         #[cfg(feature = "wip")] // Substrate bridge
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Config<T>, Storage, Event<T>, Call} = 109,
+        #[cfg(feature = "wip")] // Substrate bridge
+        BridgeDataSigner: bridge_data_signer::{Pallet, Storage, Event<T>, Call, ValidateUnsigned} = 110,
+        #[cfg(feature = "wip")] // Substrate bridge
+        MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call, Config} = 111,
 
         // Dev
         #[cfg(feature = "private-net")]
