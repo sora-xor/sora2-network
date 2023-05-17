@@ -578,7 +578,9 @@ impl<T: Config> Pallet<T> {
 }
 
 pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
-    fn service(now: BlockNumber, weight: &mut WeightMeter);
+    /// Returns `true` if all expirations were processed and `false` if some expirations
+    /// need to be retried with more available weight.
+    fn service(now: BlockNumber, weight: &mut WeightMeter) -> bool;
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
@@ -654,16 +656,16 @@ impl<T: Config>
     ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
     for Pallet<T>
 {
-    fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
+    fn service(now: T::BlockNumber, weight: &mut WeightMeter) -> bool {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
-            // todo: indicate that no weight left
-            return;
+            return false;
         }
         let mut expired_orders = <ExpirationsAgenda<T>>::take(now);
         if expired_orders.is_empty() {
-            return;
+            return true;
         }
         let mut data_layer = CacheDataLayer::<T>::new();
+        // how many we can service with remaining weight
         let to_service = Self::check_accrue_n(
             weight,
             <T as Config>::WeightInfo::service_single_expiration(),
@@ -676,8 +678,10 @@ impl<T: Config>
                 break;
             }
             Self::service_single_expiration(&mut data_layer, order_book_id, order_id);
+            serviced += 1;
         }
         data_layer.commit();
+        postponed == 0
     }
 
     fn schedule(
