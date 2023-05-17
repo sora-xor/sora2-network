@@ -4,20 +4,22 @@ PACKAGE=framenode-runtime
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
+sudoCheckStatus=0
 
-echo "${dockerImageTag}"
+echo 'tag:' ${dockerImageTag}
+echo 'sudo:' $sudoCheckStatus
 
-if [[ "${dockerImageTag}" -ne 'null' ]]; then
-    if [[ "${dockerImageTag}" =~ 'benchmarking.*' ]]; then
+if [[ ${dockerImageTag} -ne 'null' ]]; then
+    if [[ ${dockerImageTag} =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ "${dockerImageTag}" =~ 'stage.*' ]]; then
+    elif [[ ${dockerImageTag} =~ 'stage.*' ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ "${dockerImageTag}" =~ 'test.*' ]]; then
+    elif [[ ${dockerImageTag} =~ 'test.*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ "${dockerImageTag}" ]]; then
+    elif [[ ${dockerImageTag} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
@@ -32,7 +34,7 @@ if [[ "${dockerImageTag}" -ne 'null' ]]; then
         subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
         set +e
         subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-        if [[ $(echo $?) -eq ${sudoCheckStatus} ]]; then echo "sudo check is successful!"; else echo "sudo check is failed!"; exit 1; fi
+        if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else 
    rm -rf ~/.cargo/.package-cache
         rm Cargo.lock
