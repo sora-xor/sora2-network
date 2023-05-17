@@ -42,8 +42,8 @@ use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
-use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, One, Zero};
+use sp_runtime::{Perbill, Saturating};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -218,6 +218,10 @@ pub mod pallet {
         BoundedVec<(OrderBookId<AssetIdOf<T>>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn incomplete_expirations_since)]
+    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -690,8 +694,24 @@ impl<T: Config>
 {
     fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
         // use data_layer across the services;
-        // handle postpone
-        Self::service_block(now, weight);
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
+            return;
+        }
+
+        let mut incomplete_since = now + One::one();
+        let mut when = IncompleteExpirationsSince::<T>::take().unwrap_or(now);
+
+        let service_block_base_weight = <T as Config>::WeightInfo::service_block_base();
+        while when <= now && weight.can_accrue(service_block_base_weight) {
+            if !Self::service_block(when, weight) {
+                incomplete_since = incomplete_since.min(when);
+            }
+            when.saturating_inc();
+        }
+        incomplete_since = incomplete_since.min(when);
+        if incomplete_since <= now {
+            IncompleteExpirationsSince::<T>::put(incomplete_since);
+        }
     }
 
     fn schedule(

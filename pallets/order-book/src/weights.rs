@@ -59,6 +59,9 @@ pub trait WeightInfo {
     fn service_base() -> Weight {
         Weight::zero()
     }
+    fn service_block_base() -> Weight {
+        Weight::zero()
+    }
     fn service_single_expiration() -> Weight {
         Weight::zero()
     }
@@ -93,6 +96,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
         Weight::zero()
     }
     fn service_base() -> Weight {
+        Weight::zero()
+    }
+    fn service_block_base() -> Weight {
         Weight::zero()
     }
     fn service_single_expiration() -> Weight {
