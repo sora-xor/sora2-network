@@ -6,20 +6,20 @@ RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=0
 
-echo 'tag:' ${dockerImageTag}
+echo 'tag:' ${dockerImageTags}
 echo 'sudo:' $sudoCheckStatus
 
-if [[ ${dockerImageTag} -ne 'null' ]]; then
-    if [[ ${dockerImageTag} =~ 'benchmarking.*' ]]; then
+if [[ ${dockerImageTags} -ne 'null' ]]; then
+    if [[ ${dockerImageTags} =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ ${dockerImageTag} =~ 'stage.*' ]]; then
+    elif [[ ${dockerImageTags} =~ 'stage.*' ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${dockerImageTag} =~ 'test.*' ]]; then
+    elif [[ ${dockerImageTags} =~ 'test.*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${dockerImageTag} ]]; then
+    elif [[ ${dockerImageTags} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
