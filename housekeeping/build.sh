@@ -5,18 +5,19 @@ RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 
+echo "${dockerImageTag}"
 
-if [[ "${pushtags}" -ne 'null' ]]; then
-    if [[ $env.TAG_NAME =~ 'benchmarking.*' ]]; then
+if [[ "${dockerImageTag}" -ne 'null' ]]; then
+    if [[ "${dockerImageTag}" =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ $env.TAG_NAME =~ 'stage.*' ]]; then
+    elif [[ "${dockerImageTag}" =~ 'stage.*' ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ $env.TAG_NAME =~ 'test.*' ]]; then
+    elif [[ "${dockerImageTag}" =~ 'test.*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ $env.TAG_NAME ]]; then
+    elif [[ "${dockerImageTag}" ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
