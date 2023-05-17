@@ -74,8 +74,8 @@ pub use limit_order::LimitOrder;
 pub use market_order::MarketOrder;
 pub use traits::{CurrencyLocker, CurrencyUnlocker, DataLayer};
 pub use types::{
-    DealInfo, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderPrice, OrderVolume,
-    PriceOrders, UserOrders,
+    DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookId, OrderPrice,
+    OrderVolume, PriceOrders, UserOrders,
 };
 pub use weights::WeightInfo;
 
