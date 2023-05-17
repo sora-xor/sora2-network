@@ -464,7 +464,7 @@ pub mod pallet {
             price: OrderPrice,
             amount: OrderVolume,
             side: PriceVariant,
-            lifespan: MomentOf<T>,
+            lifespan: Option<MomentOf<T>>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let mut order_book =
@@ -472,6 +472,7 @@ pub mod pallet {
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
+            let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
             let order =
                 LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
 

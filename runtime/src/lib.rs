@@ -1976,6 +1976,10 @@ impl hermes_governance_platform::Config for Runtime {
     type WeightInfo = hermes_governance_platform::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+}
+
 #[cfg(feature = "wip")] // order-book
 impl order_book::Config for Runtime {
     const MAX_ORDER_LIFETIME: Moment = 30 * (DAYS as Moment) * MILLISECS_PER_BLOCK; // 30 days // TODO: order-book clarify
@@ -1987,6 +1991,7 @@ impl order_book::Config for Runtime {
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type MaxExpiringOrdersPerBlock = ConstU32<1000>; // TODO: order-book clarify
+    type MaxExpirationWeightPerBlock = ExpirationsSchedulerMaxWeight;
     type EnsureTradingPairExists = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;

@@ -113,7 +113,7 @@ fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>
     )
     .unwrap();
 
-    let lifespan: MomentOf<T> = 10000u32.into();
+    let lifespan: Option<MomentOf<T>> = Some(10000u32.into());
 
     // prices
     let bp1 = balance!(10);
@@ -383,7 +383,7 @@ benchmarks! {
             price,
             amount,
             PriceVariant::Buy,
-            lifespan
+            Some(lifespan)
         ).unwrap();
         OrderBookPallet::<T>::place_limit_order(
             RawOrigin::Signed(caller.clone()).into(),
@@ -391,7 +391,7 @@ benchmarks! {
             price,
             amount,
             PriceVariant::Buy,
-            lifespan
+            Some(lifespan)
         ).unwrap();
     }
     verify {

@@ -107,7 +107,7 @@ pub fn create_and_fill_order_book(
 
     fill_balance(bob(), order_book_id);
 
-    let lifespan = 10000;
+    let lifespan = Some(10000);
 
     // prices
     let bp1 = balance!(10);
