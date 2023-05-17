@@ -38,7 +38,7 @@
 #![cfg(not(test))]
 
 #[cfg(not(test))]
-use crate::{Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet};
+use crate::{Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet};
 #[cfg(test)]
 use framenode_runtime::order_book::{
     Config, Event, LimitOrder, MarketRole, MomentOf, OrderBook, OrderBookId, Pallet,

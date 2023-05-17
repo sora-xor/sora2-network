@@ -43,6 +43,7 @@ use frame_support::traits::Get;
 use sp_runtime::traits::{One, Zero};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::ops::Add;
+use sp_std::vec::Vec;
 
 #[derive(
     Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,

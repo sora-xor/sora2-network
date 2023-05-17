@@ -32,6 +32,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{Balance, PriceVariant, TradingPair};
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
