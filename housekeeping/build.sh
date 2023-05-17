@@ -1,14 +1,17 @@
 #!/bin/bash
 
+# environment
+palletListFile='pallet_list.txt'
+wasmReportFile='subwasm_report.json'
 PACKAGE=framenode-runtime
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=0
 
-echo 'tag:' ${TAG_NAME}
-echo 'sudo:' $sudoCheckStatus
+echo 'current tag is:' ${TAG_NAME}
 
+# build
 if [[ ${TAG_NAME} != 'null' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
@@ -19,24 +22,24 @@ if [[ ${TAG_NAME} != 'null' ]]; then
     elif [[ ${TAG_NAME} =~ 'test.*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${TAG_NAME} ]]; then
+    elif [[ -n ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
         cargo test  --release --features "private-net runtime-benchmarks"
         rm -rf target
-        cargo build --release --features "${featureList}"
+        cargo build --release --features $featureList
         mv ./target/release/framenode .
         mv ./target/release/relayer ./relayer.bin
         mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
         wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-        subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
-        subwasm metadata framenode_runtime.compact.wasm > ${palletListFile}
+        subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
+        subwasm metadata framenode_runtime.compact.wasm > $palletListFile
         set +e
         subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
         if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else 
-   rm -rf ~/.cargo/.package-cache
+        rm -rf ~/.cargo/.package-cache
         rm Cargo.lock
         cargo fmt -- --check > /dev/null
         SKIP_WASM_BUILD=1 cargo check
