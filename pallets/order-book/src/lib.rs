@@ -116,6 +116,7 @@ pub mod pallet {
         type MaxLimitOrdersForPrice: Get<u32>;
         type MaxSidePriceCount: Get<u32>;
         type MaxExpiringOrdersPerBlock: Get<u32>;
+        type MaxExpirationWeightPerBlock: Get<Weight>;
         type EnsureTradingPairExists: EnsureTradingPairExists<
             Self::DEXId,
             Self::AssetId,
@@ -328,7 +329,14 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Execute the scheduled calls
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            let mut weight_counter = WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
+            Self::service(now, &mut weight_counter);
+            weight_counter.consumed
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -570,7 +578,7 @@ impl<T: Config> Pallet<T> {
 }
 
 pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
-    fn service(now: BlockNumber);
+    fn service(now: BlockNumber, weight: &mut WeightMeter);
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
@@ -590,36 +598,84 @@ enum SchedulerError {
     ExpirationNotFound,
 }
 
+impl<T: Config> Pallet<T> {
+    /// Try to consume the given weight `max_n` times. If weight is only
+    /// enough to consume `n <= max_n` times, it consumes it `n` times
+    /// and returns `n`.
+    fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64) -> u64 {
+        let n = {
+            let weight_left = meter.remaining();
+            // Maximum possible subtractions that we can do on each value
+            // If None, then can subtract the value infinitely
+            // thus we can use max value (more will likely be infeasible)
+            let n_ref_time = weight_left
+                .ref_time()
+                .checked_div(w.ref_time())
+                .unwrap_or(u64::MAX);
+            let n_proof_size = weight_left
+                .proof_size()
+                .checked_div(w.proof_size())
+                .unwrap_or(u64::MAX);
+            let max_possible_n = n_ref_time.min(n_proof_size);
+            max_possible_n.min(max_n)
+        };
+        // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
+        // it means it will fit into u64
+        let to_consume = w.saturating_mul(n);
+        meter.defensive_saturating_accrue(to_consume);
+        n
+    }
+
+    fn service_single_expiration(
+        data_layer: &mut CacheDataLayer<T>,
+        order_book_id: OrderBookId<AssetIdOf<T>>,
+        order_id: T::OrderId,
+    ) {
+        let Ok(order) = data_layer.get_limit_order(&order_book_id, order_id) else {
+            debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
+            return;
+        };
+        let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
+            debug_assert!(false, "removal of order book did not cleanup expiration schedule");
+            return;
+        };
+
+        if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
+            Self::deposit_event(Event::<T>::ExpirationFailure {
+                order_book_id,
+                order_id,
+                error,
+            });
+        }
+    }
+}
+
 impl<T: Config>
     ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
     for Pallet<T>
 {
-    fn service(now: T::BlockNumber) {
-        let expired_orders = <ExpirationsAgenda<T>>::take(now);
+    fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
+            // todo: indicate that no weight left
+            return;
+        }
+        let mut expired_orders = <ExpirationsAgenda<T>>::take(now);
         if expired_orders.is_empty() {
             return;
         }
         let mut data_layer = CacheDataLayer::<T>::new();
-
-        for (order_book_id, order_id) in expired_orders {
-            let Ok(order) = data_layer.get_limit_order(&order_book_id, order_id) else {
-                debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
-                continue;
-            };
-            let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-                debug_assert!(false, "removal of order book did not cleanup expiration schedule");
-                continue;
-            };
-
-            if let Err(error) =
-                order_book.cancel_limit_order_unchecked::<Self>(order, &mut data_layer)
-            {
-                Self::deposit_event(Event::<T>::ExpirationFailure {
-                    order_book_id,
-                    order_id,
-                    error,
-                });
+        let to_service = Self::check_accrue_n(
+            weight,
+            <T as Config>::WeightInfo::service_single_expiration(),
+            expired_orders.len() as u64,
+        );
+        let postponed = expired_orders.len() as u64 - to_service;
+        let mut serviced = 0;
+        while let Some((order_book_id, order_id)) = expired_orders.pop() {
+            if serviced >= to_service {
+                break;
             }
+            Self::service_single_expiration(&mut data_layer, order_book_id, order_id);
         }
         data_layer.commit();
     }
