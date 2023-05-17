@@ -26,6 +26,7 @@ if [[ ${TAG_NAME} != 'null' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
+        cargo clean
         cargo test  --release --features "private-net runtime-benchmarks"
         rm -rf target
         cargo build --release --features $featureList
