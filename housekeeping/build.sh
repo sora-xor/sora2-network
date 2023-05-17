@@ -9,17 +9,17 @@ sudoCheckStatus=0
 echo 'tag:' ${TAG_NAME}
 echo 'sudo:' $sudoCheckStatus
 
-if [[ ${${TAG_NAME}} -ne 'null' ]]; then
-    if [[ ${${TAG_NAME}} =~ 'benchmarking.*' ]]; then
+if [[ ${TAG_NAME} -ne 'null' ]]; then
+    if [[ ${TAG_NAME} =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ ${${TAG_NAME}} =~ 'stage.*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'stage.*' ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${${TAG_NAME}} =~ 'test.*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'test.*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${${TAG_NAME}} ]]; then
+    elif [[ ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
