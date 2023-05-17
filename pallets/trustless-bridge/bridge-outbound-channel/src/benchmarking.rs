@@ -15,7 +15,7 @@ benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
     // in queue are committed.
     on_initialize {
-        let m in 1 .. T::MaxMessagesPerCommit::get() as u8;
+        let m in 1 .. T::MaxMessagesPerCommit::get() as u32;
         let p in 0 .. T::MaxMessagePayloadSize::get() as u32;
 
         for _ in 0 .. m {
@@ -23,7 +23,6 @@ benchmarks! {
             append_message_queue::<T>(BASE_NETWORK_ID, Message {
                 network_id: BASE_NETWORK_ID,
                 target: H160::zero(),
-                nonce: 0u64,
                 fee: U256::zero(),
                 max_gas: 100000u64.into(),
                 payload,
@@ -44,7 +43,6 @@ benchmarks! {
         append_message_queue::<T>(BASE_NETWORK_ID, Message {
             network_id: BASE_NETWORK_ID,
             target: H160::zero(),
-            nonce: 0u64,
             fee: U256::zero(),
             max_gas: 100000u64.into(),
             payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
