@@ -578,9 +578,7 @@ impl<T: Config> Pallet<T> {
 }
 
 pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
-    /// Returns `true` if all expirations were processed and `false` if some expirations
-    /// need to be retried with more available weight.
-    fn service(now: BlockNumber, weight: &mut WeightMeter) -> bool;
+    fn service(now: BlockNumber, weight: &mut WeightMeter);
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
@@ -650,17 +648,18 @@ impl<T: Config> Pallet<T> {
             });
         }
     }
-}
 
-impl<T: Config>
-    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
-    for Pallet<T>
-{
-    fn service(now: T::BlockNumber, weight: &mut WeightMeter) -> bool {
+    /// Expire orders that are scheduled to expire at `block`.
+    /// `weight` is used to track weight spent on the expirations, so that
+    /// it doesn't accidentally spend weight of the entire block (or even more).
+    ///
+    /// Returns `true` if all expirations were processed and `false` if some expirations
+    /// need to be retried with more available weight.
+    fn service_block(block: T::BlockNumber, weight: &mut WeightMeter) -> bool {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
             return false;
         }
-        let mut expired_orders = <ExpirationsAgenda<T>>::take(now);
+        let mut expired_orders = <ExpirationsAgenda<T>>::take(block);
         if expired_orders.is_empty() {
             return true;
         }
@@ -682,6 +681,17 @@ impl<T: Config>
         }
         data_layer.commit();
         postponed == 0
+    }
+}
+
+impl<T: Config>
+    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
+    for Pallet<T>
+{
+    fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
+        // use data_layer across the services;
+        // handle postpone
+        Self::service_block(now, weight);
     }
 
     fn schedule(
