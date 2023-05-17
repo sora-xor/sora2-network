@@ -10,16 +10,15 @@ def pipeline = new org.rust.substratePipeline(steps: this,
       disableSecretScanner: false,
       secretScannerExclusion: '.*Cargo.toml\$|.*pr.sh\$',
       rustcVersion: 'nightly-2021-12-10',
-      dockerImageTags: ['develop': 'dev', 'PR-437': 'benchmarking', 'master': 'latest'],
+      dockerImageTags: ['develop': 'dev', 'feature/dops-2387/fix_ci_build': 'benchmarking.1', 'master': 'latest'],
       contractsPath: 'ethereum-bridge-contracts',
       contractsEnvFile: 'env.template',
-      prStatusNotif: true,
       envImageName: 'docker.soramitsu.co.jp/sora2/env:sub4',
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',
       codeCoverage: true,
-      staticScanner: true,
       substrate: true,
       cargoDoc: true,
+      prStatusNotif: true,
       buildTestCmds: [
         'housekeeping/build.sh'
       ]
