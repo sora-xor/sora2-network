@@ -28,18 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::*;
+use crate::{mock::*, CrowdloanInfo, CrowdloanInfos, CrowdloanUserInfo, CrowdloanUserInfos};
 use crate::{Error, RewardInfo};
-use codec::Decode;
 use common::mock::charlie;
 use common::{
-    balance, Balance, Fixed, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet,
-    PSWAP,
+    balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
+    PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
-use std::convert::TryFrom;
 use traits::currency::MultiCurrency;
 
 fn deposit_rewards_to_reserves(amount: Balance) {
@@ -47,176 +45,282 @@ fn deposit_rewards_to_reserves(amount: Balance) {
     Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), amount).unwrap();
 }
 
+pub fn assert_balances(balances: Vec<(AccountId, AssetId32<PredefinedAssetId>, Balance)>) {
+    for (account, asset, balance) in balances {
+        assert_eq!(
+            Assets::total_balance(&asset, &account),
+            Ok(balance),
+            "balance assert failed, account: {}, asset: {}, balance: {}",
+            account,
+            asset,
+            balance
+        );
+    }
+}
+
+#[test]
+fn register_crowdloan_fails() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+        assert_err!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::signed(alice()),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+                vec![(alice(), balance!(5)), (bob(), balance!(15)),],
+            ),
+            sp_runtime::traits::BadOrigin
+        );
+        assert_err!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![],
+                vec![(alice(), balance!(5)), (bob(), balance!(15)),],
+            ),
+            Error::<Runtime>::WrongCrowdloanInfo
+        );
+        assert_err!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+                vec![],
+            ),
+            Error::<Runtime>::WrongCrowdloanInfo
+        );
+        assert_err!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![],
+                vec![],
+            ),
+            Error::<Runtime>::WrongCrowdloanInfo
+        );
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            0,
+            100,
+            vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+            vec![(alice(), balance!(5)), (bob(), balance!(15)),],
+        ),);
+        assert_err!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+                vec![(alice(), balance!(5)), (bob(), balance!(15)),],
+            ),
+            Error::<Runtime>::CrowdloanAlreadyExists
+        );
+    });
+}
+
 #[test]
 fn can_claim_crowdloan_reward() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::{CrowdloanReward, CrowdloanRewards};
-
-        let tech_account = GetCrowdloanRewardsAccountId::get();
-        currencies::Pallet::<Runtime>::update_balance(
+    ExtBuilder::default().build().execute_with(|| {
+        const BLOCKS_PER_DAY: u64 = 14400;
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+        assert_eq!(CrowdloanUserInfos::<Runtime>::get(alice(), &tag), None);
+        assert_ok!(VestedRewards::register_crowdloan(
             RuntimeOrigin::root(),
-            tech_account,
-            PSWAP.into(),
-            balance!(1000000) as <Runtime as tokens::Config>::Amount,
-        )
-        .unwrap();
-
-        let mut raw_address = &[
-            92, 92, 122, 119, 21, 211, 27, 86, 74, 193, 56, 61, 11, 124, 127, 100, 234, 233, 8,
-            200, 238, 178, 238, 40, 215, 84, 140, 255, 219, 251, 115, 41,
-        ][..];
-        let account =
-            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-        let pswap_reward = Fixed::try_from(60000).unwrap();
-
-        CrowdloanRewards::<Runtime>::insert(
-            &account,
-            CrowdloanReward {
-                address: raw_address.into(),
-                pswap_reward,
-                ..Default::default()
-            },
-        );
-
-        let number_of_days = 20;
-        let current_block_number =
-            (crate::BLOCKS_PER_DAY * number_of_days + crate::LEASE_START_BLOCK) as u64;
-
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
+            tag.clone(),
+            BLOCKS_PER_DAY,
+            BLOCKS_PER_DAY * 10,
+            vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+            vec![
+                (alice(), balance!(5)),
+                (bob(), balance!(15)),
+                (charlie(), balance!(17)),
+            ],
+        ));
         assert_eq!(
-            3773584905660377358480,
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
+            CrowdloanUserInfo {
+                contribution: balance!(5),
+                rewarded: vec![]
+            }
         );
-
-        // second claim for the same period doesn't change the balance
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
         assert_eq!(
-            3773584905660377358480,
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
+            crowdloan_info,
+            CrowdloanInfo {
+                total_contribution: balance!(37),
+                rewards: vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+                start_block: BLOCKS_PER_DAY,
+                length: BLOCKS_PER_DAY * 10,
+                account: AccountId::new(hex_literal::hex!(
+                    "54734f90f971a02c609b2d684e61b557de7868ad5b1d7ffb3f91907dd08d728a"
+                ))
+            }
         );
-
-        // claim after the end of the lease period
-
-        let current_block_number =
-            (crate::BLOCKS_PER_DAY * crate::LEASE_TOTAL_DAYS + crate::LEASE_START_BLOCK) as u64;
-
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
+        assert_balances(vec![
+            (alice(), XOR, balance!(0)),
+            (alice(), PSWAP, balance!(0)),
+        ]);
+        // Too early claim
+        assert_err!(
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
+            Error::<Runtime>::CrowdloanRewardsDistributionNotStarted
+        );
+        assert_balances(vec![
+            (alice(), XOR, balance!(0)),
+            (alice(), PSWAP, balance!(0)),
+        ]);
+        frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 2);
+        // Empty crowdloan tech account
+        assert_err!(
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
+            pallet_balances::Error::<Runtime>::InsufficientBalance
+        );
+        assert_balances(vec![
+            (alice(), XOR, balance!(0)),
+            (alice(), PSWAP, balance!(0)),
+        ]);
         assert_eq!(
-            59999999999999999999832,
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
+            CrowdloanUserInfo {
+                contribution: balance!(5),
+                rewarded: vec![]
+            }
+        );
+        Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(100)).unwrap();
+        Assets::mint_unchecked(&PSWAP, &crowdloan_info.account, balance!(1000)).unwrap();
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ),);
+        assert_balances(vec![
+            (alice(), XOR, balance!(1.351351351351351350)),
+            (alice(), PSWAP, balance!(13.513513513513513500)),
+        ]);
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
+            CrowdloanUserInfo {
+                contribution: balance!(5),
+                rewarded: vec![
+                    (XOR, balance!(1.351351351351351350)),
+                    (PSWAP, balance!(13.513513513513513500))
+                ]
+            }
+        );
+        frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 3 + BLOCKS_PER_DAY / 2);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ),);
+        assert_balances(vec![
+            (alice(), XOR, balance!(2.702702702702702700)),
+            (alice(), PSWAP, balance!(27.027027027027027000)),
+        ]);
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
+            CrowdloanUserInfo {
+                contribution: balance!(5),
+                rewarded: vec![
+                    (XOR, balance!(2.702702702702702700)),
+                    (PSWAP, balance!(27.027027027027027000))
+                ]
+            }
+        );
+        frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 11);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ),);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(bob()),
+            tag.clone()
+        ),);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(charlie()),
+            tag.clone()
+        ),);
+        assert_balances(vec![
+            (alice(), XOR, balance!(13.513513513513513500)),
+            (alice(), PSWAP, balance!(135.135135135135135000)),
+            (bob(), XOR, balance!(40.540540540540540500)),
+            (bob(), PSWAP, balance!(405.40540540540540500)),
+            (charlie(), XOR, balance!(45.945945945945945900)),
+            (charlie(), PSWAP, balance!(459.45945945945945900)),
+            // It's ok to have some dust after distribution because of calculations precision
+            (
+                crowdloan_info.account.clone(),
+                XOR,
+                balance!(0.0000000000000001),
+            ),
+            (
+                crowdloan_info.account.clone(),
+                PSWAP,
+                balance!(0.000000000000001),
+            ),
+        ]);
+        assert_eq!(
+            Assets::total_balance(&XOR, &alice()).unwrap()
+                + Assets::total_balance(&XOR, &bob()).unwrap()
+                + Assets::total_balance(&XOR, &charlie()).unwrap(),
+            balance!(99.999999999999999900)
+        );
+        assert_eq!(
+            Assets::total_balance(&PSWAP, &alice()).unwrap()
+                + Assets::total_balance(&PSWAP, &bob()).unwrap()
+                + Assets::total_balance(&PSWAP, &charlie()).unwrap(),
+            balance!(999.999999999999999000)
         );
     });
 }
 
 #[test]
-fn crowdloan_reward_period_is_whole_days() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        use crate::{CrowdloanReward, CrowdloanRewards};
-
-        let tech_account = GetCrowdloanRewardsAccountId::get();
-        currencies::Pallet::<Runtime>::update_balance(
-            RuntimeOrigin::root(),
-            tech_account,
-            PSWAP.into(),
-            balance!(1000) as <Runtime as tokens::Config>::Amount,
-        )
-        .unwrap();
-
-        let mut raw_address = &[
-            92, 92, 122, 119, 21, 211, 27, 86, 74, 193, 56, 61, 11, 124, 127, 100, 234, 233, 8,
-            200, 238, 178, 238, 40, 215, 84, 140, 255, 219, 251, 115, 41,
-        ][..];
-        let account =
-            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-        let pswap_reward = Fixed::try_from(100).unwrap();
-
-        CrowdloanRewards::<Runtime>::insert(
-            &account,
-            CrowdloanReward {
-                address: raw_address.into(),
-                pswap_reward,
-                ..Default::default()
-            },
-        );
-
-        let number_of_days = 3;
-        let half_day = crate::BLOCKS_PER_DAY / 2;
-        let current_block_number =
-            (crate::BLOCKS_PER_DAY * number_of_days + half_day + crate::LEASE_START_BLOCK) as u64;
-
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
-        assert_eq!(
-            943396226415094338,
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
-        );
-
-        let current_block_number = current_block_number + (half_day as u64);
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
-        assert_eq!(
-            1257861635220125784,
-            assets::Pallet::<Runtime>::total_balance(&PSWAP, &account).unwrap()
-        );
-    });
-}
-
-#[test]
-fn migration_v1_2_0_to_v1_2_1_crowdloan_rewards() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        // we call migration for 1.2.0 to prepare crowdloan rewards
-        crate::migrations::add_funds_to_crowdloan_rewards_account::<Runtime>();
-        crate::migrations::add_crowdloan_rewards::<Runtime>();
-
-        // this account is known as having issue with getting PSWAP reward
-        let mut raw_address = &[
-            244, 140, 36, 125, 28, 44, 188, 122, 200, 181, 210, 183, 7, 41, 241, 37, 50, 63, 215,
-            126, 240, 94, 36, 196, 65, 157, 70, 8, 127, 46, 122, 14,
-        ][..];
-
-        let account =
-            <Runtime as frame_system::Config>::AccountId::decode(&mut raw_address).unwrap();
-
-        let current_block_number = (crate::BLOCKS_PER_DAY * 2 + crate::LEASE_START_BLOCK) as u64;
-
-        frame_system::Pallet::<Runtime>::set_block_number(current_block_number);
-
-        crate::Pallet::<Runtime>::claim_crowdloan_rewards(Some(account.clone()).into(), PSWAP)
-            .unwrap();
-
-        assert!(crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP) > 0);
-
-        // the claim history is reset after the migration
+fn migration_to_v2_works() {
+    ExtBuilder::default().build().execute_with(|| {
+        let claim_history = include_str!("../claim_history.json");
+        let claim_history: Vec<(AccountId, AssetId32<PredefinedAssetId>, BlockNumber)> =
+            serde_json::from_str(claim_history).unwrap();
+        for (account, asset, block) in claim_history {
+            crate::migrations::v2::CrowdloanClaimHistory::<Runtime>::insert(account, asset, block);
+        }
+        let crowdloan_rewards = include_str!("../crowdloan_rewards.json");
+        let crowdloan_rewards: Vec<crate::migrations::v2::CrowdloanReward> =
+            serde_json::from_str(crowdloan_rewards).unwrap();
+        for reward in crowdloan_rewards {
+            let account = AccountId::new(reward.address.clone().try_into().unwrap());
+            crate::migrations::v2::CrowdloanRewards::<Runtime>::insert(account, reward);
+        }
         StorageVersion::new(1).put::<crate::Pallet<Runtime>>();
-        crate::migrations::ResetClaimingForCrowdloadErrors::<Runtime>::on_runtime_upgrade();
-
+        crate::migrations::v2::Migration::<Runtime>::on_runtime_upgrade();
+        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 2);
+        let info = crate::CrowdloanInfos::<Runtime>::get(CrowdloanTag(
+            b"crowdloan".to_vec().try_into().unwrap(),
+        ))
+        .unwrap();
         assert_eq!(
-            0,
-            crate::CrowdloanClaimHistory::<Runtime>::get(&account, PSWAP)
-        );
-        assert_eq!(
-            crate::Pallet::<Runtime>::on_chain_storage_version(),
-            StorageVersion::new(2)
-        );
+            info,
+            CrowdloanInfo {
+                total_contribution: balance!(9653.713265551300000000),
+                rewards: vec![
+                    (PSWAP, balance!(9363480)),
+                    (VAL, balance!(676393)),
+                    (XSTUSD, balance!(77050))
+                ],
+                start_block: 4397212,
+                length: 4579200,
+                account: AccountId::new(hex_literal::hex!(
+                    "54734f90f971a02c609b2d684e61b557de7868ad5b1d7ffb3f91907dd08d728a"
+                ))
+            }
+        )
     });
 }
 

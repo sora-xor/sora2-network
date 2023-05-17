@@ -28,41 +28,32 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-mod ethereum_relay;
-mod parachain_to_parachain_relay;
-mod parachain_to_sora_relay;
-mod sora_to_parachain_relay;
-mod sora_to_sora_relay;
-mod substrate_relay;
+mod evm;
+mod parachain;
+mod sora;
 
 use crate::cli::prelude::*;
 use clap::*;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Relay Etheerum headers and messages to Sora
-    Ethereum(ethereum_relay::Command),
-    /// Relay Beefy commitments and bridge messages to Ethereum
-    Substrate(substrate_relay::Command),
-    /// Relay Beefy commitments and bridge messages from Sora to Parachain
-    SoraToParachain(sora_to_parachain_relay::Command),
-    /// Relay Beefy commitments and bridge messages from Parachain to Sora
-    ParachainToSora(parachain_to_sora_relay::Command),
-    /// Relay Beefy commitments and bridge messages from Sora to Sora
-    SoraToSora(sora_to_sora_relay::Command),
-    /// Relay Beefy commitments and bridge messages from Parachain to Parachain
-    ParachainToParachain(parachain_to_parachain_relay::Command),
+    /// Relay commands from EVM to another networks
+    #[clap(subcommand)]
+    EVM(evm::Commands),
+    /// Relay commands from SORA to another networks
+    #[clap(subcommand)]
+    Sora(sora::Commands),
+    /// Relay commands from parachain to another networks
+    #[clap(subcommand)]
+    Parachain(parachain::Commands),
 }
 
 impl Commands {
     pub async fn run(&self) -> AnyResult<()> {
         match self {
-            Commands::Ethereum(cmd) => cmd.run().await,
-            Commands::Substrate(cmd) => cmd.run().await,
-            Commands::SoraToParachain(cmd) => cmd.run().await,
-            Commands::ParachainToSora(cmd) => cmd.run().await,
-            Commands::SoraToSora(cmd) => cmd.run().await,
-            Commands::ParachainToParachain(cmd) => cmd.run().await,
+            Commands::EVM(cmd) => cmd.run().await,
+            Commands::Sora(cmd) => cmd.run().await,
+            Commands::Parachain(cmd) => cmd.run().await,
         }
     }
 }

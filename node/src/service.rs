@@ -40,7 +40,6 @@ use framenode_runtime::eth_bridge::{
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
-use mmr_gadget::MmrGadget;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
@@ -260,6 +259,27 @@ pub fn new_partial(
 
         log::info!("Ethereum bridge peer initialized");
     }
+    config
+        .prometheus_registry()
+        .and_then(|registry| {
+            crate::data_feed_metrics::Metrics::register(
+                Arc::new(registry.clone()),
+                client.clone(),
+                Duration::from_secs(6),
+            )
+            .map_err(|e| {
+                log::error!("Failed to register metrics: {:?}", e);
+            })
+            .ok()
+        })
+        .and_then(|metrics| {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "data-feed-metrics",
+                Some("data-feed-metrics"),
+                metrics.run(),
+            );
+            Some(())
+        });
 
     let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -339,6 +359,7 @@ pub fn new_partial(
     let rpc_extensions_builder = {
         let client = client.clone();
         let pool = transaction_pool.clone();
+        #[cfg(feature = "wip")]
         let backend = backend.clone();
 
         move |deny_unsafe,
@@ -355,7 +376,15 @@ pub fn new_partial(
                 },
             };
 
-            crate::rpc::create_full(deps, backend.clone()).map_err(Into::into)
+            let rpc = crate::rpc::create_full(deps)?;
+
+            #[cfg(feature = "wip")]
+            let rpc = crate::rpc::add_wip_rpc(rpc, backend.clone(), client.clone())?;
+
+            #[cfg(feature = "ready-to-test")]
+            let rpc = crate::rpc::add_ready_for_test_rpc(rpc)?;
+
+            Ok(rpc)
         }
     };
 
@@ -592,7 +621,7 @@ pub fn new_full(
             task_manager.spawn_handle().spawn_blocking(
                 "mmr-gadget",
                 None,
-                MmrGadget::start(
+                mmr_gadget::MmrGadget::start(
                     client.clone(),
                     backend.clone(),
                     sp_mmr_primitives::INDEXING_PREFIX.to_vec(),

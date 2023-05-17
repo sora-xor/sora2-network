@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use common::prelude::Balance;
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;
@@ -59,7 +59,7 @@ fn generic_pair_swap_simple() {
     let dex = 10;
     let t01 = common::TechAccountId::Pure(
         dex,
-        LiquidityKeeper(TradingPair {
+        XykLiquidityKeeper(TradingPair {
             base_asset_id: common::mock::ComicAssetId::RedPepper.into(),
             target_asset_id: common::mock::ComicAssetId::BlackPepper.into(),
         }),

@@ -30,8 +30,8 @@
 
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
-    DEFAULT_BALANCE_PRECISION,
+    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
+    LiquiditySourceType, ToFeeAccount, DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_noop;
 use frame_support::assert_ok;

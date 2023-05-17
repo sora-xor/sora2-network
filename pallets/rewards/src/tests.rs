@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::{assert_approx_eq, assert_noop_msg, balance, PSWAP, VAL};
+use common::{assert_approx_eq, assert_noop_msg, balance, AssetInfoProvider, PSWAP, VAL};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;

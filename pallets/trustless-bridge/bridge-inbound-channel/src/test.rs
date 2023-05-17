@@ -15,13 +15,13 @@ use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
 use bridge_types::traits::{AppRegistry, MessageDispatch, OutboundChannel};
-use bridge_types::types::{Message, Proof};
-use bridge_types::{Address, Log, H160, H256, U256};
+use bridge_types::types::Proof;
+use bridge_types::{GenericNetworkId, Log, H160, H256, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, PSWAP, VAL, XOR,
-    XST,
+    balance, Amount, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId, FromGenericPair,
+    PSWAP, VAL, XOR, XST,
 };
 use hex_literal::hex;
 
@@ -170,12 +170,11 @@ impl assets::Config for Test {
 // Mock verifier
 pub struct MockVerifier;
 
-impl Verifier<EVMChainId, Message> for MockVerifier {
-    type Result = (Log, u64);
+impl Verifier for MockVerifier {
+    type Proof = Proof;
 
-    fn verify(_: EVMChainId, message: &Message) -> Result<Self::Result, DispatchError> {
-        let log: Log = rlp::decode(&message.data).unwrap();
-        Ok((log, 0))
+    fn verify(_: GenericNetworkId, _: H256, _: &Self::Proof) -> DispatchResult {
+        Ok(())
     }
 }
 
@@ -372,37 +371,69 @@ const MESSAGE_DATA_1: [u8; 317] = hex!(
 // The originating InboundChannel address for the messages below
 const INBOUND_CHANNEL_ADDR: [u8; 20] = hex!["2b6eb68c260ff0784a3c17ae61e31a77836eeb20"];
 
-// MessageDispatched with nonce = 1
-const MESSAGE_DISPATCHED_DATA_0: [u8; 123] = hex!(
-    "
-	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
-	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
-	0000000000000000000000000000000000000000000000000000010000000000
-	000000000000000000000000000000000000000000000000000001
-"
-);
-
-// MessageDispatched with nonce = 2
-const MESSAGE_DISPATCHED_DATA_1: [u8; 123] = hex!(
-    "
-	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
-	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
-	0000000000000000000000000000000000000000000000000000020000000000
-	000000000000000000000000000000000000000000000000000001
-"
-);
-
-// MessageDispatched {
-//   .channel = "2b6eb68c260ff0784a3c17ae61e31a77836eeb20",
-//   .nonce = 1,
-//   .result = False,
+// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// BatchDispatched {
+//   .batch_nonce = 1,
+//   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+//   .results = 1,
+//   .results_length = 1,
+//   .gas_spent = 44664,
+//   .base_fee = 1
 // }
-const MESSAGE_DISPATCHED_FAILED_DATA_0: [u8; 123] = hex!(
+const MESSAGE_DISPATCHED_DATA_0: [u8; 251] = hex!(
     "
-	f879942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0504b093d860dc8
-	27c72a879d052fd8ac6b4c2af80c5f3a634654f172690bf10ab8400000000000
-	0000000000000000000000000000000000000000000000000000010000000000
-	000000000000000000000000000000000000000000000000000000
+    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
+    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    00000000000000000000000000000000000000000000000000af830000000000
+    000000000000000000000000000000000000000000000000000001
+"
+);
+
+// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// BatchDispatched {
+//   .batch_nonce = 2,
+//   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+//   .results = 1,
+//   .results_length = 1,
+//   .gas_spent = 27564,
+//   .base_fee = 1
+// }
+const MESSAGE_DISPATCHED_DATA_1: [u8; 251] = hex!(
+    "
+    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
+    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
+    0000000000000000000000000000000000000000000000000000020000000000
+    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    00000000000000000000000000000000000000000000000000af830000000000
+    000000000000000000000000000000000000000000000000000001
+"
+);
+
+// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// BatchDispatched {
+//   .batch_nonce = 1,
+//   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+//   .results = 0,
+//   .results_length = 1,
+//   .gas_spent = 44656,
+//   .base_fee = 1,
+// }
+const MESSAGE_DISPATCHED_FAILED_DATA_0: [u8; 251] = hex!(
+    "
+    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
+    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
+    0000000000000000000000000000000000000000000000000000000000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    00000000000000000000000000000000000000000000000000af7b0000000000
+    000000000000000000000000000000000000000000000000000001
 "
 );
 
@@ -413,16 +444,18 @@ fn test_submit_with_invalid_source_channel() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
-        let message = Message {
-            data: MESSAGE_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let log = rlp::decode(&MESSAGE_DATA_0).unwrap();
         assert_noop!(
-            BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
+            BridgeInboundChannel::submit(
+                origin.clone(),
+                BASE_NETWORK_ID,
+                log,
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
+            ),
             Error::<Test>::InvalidSourceChannel
         );
     });
@@ -435,35 +468,31 @@ fn test_submit() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message 1
-        let message_1 = Message {
-            data: MESSAGE_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message_1 = rlp::decode(&MESSAGE_DATA_0).unwrap();
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_1
+            message_1,
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit message 2
-        let message_2 = Message {
-            data: MESSAGE_DATA_1.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message_2 = rlp::decode(&MESSAGE_DATA_1).unwrap();
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_2
+            message_2,
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -477,79 +506,77 @@ fn test_submit_with_invalid_nonce() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
-        let message = Message {
-            data: MESSAGE_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message: Log = rlp::decode(&MESSAGE_DATA_0).unwrap();
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            message.clone()
+            message.clone(),
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
         assert_noop!(
-            BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
+            BridgeInboundChannel::submit(
+                origin.clone(),
+                BASE_NETWORK_ID,
+                message.clone(),
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
+            ),
             Error::<Test>::InvalidNonce
         );
     });
 }
 
 #[test]
-fn test_message_dispatched_wrong_event() {
+fn test_batch_dispatched_wrong_event() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message = Message {
-            // expected message_dispatched
-            data: MESSAGE_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message: Log = rlp::decode(&MESSAGE_DATA_0).unwrap();
         assert_noop!(
-            BridgeInboundChannel::message_dispatched(
+            BridgeInboundChannel::batch_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
-                Address::zero(),
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
             ),
-            Error::<Test>::InvalidMessageDispatchedEvent
+            Error::<Test>::InvalidBatchDispatchedEvent
         );
     });
 }
 
 #[test]
-fn test_message_dispatched_with_invalid_source_channel() {
+fn test_batch_dispatched_with_invalid_source_channel() {
     new_tester(H160::zero(), H160::zero()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message = Message {
-            data: MESSAGE_DISPATCHED_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
         assert_noop!(
-            BridgeInboundChannel::message_dispatched(
+            BridgeInboundChannel::batch_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
-                Address::zero(),
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
             ),
             Error::<Test>::InvalidSourceChannel
         );
@@ -557,37 +584,36 @@ fn test_message_dispatched_with_invalid_source_channel() {
 }
 
 #[test]
-fn test_message_dispatched_with_invalid_nonce() {
+fn test_batch_dispatched_with_invalid_nonce() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message = Message {
-            data: MESSAGE_DISPATCHED_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
-        assert_ok!(BridgeInboundChannel::message_dispatched(
+        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
+        assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
             message.clone(),
-            Default::default(),
-            Address::zero(),
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
         assert_noop!(
-            BridgeInboundChannel::message_dispatched(
+            BridgeInboundChannel::batch_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
                 message.clone(),
-                Default::default(),
-                Address::zero(),
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
             ),
             Error::<Test>::InvalidNonce
         );
@@ -595,44 +621,36 @@ fn test_message_dispatched_with_invalid_nonce() {
 }
 
 #[test]
-fn test_message_dispatched() {
+fn test_batch_dispatched() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message_1 = Message {
-            data: MESSAGE_DISPATCHED_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
-        assert_ok!(BridgeInboundChannel::message_dispatched(
+        let message_1: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
+        assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
             message_1,
-            Default::default(),
-            Address::zero(),
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit message 2
-        let message_2 = Message {
-            data: MESSAGE_DISPATCHED_DATA_1.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
-        assert_ok!(BridgeInboundChannel::message_dispatched(
+        let message_2: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_1).unwrap();
+        assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
             message_2,
-            Default::default(),
-            Address::zero(),
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -640,25 +658,21 @@ fn test_message_dispatched() {
 }
 
 #[test]
-fn test_message_dispatched_refund() {
+fn test_batch_dispatched_refund() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message = Message {
-            data: MESSAGE_DISPATCHED_FAILED_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
-        assert_ok!(BridgeInboundChannel::message_dispatched(
+        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_FAILED_DATA_0).unwrap();
+        assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin,
             BASE_NETWORK_ID,
             message,
-            Default::default(),
-            Address::zero(),
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -711,16 +725,18 @@ fn test_submit_with_invalid_network_id() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
-        let message = Message {
-            data: MESSAGE_DATA_0.into(),
-            proof: Proof {
-                block_hash: Default::default(),
-                tx_index: Default::default(),
-                data: Default::default(),
-            },
-        };
+        let message: Log = rlp::decode(&MESSAGE_DATA_0).unwrap();
         assert_noop!(
-            BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID + 1, message.clone()),
+            BridgeInboundChannel::submit(
+                origin.clone(),
+                BASE_NETWORK_ID + 1,
+                message.clone(),
+                Proof {
+                    block_hash: Default::default(),
+                    tx_index: Default::default(),
+                    data: Default::default(),
+                }
+            ),
             Error::<Test>::InvalidNetwork
         );
     });

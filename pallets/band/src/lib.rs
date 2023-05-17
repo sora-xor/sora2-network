@@ -33,10 +33,11 @@
 use common::prelude::FixedWrapper;
 use common::{Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use frame_support::pallet_prelude::*;
-use frame_support::weights::Weight;
+use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
@@ -52,12 +53,8 @@ pub mod weights;
 /// to precision = 18 (which we use)
 pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
 
-pub trait WeightInfo {
-    fn relay() -> Weight;
-    fn force_relay() -> Weight;
-    fn add_relayers() -> Weight;
-    fn remove_relayers() -> Weight;
-}
+/// Multiplier to convert rate last_update timestamp to Moment
+pub const MILLISECS_MULTIPLIER: u64 = 1_000;
 
 /// Symbol rate
 #[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
@@ -92,7 +89,32 @@ pub use pallet::*;
 
 impl<T: Config<I>, I: 'static> DataFeed<T::Symbol, Rate, u64> for Pallet<T, I> {
     fn quote(symbol: &T::Symbol) -> Result<Option<Rate>, DispatchError> {
-        Ok(Self::rates(symbol).map(|rate| rate.into()))
+        let rate = if let Some(rate) = Self::rates(symbol) {
+            rate
+        } else {
+            return Ok(None);
+        };
+
+        let current_time = T::Time::now();
+        let stale_period = T::GetBandRateStalePeriod::get();
+        // could not convert u64 to Moment directly, this workaround solves this
+        let last_updated = rate
+            .last_updated
+            .saturating_mul(MILLISECS_MULTIPLIER)
+            .try_into()
+            .map_err(|_| "Can't cast u64 to <<T as Config<I>>::Time as Time>::Moment")
+            .unwrap();
+
+        ensure!(
+            last_updated <= current_time,
+            Error::<T, I>::RateHasInvalidTimestamp
+        );
+
+        let current_period = current_time - last_updated;
+
+        ensure!(current_period < stale_period, Error::<T, I>::RateExpired);
+
+        Ok(Some(rate.into()))
     }
 
     fn list_enabled_symbols() -> Result<Vec<(T::Symbol, u64)>, DispatchError> {
@@ -135,6 +157,11 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         /// Hook which is being executed when some new symbols were relayed
         type OnNewSymbolsRelayedHook: OnNewSymbolsRelayed<Self::Symbol>;
+        /// Rate expiration period in seconds.
+        #[pallet::constant]
+        type GetBandRateStalePeriod: Get<<<Self as pallet::Config<I>>::Time as Time>::Moment>;
+        /// Time used for checking if rate expired
+        type Time: Time;
     }
 
     #[pallet::storage]
@@ -168,6 +195,10 @@ pub mod pallet {
         NoSuchRelayer,
         /// Relayed rate is too big to be stored in the pallet.
         RateConversionOverflow,
+        /// Rate has invalid timestamp.
+        RateHasInvalidTimestamp,
+        /// Rate is expired and can't be used until next update.
+        RateExpired,
     }
 
     #[pallet::call]

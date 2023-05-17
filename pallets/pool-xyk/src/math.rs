@@ -33,7 +33,7 @@ use frame_support::ensure;
 
 use assets::AssetIdOf;
 use common::prelude::{Balance, Fixed, FixedWrapper};
-use common::{fixed_wrapper, TradingPair};
+use common::{fixed_wrapper, AssetInfoProvider, TradingPair};
 
 use crate::{to_balance, to_fixed_wrapper};
 

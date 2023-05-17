@@ -8,6 +8,7 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod weights;
 
 use bridge_types::{
     traits::{GasTracker, MessageStatusNotifier},
@@ -15,23 +16,15 @@ use bridge_types::{
     Address, EVMChainId, GenericAccount, GenericNetworkId, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::{prelude::constants::EXTRINSIC_FIXED_WEIGHT, Balance};
-use frame_support::dispatch::{DispatchResult, RuntimeDebug, Weight};
+use common::Balance;
+use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::log;
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 
-pub trait WeightInfo {
-    fn burn() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn burn() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-}
+pub use weights::WeightInfo;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -200,17 +193,22 @@ pub mod pallet {
 }
 
 impl<T: Config> GasTracker<Balance> for Pallet<T> {
+    /// Records fee paid by relayer for message submission.
+    /// - network_id - ethereum network id,
+    /// - batch_nonce - batch nonce,
+    /// - ethereum_relayer_address - relayer that had paid for the batch submission,
+    /// - gas_used - gas paid for batch relaying,
+    /// - gas_price - ethereum base fee in the block when batch was submitted.
     fn record_tx_fee(
         network_id: GenericNetworkId,
-        message_id: H256,
-        ethereum_tx_hash: H256,
+        batch_nonce: u64,
         ethereum_relayer_address: Address,
         gas_used: U256,
         gas_price: U256,
     ) {
-        log::debug!("Record tx fee: message_id={}, ethereum_tx_hash={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
-            message_id,
-            ethereum_tx_hash,
+        log::debug!(
+            "Record tx fee: batch_nonce={}, ethereum_relayer_address={}, gas_used={}, gas_price={}",
+            batch_nonce,
             ethereum_relayer_address,
             gas_used,
             gas_price,

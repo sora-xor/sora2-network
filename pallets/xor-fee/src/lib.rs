@@ -32,8 +32,8 @@
 
 use common::prelude::SwapAmount;
 use common::{
-    Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait, LiquiditySourceFilter,
-    LiquiditySourceType, OnValBurned,
+    AssetInfoProvider, Balance, BuyBackHandler, FilterMode, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
 };
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays};
 use frame_support::log::error;
@@ -41,7 +41,7 @@ use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{
-    Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
@@ -593,9 +593,7 @@ impl<T: Config> Pallet<T> {
 
 pub use pallet::*;
 
-pub trait WeightInfo {
-    fn update_multiplier() -> Weight;
-}
+pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -604,6 +602,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

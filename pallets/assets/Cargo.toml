@@ -47,6 +47,7 @@ std = [
     "scale-info/std",
     "common/std",
     "currencies/std",
+    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "serde",

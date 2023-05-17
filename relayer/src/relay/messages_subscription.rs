@@ -1,20 +1,19 @@
-use std::sync::atomic::Ordering;
-use std::sync::{atomic::AtomicU64, Arc};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
 use bridge_types::{GenericNetworkId, H256};
-use common::Balance;
 use futures::Stream;
 use futures::StreamExt;
 
-use crate::substrate::{binary_search_first_occurence, LeafProof};
+use crate::substrate::{binary_search_first_occurrence, LeafProof};
 use crate::{prelude::*, substrate::BlockNumber};
 use bridge_common::simplified_proof::convert_to_simplified_mmr_proof;
 use sp_runtime::traits::{Keccak256, UniqueSaturatedInto};
 
 pub enum MessageCommitment {
     EVM(bridge_channel_rpc::Commitment),
-    Sub(substrate_bridge_channel_rpc::Commitment<Balance>),
+    Sub(substrate_bridge_channel_rpc::Commitment),
 }
 
 impl From<bridge_channel_rpc::Commitment> for MessageCommitment {
@@ -23,8 +22,8 @@ impl From<bridge_channel_rpc::Commitment> for MessageCommitment {
     }
 }
 
-impl From<substrate_bridge_channel_rpc::Commitment<Balance>> for MessageCommitment {
-    fn from(commitment: substrate_bridge_channel_rpc::Commitment<Balance>) -> Self {
+impl From<substrate_bridge_channel_rpc::Commitment> for MessageCommitment {
+    fn from(commitment: substrate_bridge_channel_rpc::Commitment) -> Self {
         Self::Sub(commitment)
     }
 }
@@ -37,13 +36,11 @@ pub struct MessageCommitmentWithProof<S: SenderConfig> {
     pub proof: bridge_common::simplified_proof::Proof<H256>,
 }
 
-pub async fn load_commitment_with_proof<S: SenderConfig>(
+pub async fn load_commitment<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
-    block_number: BlockNumber<S>,
     commitment_hash: H256,
-    latest_beefy_block: u32,
-) -> AnyResult<MessageCommitmentWithProof<S>> {
+) -> AnyResult<MessageCommitment> {
     let commitment = match network_id {
         GenericNetworkId::EVM(_) => sender.bridge_commitments(commitment_hash).await?.into(),
         GenericNetworkId::Sub(_) => sender
@@ -51,6 +48,15 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
             .await?
             .into(),
     };
+    Ok(commitment)
+}
+
+pub async fn load_digest<S: SenderConfig>(
+    sender: &SubUnsignedClient<S>,
+    network_id: GenericNetworkId,
+    block_number: BlockNumber<S>,
+    commitment_hash: H256,
+) -> AnyResult<AuxiliaryDigest> {
     let block_hash = sender.block_hash(block_number).await?;
     let digest = sender.auxiliary_digest(Some(block_hash)).await?;
     if digest.logs.is_empty() {
@@ -74,6 +80,18 @@ pub async fn load_commitment_with_proof<S: SenderConfig>(
             digest
         ));
     }
+    Ok(digest)
+}
+
+pub async fn load_commitment_with_proof<S: SenderConfig>(
+    sender: &SubUnsignedClient<S>,
+    network_id: GenericNetworkId,
+    block_number: BlockNumber<S>,
+    commitment_hash: H256,
+    latest_beefy_block: u32,
+) -> AnyResult<MessageCommitmentWithProof<S>> {
+    let commitment = load_commitment(sender, network_id, commitment_hash).await?;
+    let digest = load_digest(sender, network_id, block_number, commitment_hash).await?;
     let digest_hash = Keccak256::hash_of(&digest);
     trace!("Digest hash: {}", digest_hash);
     let leaf_proof = leaf_proof_with_digest(
@@ -127,22 +145,28 @@ async fn leaf_proof_with_digest<S: SenderConfig>(
     return Err(anyhow::anyhow!("leaf proof not found"));
 }
 
+/// Finds the first block where stored nonce >= 'nonce'.
+/// - sender - substrate client
+/// - network_id - eth network id
+/// - from - where to start search
+/// - nonce - nonce to compare
 async fn find_message_block<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
+    from_block: BlockNumber<S>,
     nonce: u64,
 ) -> AnyResult<Option<BlockNumber<S>>> {
     let storage = S::bridge_outbound_nonce(network_id);
-    let low: BlockNumber<S> = 1u32.into();
-    let high = sender.block_number(()).await?;
+    let finalized_hash = sender.finalized_head().await?;
+    let high = sender.block_number(finalized_hash).await?;
 
     trace!(
         "Searching for message with nonce {} in block range {:?}..={:?}",
         nonce,
-        low,
+        from_block,
         high
     );
-    let start_block = binary_search_first_occurence(low, high, nonce, |block| {
+    let start_block = binary_search_first_occurrence(from_block, high, nonce, |block| {
         let storage = &storage;
         async move {
             let nonce = sender.storage_fetch(storage, block).await?;
@@ -153,28 +177,24 @@ async fn find_message_block<S: SenderConfig>(
     Ok(start_block)
 }
 
+/// Finds the first commitment where stored nonce >= 'nonce'.
+/// - sender - substrate client
+/// - network_id - eth network id
+/// - from - where to start search
+/// - nonce - nonce to compare
 async fn find_commitment_with_nonce<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
-    count: u32,
+    from_block: BlockNumber<S>,
     nonce: u64,
 ) -> AnyResult<Option<(BlockNumber<S>, H256)>> {
-    let start_block = find_message_block(sender, network_id, nonce).await?;
-    let start_block = if let Some(start_block) = start_block {
-        start_block + 1u32.into()
-    } else {
-        return Ok(None);
-    };
-    for i in 0..count {
-        let block = start_block + i.into();
+    let block = find_message_block(sender, network_id, from_block, nonce).await?;
+    if let Some(block) = block {
         let block_hash = sender.block_hash(block).await;
         let Ok(block_hash) = block_hash else {
-                return Ok(None);
-            };
+            return Ok(None);
+        };
         let digest = sender.auxiliary_digest(Some(block_hash)).await?;
-        if digest.logs.is_empty() {
-            continue;
-        }
         for log in digest.logs {
             let AuxiliaryDigestItem::Commitment(digest_network_id, commitment_hash) = log;
             if network_id == digest_network_id {
@@ -190,14 +210,18 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
     network_id: GenericNetworkId,
     latest_nonce: u64,
 ) -> impl Stream<Item = AnyResult<(BlockNumber<S>, H256)>> + Unpin {
+    let latest_block = Arc::new(AtomicU64::new(1));
     let latest_nonce = Arc::new(AtomicU64::new(latest_nonce));
     let stream = futures::stream::repeat(())
         .then(move |_| {
+            let latest_block = latest_block.clone();
             let latest_nonce = latest_nonce.clone();
             let sender = sender.clone();
             async move {
                 let nonce = latest_nonce.load(Ordering::Relaxed) + 1;
-                let commitment = find_commitment_with_nonce(&sender, network_id, 100, nonce)
+                let from_block: BlockNumber<S> =
+                    u32::try_from(latest_block.load(Ordering::Relaxed))?.into();
+                let commitment = find_commitment_with_nonce(&sender, network_id, from_block, nonce)
                     .await
                     .map_err(|e| {
                         error!("Failed to find commitment with nonce {}: {}", nonce, e);
@@ -207,6 +231,7 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
                     let nonce = sender
                         .storage_fetch_or_default(&S::bridge_outbound_nonce(network_id), *block)
                         .await?;
+                    latest_block.store((*block).into(), Ordering::Relaxed);
                     latest_nonce.store(nonce, Ordering::Relaxed);
                 }
                 Ok(commitment)

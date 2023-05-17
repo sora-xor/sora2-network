@@ -76,7 +76,7 @@ fn burn_successfull() {
             1000,
         )
         .unwrap();
-        let message_id = BridgeOutboundChannel::make_message_id(1);
+        let message_id = BridgeOutboundChannel::make_message_id(1, 0);
         assert_eq!(
             Transactions::<Test>::get(
                 &caller,

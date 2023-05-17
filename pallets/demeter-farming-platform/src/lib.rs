@@ -11,21 +11,7 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::{Balance, DemeterFarmingPallet};
-use frame_support::weights::Weight;
-
-pub trait WeightInfo {
-    fn register_token() -> Weight;
-    fn add_pool() -> Weight;
-    fn deposit() -> Weight;
-    fn get_rewards() -> Weight;
-    fn withdraw() -> Weight;
-    fn remove_pool() -> Weight;
-    fn change_pool_multiplier() -> Weight;
-    fn change_pool_deposit_fee() -> Weight;
-    fn change_token_info() -> Weight;
-    fn change_total_tokens() -> Weight;
-    fn change_info() -> Weight;
-}
+pub use weights::WeightInfo;
 
 /// Storage version.
 #[derive(Encode, Decode, Eq, PartialEq, scale_info::TypeInfo)]
@@ -79,7 +65,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{migrations, PoolData, StorageVersion, TokenInfo, UserInfo, WeightInfo};
-    use common::prelude::{Balance, FixedWrapper};
+    use common::prelude::{AssetInfoProvider, Balance, FixedWrapper};
     use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::transactional;
@@ -92,6 +78,7 @@ pub mod pallet {
 
     const PALLET_ID: PalletId = PalletId(*b"deofarms");
 
+    // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + assets::Config + technical::Config + ceres_liquidity_locker::Config

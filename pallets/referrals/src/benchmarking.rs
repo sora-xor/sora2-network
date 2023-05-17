@@ -31,7 +31,7 @@
 use crate::{Config, Pallet, ReferrerBalances, Referrers};
 use codec::Decode;
 use common::weights::constants::SMALL_FEE;
-use common::{balance, XOR};
+use common::{balance, AssetInfoProvider, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;

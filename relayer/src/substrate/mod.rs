@@ -55,8 +55,9 @@ use subxt::storage::StorageAddress;
 use subxt::tx::Signer;
 pub use types::*;
 
-// Find first occurence of value in storage with increasing values
-pub async fn binary_search_first_occurence<N: AtLeast32BitUnsigned, T: PartialOrd, F, Fut>(
+/// Finds the first occurrence of an element 'e' so that 'f(e)' is greater or equal 'value' in
+/// storage with ascending values. Returns the index of 'e'.
+pub async fn binary_search_first_occurrence<N: AtLeast32BitUnsigned, T: PartialOrd, F, Fut>(
     low: N,
     high: N,
     value: T,
@@ -216,7 +217,7 @@ impl<T: ConfigExt> UnsignedClient<T> {
     pub async fn substrate_bridge_commitments(
         &self,
         hash: H256,
-    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment<Balance>> {
+    ) -> AnyResult<substrate_bridge_channel_rpc::Commitment> {
         Ok(
             substrate_bridge_channel_rpc::BridgeChannelAPIClient::commitment(self.rpc(), hash)
                 .await?
@@ -337,7 +338,8 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .api()
             .rpc()
             .block_hash(block_number.map(Into::into))
-            .await?
+            .await
+            .context("Get block hash")?
             .ok_or(anyhow::anyhow!("Block not found"))?;
         Ok(res.into())
     }
@@ -370,7 +372,13 @@ impl<T: ConfigExt> UnsignedClient<T> {
             .api()
             .storage()
             .fetch(address, Some(hash.into()))
-            .await?;
+            .await
+            .context(format!(
+                "Fetch storage {}::{} at hash {:?}",
+                address.pallet_name(),
+                address.entry_name(),
+                hash
+            ))?;
         Ok(res)
     }
 
@@ -394,6 +402,47 @@ impl<T: ConfigExt> UnsignedClient<T> {
 
     pub async fn signed(self, signer: PairSigner<T>) -> AnyResult<SignedClient<T>> {
         SignedClient::<T>::new(self, signer).await
+    }
+
+    pub async fn submit_unsigned_extrinsic<P: subxt::tx::TxPayload>(
+        &self,
+        xt: &P,
+    ) -> AnyResult<()> {
+        if let Some(validation) = xt.validation_details() {
+            debug!(
+                "Submitting extrinsic: {}::{}",
+                validation.pallet_name, validation.call_name
+            );
+        } else {
+            debug!("Submitting extrinsic without validation data");
+        }
+        let res = self
+            .api()
+            .tx()
+            .create_unsigned(xt)?
+            .submit_and_watch()
+            .await
+            .map_err(|e| {
+                error!("submit then watch error: {:?}", e);
+                e
+            })
+            .context("sign and submit then watch")?
+            .wait_for_in_block()
+            .await
+            .map_err(|e| {
+                error!("wait for in block error: {:?}", e);
+                e
+            })
+            .context("wait for in block")?
+            .wait_for_success()
+            .await
+            .map_err(|e| {
+                error!("wait for success error: {:?}", e);
+                e
+            })
+            .context("wait for success")?;
+        log_extrinsic_events::<T>(res);
+        Ok(())
     }
 }
 
@@ -438,11 +487,18 @@ impl<T: ConfigExt> SignedClient<T> {
             .api()
             .tx()
             .sign_and_submit_then_watch_default(xt, self)
-            .await?
+            .await
+            .map_err(|e| {
+                error!("sign and submit then watch error: {:?}", e);
+                e
+            })
+            .context("sign and submit then watch")?
             .wait_for_in_block()
-            .await?
+            .await
+            .context("wait for in block")?
             .wait_for_success()
-            .await?;
+            .await
+            .context("wait for success")?;
         log_extrinsic_events::<T>(res);
         Ok(())
     }
