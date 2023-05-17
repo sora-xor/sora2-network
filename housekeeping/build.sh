@@ -9,7 +9,7 @@ sudoCheckStatus=0
 echo 'tag:' ${TAG_NAME}
 echo 'sudo:' $sudoCheckStatus
 
-if [[ ${TAG_NAME} -ne 'null' ]]; then
+if [[ ${TAG_NAME} != 'null' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking.*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
