@@ -302,6 +302,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
