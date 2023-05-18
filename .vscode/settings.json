@@ -13,8 +13,5 @@
         "ready-to-test",
         "runtime-benchmarks",
         "try-runtime",
-    ],
-    "rust-analyzer.cargo.extraEnv": {
-        "SKIP_WASM_BUILD": "1"
-    }
+    ]
 }
