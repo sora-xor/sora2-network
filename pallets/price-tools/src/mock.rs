@@ -289,6 +289,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 impl pallet_timestamp::Config for Runtime {
     type Moment = u64;
