@@ -370,6 +370,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 impl pallet_timestamp::Config for Runtime {

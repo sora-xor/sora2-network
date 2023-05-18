@@ -179,6 +179,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 parameter_types! {

@@ -131,7 +131,9 @@ pub mod pallet {
 
     // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
-    pub trait Config: frame_system::Config + technical::Config + dex_api::Config {
+    pub trait Config:
+        frame_system::Config + technical::Config + common::Config + trading_pair::Config
+    {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<Self::AssetId>;

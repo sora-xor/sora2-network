@@ -46,6 +46,8 @@ use sp_arithmetic::traits::{Saturating, Zero};
 
 pub mod weights;
 
+pub mod migrations;
+
 #[cfg(test)]
 mod mock;
 
