@@ -14,20 +14,20 @@ echo 'current tag is:' ${TAG_NAME}
 # build
 # If TAG_NAME is defined, build for a specific tag
 if [[ ${TAG_NAME} != '' ]]; then
-    if [[ ${TAG_NAME} =~ 'benchmarking*' ]]; then
+    if [[ ${TAG_NAME} =~ 'benchmarking'* ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ ${TAG_NAME} =~ 'stage*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'stage'* ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${TAG_NAME} =~ 'test*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'test*'* ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
     elif [[ -n ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-
+    printf "Tag is %s\n" "$featureList $TAG_NAME"
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo access with status code: %s\n" "$sudoCheckStatus"
 
@@ -53,6 +53,7 @@ if [[ ${TAG_NAME} != '' ]]; then
     fi
 else
     # If TAG_NAME is not defined, run tests and checks
+    echo 'build without tag'
     rm -rf ~/.cargo/.package-cache
     rm Cargo.lock
     cargo fmt -- --check > /dev/null
