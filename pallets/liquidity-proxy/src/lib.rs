@@ -254,7 +254,11 @@ impl<T: Config> Pallet<T> {
 
         #[allow(unused_mut)] // order-book
         #[allow(unused_assignments)] // order-book
-        let mut is_order_book = false; // TODO remake
+        // TODO remake
+        let mut is_order_book = match filter_mode {
+            FilterMode::ForbidSelected => true,
+            _ => false,
+        };
 
         #[cfg(feature = "wip")] // order-book
         {

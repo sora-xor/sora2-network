@@ -735,9 +735,9 @@ fn cannot_initialize_with_non_divisible_asset() {
         ));
         assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
             ALICE(),
-            Mango.into(),
-            AssetSymbol(b"MANGO".to_vec()),
-            AssetName(b"MANGO".to_vec()),
+            Flower.into(),
+            AssetSymbol(b"FLOWER".to_vec()),
+            AssetName(b"FLOWER".to_vec()),
             0,
             1,
             true,
@@ -748,14 +748,14 @@ fn cannot_initialize_with_non_divisible_asset() {
             RuntimeOrigin::signed(BOB()),
             DEX_A_ID,
             GoldenTicket.into(),
-            Mango.into()
+            Flower.into()
         ));
         assert_noop!(
             crate::Pallet::<Runtime>::initialize_pool(
                 RuntimeOrigin::signed(BOB()),
                 DEX_A_ID,
                 GoldenTicket.into(),
-                Mango.into(),
+                Flower.into(),
             ),
             crate::Error::<Runtime>::UnableToCreatePoolWithIndivisibleAssets
         );
@@ -2268,5 +2268,53 @@ fn initialize_pool_with_different_dex() {
             balance!(1),
             balance!(1),
         ));
+    });
+}
+
+#[test]
+fn initialize_pool_with_synthetics() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+            ALICE(),
+            GoldenTicket.into(),
+            AssetSymbol(b"GT".to_vec()),
+            AssetName(b"Golden Ticket".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(balance!(10)),
+            true,
+            None,
+            None,
+        ));
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_A_ID,
+            GoldenTicket.into(),
+            Mango.into(),
+        ));
+        assert_ok!(trading_pair::Pallet::<Runtime>::register(
+            RuntimeOrigin::signed(BOB()),
+            DEX_C_ID,
+            Mango.into(),
+            GoldenTicket.into(),
+        ));
+
+        assert_noop!(
+            PoolXYK::initialize_pool(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_A_ID,
+                GoldenTicket.into(),
+                Mango.into()
+            ),
+            crate::Error::<Runtime>::UnableToCreatePoolWithSyntheticAssets
+        );
+        assert_noop!(
+            PoolXYK::initialize_pool(
+                RuntimeOrigin::signed(ALICE()),
+                DEX_C_ID,
+                Mango.into(),
+                GoldenTicket.into()
+            ),
+            crate::Error::<Runtime>::UnableToCreatePoolWithSyntheticAssets
+        );
     });
 }
