@@ -13,19 +13,21 @@ echo 'current tag is:' ${TAG_NAME}
 
 # build
 if [[ ${TAG_NAME} != 'null' ]]; then
-    if [[ ${TAG_NAME} =~ 'benchmarking.*' ]]; then
+    if [[ ${TAG_NAME} =~ 'benchmarking*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
-    elif [[ ${TAG_NAME} =~ 'stage.*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'stage*' ]]; then
         featureList='private-net include-real-files ready-to-test'
         sudoCheckStatus=0
-    elif [[ ${TAG_NAME} =~ 'test.*' ]]; then
+    elif [[ ${TAG_NAME} =~ 'test*' ]]; then
         featureList='private-net include-real-files reduced-pswap-reward-periods ready-to-test'
         sudoCheckStatus=0
     elif [[ -n ${TAG_NAME} ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
+        echo $featureList
+        echo $sudoCheckStatus
         cargo clean
         cargo test  --release --features "private-net runtime-benchmarks"
         rm -rf target
@@ -38,6 +40,7 @@ if [[ ${TAG_NAME} != 'null' ]]; then
         subwasm metadata framenode_runtime.compact.wasm > $palletListFile
         set +e
         subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+        echo $?
         if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else 
         rm -rf ~/.cargo/.package-cache
