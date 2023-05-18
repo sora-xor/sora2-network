@@ -77,16 +77,16 @@ fn should_work_as_cache() {
         let price = balance!(12);
         let amount = balance!(100);
 
-        let order = LimitOrder::<Runtime> {
-            id: order_id,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order = LimitOrder::<Runtime>::new(
+            order_id,
+            owner.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
@@ -167,16 +167,16 @@ fn should_work_as_storage() {
         let price = balance!(12);
         let amount = balance!(100);
 
-        let order = LimitOrder::<Runtime> {
-            id: order_id,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order = LimitOrder::<Runtime>::new(
+            order_id,
+            owner.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
         assert_eq!(
@@ -252,60 +252,60 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
         let price2 = balance!(13);
         let amount = balance!(10);
 
-        let order_buy1 = LimitOrder::<Runtime> {
-            id: order_buy_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_buy1 = LimitOrder::<Runtime>::new(
+            order_buy_id1,
+            owner.clone(),
+            PriceVariant::Buy,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_buy2 = LimitOrder::<Runtime> {
-            id: order_buy_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_buy2 = LimitOrder::<Runtime>::new(
+            order_buy_id2,
+            owner.clone(),
+            PriceVariant::Buy,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell1 = LimitOrder::<Runtime> {
-            id: order_sell_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell1 = LimitOrder::<Runtime>::new(
+            order_sell_id1,
+            owner.clone(),
+            PriceVariant::Sell,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell2 = LimitOrder::<Runtime> {
-            id: order_sell_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell2 = LimitOrder::<Runtime>::new(
+            order_sell_id2,
+            owner.clone(),
+            PriceVariant::Sell,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell3 = LimitOrder::<Runtime> {
-            id: order_sell_id3,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price2,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell3 = LimitOrder::<Runtime>::new(
+            order_sell_id3,
+            owner.clone(),
+            PriceVariant::Sell,
+            price2,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         // add orders
         assert_ok!(data.insert_limit_order(&order_book_id, order_buy1.clone()));
@@ -357,27 +357,27 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let price = balance!(12);
         let amount = balance!(10);
 
-        let order_buy = LimitOrder::<Runtime> {
-            id: order_buy_id,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_buy = LimitOrder::<Runtime>::new(
+            order_buy_id,
+            owner.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell = LimitOrder::<Runtime> {
-            id: order_sell_id,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell = LimitOrder::<Runtime>::new(
+            order_sell_id,
+            owner.clone(),
+            PriceVariant::Sell,
+            price,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         assert_ok!(data.insert_limit_order(&order_book_id, order_buy.clone()));
         assert_eq!(
@@ -499,16 +499,16 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
         let price = balance!(12);
         let amount = balance!(10);
 
-        let mut order = LimitOrder::<Runtime> {
-            id: 0,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let mut order = LimitOrder::<Runtime>::new(
+            0,
+            owner.clone(),
+            PriceVariant::Sell,
+            price,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         let max_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
         let max_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
@@ -557,60 +557,60 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
         let price2 = balance!(13);
         let amount = balance!(10);
 
-        let order_buy1 = LimitOrder::<Runtime> {
-            id: order_buy_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_buy1 = LimitOrder::<Runtime>::new(
+            order_buy_id1,
+            owner.clone(),
+            PriceVariant::Buy,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_buy2 = LimitOrder::<Runtime> {
-            id: order_buy_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Buy,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_buy2 = LimitOrder::<Runtime>::new(
+            order_buy_id2,
+            owner.clone(),
+            PriceVariant::Buy,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell1 = LimitOrder::<Runtime> {
-            id: order_sell_id1,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell1 = LimitOrder::<Runtime>::new(
+            order_sell_id1,
+            owner.clone(),
+            PriceVariant::Sell,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell2 = LimitOrder::<Runtime> {
-            id: order_sell_id2,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price1,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell2 = LimitOrder::<Runtime>::new(
+            order_sell_id2,
+            owner.clone(),
+            PriceVariant::Sell,
+            price1,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
-        let order_sell3 = LimitOrder::<Runtime> {
-            id: order_sell_id3,
-            owner: owner.clone(),
-            side: PriceVariant::Sell,
-            price: price2,
-            original_amount: amount,
-            amount: amount,
-            time: 10,
-            expires_at: 2,
-        };
+        let order_sell3 = LimitOrder::<Runtime>::new(
+            order_sell_id3,
+            owner.clone(),
+            PriceVariant::Sell,
+            price2,
+            amount,
+            10,
+            1000,
+            frame_system::Pallet::<Runtime>::block_number(),
+        );
 
         // add orders
         assert_ok!(data.insert_limit_order(&order_book_id, order_buy1.clone()));
@@ -1054,6 +1054,7 @@ fn should_update_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             amount,
             10,
             1000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         // insert order
@@ -1185,6 +1186,7 @@ fn should_update_limit_order_with_zero_amount(data: &mut (impl DataLayer<Runtime
             amount,
             10,
             1000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         // insert order
@@ -1326,6 +1328,7 @@ fn should_not_update_equal_limit_order(data: &mut impl DataLayer<Runtime>) {
             amount,
             10,
             1000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
@@ -1371,6 +1374,7 @@ fn should_not_update_limit_order_with_bigger_amount(data: &mut impl DataLayer<Ru
             amount,
             10,
             1000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         assert_ok!(data.insert_limit_order(&order_book_id, order));

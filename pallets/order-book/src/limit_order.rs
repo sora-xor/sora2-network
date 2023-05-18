@@ -36,10 +36,9 @@ use common::PriceVariant;
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Time;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::traits::{CheckedSub, Zero};
-use sp_runtime::SaturatedConversion;
+use sp_runtime::traits::Zero;
+use sp_runtime::{SaturatedConversion, Saturating};
 
 /// GTC Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
@@ -62,6 +61,7 @@ where
     pub amount: OrderVolume,
 
     pub time: MomentOf<T>,
+    pub lifespan: MomentOf<T>,
     pub expires_at: BlockNumberFor<T>,
 }
 
@@ -73,8 +73,10 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         price: OrderPrice,
         amount: OrderVolume,
         time: MomentOf<T>,
-        expires_at: BlockNumberFor<T>,
+        lifespan: MomentOf<T>,
+        now: BlockNumberFor<T>,
     ) -> Self {
+        let expires_at = Self::resolve_lifespan(now, lifespan);
         Self {
             id: id,
             owner: owner,
@@ -83,19 +85,26 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
             original_amount: amount,
             amount: amount,
             time: time,
+            lifespan: lifespan,
             expires_at: expires_at,
         }
     }
 
+    /// Returns block number that corresponds to end of lifespan
+    /// if started block `now`. Rounds up.
+    fn resolve_lifespan(now: BlockNumberFor<T>, lifespan: MomentOf<T>) -> BlockNumberFor<T> {
+        let lifespan = lifespan.saturated_into::<u64>();
+        let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
+        // ceil (a/b) = (a + b - 1) / b
+        let lifespan_blocks =
+            lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
+        let lifespan = lifespan_blocks.saturated_into::<BlockNumberFor<T>>();
+        now.saturating_add(lifespan)
+    }
+
     pub fn ensure_valid(&self) -> Result<(), DispatchError> {
-        let expires_at: u64 = self.expires_at.saturated_into();
-        let expires_at: MomentOf<T> =
-            expires_at.saturated_into::<MomentOf<T>>() * T::MILLISECS_PER_BLOCK;
-        let Some(lifespan) = expires_at.checked_sub(&self.time) else {
-            return Err(Error::<T>::InvalidLifespan.into())
-        };
         ensure!(
-            T::MIN_ORDER_LIFETIME <= lifespan && lifespan <= T::MAX_ORDER_LIFETIME,
+            T::MIN_ORDER_LIFETIME <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFETIME,
             Error::<T>::InvalidLifespan
         );
         ensure!(

@@ -44,7 +44,7 @@ use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, One, Zero};
-use sp_runtime::{Perbill, SaturatedConversion, Saturating};
+use sp_runtime::{Perbill, Saturating};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -477,11 +477,20 @@ pub mod pallet {
                 <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
             let dex_id = order_book.dex_id;
             let order_id = order_book.next_order_id();
-            let now = T::Time::now();
+            let time = T::Time::now();
+            let now = frame_system::Pallet::<T>::block_number();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
-            let expires_at = Self::resolve_lifespan(lifespan);
-            let order =
-                LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, expires_at);
+            let order = LimitOrder::<T>::new(
+                order_id,
+                who.clone(),
+                side,
+                price,
+                amount,
+                time,
+                lifespan,
+                now,
+            );
+            let expires_at = order.expires_at;
 
             let mut data = CacheDataLayer::<T>::new();
             order_book.place_limit_order::<Self>(order, &mut data)?;
@@ -650,20 +659,6 @@ impl<T: Config> Pallet<T> {
         let to_consume = w.saturating_mul(n);
         meter.defensive_saturating_accrue(to_consume);
         n
-    }
-
-    /// Returns block number that corresponds to end of lifespan
-    /// if started from current block
-    fn resolve_lifespan(lifespan: MomentOf<T>) -> BlockNumberFor<T> {
-        let now = frame_system::Pallet::<T>::block_number();
-        let lifespan = lifespan.saturated_into::<u64>();
-        // ceil division
-        let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
-        // in blocks
-        let lifespan =
-            lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
-        let lifespan = lifespan.saturated_into::<BlockNumberFor<T>>();
-        now.saturating_add(lifespan)
     }
 
     fn service_single_expiration(

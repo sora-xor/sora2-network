@@ -466,24 +466,4 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 }
 
 #[test]
-fn should_expire_order() {
-    ext().execute_with(|| {
-        let caller = alice();
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
-            base: VAL.into(),
-            quote: XOR.into(),
-        };
-
-        create_and_fill_order_book(order_book_id);
-        fill_balance(caller.clone(), order_book_id);
-
-        // assert_ok!(OrderBookPallet::place_limit_order(
-        //     RawOrigin::Signed(caller.clone()).into(),
-        //     order_book_id,
-        //     price,
-        //     amount,
-        //     PriceVariant::Buy,
-        //     Some(1)
-        // ));
-    });
-}
+fn should_expire_blocks() {}

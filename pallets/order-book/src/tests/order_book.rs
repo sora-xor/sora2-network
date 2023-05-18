@@ -180,6 +180,7 @@ fn should_place_limit_order() {
             amount,
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let appropriate_amount = order.appropriate_amount().unwrap();
@@ -263,6 +264,7 @@ fn should_place_nft_limit_order() {
             amount,
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         // place new order
@@ -312,6 +314,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         order_book.status = OrderBookStatus::Stop;
@@ -355,6 +358,7 @@ fn should_not_place_invalid_limit_order() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut wrong_price_order = order.clone();
@@ -420,6 +424,7 @@ fn should_not_place_invalid_nft_limit_order() {
             balance!(1),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut wrong_price_order = order.clone();
@@ -475,6 +480,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             balance!(1),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let max_orders_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
@@ -516,6 +522,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut sell_order = LimitOrder::<Runtime>::new(
@@ -526,6 +533,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         for i in 0..max_orders_for_price {
@@ -583,6 +591,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let mut sell_order = LimitOrder::<Runtime>::new(
@@ -593,6 +602,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         for i in 0..max_prices_for_side {
@@ -660,6 +670,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let wrong_sell_price =
@@ -672,6 +683,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_price() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         assert_err!(
@@ -713,6 +725,7 @@ fn should_not_place_limit_order_in_spread() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         let sell_price = balance!(9.9); // below the spread, in the bids zone
@@ -724,6 +737,7 @@ fn should_not_place_limit_order_in_spread() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         // Stop & OnlyCancel statuses don't allow to place limit orders
@@ -830,6 +844,7 @@ fn should_not_cancel_unknown_limit_order() {
             balance!(100),
             10,
             10000,
+            frame_system::Pallet::<Runtime>::block_number(),
         );
 
         assert_err!(
