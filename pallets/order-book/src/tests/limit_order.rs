@@ -48,7 +48,7 @@ fn should_return_error_for_invalid_lifetime() {
         balance!(100),
         1000,
         wrong_lifespan1,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
     assert_err!(order1.ensure_valid(), E::InvalidLifespan);
 
@@ -61,7 +61,7 @@ fn should_return_error_for_invalid_lifetime() {
         balance!(100),
         1000,
         wrong_lifespan2,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
     assert_err!(order2.ensure_valid(), E::InvalidLifespan);
 }
@@ -77,7 +77,7 @@ fn should_return_error_for_invalid_amount() {
         wrong_balance,
         1000,
         10000,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
 }
@@ -93,7 +93,7 @@ fn should_return_error_for_invalid_price() {
         balance!(100),
         1000,
         10000,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
     assert_err!(order.ensure_valid(), E::InvalidLimitOrderPrice);
 }
@@ -114,7 +114,7 @@ fn should_pass_valid_limit_order() {
         amount,
         1000,
         lifespan1,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
     assert_ok!(order.ensure_valid());
 
@@ -130,16 +130,8 @@ fn should_return_appropriate_amount() {
     let price = balance!(11);
     let amount = balance!(100);
 
-    let buy_order = LimitOrder::<Runtime>::new(
-        1,
-        alice(),
-        PriceVariant::Buy,
-        price,
-        amount,
-        1000,
-        10000,
-        frame_system::Pallet::<Runtime>::block_number(),
-    );
+    let buy_order =
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
@@ -149,7 +141,7 @@ fn should_return_appropriate_amount() {
         amount,
         1000,
         10000,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
 
     let buy_appropriate_amount = buy_order.appropriate_amount().unwrap();
@@ -169,16 +161,8 @@ fn should_return_appropriate_asset_and_amount() {
     let price = balance!(12.5);
     let amount = balance!(100);
 
-    let buy_order = LimitOrder::<Runtime>::new(
-        1,
-        alice(),
-        PriceVariant::Buy,
-        price,
-        amount,
-        1000,
-        10000,
-        frame_system::Pallet::<Runtime>::block_number(),
-    );
+    let buy_order =
+        LimitOrder::<Runtime>::new(1, alice(), PriceVariant::Buy, price, amount, 1000, 10000, 1);
 
     let sell_order = LimitOrder::<Runtime>::new(
         2,
@@ -188,7 +172,7 @@ fn should_return_appropriate_asset_and_amount() {
         amount,
         1000,
         10000,
-        frame_system::Pallet::<Runtime>::block_number(),
+        1,
     );
 
     let (buy_appropriate_asset, buy_appropriate_amount) = buy_order
