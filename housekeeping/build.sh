@@ -9,8 +9,6 @@ RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
 sudoCheckStatus=0
 
-echo 'current tag is:' ${TAG_NAME}
-
 # build
 # If TAG_NAME is defined, build for a specific tag
 if [[ ${TAG_NAME} != '' ]]; then
@@ -27,7 +25,8 @@ if [[ ${TAG_NAME} != '' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-    printf "Tag is %s\n" "$featureList $TAG_NAME"
+
+    printf "Tag is %s\n" ${TAG_NAME}
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo access with status code: %s\n" "$sudoCheckStatus"
 
@@ -43,14 +42,8 @@ if [[ ${TAG_NAME} != '' ]]; then
     subwasm metadata framenode_runtime.compact.wasm > "$palletListFile"
     set +e
     subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-    sudoCheckResult=$?
-    set -e
-    if [[ $sudoCheckResult -eq $sudoCheckStatus ]]; then
-        printf "✅ sudo check is successful!\n"
-    else
-        printf "❌ sudo check is failed!\n"
-        exit 1
-    fi
+    echo $?
+    if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
 else
     # If TAG_NAME is not defined, run tests and checks
     echo 'build without tag'
