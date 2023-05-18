@@ -28,7 +28,7 @@ if [[ ${TAG_NAME} != '' ]]; then
 
     printf "Tag is %s\n" ${TAG_NAME}
     printf "Building with features: %s\n" "$featureList"
-    printf "Checking sudo access with status code: %s\n" "$sudoCheckStatus"
+    printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
 
     cargo clean
     cargo test --release --features "private-net runtime-benchmarks"
