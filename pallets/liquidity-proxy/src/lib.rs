@@ -273,7 +273,7 @@ impl<T: Config> Pallet<T> {
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
                 && selected_source_types.contains(&LiquiditySourceType::XSTPool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
-                && !is_order_book
+                && is_order_book
                 && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
         let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
