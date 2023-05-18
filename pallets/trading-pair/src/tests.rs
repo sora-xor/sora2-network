@@ -30,7 +30,10 @@
 
 use crate::mock::*;
 use crate::{Error, Pallet};
-use common::{EnsureTradingPairExists, LiquiditySourceType, TradingPair, DOT, KSM, XOR, XSTUSD};
+use common::{
+    EnsureTradingPairExists, LiquiditySourceType, TradingPair, TradingPairSourceManager, DOT, KSM,
+    XOR, XSTUSD,
+};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 

@@ -44,7 +44,7 @@ use common::prelude::{
 use common::{
     fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
     LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
 };
 
 mod aliases;
@@ -177,6 +177,8 @@ impl<T: Config> Pallet<T> {
                 common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
             (asset_a_pair.0, asset_b_pair.0)
         };
+
+        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
         trading_pair::Pallet::<T>::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
@@ -645,6 +647,7 @@ pub mod pallet {
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config

@@ -55,7 +55,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, DEXId,
     DataFeed, GetMarketInfo, LiquiditySource, LiquiditySourceType, PriceVariant, Rate,
-    RewardReason, DAI, XSTUSD,
+    RewardReason, TradingPairSourceManager, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -129,6 +129,7 @@ pub mod pallet {
     use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
 
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config + technical::Config + common::Config + trading_pair::Config
@@ -501,6 +502,7 @@ impl<T: Config> Pallet<T> {
             synthetic_asset_id,
         )?;
 
+        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
         trading_pair::Pallet::<T>::enable_source_for_trading_pair(
             &DEXId::Polkaswap.into(),
             &T::GetSyntheticBaseAssetId::get(),

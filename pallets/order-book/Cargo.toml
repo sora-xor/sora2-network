@@ -66,4 +66,5 @@ try-runtime = ["frame-support/try-runtime"]
 wip = [
     "framenode-chain-spec/wip",
     "framenode-runtime/wip",
+    "common/wip",
 ]

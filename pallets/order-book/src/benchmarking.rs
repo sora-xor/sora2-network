@@ -46,7 +46,11 @@ use framenode_runtime::order_book::{
 
 use assets::AssetIdOf;
 use codec::Decode;
-use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
+use common::prelude::QuoteAmount;
+use common::{
+    balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, LiquiditySource, PriceVariant, VAL,
+    XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
 use frame_system::{EventRecord, RawOrigin};
@@ -87,7 +91,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 //  spread
 //  10.0 |  168.5 | buy1
 //   9.8 |  139.9 | buy2, buy3
-//   9.5 |  264.3 | buy4, buy5, buy6
+//   9.5 |  261.3 | buy4, buy5, buy6
 //          Bids
 fn create_and_fill_order_book<T: Config>(order_book_id: OrderBookId<AssetIdOf<T>>) {
     OrderBookPallet::<T>::create_orderbook(
@@ -461,10 +465,24 @@ benchmarks! {
     }
 
     quote {
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
     }: {
-        // todo (m.tagirov)
+        OrderBookPallet::<T>::quote(
+            &DEX.into(),
+            &VAL.into(),
+            &XOR.into(),
+            QuoteAmount::with_desired_output(balance!(2500)),
+            true
+        )
+        .unwrap();
     }
     verify {
+        // nothing changed
     }
 
     exchange {

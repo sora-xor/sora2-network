@@ -127,7 +127,7 @@ pub use common::{
     balance, fixed, fixed_from_basis_points, AssetInfoProvider, AssetName, AssetSymbol,
     BalancePrecision, BasisPoints, ContentSource, CrowdloanTag, DexInfoProvider, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned, TradingPairSourceManager,
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use ethereum_light_client::EthereumHeader;
@@ -1055,6 +1055,9 @@ impl dex_api::Config for Runtime {
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = xst::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = order_book::Pallet<Runtime>;
 }
 
 impl pallet_multisig::Config for Runtime {
@@ -1988,6 +1991,7 @@ impl order_book::Config for Runtime {
     type MaxLimitOrdersForPrice = ConstU32<10000>; // TODO: order-book clarify
     type MaxSidePriceCount = ConstU32<100000>; // TODO: order-book clarify
     type EnsureTradingPairExists = TradingPair;
+    type TradingPairSourceManager = TradingPair;
     type AssetInfoProvider = Assets;
     type DexInfoProvider = DEXManager;
     type Time = Timestamp;
