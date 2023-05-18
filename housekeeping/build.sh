@@ -12,7 +12,8 @@ sudoCheckStatus=0
 echo 'current tag is:' ${TAG_NAME}
 
 # build
-if [[ ${TAG_NAME} != 'null' ]]; then
+# If TAG_NAME is defined, build for a specific tag
+if [[ ${TAG_NAME} != '' ]]; then
     if [[ ${TAG_NAME} =~ 'benchmarking*' ]]; then
         featureList='private-net runtime-benchmarks'
         sudoCheckStatus=101
@@ -26,29 +27,38 @@ if [[ ${TAG_NAME} != 'null' ]]; then
         featureList='include-real-files'
         sudoCheckStatus=101
     fi
-        echo $featureList
-        echo $sudoCheckStatus
-        cargo clean
-        cargo test  --release --features "private-net runtime-benchmarks"
-        rm -rf target
-        cargo build --release --features $featureList
-        mv ./target/release/framenode .
-        mv ./target/release/relayer ./relayer.bin
-        mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
-        wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-        subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
-        subwasm metadata framenode_runtime.compact.wasm > $palletListFile
-        set +e
-        subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-        echo $?
-        if [[ $(echo $?) -eq $sudoCheckStatus ]]; then echo "✅ sudo check is successful!"; else echo "❌ sudo check is failed!"; exit 1; fi
-else 
-        rm -rf ~/.cargo/.package-cache
-        rm Cargo.lock
-        cargo fmt -- --check > /dev/null
-        SKIP_WASM_BUILD=1 cargo check
-        SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test
-        SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test,wip
-        cargo test
-        cargo test --features "private-net wip ready-to-test runtime-benchmarks"
+
+    printf "Building with features: %s\n" "$featureList"
+    printf "Checking sudo access with status code: %s\n" "$sudoCheckStatus"
+
+    cargo clean
+    cargo test --release --features "private-net runtime-benchmarks"
+    rm -rf target
+    cargo build --release --features "$featureList"
+    mv ./target/release/framenode .
+    mv ./target/release/relayer ./relayer.bin
+    mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
+    wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+    subwasm --json info framenode_runtime.compact.wasm > "$wasmReportFile"
+    subwasm metadata framenode_runtime.compact.wasm > "$palletListFile"
+    set +e
+    subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+    sudoCheckResult=$?
+    set -e
+    if [[ $sudoCheckResult -eq $sudoCheckStatus ]]; then
+        printf "✅ sudo check is successful!\n"
+    else
+        printf "❌ sudo check is failed!\n"
+        exit 1
+    fi
+else
+    # If TAG_NAME is not defined, run tests and checks
+    rm -rf ~/.cargo/.package-cache
+    rm Cargo.lock
+    cargo fmt -- --check > /dev/null
+    SKIP_WASM_BUILD=1 cargo check
+    SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test
+    SKIP_WASM_BUILD=1 cargo check --features private-net,ready-to-test,wip
+    cargo test
+    cargo test --features "private-net wip ready-to-test runtime-benchmarks"
 fi
