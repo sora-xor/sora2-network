@@ -147,6 +147,10 @@ impl<T: Config> Pallet<T> {
                     .checked_sub(pool_tokens)
                     .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
                 *balance = (new_balance != 0).then(|| new_balance);
+                if balance.is_none() {
+                    // does not return anything, so we don't need to handle errors
+                    frame_system::Pallet::<T>::dec_consumers(user_account)
+                }
                 Ok(())
             });
         result?;

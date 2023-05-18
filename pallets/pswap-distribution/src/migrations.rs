@@ -59,8 +59,10 @@ pub mod v2 {
             let weight = pools
                 .iter()
                 .fold(Weight::zero(), |weight_acc, (_, pool_fee_account)| {
+                    // using this instead of unsubscribe function, since it can return errors
                     SubscribedAccounts::<T>::remove(pool_fee_account);
-                    weight_acc.saturating_add(T::DbWeight::get().reads_writes(0, 1))
+                    frame_system::Pallet::<T>::dec_consumers(&pool_fee_account);
+                    weight_acc.saturating_add(T::DbWeight::get().reads_writes(0, 2))
                 });
 
             StorageVersion::new(2).put::<Pallet<T>>();
