@@ -52,6 +52,10 @@ pub fn bob() -> <Runtime as frame_system::Config>::AccountId {
     <Runtime as frame_system::Config>::AccountId::new([2u8; 32])
 }
 
+pub fn charlie() -> <Runtime as frame_system::Config>::AccountId {
+    <Runtime as frame_system::Config>::AccountId::new([3u8; 32])
+}
+
 pub fn generate_account(seed: u32) -> <Runtime as frame_system::Config>::AccountId {
     let mut adr = [0u8; 32];
 

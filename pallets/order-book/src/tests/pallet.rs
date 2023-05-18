@@ -43,6 +43,7 @@ use framenode_runtime::order_book::{
     self, CurrencyLocker, CurrencyUnlocker, OrderBook, OrderBookId, OrderBookStatus,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
+use sp_std::collections::btree_map::BTreeMap;
 
 #[test]
 fn should_register_technical_account() {
@@ -178,11 +179,76 @@ fn test_lock_unlock_other_account(
     );
 }
 
+fn test_lock_unlock_other_accounts(
+    dex_id: common::DEXId,
+    order_book_id: OrderBookId<AssetIdOf<Runtime>>,
+    asset_id: &AssetIdOf<Runtime>,
+    amount_to_lock: Balance,
+    lock_account: &<Runtime as frame_system::Config>::AccountId,
+    unlock_account1: &<Runtime as frame_system::Config>::AccountId,
+    unlock_account2: &<Runtime as frame_system::Config>::AccountId,
+) {
+    let lock_account_balance_before =
+        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
+    let unlock_account_balance_before1 =
+        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account1)
+            .expect("Asset must exist");
+    let unlock_account_balance_before2 =
+        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account2)
+            .expect("Asset must exist");
+
+    assert_ok!(OrderBookPallet::lock_liquidity(
+        dex_id.into(),
+        lock_account,
+        order_book_id,
+        asset_id,
+        amount_to_lock
+    ));
+
+    let lock_account_balance_after_lock =
+        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
+    assert_eq!(
+        lock_account_balance_after_lock,
+        lock_account_balance_before - amount_to_lock
+    );
+
+    let unlock_amount1: Balance = (amount_to_lock / 4) * 3;
+    let unlock_amount2: Balance = amount_to_lock / 4;
+
+    let unlocks = BTreeMap::from([
+        (unlock_account1.clone(), unlock_amount1),
+        (unlock_account2.clone(), unlock_amount2),
+    ]);
+
+    assert_ok!(OrderBookPallet::unlock_liquidity_batch(
+        dex_id.into(),
+        order_book_id,
+        asset_id,
+        unlocks
+    ));
+
+    let unlock_account_balance_after_unlock1 =
+        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account1)
+            .expect("Asset must exist");
+    assert_eq!(
+        unlock_account_balance_after_unlock1,
+        unlock_account_balance_before1 + unlock_amount1
+    );
+
+    let unlock_account_balance_after_unlock2 =
+        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account2)
+            .expect("Asset must exist");
+    assert_eq!(
+        unlock_account_balance_after_unlock2,
+        unlock_account_balance_before2 + unlock_amount2
+    );
+}
+
 #[test]
 fn should_lock_unlock_base_asset() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
-        let amount_to_mint = amount_to_lock;
+        let amount_to_mint = amount_to_lock * 2;
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             alice(),
@@ -201,6 +267,17 @@ fn should_lock_unlock_base_asset() {
 
         // Alice -> Bob (expected exchange mechanism)
         test_lock_unlock_other_account(DEX, order_book_id, &XOR, amount_to_lock, &alice(), &bob());
+
+        // Alice -> Bob & Charlie
+        test_lock_unlock_other_accounts(
+            DEX,
+            order_book_id,
+            &XOR,
+            amount_to_lock,
+            &alice(),
+            &bob(),
+            &charlie(),
+        );
     });
 }
 
@@ -208,7 +285,7 @@ fn should_lock_unlock_base_asset() {
 fn should_lock_unlock_other_asset() {
     ext().execute_with(|| {
         let amount_to_lock = balance!(10);
-        let amount_to_mint = amount_to_lock;
+        let amount_to_mint = amount_to_lock * 2;
         assert_ok!(assets::Pallet::<Runtime>::update_balance(
             RuntimeOrigin::root(),
             alice(),
@@ -258,6 +335,42 @@ fn should_lock_unlock_indivisible_nft() {
 
         // Alice -> Bob (expected exchange mechanism)
         test_lock_unlock_other_account(DEX, order_book_id, &nft, balance!(1), &alice(), &bob());
+    });
+}
+
+#[test]
+fn should_lock_unlock_multiple_indivisible_nfts() {
+    ext().execute_with(|| {
+        framenode_runtime::frame_system::Pallet::<Runtime>::inc_providers(&alice());
+
+        let nft = assets::Pallet::<Runtime>::register_from(
+            &alice(),
+            AssetSymbol(b"NFT".to_vec()),
+            AssetName(b"Nft".to_vec()),
+            0,
+            balance!(4),
+            false,
+            None,
+            None,
+        )
+        .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: nft.clone(),
+            quote: XOR.into(),
+        };
+        OrderBookPallet::register_tech_account(DEX.into(), order_book_id).unwrap();
+
+        // Alice -> Bob & Charlie
+        test_lock_unlock_other_accounts(
+            DEX,
+            order_book_id,
+            &nft,
+            balance!(4),
+            &alice(),
+            &bob(),
+            &charlie(),
+        );
     });
 }
 

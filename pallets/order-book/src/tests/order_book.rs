@@ -1502,3 +1502,45 @@ fn should_calculate_deal() {
         );
     });
 }
+
+#[test]
+fn should_not_execute_market_order_with_invalid_order_book_id() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
+fn should_not_execute_market_order_with_invalid_amount() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
+fn should_execute_market_order() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
+fn should_not_calculate_market_impact_with_empty_side() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
+fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
+
+#[test]
+fn should_calculate_market_impact() {
+    ext().execute_with(|| {
+        // todo
+    });
+}
