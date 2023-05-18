@@ -42,8 +42,9 @@ use core::fmt::Debug;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, One, Zero};
-use sp_runtime::{Perbill, Saturating};
+use sp_runtime::{Perbill, SaturatedConversion, Saturating};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -96,6 +97,7 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
         const MAX_ORDER_LIFETIME: MomentOf<Self>;
         const MIN_ORDER_LIFETIME: MomentOf<Self>;
+        const MILLISECS_PER_BLOCK: MomentOf<Self>;
         const MAX_PRICE_SHIFT: Perbill;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -294,6 +296,10 @@ pub mod pallet {
         UpdateLimitOrderError,
         /// It is impossible to delete the limit order
         DeleteLimitOrderError,
+        /// Expiration schedule for expiration block is full
+        BlockScheduleFull,
+        /// Could not find expiration in given block schedule
+        ExpirationNotFound,
         /// There are no bids/asks for the price
         NoDataForPrice,
         /// There are no aggregated bids/asks for the order book
@@ -473,14 +479,17 @@ pub mod pallet {
             let order_id = order_book.next_order_id();
             let now = T::Time::now();
             let lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFETIME);
+            let expires_at = Self::resolve_lifespan(lifespan);
             let order =
-                LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, lifespan);
+                LimitOrder::<T>::new(order_id, who.clone(), side, price, amount, now, expires_at);
 
             let mut data = CacheDataLayer::<T>::new();
             order_book.place_limit_order::<Self>(order, &mut data)?;
 
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
+            Self::schedule(expires_at, order_book_id, order_id)
+                .map_err(|e| <SchedulerError as Into<Error<T>>>::into(e))?;
             Self::deposit_event(Event::<T>::OrderPlaced {
                 order_book_id,
                 dex_id,
@@ -500,6 +509,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
             let order = data.get_limit_order(&order_book_id, order_id)?;
+            let expires_at = order.expires_at;
 
             ensure!(order.owner == who, Error::<T>::Unauthorized);
 
@@ -508,6 +518,8 @@ pub mod pallet {
             let dex_id = order_book.dex_id;
 
             order_book.cancel_limit_order::<Self>(order, &mut data)?;
+            Self::unschedule(expires_at, order_book_id, order_id)
+                .map_err(|e| <SchedulerError as Into<Error<T>>>::into(e))?;
             data.commit();
             Self::deposit_event(Event::<T>::OrderCanceled {
                 order_book_id,
@@ -603,6 +615,15 @@ enum SchedulerError {
     ExpirationNotFound,
 }
 
+impl<T: Config> Into<Error<T>> for SchedulerError {
+    fn into(self) -> Error<T> {
+        match self {
+            SchedulerError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
+            SchedulerError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
+        }
+    }
+}
+
 impl<T: Config> Pallet<T> {
     /// Try to consume the given weight `max_n` times. If weight is only
     /// enough to consume `n <= max_n` times, it consumes it `n` times
@@ -631,17 +652,31 @@ impl<T: Config> Pallet<T> {
         n
     }
 
+    /// Returns block number that corresponds to end of lifespan
+    /// if started from current block
+    fn resolve_lifespan(lifespan: MomentOf<T>) -> BlockNumberFor<T> {
+        let now = frame_system::Pallet::<T>::block_number();
+        let lifespan = lifespan.saturated_into::<u64>();
+        // ceil division
+        let millis_per_block: u64 = T::MILLISECS_PER_BLOCK.saturated_into::<u64>();
+        // in blocks
+        let lifespan =
+            lifespan.saturating_add(millis_per_block).saturating_sub(1) / millis_per_block;
+        let lifespan = lifespan.saturated_into::<BlockNumberFor<T>>();
+        now.saturating_add(lifespan)
+    }
+
     fn service_single_expiration(
         data_layer: &mut CacheDataLayer<T>,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
     ) {
         let Ok(order) = data_layer.get_limit_order(&order_book_id, order_id) else {
-            debug_assert!(false, "removal of order book or order did not cleanup expiration schedule");
+            debug_assert!(false, "apparently removal of order book or order did not cleanup expiration schedule");
             return;
         };
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
-            debug_assert!(false, "removal of order book did not cleanup expiration schedule");
+            debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule");
             return;
         };
 

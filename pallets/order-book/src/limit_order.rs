@@ -37,7 +37,9 @@ use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
-use sp_runtime::traits::Zero;
+use frame_system::pallet_prelude::BlockNumberFor;
+use sp_runtime::traits::{CheckedSub, Zero};
+use sp_runtime::SaturatedConversion;
 
 /// GTC Limit Order
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen)]
@@ -60,7 +62,7 @@ where
     pub amount: OrderVolume,
 
     pub time: MomentOf<T>,
-    pub lifespan: MomentOf<T>,
+    pub expires_at: BlockNumberFor<T>,
 }
 
 impl<T: crate::Config + Sized> LimitOrder<T> {
@@ -71,7 +73,7 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         price: OrderPrice,
         amount: OrderVolume,
         time: MomentOf<T>,
-        lifespan: MomentOf<T>,
+        expires_at: BlockNumberFor<T>,
     ) -> Self {
         Self {
             id: id,
@@ -81,13 +83,19 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
             original_amount: amount,
             amount: amount,
             time: time,
-            lifespan: lifespan,
+            expires_at: expires_at,
         }
     }
 
     pub fn ensure_valid(&self) -> Result<(), DispatchError> {
+        let expires_at: u64 = self.expires_at.saturated_into();
+        let expires_at: MomentOf<T> =
+            expires_at.saturated_into::<MomentOf<T>>() * T::MILLISECS_PER_BLOCK;
+        let Some(lifespan) = expires_at.checked_sub(&self.time) else {
+            return Err(Error::<T>::InvalidLifespan.into())
+        };
         ensure!(
-            T::MIN_ORDER_LIFETIME <= self.lifespan && self.lifespan <= T::MAX_ORDER_LIFETIME,
+            T::MIN_ORDER_LIFETIME <= lifespan && lifespan <= T::MAX_ORDER_LIFETIME,
             Error::<T>::InvalidLifespan
         );
         ensure!(
@@ -96,10 +104,6 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         );
         ensure!(!self.price.is_zero(), Error::<T>::InvalidLimitOrderPrice);
         Ok(())
-    }
-
-    pub fn is_expired(&self) -> bool {
-        T::Time::now() > self.time + self.lifespan
     }
 
     pub fn is_empty(&self) -> bool {
