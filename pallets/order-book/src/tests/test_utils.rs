@@ -285,3 +285,7 @@ pub fn get_last_order_id(
         None
     }
 }
+
+pub fn ceil_div(a: u64, b: u64) -> u64 {
+    return (a + b - 1) / b;
+}

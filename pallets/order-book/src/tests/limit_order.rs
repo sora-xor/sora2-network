@@ -34,6 +34,7 @@ use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
+use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_runtime::order_book::{Config, LimitOrder, OrderBookId};
 use framenode_runtime::Runtime;
 
@@ -51,7 +52,7 @@ fn should_return_error_for_invalid_lifetime() {
     );
     assert_err!(order1.ensure_valid(), E::InvalidLifespan);
 
-    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFETIME + 1;
+    let wrong_lifespan2 = Runtime::MAX_ORDER_LIFETIME / Runtime::MILLISECS_PER_BLOCK + 1;
     let order2 = LimitOrder::<Runtime>::new(
         0,
         alice(),
@@ -59,7 +60,7 @@ fn should_return_error_for_invalid_lifetime() {
         balance!(10),
         balance!(100),
         1000,
-        wrong_lifespan2,
+        wrong_lifespan2.try_into().unwrap(),
     );
     assert_err!(order2.ensure_valid(), E::InvalidLifespan);
 }
@@ -98,9 +99,22 @@ fn should_return_error_for_invalid_price() {
 fn should_pass_valid_limit_order() {
     let price = balance!(10);
     let amount = balance!(100);
-    let lifespan1 = Runtime::MIN_ORDER_LIFETIME;
-    let lifespan2 = Runtime::MIN_ORDER_LIFETIME + 1000;
-    let lifespan3 = Runtime::MAX_ORDER_LIFETIME;
+    let time = 1000;
+    let time_blocks = 2;
+    let lifespan_blocks1: BlockNumberFor<Runtime> =
+        ceil_div(Runtime::MIN_ORDER_LIFETIME, Runtime::MILLISECS_PER_BLOCK)
+            .try_into()
+            .unwrap();
+    let lifespan_blocks2: BlockNumberFor<Runtime> = ceil_div(
+        Runtime::MIN_ORDER_LIFETIME + 1000,
+        Runtime::MILLISECS_PER_BLOCK,
+    )
+    .try_into()
+    .unwrap();
+    let lifespan_blocks3: BlockNumberFor<Runtime> =
+        ceil_div(Runtime::MAX_ORDER_LIFETIME, Runtime::MILLISECS_PER_BLOCK)
+            .try_into()
+            .unwrap();
 
     let mut order = LimitOrder::<Runtime>::new(
         0,
@@ -108,15 +122,15 @@ fn should_pass_valid_limit_order() {
         PriceVariant::Buy,
         price,
         amount,
-        1000,
-        lifespan1,
+        time,
+        time_blocks + lifespan_blocks1,
     );
     assert_ok!(order.ensure_valid());
 
-    order.lifespan = lifespan2;
+    order.expires_at = time_blocks + lifespan_blocks2;
     assert_ok!(order.ensure_valid());
 
-    order.lifespan = lifespan3;
+    order.expires_at = time_blocks + lifespan_blocks3;
     assert_ok!(order.ensure_valid());
 }
 

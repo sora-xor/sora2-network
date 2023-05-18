@@ -85,7 +85,7 @@ fn should_work_as_cache() {
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
@@ -175,7 +175,7 @@ fn should_work_as_storage() {
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         assert_ok!(data.insert_limit_order(&order_book_id, order.clone()));
@@ -260,7 +260,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_buy2 = LimitOrder::<Runtime> {
@@ -271,7 +271,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell1 = LimitOrder::<Runtime> {
@@ -282,7 +282,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell2 = LimitOrder::<Runtime> {
@@ -293,7 +293,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell3 = LimitOrder::<Runtime> {
@@ -304,7 +304,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         // add orders
@@ -365,7 +365,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell = LimitOrder::<Runtime> {
@@ -376,7 +376,7 @@ fn should_insert_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         assert_ok!(data.insert_limit_order(&order_book_id, order_buy.clone()));
@@ -507,7 +507,7 @@ fn should_not_insert_limit_order(data: &mut impl DataLayer<Runtime>) {
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let max_per_user: u32 = <Runtime as Config>::MaxOpenedLimitOrdersPerUser::get();
@@ -565,7 +565,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_buy2 = LimitOrder::<Runtime> {
@@ -576,7 +576,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell1 = LimitOrder::<Runtime> {
@@ -587,7 +587,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell2 = LimitOrder::<Runtime> {
@@ -598,7 +598,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         let order_sell3 = LimitOrder::<Runtime> {
@@ -609,7 +609,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             original_amount: amount,
             amount: amount,
             time: 10,
-            lifespan: 1000,
+            expires_at: 2,
         };
 
         // add orders

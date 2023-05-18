@@ -49,6 +49,7 @@ use codec::Decode;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -373,6 +374,7 @@ benchmarks! {
         let price = balance!(10);
         let amount = balance!(100);
         let lifespan: MomentOf<T> = 10000u32.into();
+        let expires_at: BlockNumberFor<T> = 2u32.into();
         let now = <<T as Config>::Time as Time>::now();
 
         create_and_fill_order_book::<T>(order_book_id);
@@ -414,7 +416,7 @@ benchmarks! {
             price,
             amount,
             now,
-            lifespan,
+            expires_at,
         );
 
         assert_eq!(

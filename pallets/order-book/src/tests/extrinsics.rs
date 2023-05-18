@@ -562,6 +562,7 @@ fn should_place_limit_order() {
         let price = balance!(10);
         let amount = balance!(100);
         let lifespan = 10000;
+        let expires_at = 2;
         let now = 1234;
 
         Timestamp::set_timestamp(now);
@@ -595,7 +596,7 @@ fn should_place_limit_order() {
             price,
             amount,
             now,
-            lifespan,
+            expires_at,
         );
 
         let appropriate_amount = expected_order.appropriate_amount().unwrap();
@@ -681,6 +682,7 @@ fn should_place_limit_order_with_nft() {
         let price = balance!(10);
         let amount = balance!(1);
         let lifespan = 10000;
+        let expires_at = 2;
         let now = 1234;
 
         Timestamp::set_timestamp(now);
@@ -704,7 +706,7 @@ fn should_place_limit_order_with_nft() {
             price,
             amount,
             now,
-            lifespan,
+            expires_at,
         );
 
         assert_eq!(
