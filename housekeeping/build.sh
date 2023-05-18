@@ -7,7 +7,7 @@ PACKAGE=framenode-runtime
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
-sudoCheckStatus=0
+sudoCheckStatus=${sudoCheckStatus}
 
 # build
 # If TAG_NAME is defined, build for a specific tag
