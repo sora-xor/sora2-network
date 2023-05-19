@@ -33,10 +33,7 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::prelude::{QuoteAmount, SwapOutcome};
-use common::{
-    balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, DEXId, LiquiditySource, VAL, XOR,
-    XSTUSD,
-};
+use common::{balance, AssetName, AssetSymbol, Balance, DEXId, LiquiditySource, VAL, XOR, XSTUSD};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
@@ -105,8 +102,7 @@ fn test_lock_unlock_same_account(
     amount_to_lock: Balance,
     account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let balance_before =
-        assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
+    let balance_before = free_balance(asset_id, account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         dex_id.into(),
@@ -116,8 +112,7 @@ fn test_lock_unlock_same_account(
         amount_to_lock
     ));
 
-    let balance_after_lock =
-        assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
+    let balance_after_lock = free_balance(asset_id, account);
     assert_eq!(balance_after_lock, balance_before - amount_to_lock);
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
@@ -128,8 +123,7 @@ fn test_lock_unlock_same_account(
         amount_to_lock
     ));
 
-    let balance_after_unlock =
-        assets::Pallet::<Runtime>::free_balance(asset_id, account).expect("Asset must exist");
+    let balance_after_unlock = free_balance(asset_id, account);
     assert_eq!(balance_before, balance_after_unlock);
 }
 
@@ -141,11 +135,8 @@ fn test_lock_unlock_other_account(
     lock_account: &<Runtime as frame_system::Config>::AccountId,
     unlock_account: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let lock_account_balance_before =
-        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
-    let unlock_account_balance_before =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account)
-            .expect("Asset must exist");
+    let lock_account_balance_before = free_balance(asset_id, lock_account);
+    let unlock_account_balance_before = free_balance(asset_id, unlock_account);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         dex_id.into(),
@@ -155,8 +146,7 @@ fn test_lock_unlock_other_account(
         amount_to_lock
     ));
 
-    let lock_account_balance_after_lock =
-        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
+    let lock_account_balance_after_lock = free_balance(asset_id, lock_account);
     assert_eq!(
         lock_account_balance_after_lock,
         lock_account_balance_before - amount_to_lock
@@ -170,9 +160,7 @@ fn test_lock_unlock_other_account(
         amount_to_lock
     ));
 
-    let unlock_account_balance_after_unlock =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account)
-            .expect("Asset must exist");
+    let unlock_account_balance_after_unlock = free_balance(asset_id, unlock_account);
     assert_eq!(
         unlock_account_balance_after_unlock,
         unlock_account_balance_before + amount_to_lock
@@ -188,14 +176,9 @@ fn test_lock_unlock_other_accounts(
     unlock_account1: &<Runtime as frame_system::Config>::AccountId,
     unlock_account2: &<Runtime as frame_system::Config>::AccountId,
 ) {
-    let lock_account_balance_before =
-        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
-    let unlock_account_balance_before1 =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account1)
-            .expect("Asset must exist");
-    let unlock_account_balance_before2 =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account2)
-            .expect("Asset must exist");
+    let lock_account_balance_before = free_balance(asset_id, lock_account);
+    let unlock_account_balance_before1 = free_balance(asset_id, unlock_account1);
+    let unlock_account_balance_before2 = free_balance(asset_id, unlock_account2);
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         dex_id.into(),
@@ -205,8 +188,7 @@ fn test_lock_unlock_other_accounts(
         amount_to_lock
     ));
 
-    let lock_account_balance_after_lock =
-        assets::Pallet::<Runtime>::free_balance(asset_id, lock_account).expect("Asset must exist");
+    let lock_account_balance_after_lock = free_balance(asset_id, lock_account);
     assert_eq!(
         lock_account_balance_after_lock,
         lock_account_balance_before - amount_to_lock
@@ -227,17 +209,13 @@ fn test_lock_unlock_other_accounts(
         unlocks
     ));
 
-    let unlock_account_balance_after_unlock1 =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account1)
-            .expect("Asset must exist");
+    let unlock_account_balance_after_unlock1 = free_balance(asset_id, unlock_account1);
     assert_eq!(
         unlock_account_balance_after_unlock1,
         unlock_account_balance_before1 + unlock_amount1
     );
 
-    let unlock_account_balance_after_unlock2 =
-        assets::Pallet::<Runtime>::free_balance(asset_id, unlock_account2)
-            .expect("Asset must exist");
+    let unlock_account_balance_after_unlock2 = free_balance(asset_id, unlock_account2);
     assert_eq!(
         unlock_account_balance_after_unlock2,
         unlock_account_balance_before2 + unlock_amount2

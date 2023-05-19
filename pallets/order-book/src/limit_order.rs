@@ -111,10 +111,10 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
     /// If `base_amount_limit` defined, it is used as `base` asset amount involved in the deal, otherwise the limit order `amount` is fully involved in the deal.
     /// `base_amount_limit` cannot be greater then limit order `amount`.
     ///
-    /// If order is Buy - it means maker wants to buy `amount` of `base` asset for `quote` asset at the `price`
+    /// If limit order is Buy - it means maker wants to buy and taker wants to sell `amount` of `base` asset for `quote` asset at the `price`
     /// In this case if order is executed, maker receives appropriate amount of `base` asset and taker receives appropriate amount of `quote` asset.
     ///
-    /// If order is Sell - it means maker wants to sell `amount` of `base` asset that they have for `quote` asset at the `price`
+    /// If limit order is Sell - it means maker wants to sell and taker wants to buy `amount` of `base` asset that they have for `quote` asset at the `price`
     /// In this case if order is executed, maker receives appropriate amount of `quote` asset and taker receives appropriate amount of `base` asset.
     pub fn deal_amount(
         &self,
