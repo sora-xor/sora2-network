@@ -563,7 +563,6 @@ fn should_place_limit_order() {
         let amount = balance!(100);
         let lifespan = 10000;
         let now = 1234;
-        // todo: verify value
         let now_block = frame_system::Pallet::<Runtime>::block_number();
 
         Timestamp::set_timestamp(now);

@@ -33,6 +33,7 @@
 use assets::AssetIdOf;
 use common::{balance, Balance, DEXId, PriceVariant};
 use frame_support::assert_ok;
+use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
 use framenode_runtime::order_book::{self, Config, OrderBook, OrderBookId, Pallet};
 use framenode_runtime::{Runtime, RuntimeOrigin};
@@ -283,5 +284,14 @@ pub fn get_last_order_id(
         Some(order_book.last_order_id)
     } else {
         None
+    }
+}
+
+pub fn run_to_block(n: u32) {
+    type System = frame_system::Pallet<Runtime>;
+    while System::block_number() < n {
+        OrderBookPallet::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        OrderBookPallet::on_initialize(System::block_number());
     }
 }

@@ -32,10 +32,13 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, VAL, XOR};
+use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
+use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
-use framenode_runtime::order_book::{CurrencyLocker, CurrencyUnlocker, OrderBookId};
+use framenode_runtime::order_book::{
+    Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBook, OrderBookId,
+};
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
 #[test]
@@ -466,4 +469,196 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
 }
 
 #[test]
-fn should_expire_blocks() {}
+fn should_expire_order() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        fill_balance(caller.clone(), order_book_id);
+
+        let price = balance!(10);
+        let amount = balance!(100);
+        let lifespan = 10000;
+        let now = 1234;
+        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        // the lifespan of 10000 ms corresponds to at least
+        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
+        // at this block the order should still be available
+        let end_of_lifespan_block = now_block + 2;
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            order_book_id,
+            price,
+            amount,
+            PriceVariant::Buy,
+            Some(lifespan)
+        ));
+
+        // verify state
+
+        let order_id = get_last_order_id(order_book_id).unwrap();
+
+        // check
+        let expected_order = LimitOrder::<Runtime>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            now,
+            lifespan,
+            now_block,
+        );
+
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+        // Run to the last block the order should still be available at
+        run_to_block(end_of_lifespan_block);
+
+        // The order is still there
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+
+        // Check a bit after the expected expiration because it's ok to remove
+        // it 1-2 blocks later
+        run_to_block(end_of_lifespan_block + 2);
+
+        // The order is removed
+        assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
+    })
+}
+
+#[test]
+fn should_cleanup_on_expiring() {
+    ext().execute_with(|| {
+        let caller = alice();
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book(order_book_id);
+        fill_balance(caller.clone(), order_book_id);
+
+        let price = balance!(10);
+        let amount = balance!(100);
+        let lifespan = 10000;
+        let now = 1234;
+        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        // the lifespan of 10000 ms corresponds to at least
+        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
+        // at this block the order should still be available
+        let end_of_lifespan_block = now_block + 2;
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
+
+        // fix state before
+        let bids_before = OrderBookPallet::bids(&order_book_id, &price).unwrap_or_default();
+        let agg_bids_before = OrderBookPallet::aggregated_bids(&order_book_id);
+        let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
+        let user_orders_before =
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
+        let balance_before =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap();
+
+        assert_ok!(OrderBookPallet::place_limit_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            order_book_id,
+            price,
+            amount,
+            PriceVariant::Buy,
+            Some(lifespan)
+        ));
+
+        // verify state
+
+        let order_id = get_last_order_id(order_book_id).unwrap();
+
+        // check
+        let expected_order = LimitOrder::<Runtime>::new(
+            order_id,
+            caller.clone(),
+            PriceVariant::Buy,
+            price,
+            amount,
+            now,
+            lifespan,
+            now_block,
+        );
+
+        let appropriate_amount = expected_order.appropriate_amount().unwrap();
+
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+
+        let mut bids_with_order = bids_before.clone();
+        assert_ok!(bids_with_order.try_push(order_id));
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &price).unwrap(),
+            bids_with_order
+        );
+
+        let price_volume_with_order = price_volume_before + amount;
+        let mut agg_bids_with_order = agg_bids_before.clone();
+        assert_ok!(agg_bids_with_order.try_insert(price, price_volume_with_order));
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            agg_bids_with_order
+        );
+
+        let mut user_orders_with_order = user_orders_before.clone();
+        assert_ok!(user_orders_with_order.try_push(order_id));
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            user_orders_with_order
+        );
+
+        let balance =
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap();
+        let balance_with_order = balance_before - appropriate_amount;
+        assert_eq!(balance, balance_with_order);
+
+        // Run to the last block the order should still be available at
+        run_to_block(end_of_lifespan_block);
+
+        let order_id = get_last_order_id(order_book_id).unwrap();
+
+        // The order is still there
+        assert_eq!(
+            OrderBookPallet::limit_orders(order_book_id, order_id).unwrap(),
+            expected_order
+        );
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &price).unwrap(),
+            bids_with_order
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            agg_bids_with_order
+        );
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            user_orders_with_order
+        );
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap(),
+            balance_with_order
+        );
+    })
+}
