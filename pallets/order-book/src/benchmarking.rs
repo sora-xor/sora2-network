@@ -44,7 +44,7 @@ use framenode_runtime::order_book::{
     Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet,
 };
 
-use crate::ExpirationScheduler;
+use crate::{CacheDataLayer, ExpirationScheduler};
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
@@ -488,29 +488,61 @@ benchmarks! {
 
     service_base {
         let mut weight = WeightMeter::max_limit();
+        let block_number = 0u32.unique_saturated_into();
     }: {
-        OrderBookPallet::<T>::service(0u32.unique_saturated_into(), &mut weight);
+        OrderBookPallet::<T>::service(block_number, &mut weight);
     }
     verify {}
 
     service_block_base {
         let mut weight = WeightMeter::max_limit();
+        let block_number = 0u32.unique_saturated_into();
+        // should be the slower layer because cache is not
+        // warmed up
+        let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        // todo (k.ivanov)
-        // OrderBookPallet::<T>::service_block();
+        OrderBookPallet::<T>::service_block(&mut data_layer, block_number, &mut weight);
     }
-    verify {
-
-    }
+    verify {}
 
     service_single_expiration {
-        let mut weight = WeightMeter::max_limit();
+        // very similar to cancel_limit_order
+        let order_book_id = OrderBookId::<AssetIdOf<T>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        create_and_fill_order_book::<T>(order_book_id);
+
+        let order_id = 5u128.unique_saturated_into();
+
+        let order = OrderBookPallet::<T>::limit_orders(order_book_id, order_id).unwrap();
+
+        let balance_before =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+
+        // should be the slower layer because cache is not
+        // warmed up
+        let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        // todo (k.ivanov)
-        // OrderBookPallet::<T>::service_single_expiration();
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, order_book_id, order_id);
     }
     verify {
+        assert_last_event::<T>(
+            Event::<T>::OrderCanceled {
+                order_book_id,
+                dex_id: DEX.into(),
+                order_id,
+                owner_id: order.owner.clone(),
+            }
+            .into(),
+        );
 
+        let appropriate_amount = order.appropriate_amount().unwrap();
+        let balance =
+            <T as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &order.owner).unwrap();
+        let expected_balance = balance_before + appropriate_amount;
+        assert_eq!(balance, expected_balance);
     }
 
 

@@ -37,7 +37,7 @@ use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBook, OrderBookId,
+    Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBookId,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
