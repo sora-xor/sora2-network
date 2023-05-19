@@ -2249,6 +2249,7 @@ impl substrate_bridge_app::Config for Runtime {
     type AccountIdConverter = sp_runtime::traits::Identity;
     type AssetIdConverter = AssetIdConverter;
     type BalanceConverter = sp_runtime::traits::Identity;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
 }
 

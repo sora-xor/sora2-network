@@ -304,17 +304,67 @@ pub struct BridgeAssetRegistryImpl;
 impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegistryImpl {
     type AssetName = crate::AssetName;
     type AssetSymbol = crate::AssetSymbol;
-    type Decimals = u8;
 
     fn register_asset(
         owner: crate::AccountId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
     ) -> Result<crate::AssetId, DispatchError> {
-        let asset_id =
-            crate::Assets::register_from(&owner, symbol, name, decimals, 0, true, None, None)?;
+        let asset_id = crate::Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
         Ok(asset_id)
+    }
+}
+
+pub struct BalancePrecisionConverter;
+
+impl BalancePrecisionConverter {
+    fn convert_precision(
+        precision_from: u8,
+        precision_to: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        if precision_from == precision_to {
+            return Some(amount);
+        }
+        if precision_from < precision_to {
+            let exp = (precision_to - precision_from) as u32;
+            let coeff = 10_u128.checked_pow(exp)?;
+            let coerced_amount = amount.saturating_mul(coeff);
+            if coerced_amount / coeff != amount {
+                return None;
+            }
+            Some(coerced_amount)
+        } else {
+            let exp = (precision_from - precision_to) as u32;
+            let coeff = 10_u128.checked_pow(exp)?;
+            let coerced_amount = amount / coeff;
+            if coerced_amount * coeff != amount {
+                return None;
+            }
+            Some(coerced_amount)
+        }
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(sidechain_precision, thischain_precision, amount)
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount)
     }
 }
 
