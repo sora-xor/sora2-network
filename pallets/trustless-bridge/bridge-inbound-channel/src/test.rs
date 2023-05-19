@@ -419,6 +419,28 @@ const MESSAGE_DISPATCHED_DATA_1: [u8; 251] = hex!(
 // BatchDispatched {
 //   .batch_nonce = 1,
 //   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+//   .results = 2,
+//   .results_length = 2,
+//   .gas_spent = 27564,
+//   .base_fee = 1
+// }
+const MESSAGE_DISPATCHED_DATA_2: [u8; 251] = hex!(
+    "
+    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
+    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
+    0000000000000000000000000000000000000000000000000000010000000000
+    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
+    0000000000000000000000000000000000000000000000000000020000000000
+    0000000000000000000000000000000000000000000000000000020000000000
+    00000000000000000000000000000000000000000000000000af830000000000
+    000000000000000000000000000000000000000000000000000001
+"
+);
+
+// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// BatchDispatched {
+//   .batch_nonce = 1,
+//   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
 //   .results = 0,
 //   .results_length = 1,
 //   .gas_spent = 44656,
@@ -654,6 +676,29 @@ fn test_batch_dispatched() {
         ));
         let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
+    });
+}
+
+#[test]
+fn test_batch_dispatched_with_multiple_results() {
+    new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = RuntimeOrigin::signed(relayer);
+
+        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_2).unwrap();
+
+        assert_ok!(BridgeInboundChannel::batch_dispatched(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message,
+            Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            }
+        ));
+        let nonce: u64 = <InboundChannelNonces<Test>>::get(BASE_NETWORK_ID);
+        assert_eq!(nonce, 1);
     });
 }
 

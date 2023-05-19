@@ -48,8 +48,8 @@ pub mod pallet {
     use sp_runtime::traits::{Hash, Keccak256};
 
     /// Since gas from event is measured before tx is ended, extra gas should be added.
-    /// 20000 for storage gas_proof in map + ~17000 for emit BatchDispatched
-    const GAS_EXTRA: u64 = 37000;
+    /// 20000 for storage gas_proof in map + ~10000 for emit BatchDispatched
+    const GAS_EXTRA: u64 = 30000;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {

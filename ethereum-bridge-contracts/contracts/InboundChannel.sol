@@ -64,7 +64,8 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         uint256 results,
         uint256 results_length,
         uint256 gas_spent,
-        uint256 base_fee
+        uint256 base_fee,
+        bytes32 gas_proof
     );
 
     constructor(address _beefyLightClient) {
@@ -89,6 +90,8 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
         LeafBytes calldata leafBytes,
         SimplifiedMMRProof calldata proof
     ) external nonReentrant {
+        uint256 begin_gas_left = gasleft();
+
         require(batch.messages.length < 256, "must be < 256 messages in the batch");
 
         batch_nonce = batch_nonce + 1;
@@ -108,15 +111,16 @@ contract InboundChannel is AccessControl, ISimplifiedMMRProof, ReentrancyGuard {
 
         uint256 results = processMessages(payable(msg.sender), batch.messages);
 
-        uint256 gas_used = block.gaslimit - gasleft();
-        gas_proofs[batch_nonce] = keccak256(abi.encodePacked(gas_used, block.basefee));
+        uint256 gas_used = begin_gas_left - gasleft();
+        gas_proofs[batch_nonce] = keccak256(abi.encode(gas_used, block.basefee));
         emit BatchDispatched(
             batch_nonce,
             msg.sender,
             results,
             batch.messages.length,
             gas_used,
-            block.basefee
+            block.basefee,
+            gas_proofs[batch_nonce]
         );
     }
 
