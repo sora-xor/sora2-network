@@ -477,7 +477,11 @@ fn should_expire_order() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id
+        ));
         fill_balance(caller.clone(), order_book_id);
 
         let price = balance!(10);
@@ -548,7 +552,11 @@ fn should_cleanup_on_expiring() {
             quote: XOR.into(),
         };
 
-        create_and_fill_order_book(order_book_id);
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id
+        ));
         fill_balance(caller.clone(), order_book_id);
 
         let price = balance!(10);
@@ -659,6 +667,30 @@ fn should_cleanup_on_expiring() {
             <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
                 .unwrap(),
             balance_with_order
+        );
+
+        // Check a bit after the expected expiration because it's ok to remove
+        // it 1-2 blocks later
+        run_to_block(end_of_lifespan_block + 2);
+
+        // The order is removed, state returned to original
+        assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
+        assert_eq!(
+            OrderBookPallet::bids(&order_book_id, &price).unwrap_or_default(),
+            bids_before
+        );
+        assert_eq!(
+            OrderBookPallet::aggregated_bids(&order_book_id),
+            agg_bids_before
+        );
+        assert_eq!(
+            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default(),
+            user_orders_before
+        );
+        assert_eq!(
+            <Runtime as Config>::AssetInfoProvider::free_balance(&order_book_id.quote, &caller)
+                .unwrap(),
+            balance_before
         );
     })
 }
