@@ -32,16 +32,16 @@
 
 use bridge_types::{
     types::{BridgeAppInfo, BridgeAssetInfo},
-    EVMChainId,
+    GenericNetworkId,
 };
 use codec::Codec;
 use sp_std::prelude::*;
 
 sp_api::decl_runtime_apis! {
-    pub trait EvmBridgeProxyAPI<AssetId> where
+    pub trait BridgeProxyAPI<AssetId> where
         AssetId: Codec
     {
-        fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo>;
-        fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<AssetId>>;
+        fn list_apps() -> Vec<BridgeAppInfo>;
+        fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo>;
     }
 }
