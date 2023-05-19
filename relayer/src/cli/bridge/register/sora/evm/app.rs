@@ -75,9 +75,6 @@ pub(crate) enum Apps {
         /// ETH asset symbol
         #[clap(long)]
         symbol: String,
-        /// ETH asset decimals
-        #[clap(long)]
-        decimals: u8,
     },
     /// Register EthApp with existing ETH asset
     EthAppExisting {
@@ -130,14 +127,13 @@ impl Command {
                 }
             )
             }
-            Apps::EthAppNew { contract, name, symbol, decimals } => {
+            Apps::EthAppNew { contract, name, symbol } => {
                 runtime::runtime_types::framenode_runtime::RuntimeCall::EthApp(
                 runtime::runtime_types::eth_app::pallet::Call::register_network {
                     network_id,
                     contract: *contract,
                     name: AssetName::from_str(name.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
                     symbol: AssetSymbol::from_str(symbol.as_str()).map_err(|err| anyhow!(format!("{}", err)))?,
-                    decimals: *decimals
                 }
             )
             }

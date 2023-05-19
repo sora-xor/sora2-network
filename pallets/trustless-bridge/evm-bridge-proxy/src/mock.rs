@@ -31,7 +31,7 @@
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::traits::AppRegistry;
+use bridge_types::traits::{AppRegistry, BridgeAssetRegistry};
 use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput, MessageId};
 use bridge_types::H160;
 use bridge_types::H256;
@@ -49,7 +49,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{
     BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
 };
-use sp_runtime::{AccountId32, DispatchResult, MultiSignature};
+use sp_runtime::{AccountId32, DispatchError, DispatchResult, MultiSignature};
 
 use crate as proxy;
 
@@ -286,9 +286,52 @@ impl eth_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
+    type Currency = Currencies;
+    type BalancePrecisionConverter = ();
+    type AssetRegistry = BridgeAssetRegistryImpl;
     type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
+}
+
+pub struct BridgeAssetRegistryImpl;
+
+impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
+    type AssetName = common::AssetName;
+    type AssetSymbol = common::AssetSymbol;
+
+    fn register_asset(
+        owner: AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+    ) -> Result<AssetId, DispatchError> {
+        let asset_id = Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
+        Ok(asset_id)
+    }
+
+    fn manage_asset(
+        manager: AccountId,
+        asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<Test>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<Test>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct AppRegistryImpl;

@@ -1,11 +1,12 @@
 //! ETHApp pallet benchmarking
 use super::*;
 
+use crate::{AssetIdOf, AssetNameOf, AssetSymbolOf, BalanceOf};
 use bridge_types::types::{AdditionalEVMInboundData, CallOriginOutput};
 use bridge_types::H160;
 use bridge_types::H256;
-use common::{balance, AssetId32, AssetInfoProvider, PredefinedAssetId, XOR};
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use common::{balance, AssetId32, PredefinedAssetId, XOR};
+use common::{AssetName, AssetSymbol};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::UnfilteredDispatchable;
 use frame_system::RawOrigin;
@@ -17,7 +18,13 @@ pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 use crate::Pallet as ETHApp;
 
 benchmarks! {
-    where_clause {where T::AssetId: From<AssetId32<PredefinedAssetId>>, <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>}
+    where_clause {where
+        AssetIdOf<T>: From<AssetId32<PredefinedAssetId>>,
+        AssetNameOf<T>: From<common::AssetName>,
+        AssetSymbolOf<T>: From<common::AssetSymbol>,
+        BalanceOf<T>: From<u128>,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<EVMChainId, AdditionalEVMInboundData, CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>
+    }
     // Benchmark `burn` extrinsic under worst case conditions:
     // * `burn` successfully substracts amount from caller account
     // * The channel executes incentivization logic
@@ -25,13 +32,13 @@ benchmarks! {
         let caller: T::AccountId = whitelisted_caller();
         let recipient = H160::repeat_byte(2);
         let amount = balance!(20);
-        let asset_id: T::AssetId = XOR.into();
+        let asset_id: AssetIdOf<T> = XOR.into();
 
-        <T as assets::Config>::Currency::deposit(asset_id.clone(), &caller, amount)?;
+        <T as Config>::Currency::deposit(asset_id.clone(), &caller, amount.into())?;
 
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, recipient, amount.into())
     verify {
-        assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &caller).unwrap(), balance!(0));
+        assert_eq!(<T as Config>::Currency::total_balance(asset_id, &caller), balance!(0).into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
@@ -49,20 +56,20 @@ benchmarks! {
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(assets::Pallet::<T>::total_balance(&asset_id, &recipient).unwrap(), amount);
+        assert_eq!(<T as Config>::Currency::total_balance(asset_id, &recipient), amount.into());
     }
 
     register_network {
         let contract = H160::repeat_byte(6);
         let asset_name = AssetName(b"ETH".to_vec());
         let asset_symbol = AssetSymbol(b"ETH".to_vec());
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name, asset_symbol, DEFAULT_BALANCE_PRECISION, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name.into(), asset_symbol.into(), contract)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
     }
 
     register_network_with_existing_asset {
-        let asset_id: T::AssetId = XOR.into();
+        let asset_id: AssetIdOf<T> = XOR.into();
         let contract = H160::repeat_byte(6);
     }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract)
     verify {

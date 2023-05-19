@@ -2114,8 +2114,11 @@ impl eth_app::Config for Runtime {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
+    type Currency = Currencies;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type BalancePrecisionConverter = impls::BalancePrecisionConverter;
     type WeightInfo = ();
 }
 

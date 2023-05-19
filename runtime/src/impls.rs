@@ -313,6 +313,30 @@ impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegist
         let asset_id = crate::Assets::register_from(&owner, symbol, name, 18, 0, true, None, None)?;
         Ok(asset_id)
     }
+
+    fn manage_asset(
+        manager: crate::AccountId,
+        asset_id: crate::AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        let scope = permissions::Scope::Limited(common::hash(&asset_id));
+        for permission_id in [permissions::BURN, permissions::MINT] {
+            if permissions::Pallet::<crate::Runtime>::check_permission_with_scope(
+                manager.clone(),
+                permission_id,
+                &scope,
+            )
+            .is_err()
+            {
+                permissions::Pallet::<crate::Runtime>::assign_permission(
+                    manager.clone(),
+                    &manager,
+                    permission_id,
+                    scope,
+                )?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct BalancePrecisionConverter;

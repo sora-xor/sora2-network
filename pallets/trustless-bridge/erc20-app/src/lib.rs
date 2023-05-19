@@ -50,8 +50,10 @@ pub mod pallet {
 
     use super::*;
 
-    use assets::AssetIdOf;
-    use bridge_types::traits::{AppRegistry, BridgeApp, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{
+        AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
+        MessageStatusNotifier, OutboundChannel,
+    };
     use bridge_types::types::{
         AdditionalEVMInboundData, AdditionalEVMOutboundData, AppKind, AssetKind, BridgeAppInfo,
         BridgeAssetInfo, CallOriginOutput,
@@ -64,7 +66,16 @@ pub mod pallet {
     use traits::currency::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
+    pub type BalanceOf<T> = <<T as Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
+    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<AccountIdOf<T>>>::CurrencyId;
+    pub type AssetNameOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
+        AccountIdOf<T>,
+        AssetIdOf<T>,
+    >>::AssetName;
+    pub type AssetSymbolOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
+        AccountIdOf<T>,
+        AssetIdOf<T>,
+    >>::AssetSymbol;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -73,9 +84,7 @@ pub mod pallet {
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + permissions::Config + technical::Config
-    {
+    pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type OutboundChannel: OutboundChannel<
@@ -90,14 +99,18 @@ pub mod pallet {
         >;
 
         type MessageStatusNotifier: MessageStatusNotifier<
-            Self::AssetId,
+            AssetIdOf<Self>,
             Self::AccountId,
             BalanceOf<Self>,
         >;
 
-        type BridgeTechAccountId: Get<Self::TechAccountId>;
+        type AssetRegistry: BridgeAssetRegistry<Self::AccountId, AssetIdOf<Self>>;
 
-        type AppRegistry: AppRegistry<EVMChainId, H160>;
+        type BridgeAccountId: Get<Self::AccountId>;
+
+        type Currency: MultiCurrency<Self::AccountId>;
+
+        type BalancePrecisionConverter: BalancePrecisionConverter<AssetIdOf<Self>, BalanceOf<Self>>;
 
         type WeightInfo: WeightInfo;
     }
@@ -136,6 +149,11 @@ pub mod pallet {
     pub(super) type AssetsByAddresses<T: Config> =
         StorageDoubleMap<_, Identity, EVMChainId, Identity, H160, AssetIdOf<T>, OptionQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_precision)]
+    pub(super) type SidechainPrecision<T: Config> =
+        StorageDoubleMap<_, Identity, EVMChainId, Identity, AssetIdOf<T>, u8, OptionQuery>;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -158,8 +176,8 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         /// [network_id, contract, asset_kind]
         pub apps: Vec<(EVMChainId, H160, AssetKind)>,
-        /// [network_id, asset_id, asset_contract, asset_kind]
-        pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind)>,
+        /// [network_id, asset_id, asset_contract, asset_kind, precision]
+        pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind, u8)>,
     }
 
     #[cfg(feature = "std")]
@@ -178,9 +196,15 @@ pub mod pallet {
             for (network_id, contract, asset_kind) in self.apps.iter() {
                 AppAddresses::<T>::insert(network_id, asset_kind, contract);
             }
-            for (network_id, asset_id, contract, asset_kind) in self.assets.iter() {
-                Pallet::<T>::register_asset_inner(*network_id, *asset_id, *contract, *asset_kind)
-                    .unwrap();
+            for (network_id, asset_id, contract, asset_kind, precision) in self.assets.iter() {
+                Pallet::<T>::register_asset_inner(
+                    *network_id,
+                    *asset_id,
+                    *contract,
+                    *asset_kind,
+                    *precision,
+                )
+                .unwrap();
             }
         }
     }
@@ -217,22 +241,17 @@ pub mod pallet {
                 return Err(DispatchError::BadOrigin.into());
             }
 
-            let bridge_account = Self::bridge_account()?;
+            let bridge_account = T::BridgeAccountId::get();
 
             let amount: BalanceOf<T> = amount.as_u128().into();
             ensure!(amount > 0, Error::<T>::WrongAmount);
             let recipient = T::Lookup::lookup(recipient)?;
             match asset_kind {
                 AssetKind::Thischain => {
-                    assets::Pallet::<T>::transfer_from(
-                        &asset_id,
-                        &bridge_account,
-                        &recipient,
-                        amount,
-                    )?;
+                    T::Currency::transfer(asset_id, &bridge_account, &recipient, amount)?;
                 }
                 AssetKind::Sidechain => {
-                    assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, &recipient, amount)?;
+                    T::Currency::deposit(asset_id, &recipient, amount)?;
                 }
             }
             T::MessageStatusNotifier::inbound_request(
@@ -294,8 +313,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: EVMChainId,
             address: H160,
-            symbol: AssetSymbol,
-            name: AssetName,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
             decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
@@ -305,18 +324,9 @@ pub mod pallet {
             );
             let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
-            let bridge_account = Self::bridge_account()?;
+            let bridge_account = T::BridgeAccountId::get();
 
-            let asset_id = assets::Pallet::<T>::register_from(
-                &bridge_account,
-                symbol,
-                name,
-                decimals,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            )?;
+            let asset_id = T::AssetRegistry::register_asset(bridge_account.clone(), name, symbol)?;
 
             Self::register_asset_inner(network_id, asset_id, address, AssetKind::Sidechain)?;
 
@@ -441,6 +451,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             contract: H160,
             asset_kind: AssetKind,
+            sidechain_precision: u8,
         ) -> DispatchResult {
             ensure!(
                 AppAddresses::<T>::contains_key(network_id, asset_kind),
@@ -450,27 +461,13 @@ pub mod pallet {
                 !TokenAddresses::<T>::contains_key(network_id, asset_id),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let bridge_account = Self::bridge_account()?;
+            let bridge_account = T::BridgeAccountId::get();
             TokenAddresses::<T>::insert(network_id, asset_id, contract);
             AssetsByAddresses::<T>::insert(network_id, contract, asset_id);
             AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
-
-            // Err when permission already exists
-            for permission_id in [permissions::BURN, permissions::MINT] {
-                let _ = permissions::Pallet::<T>::assign_permission(
-                    bridge_account.clone(),
-                    &bridge_account,
-                    permission_id,
-                    permissions::Scope::Limited(common::hash(&asset_id)),
-                );
-            }
+            SidechainPrecision::<T>::insert(network_id, asset_id, sidechain_precision);
+            T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
             Ok(())
-        }
-
-        fn bridge_account() -> Result<T::AccountId, DispatchError> {
-            Ok(technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::BridgeTechAccountId::get(),
-            )?)
         }
 
         pub fn burn_inner(
@@ -485,7 +482,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let target = AppAddresses::<T>::get(network_id, asset_kind)
                 .ok_or(Error::<T>::AppIsNotRegistered)?;
-            let bridge_account = Self::bridge_account()?;
+            let bridge_account = T::BridgeAccountId::get();
 
             match asset_kind {
                 AssetKind::Sidechain => {
@@ -538,7 +535,7 @@ pub mod pallet {
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
-            let bridge_account = Self::bridge_account()?;
+            let bridge_account = T::BridgeAccountId::get();
             match asset_kind {
                 AssetKind::Thischain => {
                     assets::Pallet::<T>::transfer_from(
@@ -564,14 +561,14 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> BridgeApp<EVMChainId, T::AccountId, H160, T::AssetId, Balance> for Pallet<T> {
-        fn is_asset_supported(network_id: EVMChainId, asset_id: T::AssetId) -> bool {
+    impl<T: Config> BridgeApp<EVMChainId, T::AccountId, H160, AssetIdOf<T>, Balance> for Pallet<T> {
+        fn is_asset_supported(network_id: EVMChainId, asset_id: AssetIdOf<T>) -> bool {
             TokenAddresses::<T>::get(network_id, asset_id).is_some()
         }
 
         fn transfer(
             network_id: EVMChainId,
-            asset_id: T::AssetId,
+            asset_id: AssetIdOf<T>,
             sender: T::AccountId,
             recipient: H160,
             amount: Balance,
@@ -589,7 +586,7 @@ pub mod pallet {
             Pallet::<T>::refund_inner(network_id, recipient, asset_id, amount)
         }
 
-        fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<T::AssetId>> {
+        fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<AssetIdOf<T>>> {
             AssetKinds::<T>::iter_prefix(network_id)
                 .map(|(asset_id, asset_kind)| {
                     let app_kind = match asset_kind {
