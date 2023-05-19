@@ -50,6 +50,7 @@ use codec::Decode;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Time;
+use frame_support::weights::WeightMeter;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -486,30 +487,27 @@ benchmarks! {
     }
 
     service_base {
-
+        let mut weight = WeightMeter::max_limit();
     }: {
-        // todo (k.ivanov)
-        OrderBookPallet::<T>::service();
+        OrderBookPallet::<T>::service(0u32.unique_saturated_into(), &mut weight);
     }
-    verify {
-
-    }
+    verify {}
 
     service_block_base {
-
+        let mut weight = WeightMeter::max_limit();
     }: {
         // todo (k.ivanov)
-        OrderBookPallet::<T>::service_block();
+        // OrderBookPallet::<T>::service_block();
     }
     verify {
 
     }
 
     service_single_expiration {
-
+        let mut weight = WeightMeter::max_limit();
     }: {
         // todo (k.ivanov)
-        OrderBookPallet::<T>::service_single_expiration();
+        // OrderBookPallet::<T>::service_single_expiration();
     }
     verify {
 
