@@ -31,13 +31,16 @@
 #![cfg(feature = "wip")] // order-book
 
 use crate::tests::test_utils::*;
-use common::{balance, PriceVariant};
+use assets::AssetIdOf;
+use common::{balance, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
-use framenode_runtime::order_book::{Config, LimitOrder, MarketRole, OrderAmount};
+use framenode_runtime::order_book::{
+    Config, LimitOrder, MarketOrder, MarketRole, OrderAmount, OrderBookId,
+};
 use framenode_runtime::Runtime;
 
 #[test]
-fn should_return_error_for_invalid_lifetime() {
+fn should_return_error_for_invalid_limit_order_lifetime() {
     let wrong_lifespan1 = 0;
     let order1 = LimitOrder::<Runtime>::new(
         0,
@@ -64,14 +67,14 @@ fn should_return_error_for_invalid_lifetime() {
 }
 
 #[test]
-fn should_return_error_for_invalid_amount() {
-    let wrong_balance = balance!(0);
+fn should_return_error_for_invalid_limit_order_amount() {
+    let wrong_amount = balance!(0);
     let order = LimitOrder::<Runtime>::new(
         0,
         alice(),
         PriceVariant::Buy,
         balance!(10),
-        wrong_balance,
+        wrong_amount,
         1000,
         10000,
     );
@@ -79,7 +82,20 @@ fn should_return_error_for_invalid_amount() {
 }
 
 #[test]
-fn should_return_error_for_invalid_price() {
+fn should_return_error_for_invalid_market_order_amount() {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+
+    let wrong_amount = balance!(0);
+    let order =
+        MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+    assert_err!(order.ensure_valid(), E::InvalidOrderAmount);
+}
+
+#[test]
+fn should_return_error_for_invalid_limit_order_price() {
     let wrong_price = balance!(0);
     let order = LimitOrder::<Runtime>::new(
         0,
@@ -120,7 +136,19 @@ fn should_pass_valid_limit_order() {
 }
 
 #[test]
-fn should_not_return_deal_amount_with_big_base_limit() {
+fn should_pass_valid_market_order() {
+    let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+        base: VAL.into(),
+        quote: XOR.into(),
+    };
+
+    let amount = balance!(10);
+    let order = MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, amount);
+    assert_ok!(order.ensure_valid());
+}
+
+#[test]
+fn should_not_return_limit_order_deal_amount_with_big_base_limit() {
     let price = balance!(11);
     let amount = balance!(100);
     let base_amount_limit = balance!(101);
@@ -150,7 +178,7 @@ fn should_not_return_deal_amount_with_big_base_limit() {
 }
 
 #[test]
-fn should_return_deal_amount() {
+fn should_return_limit_order_deal_amount() {
     let price = balance!(11);
     let amount = balance!(100);
 

@@ -73,14 +73,14 @@ impl<T: crate::Config + Sized> LimitOrder<T> {
         lifespan: MomentOf<T>,
     ) -> Self {
         Self {
-            id: id,
-            owner: owner,
-            side: side,
-            price: price,
+            id,
+            owner,
+            side,
+            price,
             original_amount: amount,
-            amount: amount,
-            time: time,
-            lifespan: lifespan,
+            amount,
+            time,
+            lifespan,
         }
     }
 

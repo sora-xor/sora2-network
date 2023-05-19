@@ -41,8 +41,8 @@ use framenode_chain_spec::ext;
 use framenode_runtime::order_book::cache_data_layer::CacheDataLayer;
 use framenode_runtime::order_book::storage_data_layer::StorageDataLayer;
 use framenode_runtime::order_book::{
-    Config, DataLayer, DealInfo, LimitOrder, MarketRole, OrderAmount, OrderBook, OrderBookId,
-    OrderBookStatus,
+    Config, DataLayer, DealInfo, LimitOrder, MarketOrder, MarketRole, OrderAmount, OrderBook,
+    OrderBookId, OrderBookStatus,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_core::Get;
@@ -1504,22 +1504,94 @@ fn should_calculate_deal() {
 }
 
 #[test]
+fn should_not_execute_market_order_with_empty_amount() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let wrong_amount = balance!(0);
+        let order =
+            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+
+        assert_err!(
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            E::InvalidOrderAmount
+        );
+    });
+}
+
+#[test]
 fn should_not_execute_market_order_with_invalid_order_book_id() {
     ext().execute_with(|| {
-        // todo
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let wrong_order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: DOT.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            wrong_order_book_id,
+            balance!(100),
+        );
+
+        assert_err!(
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            E::InvalidOrderBookId
+        );
     });
 }
 
 #[test]
 fn should_not_execute_market_order_with_invalid_amount() {
     ext().execute_with(|| {
-        // todo
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
+        let wrong_amount = balance!(1.123456);
+        let order =
+            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, wrong_amount);
+
+        assert_err!(
+            order_book.execute_market_order::<OrderBookPallet, OrderBookPallet>(order, &mut data),
+            E::InvalidOrderAmount
+        );
     });
 }
 
 #[test]
 fn should_execute_market_order() {
     ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
         // todo
     });
 }
@@ -1527,6 +1599,15 @@ fn should_execute_market_order() {
 #[test]
 fn should_not_calculate_market_impact_with_empty_side() {
     ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
         // todo
     });
 }
@@ -1534,6 +1615,15 @@ fn should_not_calculate_market_impact_with_empty_side() {
 #[test]
 fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
     ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
         // todo
     });
 }
@@ -1541,6 +1631,15 @@ fn should_not_calculate_market_impact_if_liquidity_is_not_enough() {
 #[test]
 fn should_calculate_market_impact() {
     ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let order_book = create_and_fill_order_book(order_book_id);
+
         // todo
     });
 }

@@ -88,14 +88,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         max_lot_size: OrderVolume,
     ) -> Self {
         Self {
-            order_book_id: order_book_id,
-            dex_id: dex_id,
+            order_book_id,
+            dex_id,
             status: OrderBookStatus::Trade,
             last_order_id: T::OrderId::zero(),
-            tick_size: tick_size,
-            step_lot_size: step_lot_size,
-            min_lot_size: min_lot_size,
-            max_lot_size: max_lot_size,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
         }
     }
 
@@ -218,11 +218,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Ok(count)
     }
 
+    /// Executes market order and returns input & output amounts
     pub fn execute_market_order<Locker, Unlocker>(
         &self,
         order: MarketOrder<T>,
         data: &mut impl DataLayer<T>,
-    ) -> Result<OrderAmount, DispatchError>
+    ) -> Result<(OrderAmount, OrderAmount), DispatchError>
     where
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
@@ -285,7 +286,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             )?;
         }
 
-        Ok(market_change.market_output)
+        Ok((market_change.market_input, market_change.market_output))
     }
 
     /// Calculates how the deal with `taker_amount` impacts on the market
@@ -556,6 +557,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
     }
 
     fn ensure_market_order_valid(&self, order: &MarketOrder<T>) -> Result<(), DispatchError> {
+        order.ensure_valid()?;
         ensure!(
             order.order_book_id == self.order_book_id,
             Error::<T>::InvalidOrderBookId
