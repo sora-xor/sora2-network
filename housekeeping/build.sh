@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # environment
-palletListFile=${palletListFilet}
-wasmReportFile=${wasmReportFile}
+palletListFile=pallet_list.txt
+wasmReportFile=subwasm_report.json
 PACKAGE=framenode-runtime
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
@@ -38,7 +38,6 @@ if [[ ${TAG_NAME} != '' ]]; then
     mv ./target/release/relayer ./relayer.bin
     mv ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm ./framenode_runtime.compact.compressed.wasm
     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
-    touch $wasmReportFile $palletListFile
     subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
     subwasm metadata framenode_runtime.compact.wasm > $palletListFile
     set +e
