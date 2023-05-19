@@ -44,6 +44,7 @@ use framenode_runtime::order_book::{
     Config, Event, LimitOrder, MomentOf, OrderBook, OrderBookId, Pallet,
 };
 
+use crate::ExpirationScheduler;
 use assets::AssetIdOf;
 use codec::Decode;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, DEXId, PriceVariant, VAL, XOR};
@@ -483,6 +484,37 @@ benchmarks! {
     }
     verify {
     }
+
+    service_base {
+
+    }: {
+        // todo (k.ivanov)
+        OrderBookPallet::<T>::service();
+    }
+    verify {
+
+    }
+
+    service_block_base {
+
+    }: {
+        // todo (k.ivanov)
+        OrderBookPallet::<T>::service_block();
+    }
+    verify {
+
+    }
+
+    service_single_expiration {
+
+    }: {
+        // todo (k.ivanov)
+        OrderBookPallet::<T>::service_single_expiration();
+    }
+    verify {
+
+    }
+
 
     impl_benchmark_test_suite!(Pallet, framenode_chain_spec::ext(), framenode_runtime::Runtime);
 }

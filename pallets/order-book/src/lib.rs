@@ -695,7 +695,7 @@ impl<T: Config> Pallet<T> {
         block: T::BlockNumber,
         weight: &mut WeightMeter,
     ) -> bool {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
             return false;
         }
 
@@ -728,7 +728,7 @@ impl<T: Config>
     for Pallet<T>
 {
     fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
-        if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
+        if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
             return;
         }
 
