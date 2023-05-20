@@ -29,8 +29,7 @@ if [[ ${TAG_NAME} != '' ]]; then
     printf "Tag is %s\n" ${TAG_NAME}
     printf "Building with features: %s\n" "$featureList"
     printf "Checking sudo pallet: %s\n" "$sudoCheckStatus"
-
-    cargo clean
+    
     cargo test --release --features "private-net runtime-benchmarks"
     rm -rf target
     cargo build --release --features "$featureList"
@@ -40,6 +39,10 @@ if [[ ${TAG_NAME} != '' ]]; then
     wasm-opt -Os -o ./framenode_runtime.compact.wasm ./target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
     subwasm --json info framenode_runtime.compact.wasm > $wasmReportFile
     subwasm metadata framenode_runtime.compact.wasm > $palletListFile
+    # Debug
+    printf "palleListFile is %s\n" "$palletListFile"
+    printf "palleListFile is %s\n" "$$wasmReportFile"
+    ls -la
     set +e
     subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
     echo $?
