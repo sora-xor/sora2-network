@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # environment
-palletListFile=pallet_list.txt
-wasmReportFile=subwasm_report.json
+palletListFile=${palletListFile}
+wasmReportFile=${wasmReportFile}
 PACKAGE=framenode-runtime
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
@@ -41,8 +41,11 @@ if [[ ${TAG_NAME} != '' ]]; then
     subwasm metadata framenode_runtime.compact.wasm > $palletListFile
     # Debug
     printf "palleListFile is %s\n" "$palletListFile"
-    printf "palleListFile is %s\n" "$$wasmReportFile"
+    printf "wasmreport is %s\n" "$wasmReportFile"
+    cat $palletListFile
+    cat $wasmReportFile
     ls -la
+    ##
     set +e
     subwasm metadata -m Sudo target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
     echo $?
