@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # environment
-palletListFile=pallet_list.txt
-wasmReportFile=subwasm_report.json
-PACKAGE=framenode-runtime
+palletListFile='pallet_list.txt'
+wasmReportFile='subwasm_report.json'
+PACKAGE='framenode-runtime'
 RUSTFLAGS='-Dwarnings'
 RUNTIME_DIR='runtime'
 RUSTC_VERSION=${rustcVersion}
