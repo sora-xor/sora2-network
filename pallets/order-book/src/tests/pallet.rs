@@ -769,10 +769,14 @@ fn should_enforce_expiration_and_weight_limits() {
                 .is_some());
         }
 
-        // The orders are removed
+        // All orders are removed
+        // reverse because they're expired in the order of placement
         for (i, order_id) in placed_orders.iter().rev().enumerate() {
-            println!("Checking order {}/{}", i, placed_orders.len());
-            assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
+            assert!(
+                OrderBookPallet::limit_orders(order_book_id, order_id).is_none(),
+                "Limit order {}/{} is not expired (removed). Maybe the test should pass even more blocks \
+                to have enough weight for all expirations or there is some bug.", i, placed_orders.len()
+            );
         }
     })
 }
