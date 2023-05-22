@@ -662,7 +662,6 @@ impl<T: Config> Pallet<T> {
         };
 
         if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
-            dbg!(error);
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),
                 order_id: order_id.clone(),
@@ -682,13 +681,11 @@ impl<T: Config> Pallet<T> {
         block: T::BlockNumber,
         weight: &mut WeightMeter,
     ) -> bool {
-        dbg!(block);
         if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
             return false;
         }
 
         let mut expirations = <ExpirationsAgenda<T>>::take(block);
-        dbg!(expirations.len());
         if expirations.is_empty() {
             return true;
         }
