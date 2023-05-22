@@ -228,6 +228,11 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         Locker: CurrencyLocker<T::AccountId, T::AssetId, T::DEXId>,
         Unlocker: CurrencyUnlocker<T::AccountId, T::AssetId, T::DEXId>,
     {
+        ensure!(
+            self.status == OrderBookStatus::Trade,
+            Error::<T>::TradingIsForbidden
+        );
+
         self.ensure_market_order_valid(&order)?;
 
         let market_change = match order.side {
