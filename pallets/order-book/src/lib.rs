@@ -620,7 +620,7 @@ pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, ScheduleError, 
 
 /// Expiration schedule for this block is full
 #[derive(Debug)]
-enum ScheduleError {
+pub enum ScheduleError {
     BlockScheduleFull,
 }
 
@@ -634,7 +634,7 @@ impl<T: Config> Into<Error<T>> for ScheduleError {
 
 /// Could not find expiration in given block schedule
 #[derive(Debug)]
-enum UnscheduleError {
+pub enum UnscheduleError {
     ExpirationNotFound,
 }
 
@@ -652,12 +652,28 @@ impl<T: Config> Pallet<T> {
         order_book_id: &OrderBookId<AssetIdOf<T>>,
         order_id: &T::OrderId,
     ) {
-        let Ok(order) = data_layer.get_limit_order(order_book_id, order_id) else {
-            debug_assert!(false, "apparently removal of order book or order did not cleanup expiration schedule");
-            return;
+        let order = match data_layer.get_limit_order(order_book_id, order_id) {
+            Ok(o) => o,
+            Err(error) => {
+                debug_assert!(
+                    false,
+                    "apparently removal of order book or order did not cleanup expiration schedule"
+                );
+                Self::deposit_event(Event::<T>::ExpirationFailure {
+                    order_book_id: order_book_id.clone(),
+                    order_id: order_id.clone(),
+                    error,
+                });
+                return;
+            }
         };
         let Some(order_book) = <OrderBooks<T>>::get(order_book_id) else {
             debug_assert!(false, "apparently removal of order book did not cleanup expiration schedule");
+            Self::deposit_event(Event::<T>::ExpirationFailure {
+                order_book_id: order_book_id.clone(),
+                order_id: order_id.clone(),
+                error: Error::<T>::UnknownOrderBook.into(),
+            });
             return;
         };
 

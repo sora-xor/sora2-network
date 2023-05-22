@@ -32,13 +32,14 @@
 
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
+use common::test_utils::assert_last_event;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, VAL, XOR};
 use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    self, Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBookId,
+    self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, OrderBookId,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
@@ -778,5 +779,34 @@ fn should_enforce_expiration_and_weight_limits() {
                 to have enough weight for all expirations or there is some bug.", i, placed_orders.len()
             );
         }
+    })
+}
+
+#[test]
+fn should_emit_event_on_expiration_failure() {
+    ext().execute_with(|| {
+        // To be able to assert events
+        frame_system::Pallet::<Runtime>::set_block_number(1);
+
+        let non_existent_order_book_id = OrderBookId {
+            base: XOR,
+            quote: VAL,
+        };
+        let non_existent_order_id = 1;
+        let expiration_block = 2u32.into();
+        assert_ok!(OrderBookPallet::schedule(
+            expiration_block,
+            non_existent_order_book_id,
+            non_existent_order_id
+        ));
+        run_to_block(expiration_block);
+        assert_last_event::<Runtime>(
+            order_book::Event::ExpirationFailure {
+                order_book_id: non_existent_order_book_id,
+                order_id: non_existent_order_id,
+                error: order_book::Error::<Runtime>::UnknownOrderBook.into(),
+            }
+            .into(),
+        );
     })
 }
