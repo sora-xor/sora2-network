@@ -33,6 +33,7 @@
 
 use assets::AssetIdOf;
 use common::prelude::{EnsureTradingPairExists, QuoteAmount, SwapAmount, SwapOutcome, TradingPair};
+use common::weights::check_accrue_n;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
@@ -634,33 +635,6 @@ impl<T: Config> Into<Error<T>> for SchedulerError {
 }
 
 impl<T: Config> Pallet<T> {
-    /// Try to consume the given weight `max_n` times. If weight is only
-    /// enough to consume `n <= max_n` times, it consumes it `n` times
-    /// and returns `n`.
-    fn check_accrue_n(meter: &mut WeightMeter, w: Weight, max_n: u64) -> u64 {
-        let n = {
-            let weight_left = meter.remaining();
-            // Maximum possible subtractions that we can do on each value
-            // If None, then can subtract the value infinitely
-            // thus we can use max value (more will likely be infeasible)
-            let n_ref_time = weight_left
-                .ref_time()
-                .checked_div(w.ref_time())
-                .unwrap_or(u64::MAX);
-            let n_proof_size = weight_left
-                .proof_size()
-                .checked_div(w.proof_size())
-                .unwrap_or(u64::MAX);
-            let max_possible_n = n_ref_time.min(n_proof_size);
-            max_possible_n.min(max_n)
-        };
-        // `n` was obtained as integer division `left/w`, so multiplying `n*w` will not exceed `left`;
-        // it means it will fit into u64
-        let to_consume = w.saturating_mul(n);
-        meter.defensive_saturating_accrue(to_consume);
-        n
-    }
-
     fn service_single_expiration(
         data_layer: &mut CacheDataLayer<T>,
         order_book_id: OrderBookId<AssetIdOf<T>>,
@@ -705,7 +679,7 @@ impl<T: Config> Pallet<T> {
         }
         // how many we can service with remaining weight;
         // the weight is consumed right away
-        let to_service = Self::check_accrue_n(
+        let to_service = check_accrue_n(
             weight,
             <T as Config>::WeightInfo::service_single_expiration(),
             expired_orders.len() as u64,
