@@ -1521,8 +1521,13 @@ fn should_not_execute_market_order_with_non_trade_status() {
 
         let mut order_book = create_and_fill_order_book(order_book_id);
 
-        let order =
-            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, balance!(10));
+        let order = MarketOrder::<Runtime>::new(
+            alice(),
+            PriceVariant::Buy,
+            order_book_id,
+            balance!(10),
+            None,
+        );
 
         order_book.status = OrderBookStatus::PlaceAndCancel;
         assert_err!(
@@ -1636,7 +1641,7 @@ fn should_not_execute_market_order_with_invalid_amount() {
 }
 
 #[test]
-fn should_execute_market_order_and_tranfer_to_owner() {
+fn should_execute_market_order_and_transfer_to_owner() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 
@@ -2096,7 +2101,7 @@ fn should_execute_market_order_and_tranfer_to_owner() {
 
 #[test]
 // In this test `Alice` spends assets on market orders, but `Dave` receives the deal result amounts
-fn should_execute_market_order_and_tranfer_to_another_account() {
+fn should_execute_market_order_and_transfer_to_another_account() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
 

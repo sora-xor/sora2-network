@@ -718,29 +718,28 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let (input_amount, output_amount) =
             order_book.execute_market_order::<Self, Self>(order, &mut data)?;
 
-        match desired_amount {
+        let fee = 0; // todo (m.tagirov)
+
+        let result = match desired_amount {
             SwapAmount::WithDesiredInput { min_amount_out, .. } => {
                 ensure!(
                     *output_amount.value() >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
                 );
+                SwapOutcome::new(*output_amount.value(), fee)
             }
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
                 ensure!(
                     *input_amount.value() <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
+                SwapOutcome::new(*input_amount.value(), fee)
             }
-        }
-
-        let fee = 0; // todo (m.tagirov)
+        };
 
         data.commit();
 
-        Ok((
-            SwapOutcome::new(*output_amount.value(), fee),
-            Self::exchange_weight(),
-        ))
+        Ok((result, Self::exchange_weight()))
     }
 
     fn check_rewards(
