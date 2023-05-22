@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
@@ -102,6 +103,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
         Weight::zero()
     }
     fn service_single_expiration() -> Weight {
-        Weight::zero()
+        // todo: benchmark
+        // not zero for now to test weight limits in `on_initialize`
+        Weight::from_parts(93_304_000, 21168)
     }
 }

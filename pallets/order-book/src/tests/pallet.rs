@@ -698,7 +698,7 @@ fn should_cleanup_on_expiring() {
 
 #[test]
 #[ignore] // it works, but takes a lot of time
-fn should_enforce_expiration_limit() {
+fn should_enforce_expiration_and_weight_limits() {
     ext().execute_with(|| {
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
             base: VAL.into(),
@@ -759,11 +759,19 @@ fn should_enforce_expiration_limit() {
         }
 
         // Check a bit after the expected expiration because it's ok to remove
-        // it a few blocks later (e.g. in case weight limit is reached)
-        run_to_block(end_of_lifespan_block + 1);
+        // it a few blocks later (e.g. in case weight limit is reached, for example)
+        for i in 0..=10 {
+            // Weight spent must not exceed the limit
+            let init_weight_consumed = run_to_block(end_of_lifespan_block + i);
+            // Weight does not have partial ordering, so we check for overflow this way:
+            assert!(<Runtime as Config>::MaxExpirationWeightPerBlock::get()
+                .checked_sub(&init_weight_consumed)
+                .is_some());
+        }
 
         // The orders are removed
-        for order_id in &placed_orders {
+        for (i, order_id) in placed_orders.iter().rev().enumerate() {
+            println!("Checking order {}/{}", i, placed_orders.len());
             assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
         }
     })
