@@ -678,6 +678,11 @@ impl<T: Config> Pallet<T> {
         };
 
         if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
+            debug_assert!(
+                false,
+                "expiration resulted in error, this must not happen: {:?}",
+                error
+            );
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id: order_book_id.clone(),
                 order_id: order_id.clone(),

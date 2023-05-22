@@ -783,6 +783,12 @@ fn should_enforce_expiration_and_weight_limits() {
 }
 
 #[test]
+#[cfg_attr(
+    debug_assertions,
+    should_panic(
+        expected = "apparently removal of order book or order did not cleanup expiration schedule"
+    )
+)]
 fn should_emit_event_on_expiration_failure() {
     ext().execute_with(|| {
         // To be able to assert events
@@ -804,7 +810,7 @@ fn should_emit_event_on_expiration_failure() {
             order_book::Event::ExpirationFailure {
                 order_book_id: non_existent_order_book_id,
                 order_id: non_existent_order_id,
-                error: order_book::Error::<Runtime>::UnknownOrderBook.into(),
+                error: order_book::Error::<Runtime>::UnknownLimitOrder.into(),
             }
             .into(),
         );
