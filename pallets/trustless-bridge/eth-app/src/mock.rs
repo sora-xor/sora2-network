@@ -1,6 +1,7 @@
-use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetRegistry};
 use bridge_types::types::{AdditionalEVMInboundData, AdditionalEVMOutboundData, CallOriginOutput};
 use currencies::BasicCurrencyAdapter;
+use sp_core::U256;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
@@ -261,6 +262,34 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
         }
         Ok(())
     }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
+}
+
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<Balance> {
+        amount.try_into().ok()
+    }
+
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<U256> {
+        Some(amount.into())
+    }
 }
 
 impl eth_app::Config for Test {
@@ -274,7 +303,7 @@ impl eth_app::Config for Test {
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = ();
     type Currency = Currencies;
-    type BalancePrecisionConverter = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
     type WeightInfo = ();
 }
@@ -295,7 +324,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR)],
+            networks: vec![(BASE_NETWORK_ID, Default::default(), XOR, 18)],
         },
         &mut storage,
     )

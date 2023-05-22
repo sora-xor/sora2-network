@@ -48,6 +48,7 @@ use frame_support::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 #[cfg(feature = "wip")]
 use scale_info::TypeInfo;
+use sp_core::U256;
 #[cfg(feature = "wip")]
 use sp_runtime::DispatchError;
 
@@ -337,6 +338,15 @@ impl BridgeAssetRegistry<crate::AccountId, crate::AssetId> for BridgeAssetRegist
         }
         Ok(())
     }
+
+    fn get_raw_info(asset_id: crate::AssetId) -> bridge_types::types::RawAssetInfo {
+        let (asset_symbol, asset_name, precision, ..) = crate::Assets::asset_infos(asset_id);
+        bridge_types::types::RawAssetInfo {
+            name: asset_name.0,
+            symbol: asset_symbol.0,
+            precision,
+        }
+    }
 }
 
 pub struct BalancePrecisionConverter;
@@ -370,7 +380,7 @@ impl BalancePrecisionConverter {
     }
 }
 
-impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance>
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, crate::Balance>
     for BalancePrecisionConverter
 {
     fn from_sidechain(
@@ -389,6 +399,33 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
     ) -> Option<crate::Balance> {
         let thischain_precision = crate::Assets::asset_infos(asset_id).2;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
+    }
+}
+
+impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Balance, U256>
+    for BalancePrecisionConverter
+{
+    fn from_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<crate::Balance> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        let res = Self::convert_precision(
+            sidechain_precision,
+            thischain_precision,
+            amount.try_into().ok()?,
+        )?;
+        Some(res)
+    }
+
+    fn to_sidechain(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<U256> {
+        let thischain_precision = crate::Assets::asset_infos(asset_id).2;
+        Self::convert_precision(thischain_precision, sidechain_precision, amount).map(Into::into)
     }
 }
 

@@ -31,7 +31,7 @@
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::traits::{AppRegistry, BridgeAssetRegistry};
+use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
 use bridge_types::types::{AdditionalEVMInboundData, AssetKind, CallOriginOutput, MessageId};
 use bridge_types::H160;
 use bridge_types::H256;
@@ -288,7 +288,7 @@ impl eth_app::Config for Test {
     >;
     type BridgeAccountId = GetTrustlessBridgeAccountId;
     type Currency = Currencies;
-    type BalancePrecisionConverter = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
     type MessageStatusNotifier = EvmBridgeProxy;
     type WeightInfo = ();
@@ -332,6 +332,14 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
         }
         Ok(())
     }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
 }
 
 pub struct AppRegistryImpl;
@@ -346,6 +354,26 @@ impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
     }
 }
 
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<Balance> {
+        amount.try_into().ok()
+    }
+
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<U256> {
+        Some(amount.into())
+    }
+}
+
 impl erc20_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
@@ -354,9 +382,13 @@ impl erc20_app::Config for Test {
         AdditionalEVMInboundData,
         bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
     >;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetTrustlessBridgeAccountId;
     type MessageStatusNotifier = EvmBridgeProxy;
     type AppRegistry = AppRegistryImpl;
+    type AssetRegistry = BridgeAssetRegistryImpl;
+    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type Currency = Currencies;
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type WeightInfo = ();
 }
 
@@ -396,7 +428,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            networks: vec![(BASE_EVM_NETWORK_ID, Default::default(), ETH)],
+            networks: vec![(BASE_EVM_NETWORK_ID, Default::default(), ETH, 18)],
         },
         &mut storage,
     )
@@ -422,12 +454,14 @@ pub fn new_tester() -> sp_io::TestExternalities {
                     XOR,
                     H160::repeat_byte(3),
                     AssetKind::Thischain,
+                    18,
                 ),
                 (
                     BASE_EVM_NETWORK_ID,
                     DAI,
                     H160::repeat_byte(4),
                     AssetKind::Sidechain,
+                    18,
                 ),
             ],
         },

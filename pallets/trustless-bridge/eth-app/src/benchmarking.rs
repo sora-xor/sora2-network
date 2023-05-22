@@ -44,7 +44,7 @@ benchmarks! {
     // Benchmark `mint` extrinsic under worst case conditions:
     // * `mint` successfully adds amount to recipient account
     mint {
-        let (contract, asset_id) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
+        let (contract, asset_id, precision) = Addresses::<T>::get(BASE_NETWORK_ID).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput{network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{ source: contract }, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
@@ -63,7 +63,7 @@ benchmarks! {
         let contract = H160::repeat_byte(6);
         let asset_name = AssetName(b"ETH".to_vec());
         let asset_symbol = AssetSymbol(b"ETH".to_vec());
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name.into(), asset_symbol.into(), contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_name.into(), asset_symbol.into(), 18, contract)
     verify {
         assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1).unwrap().0, contract);
     }
@@ -71,9 +71,9 @@ benchmarks! {
     register_network_with_existing_asset {
         let asset_id: AssetIdOf<T> = XOR.into();
         let contract = H160::repeat_byte(6);
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract)
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, asset_id, contract, 18)
     verify {
-        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id)));
+        assert_eq!(Addresses::<T>::get(BASE_NETWORK_ID + 1), Some((contract, asset_id, 18)));
     }
 
     impl_benchmark_test_suite!(ETHApp, crate::mock::new_tester(), crate::mock::Test,);

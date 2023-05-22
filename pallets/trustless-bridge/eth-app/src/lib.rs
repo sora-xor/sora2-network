@@ -105,7 +105,11 @@ pub mod pallet {
 
         type Currency: MultiCurrency<Self::AccountId>;
 
-        type BalancePrecisionConverter: BalancePrecisionConverter<AssetIdOf<Self>, BalanceOf<Self>>;
+        type BalancePrecisionConverter: BalancePrecisionConverter<
+            AssetIdOf<Self>,
+            BalanceOf<Self>,
+            U256,
+        >;
 
         type WeightInfo: WeightInfo;
     }
@@ -196,23 +200,31 @@ pub mod pallet {
                 Error::<T>::InvalidAppAddress
             );
 
-            let amount: BalanceOf<T> = u128::try_from(amount)
-                .ok()
-                .and_then(|x| x.try_into().ok())
-                .ok_or(Error::<T>::WrongAmount)?;
-            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
+            let thischain_amount = T::BalancePrecisionConverter::from_sidechain(
+                &asset_id,
+                sidechain_precision,
+                amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+            ensure!(thischain_amount > Zero::zero(), Error::<T>::WrongAmount);
+
             let recipient = T::Lookup::lookup(recipient)?;
-            T::Currency::deposit(asset_id, &recipient, amount)?;
+            T::Currency::deposit(asset_id, &recipient, thischain_amount)?;
             T::MessageStatusNotifier::inbound_request(
                 GenericNetworkId::EVM(network_id),
                 message_id,
                 GenericAccount::EVM(sender),
                 recipient.clone(),
                 asset_id,
-                amount,
+                thischain_amount,
                 timestamp,
             );
-            Self::deposit_event(Event::Minted(network_id, sender, recipient.clone(), amount));
+            Self::deposit_event(Event::Minted(
+                network_id,
+                sender,
+                recipient.clone(),
+                thischain_amount,
+            ));
 
             Ok(())
         }
@@ -276,19 +288,20 @@ pub mod pallet {
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
-            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
-
             let (target, asset_id, sidechain_precision) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+
+            let sidechain_amount =
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, sidechain_precision, amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
+            ensure!(sidechain_amount > 0.into(), Error::<T>::WrongAmount);
 
             T::Currency::withdraw(asset_id, &who, amount)?;
 
             let message = OutboundPayload::<T> {
                 sender: who.clone(),
                 recipient: recipient.clone(),
-                amount: TryInto::<u128>::try_into(amount)
-                    .map_err(|_| Error::<T>::WrongAmount)?
-                    .into(),
+                amount: sidechain_amount,
             };
 
             let message_id = T::OutboundChannel::submit(
@@ -321,7 +334,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
-            let (_, ether_asset_id, sidechain_precision) =
+            let (_, ether_asset_id, _sidechain_precision) =
                 Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             ensure!(asset_id == ether_asset_id, Error::<T>::WrongRequest);
 
@@ -335,7 +348,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub networks: Vec<(EVMChainId, H160, AssetIdOf<T>)>,
+        pub networks: Vec<(EVMChainId, H160, AssetIdOf<T>, u8)>,
     }
 
     #[cfg(feature = "std")]
@@ -350,8 +363,9 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            for (network_id, contract, asset_id) in &self.networks {
-                Pallet::<T>::register_network_inner(*network_id, *asset_id, *contract).unwrap();
+            for (network_id, contract, asset_id, precision) in &self.networks {
+                Pallet::<T>::register_network_inner(*network_id, *asset_id, *contract, *precision)
+                    .unwrap();
             }
         }
     }
@@ -361,7 +375,7 @@ pub mod pallet {
     {
         fn is_asset_supported(network_id: EVMChainId, asset_id: AssetIdOf<T>) -> bool {
             Addresses::<T>::get(network_id)
-                .map(|(_contract, native_asset_id)| native_asset_id == asset_id)
+                .map(|(_contract, native_asset_id, _precision)| native_asset_id == asset_id)
                 .unwrap_or(false)
         }
 
@@ -391,7 +405,7 @@ pub mod pallet {
 
         fn list_supported_assets(network_id: EVMChainId) -> Vec<BridgeAssetInfo<AssetIdOf<T>>> {
             Addresses::<T>::get(network_id)
-                .map(|(_app_address, asset_id)| {
+                .map(|(_app_address, asset_id, _precision)| {
                     vec![BridgeAssetInfo {
                         app_kind: AppKind::EthApp,
                         asset_id,
@@ -403,7 +417,7 @@ pub mod pallet {
 
         fn list_apps(network_id: EVMChainId) -> Vec<BridgeAppInfo> {
             Addresses::<T>::get(network_id)
-                .map(|(evm_address, _asset_id)| {
+                .map(|(evm_address, _asset_id, _precision)| {
                     vec![BridgeAppInfo {
                         app_kind: AppKind::EthApp,
                         evm_address,
