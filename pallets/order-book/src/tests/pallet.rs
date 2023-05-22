@@ -33,11 +33,12 @@
 use crate::tests::test_utils::*;
 use assets::AssetIdOf;
 use common::{balance, AssetInfoProvider, AssetName, AssetSymbol, Balance, PriceVariant, VAL, XOR};
+use frame_support::traits::Get;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
-    Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBookId,
+    self, Config, CurrencyLocker, CurrencyUnlocker, LimitOrder, OrderBookId,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 
@@ -692,5 +693,78 @@ fn should_cleanup_on_expiring() {
                 .unwrap(),
             balance_before
         );
+    })
+}
+
+#[test]
+#[ignore] // it works, but takes a lot of time
+fn should_enforce_expiration_limit() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        assert_ok!(OrderBookPallet::create_orderbook(
+            RawOrigin::Signed(bob()).into(),
+            DEX.into(),
+            order_book_id
+        ));
+
+        let price = balance!(10);
+        let amount = balance!(100);
+        let lifespan = 10000;
+        let now = 1234;
+        let now_block = frame_system::Pallet::<Runtime>::block_number();
+        // the lifespan of 10000 ms corresponds to at least
+        // ceil(10000 / 6000) = 2 blocks of the order lifespan;
+        // at this block the order should still be available
+        let end_of_lifespan_block = now_block + 2;
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(now);
+
+        let max_orders_expire_at_block = <Runtime as Config>::MaxExpiringOrdersPerBlock::get();
+        let mut placed_orders = vec![];
+
+        for i in 0..max_orders_expire_at_block {
+            // in order to avoid cap on orders from single account
+            let caller = generate_account(i);
+            fill_balance(caller.clone(), order_book_id);
+            assert_ok!(OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id,
+                price,
+                amount,
+                PriceVariant::Buy,
+                Some(lifespan)
+            ));
+            placed_orders.push(get_last_order_id(order_book_id).unwrap());
+        }
+        let caller = generate_account(max_orders_expire_at_block);
+        fill_balance(caller.clone(), order_book_id);
+        assert_err!(
+            OrderBookPallet::place_limit_order(
+                RawOrigin::Signed(caller.clone()).into(),
+                order_book_id,
+                price,
+                amount,
+                PriceVariant::Buy,
+                Some(lifespan)
+            ),
+            order_book::Error::<Runtime>::BlockScheduleFull
+        );
+
+        // All orders are indeed placed
+        for order_id in &placed_orders {
+            assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_some());
+        }
+
+        // Check a bit after the expected expiration because it's ok to remove
+        // it a few blocks later (e.g. in case weight limit is reached)
+        run_to_block(end_of_lifespan_block + 1);
+
+        // The orders are removed
+        for order_id in &placed_orders {
+            assert!(OrderBookPallet::limit_orders(order_book_id, order_id).is_none());
+        }
     })
 }

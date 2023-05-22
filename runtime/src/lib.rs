@@ -1977,7 +1977,7 @@ impl hermes_governance_platform::Config for Runtime {
 }
 
 parameter_types! {
-    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block;
+    pub ExpirationsSchedulerMaxWeight: Weight = Perbill::from_percent(10) * BlockWeights::get().max_block; // TODO: order-book clarify
 }
 
 #[cfg(feature = "wip")] // order-book
