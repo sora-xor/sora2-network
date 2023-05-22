@@ -34,3 +34,4 @@ mod order_book;
 mod orders;
 mod pallet;
 mod test_utils;
+mod types;
