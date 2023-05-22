@@ -1152,25 +1152,37 @@ fn should_sum_market_with_zero_limit() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(0))))
                 .unwrap(),
-            (balance!(0), balance!(0))
+            (
+                OrderAmount::Base(balance!(0)),
+                OrderAmount::Quote(balance!(0))
+            )
         );
     });
 }
@@ -1195,21 +1207,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(100))))
                 .unwrap(),
-            (balance!(100), balance!(1100))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1100))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(200))))
                 .unwrap(),
-            (balance!(200), balance!(2204.74))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(2204.74))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Base(balance!(400))))
                 .unwrap(),
-            (balance!(400), balance!(4458.27))
+            (
+                OrderAmount::Base(balance!(400)),
+                OrderAmount::Quote(balance!(4458.27))
+            )
         );
 
         // impacts 1 price
@@ -1217,21 +1238,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(1000))))
                 .unwrap(),
-            (balance!(90.90909), balance!(999.99999))
+            (
+                OrderAmount::Base(balance!(90.90909)),
+                OrderAmount::Quote(balance!(999.99999))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(3000))))
                 .unwrap(),
-            (balance!(271.00535), balance!(2999.99992))
+            (
+                OrderAmount::Base(balance!(271.00535)),
+                OrderAmount::Quote(balance!(2999.99992))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(asks.iter(), Some(OrderAmount::Quote(balance!(5000))))
                 .unwrap(),
-            (balance!(447.10695), balance!(4999.999925))
+            (
+                OrderAmount::Base(balance!(447.10695)),
+                OrderAmount::Quote(balance!(4999.999925))
+            )
         );
 
         // impacts 1 price
@@ -1239,21 +1269,30 @@ fn should_sum_market() {
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(100))))
                 .unwrap(),
-            (balance!(100), balance!(1000))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1000))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(200))))
                 .unwrap(),
-            (balance!(200), balance!(1993.7))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(1993.7))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Base(balance!(400))))
                 .unwrap(),
-            (balance!(400), balance!(3926.22))
+            (
+                OrderAmount::Base(balance!(400)),
+                OrderAmount::Quote(balance!(3926.22))
+            )
         );
 
         // impacts 1 price
@@ -1261,31 +1300,46 @@ fn should_sum_market() {
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(1000))))
                 .unwrap(),
-            (balance!(100), balance!(1000))
+            (
+                OrderAmount::Base(balance!(100)),
+                OrderAmount::Quote(balance!(1000))
+            )
         );
         // impacts 2 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(2500))))
                 .unwrap(),
-            (balance!(251.66326), balance!(2499.999948))
+            (
+                OrderAmount::Base(balance!(251.66326)),
+                OrderAmount::Quote(balance!(2499.999948))
+            )
         );
         // impacts 3 prices
         assert_eq!(
             order_book
                 .sum_market(bids.iter().rev(), Some(OrderAmount::Quote(balance!(4500))))
                 .unwrap(),
-            (balance!(460.39789), balance!(4499.999955))
+            (
+                OrderAmount::Base(balance!(460.39789)),
+                OrderAmount::Quote(balance!(4499.999955))
+            )
         );
 
         // without depth limit
         assert_eq!(
             order_book.sum_market(asks.iter(), None).unwrap(),
-            (balance!(610.7), balance!(6881.32))
+            (
+                OrderAmount::Base(balance!(610.7)),
+                OrderAmount::Quote(balance!(6881.32))
+            )
         );
         assert_eq!(
             order_book.sum_market(bids.iter().rev(), None).unwrap(),
-            (balance!(569.7), balance!(5538.37))
+            (
+                OrderAmount::Base(balance!(569.7)),
+                OrderAmount::Quote(balance!(5538.37))
+            )
         );
 
         // base is aligned
@@ -1296,7 +1350,10 @@ fn should_sum_market() {
                     Some(OrderAmount::Base(balance!(200.123456789)))
                 )
                 .unwrap(),
-            (balance!(200.12345), balance!(2206.12264))
+            (
+                OrderAmount::Base(balance!(200.12345)),
+                OrderAmount::Quote(balance!(2206.12264))
+            )
         );
 
         assert_eq!(
@@ -1306,7 +1363,10 @@ fn should_sum_market() {
                     Some(OrderAmount::Base(balance!(200.00000123)))
                 )
                 .unwrap(),
-            (balance!(200), balance!(1993.7))
+            (
+                OrderAmount::Base(balance!(200)),
+                OrderAmount::Quote(balance!(1993.7))
+            )
         );
     });
 }
@@ -1385,9 +1445,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: XOR,
-                input_amount: balance!(2999.99992),
+                input_amount: OrderAmount::Quote(balance!(2999.99992)),
                 output_asset_id: VAL,
-                output_amount: balance!(271.00535),
+                output_amount: OrderAmount::Base(balance!(271.00535)),
                 average_price: balance!(11.069891867448373251),
                 side: PriceVariant::Buy
             }
@@ -1403,9 +1463,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: XOR,
-                input_amount: balance!(2204.74),
+                input_amount: OrderAmount::Quote(balance!(2204.74)),
                 output_asset_id: VAL,
-                output_amount: balance!(200),
+                output_amount: OrderAmount::Base(balance!(200)),
                 average_price: balance!(11.0237),
                 side: PriceVariant::Buy
             }
@@ -1421,9 +1481,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: VAL,
-                input_amount: balance!(200),
+                input_amount: OrderAmount::Base(balance!(200)),
                 output_asset_id: XOR,
-                output_amount: balance!(1993.7),
+                output_amount: OrderAmount::Quote(balance!(1993.7)),
                 average_price: balance!(9.9685),
                 side: PriceVariant::Sell
             }
@@ -1439,9 +1499,9 @@ fn should_calculate_deal() {
                 .unwrap(),
             DealInfo::<AssetIdOf<Runtime>> {
                 input_asset_id: VAL,
-                input_amount: balance!(251.66326),
+                input_amount: OrderAmount::Base(balance!(251.66326)),
                 output_asset_id: XOR,
-                output_amount: balance!(2499.999948),
+                output_amount: OrderAmount::Quote(balance!(2499.999948)),
                 average_price: balance!(9.933909097418510751),
                 side: PriceVariant::Sell
             }
@@ -1997,7 +2057,7 @@ fn should_execute_market_order_and_tranfer_to_owner() {
 }
 
 #[test]
-// In this test `Alice` spends assets for market orders, but `Dave` receives the deal result amounts
+// In this test `Alice` spends assets on market orders, but `Dave` receives the deal result amounts
 fn should_execute_market_order_and_tranfer_to_another_account() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();

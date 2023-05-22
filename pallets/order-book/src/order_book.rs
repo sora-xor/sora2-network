@@ -410,7 +410,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         ensure!(
-            base > OrderVolume::zero() && quote > OrderVolume::zero(),
+            *base.value() > OrderVolume::zero() && *quote.value() > OrderVolume::zero(),
             Error::<T>::InvalidOrderAmount
         );
 
@@ -419,9 +419,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             PriceVariant::Sell => (base, quote),
         };
 
-        let average_price = (FixedWrapper::from(quote) / FixedWrapper::from(base))
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        let average_price = (FixedWrapper::from(*quote.value())
+            / FixedWrapper::from(*base.value()))
+        .try_into_balance()
+        .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
         Ok(DealInfo::<AssetIdOf<T>> {
             input_asset_id: *input_asset_id,
@@ -440,7 +441,7 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         &self,
         market_data: impl Iterator<Item = (&'a OrderPrice, &'a OrderVolume)>,
         depth_limit: Option<OrderAmount>,
-    ) -> Result<(OrderVolume, OrderVolume), DispatchError> {
+    ) -> Result<(OrderAmount, OrderAmount), DispatchError> {
         let mut market_base_volume = OrderVolume::zero();
         let mut market_quote_volume = OrderVolume::zero();
 
@@ -495,7 +496,10 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::NotEnoughLiquidity
         );
 
-        Ok((market_base_volume, market_quote_volume))
+        Ok((
+            OrderAmount::Base(market_base_volume),
+            OrderAmount::Quote(market_quote_volume),
+        ))
     }
 
     pub fn get_side(

@@ -314,6 +314,8 @@ pub mod pallet {
         Unauthorized,
         /// Invalid asset
         InvalidAsset,
+        /// Indicated limits for slippage has not been met during transaction execution.
+        SlippageLimitExceeded,
     }
 
     #[pallet::call]
@@ -644,37 +646,101 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let deal_info =
             order_book.calculate_deal(input_asset_id, output_asset_id, amount, &mut data)?;
 
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
         let fee = 0; // todo (m.tagirov)
 
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok((
-                SwapOutcome::new(deal_info.output_amount, fee),
+                SwapOutcome::new(*deal_info.output_amount.value(), fee),
                 Self::quote_weight(),
             )),
             QuoteAmount::WithDesiredOutput { .. } => Ok((
-                SwapOutcome::new(deal_info.input_amount, fee),
+                SwapOutcome::new(*deal_info.input_amount.value(), fee),
                 Self::quote_weight(),
             )),
         }
     }
 
     fn exchange(
-        _sender: &T::AccountId,
-        _receiver: &T::AccountId,
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        _desired_amount: SwapAmount<Balance>,
+        desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance>, Weight), DispatchError> {
         let Some(order_book_id) = Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id) else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
-        let _order_book =
-            <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let order_book = <OrderBooks<T>>::get(order_book_id).ok_or(Error::<T>::UnknownOrderBook)?;
+        let mut data = CacheDataLayer::<T>::new();
 
-        // todo (m.tagirov) #317 Hidden market orders
-        todo!()
+        let deal_info = order_book.calculate_deal(
+            input_asset_id,
+            output_asset_id,
+            desired_amount.into(),
+            &mut data,
+        )?;
+
+        ensure!(deal_info.is_valid(), Error::<T>::PriceCalculationFailed);
+
+        match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *deal_info.output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *deal_info.input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+        }
+
+        let to = if sender == receiver {
+            None
+        } else {
+            Some(receiver.clone())
+        };
+
+        let order = MarketOrder::<T>::new(
+            sender.clone(),
+            deal_info.side,
+            order_book_id,
+            deal_info.base_amount(),
+            to,
+        );
+
+        let (input_amount, output_amount) =
+            order_book.execute_market_order::<Self, Self>(order, &mut data)?;
+
+        match desired_amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                ensure!(
+                    *output_amount.value() >= min_amount_out,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                ensure!(
+                    *input_amount.value() <= max_amount_in,
+                    Error::<T>::SlippageLimitExceeded
+                );
+            }
+        }
+
+        let fee = 0; // todo (m.tagirov)
+
+        data.commit();
+
+        Ok((
+            SwapOutcome::new(*output_amount.value(), fee),
+            Self::exchange_weight(),
+        ))
     }
 
     fn check_rewards(
