@@ -148,25 +148,24 @@ async fn leaf_proof_with_digest<S: SenderConfig>(
 /// Finds the first block where stored nonce >= 'nonce'.
 /// - sender - substrate client
 /// - network_id - eth network id
-/// - from - where to start search
 /// - nonce - nonce to compare
 async fn find_message_block<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
-    from_block: BlockNumber<S>,
     nonce: u64,
 ) -> AnyResult<Option<BlockNumber<S>>> {
     let storage = S::bridge_outbound_nonce(network_id);
+    let low: BlockNumber<S> = 1u32.into();
     let finalized_hash = sender.finalized_head().await?;
     let high = sender.block_number(finalized_hash).await?;
 
     trace!(
         "Searching for message with nonce {} in block range {:?}..={:?}",
         nonce,
-        from_block,
+        low,
         high
     );
-    let start_block = binary_search_first_occurrence(from_block, high, nonce, |block| {
+    let start_block = binary_search_first_occurrence(low, high, nonce, |block| {
         let storage = &storage;
         async move {
             let nonce = sender.storage_fetch(storage, block).await?;
@@ -180,21 +179,30 @@ async fn find_message_block<S: SenderConfig>(
 /// Finds the first commitment where stored nonce >= 'nonce'.
 /// - sender - substrate client
 /// - network_id - eth network id
-/// - from - where to start search
+/// - count - how many blocks after start to search for commitment
 /// - nonce - nonce to compare
 async fn find_commitment_with_nonce<S: SenderConfig>(
     sender: &SubUnsignedClient<S>,
     network_id: GenericNetworkId,
-    from_block: BlockNumber<S>,
+    count: u32,
     nonce: u64,
 ) -> AnyResult<Option<(BlockNumber<S>, H256)>> {
-    let block = find_message_block(sender, network_id, from_block, nonce).await?;
-    if let Some(block) = block {
+    let start_block = find_message_block(sender, network_id, nonce).await?;
+    let start_block = if let Some(start_block) = start_block {
+        start_block + 1u32.into()
+    } else {
+        return Ok(None);
+    };
+    for i in 0..count {
+        let block = start_block + i.into();
         let block_hash = sender.block_hash(block).await;
         let Ok(block_hash) = block_hash else {
             return Ok(None);
         };
         let digest = sender.auxiliary_digest(Some(block_hash)).await?;
+        if digest.logs.is_empty() {
+            continue;
+        }
         for log in digest.logs {
             let AuxiliaryDigestItem::Commitment(digest_network_id, commitment_hash) = log;
             if network_id == digest_network_id {
@@ -210,18 +218,14 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
     network_id: GenericNetworkId,
     latest_nonce: u64,
 ) -> impl Stream<Item = AnyResult<(BlockNumber<S>, H256)>> + Unpin {
-    let latest_block = Arc::new(AtomicU64::new(1));
     let latest_nonce = Arc::new(AtomicU64::new(latest_nonce));
     let stream = futures::stream::repeat(())
         .then(move |_| {
-            let latest_block = latest_block.clone();
             let latest_nonce = latest_nonce.clone();
             let sender = sender.clone();
             async move {
                 let nonce = latest_nonce.load(Ordering::Relaxed) + 1;
-                let from_block: BlockNumber<S> =
-                    u32::try_from(latest_block.load(Ordering::Relaxed))?.into();
-                let commitment = find_commitment_with_nonce(&sender, network_id, from_block, nonce)
+                let commitment = find_commitment_with_nonce(&sender, network_id, 100, nonce)
                     .await
                     .map_err(|e| {
                         error!("Failed to find commitment with nonce {}: {}", nonce, e);
@@ -231,7 +235,6 @@ pub fn subscribe_message_commitments<S: SenderConfig>(
                     let nonce = sender
                         .storage_fetch_or_default(&S::bridge_outbound_nonce(network_id), *block)
                         .await?;
-                    latest_block.store((*block).into(), Ordering::Relaxed);
                     latest_nonce.store(nonce, Ordering::Relaxed);
                 }
                 Ok(commitment)

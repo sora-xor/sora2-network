@@ -121,6 +121,7 @@ pub struct Relay<S: SenderConfig> {
     chain_id: EVMChainId,
 }
 
+// Relays batches of messages from Substrate to Ethereum.
 impl<S> Relay<S>
 where
     S: SenderConfig,
@@ -237,7 +238,7 @@ where
 
     pub async fn run(mut self) -> AnyResult<()> {
         let inbound_nonce = self.inbound_channel_nonce().await?;
-        let mut subscription = super::messages_subscription::subscribe_message_commitments(
+        let mut subscription = super::batch_subscription::subscribe_batch_commitments(
             self.sender.clone(),
             self.chain_id.into(),
             inbound_nonce,
