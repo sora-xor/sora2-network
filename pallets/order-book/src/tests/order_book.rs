@@ -1510,6 +1510,44 @@ fn should_calculate_deal() {
 }
 
 #[test]
+fn should_not_execute_market_order_with_non_trade_status() {
+    ext().execute_with(|| {
+        let mut data = StorageDataLayer::<Runtime>::new();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>> {
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+
+        let mut order_book = create_and_fill_order_book(order_book_id);
+
+        let order =
+            MarketOrder::<Runtime>::new(alice(), PriceVariant::Buy, order_book_id, balance!(10));
+
+        order_book.status = OrderBookStatus::PlaceAndCancel;
+        assert_err!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            E::TradingIsForbidden
+        );
+
+        order_book.status = OrderBookStatus::OnlyCancel;
+        assert_err!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            E::TradingIsForbidden
+        );
+
+        order_book.status = OrderBookStatus::Stop;
+        assert_err!(
+            order_book
+                .execute_market_order::<OrderBookPallet, OrderBookPallet>(order.clone(), &mut data),
+            E::TradingIsForbidden
+        );
+    });
+}
+
+#[test]
 fn should_not_execute_market_order_with_empty_amount() {
     ext().execute_with(|| {
         let mut data = StorageDataLayer::<Runtime>::new();
