@@ -48,6 +48,12 @@
         "internalType": "uint256",
         "name": "base_fee",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "gas_proof",
+        "type": "bytes32"
       }
     ],
     "name": "BatchDispatched",
@@ -207,6 +213,25 @@
         "internalType": "contract BeefyLightClient",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "name": "gas_proofs",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",

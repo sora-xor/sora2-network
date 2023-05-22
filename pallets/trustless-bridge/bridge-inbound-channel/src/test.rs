@@ -244,9 +244,9 @@ impl bridge_inbound_channel::Config for Test {
     type MessageStatusNotifier = ();
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = ();
-    type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
     type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type OutboundChannel = MockOutboundChannel<Self::AccountId>;
     type WeightInfo = ();
 }
 
@@ -371,91 +371,94 @@ const MESSAGE_DATA_1: [u8; 317] = hex!(
 // The originating InboundChannel address for the messages below
 const INBOUND_CHANNEL_ADDR: [u8; 20] = hex!["2b6eb68c260ff0784a3c17ae61e31a77836eeb20"];
 
-// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// Topic for BatchDispatched event.
+const BATCH_DISPATCHED_TOPIC: [u8; 32] =
+    hex!("ee767715f7a58cad73fc51173227b5e768eec9899ac8a8f1d0047da3f18c87ab");
+
+// Encoded log data from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
 // BatchDispatched {
 //   .batch_nonce = 1,
 //   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
 //   .results = 1,
 //   .results_length = 1,
-//   .gas_spent = 44664,
-//   .base_fee = 1
+//   .gas_spent = 55000,
+//   .base_fee = 1,
+//   .gas_proof = Keccak256(gas_spent, base_fee),
 // }
-const MESSAGE_DISPATCHED_DATA_0: [u8; 251] = hex!(
+const BATCH_DISPATCHED_DATA_1: [u8; 224] = hex!(
     "
-    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
-    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    00000000000000000000000000000000000000000000000000af830000000000
-    000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000001
+    0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4
+    0000000000000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000001
+    000000000000000000000000000000000000000000000000000000000000d6d8
+    0000000000000000000000000000000000000000000000000000000000000001
+    ff46bbfaa76b5402f1f60dc77a9dc35f65e489776c6ebb7d8ac6de9605203bee
 "
 );
 
-// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// Encoded log data from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
 // BatchDispatched {
 //   .batch_nonce = 2,
 //   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
 //   .results = 1,
 //   .results_length = 1,
-//   .gas_spent = 27564,
+//   .gas_spent = 55000,
 //   .base_fee = 1
 // }
-const MESSAGE_DISPATCHED_DATA_1: [u8; 251] = hex!(
+const BATCH_DISPATCHED_DATA_2: [u8; 224] = hex!(
     "
-    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
-    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
-    0000000000000000000000000000000000000000000000000000020000000000
-    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    00000000000000000000000000000000000000000000000000af830000000000
-    000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000002
+    0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4
+    0000000000000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000001
+    000000000000000000000000000000000000000000000000000000000000d6d8
+    0000000000000000000000000000000000000000000000000000000000000001
+    ff46bbfaa76b5402f1f60dc77a9dc35f65e489776c6ebb7d8ac6de9605203bee
 "
 );
 
-// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// Encoded log data from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
 // BatchDispatched {
 //   .batch_nonce = 1,
 //   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
 //   .results = 2,
 //   .results_length = 2,
-//   .gas_spent = 27564,
+//   .gas_spent = 55000,
 //   .base_fee = 1
+//   .gas_proof = Keccak256(gas_spent, base_fee),
 // }
-const MESSAGE_DISPATCHED_DATA_2: [u8; 251] = hex!(
+const BATCH_DISPATCHED_DATA_1_2: [u8; 224] = hex!(
     "
-    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
-    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
-    0000000000000000000000000000000000000000000000000000020000000000
-    0000000000000000000000000000000000000000000000000000020000000000
-    00000000000000000000000000000000000000000000000000af830000000000
-    000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000001
+    0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4
+    0000000000000000000000000000000000000000000000000000000000000002
+    0000000000000000000000000000000000000000000000000000000000000002
+    000000000000000000000000000000000000000000000000000000000000d6d8
+    0000000000000000000000000000000000000000000000000000000000000001
+    ff46bbfaa76b5402f1f60dc77a9dc35f65e489776c6ebb7d8ac6de9605203bee
 "
 );
 
-// Encoded log from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
+// Encoded log data from contract address "2b6eb68c260ff0784a3c17ae61e31a77836eeb20" with an event:
 // BatchDispatched {
 //   .batch_nonce = 1,
 //   .relayer = "5B38Da6a701c568545dCfcB03FcB875f56beddC4",
 //   .results = 0,
 //   .results_length = 1,
-//   .gas_spent = 44656,
+//   .gas_spent = 55000,
 //   .base_fee = 1,
+//   .gas_proof = Keccak256(gas_spent, base_fee),
 // }
-const MESSAGE_DISPATCHED_FAILED_DATA_0: [u8; 251] = hex!(
+const BATCH_DISPATCHED_FAILED_DATA_0: [u8; 224] = hex!(
     "
-    f8f9942b6eb68c260ff0784a3c17ae61e31a77836eeb20e1a0bfddf52c980777
-    c1e01df0323cfc49aa514dafda8444fe464d1604cae175605eb8c00000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    000000000000005b38da6a701c568545dcfcb03fcb875f56beddc40000000000
+    0000000000000000000000000000000000000000000000000000000000000001
+    0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4
     0000000000000000000000000000000000000000000000000000000000000000
-    0000000000000000000000000000000000000000000000000000010000000000
-    00000000000000000000000000000000000000000000000000af7b0000000000
-    000000000000000000000000000000000000000000000000000001
+    0000000000000000000000000000000000000000000000000000000000000001
+    000000000000000000000000000000000000000000000000000000000000d6d8
+    0000000000000000000000000000000000000000000000000000000000000001
+    ff46bbfaa76b5402f1f60dc77a9dc35f65e489776c6ebb7d8ac6de9605203bee
 "
 );
 
@@ -588,12 +591,16 @@ fn test_batch_dispatched_with_invalid_source_channel() {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
+        let batch_log = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_DATA_1.to_vec(),
+        };
         assert_noop!(
             BridgeInboundChannel::batch_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
-                message.clone(),
+                batch_log,
                 Proof {
                     block_hash: Default::default(),
                     tx_index: Default::default(),
@@ -611,11 +618,15 @@ fn test_batch_dispatched_with_invalid_nonce() {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
+        let batch_log = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_DATA_1.to_vec(),
+        };
         assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message.clone(),
+            batch_log.clone(),
             Proof {
                 block_hash: Default::default(),
                 tx_index: Default::default(),
@@ -630,7 +641,7 @@ fn test_batch_dispatched_with_invalid_nonce() {
             BridgeInboundChannel::batch_dispatched(
                 origin.clone(),
                 BASE_NETWORK_ID,
-                message.clone(),
+                batch_log,
                 Proof {
                     block_hash: Default::default(),
                     tx_index: Default::default(),
@@ -648,11 +659,15 @@ fn test_batch_dispatched() {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message_1: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_0).unwrap();
+        let batch_log_1 = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_DATA_1.to_vec(),
+        };
         assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_1,
+            batch_log_1,
             Proof {
                 block_hash: Default::default(),
                 tx_index: Default::default(),
@@ -663,11 +678,15 @@ fn test_batch_dispatched() {
         assert_eq!(nonce, 1);
 
         // Submit message 2
-        let message_2: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_1).unwrap();
+        let batch_log_2 = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_DATA_2.to_vec(),
+        };
         assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_2,
+            batch_log_2,
             Proof {
                 block_hash: Default::default(),
                 tx_index: Default::default(),
@@ -684,13 +703,16 @@ fn test_batch_dispatched_with_multiple_results() {
     new_tester(INBOUND_CHANNEL_ADDR.into(), SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
-
-        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_DATA_2).unwrap();
+        let batch_log = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_DATA_1_2.to_vec(),
+        };
 
         assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin.clone(),
             BASE_NETWORK_ID,
-            message,
+            batch_log,
             Proof {
                 block_hash: Default::default(),
                 tx_index: Default::default(),
@@ -708,11 +730,15 @@ fn test_batch_dispatched_refund() {
         let relayer: AccountId = Keyring::Bob.into();
         let origin = RuntimeOrigin::signed(relayer);
 
-        let message: Log = rlp::decode(&MESSAGE_DISPATCHED_FAILED_DATA_0).unwrap();
+        let batch_log = Log {
+            address: INBOUND_CHANNEL_ADDR.into(),
+            topics: vec![H256::from(BATCH_DISPATCHED_TOPIC)],
+            data: BATCH_DISPATCHED_FAILED_DATA_0.to_vec(),
+        };
         assert_ok!(BridgeInboundChannel::batch_dispatched(
             origin,
             BASE_NETWORK_ID,
-            message,
+            batch_log,
             Proof {
                 block_hash: Default::default(),
                 tx_index: Default::default(),
