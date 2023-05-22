@@ -662,40 +662,12 @@ impl<T: Config> Pallet<T> {
         };
 
         if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
+            dbg!(error);
             Self::deposit_event(Event::<T>::ExpirationFailure {
                 order_book_id,
                 order_id,
                 error,
             });
-        }
-    }
-
-    /// Distribute postponed orders to the blocks
-    /// following `last_completed_block`
-    fn postpone_orders(
-        last_completed_block: T::BlockNumber,
-        mut postponed_expirations: BoundedVec<
-            (
-                OrderBookId<<T as assets::Config>::AssetId>,
-                <T as Config>::OrderId,
-            ),
-            <T as Config>::MaxExpiringOrdersPerBlock,
-        >,
-    ) {
-        let mut block_to_fill = last_completed_block + 1u32.into();
-        while let Some(expiration) = postponed_expirations.last() {
-            println!("rescheduling");
-            if let Err(ScheduleError::BlockScheduleFull) =
-                Self::schedule(block_to_fill, expiration.0, expiration.1)
-            {
-                // move on to the next block
-                println!("next block is full, moving on");
-                block_to_fill += 1u32.into();
-            } else {
-                // success, can remove
-                dbg!(block_to_fill);
-                postponed_expirations.pop();
-            }
         }
     }
 
@@ -716,6 +688,7 @@ impl<T: Config> Pallet<T> {
         }
 
         let mut expirations = <ExpirationsAgenda<T>>::take(block);
+        dbg!(expirations.len());
         if expirations.is_empty() {
             return true;
         }
@@ -728,14 +701,18 @@ impl<T: Config> Pallet<T> {
         );
         let postponed = expirations.len() as u64 - to_service;
         let mut serviced = 0;
-        while let Some((order_book_id, order_id)) = expirations.pop() {
+        while let Some((order_book_id, order_id)) = expirations.last() {
             if serviced >= to_service {
                 break;
             }
             Self::service_single_expiration(data_layer, order_book_id, order_id);
             serviced += 1;
+            expirations.pop();
         }
-        Self::postpone_orders(block, expirations);
+        if postponed != 0 {
+            // Will later continue from this block
+            <ExpirationsAgenda<T>>::insert(block, expirations);
+        }
         postponed == 0
     }
 }
