@@ -44,7 +44,7 @@ where
     fn get_limit_order(
         &mut self,
         order_book_id: &OrderBookId<AssetIdOf<T>>,
-        order_id: T::OrderId,
+        order_id: &T::OrderId,
     ) -> Result<LimitOrder<T>, DispatchError>;
 
     /// Returns all limit orders of order book

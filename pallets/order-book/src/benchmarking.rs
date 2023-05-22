@@ -525,7 +525,7 @@ benchmarks! {
         // warmed up
         let mut data_layer = CacheDataLayer::<T>::new();
     }: {
-        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, order_book_id, order_id);
+        OrderBookPallet::<T>::service_single_expiration(&mut data_layer, &order_book_id, &order_id);
     }
     verify {
         assert_last_event::<T>(

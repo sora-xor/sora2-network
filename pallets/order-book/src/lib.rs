@@ -518,7 +518,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let mut data = CacheDataLayer::<T>::new();
-            let order = data.get_limit_order(&order_book_id, order_id)?;
+            let order = data.get_limit_order(&order_book_id, &order_id)?;
             let expires_at = order.expires_at;
 
             ensure!(order.owner == who, Error::<T>::Unauthorized);
@@ -649,10 +649,10 @@ impl<T: Config> Into<Error<T>> for UnscheduleError {
 impl<T: Config> Pallet<T> {
     fn service_single_expiration(
         data_layer: &mut CacheDataLayer<T>,
-        order_book_id: OrderBookId<AssetIdOf<T>>,
-        order_id: T::OrderId,
+        order_book_id: &OrderBookId<AssetIdOf<T>>,
+        order_id: &T::OrderId,
     ) {
-        let Ok(order) = data_layer.get_limit_order(&order_book_id, order_id) else {
+        let Ok(order) = data_layer.get_limit_order(order_book_id, order_id) else {
             debug_assert!(false, "apparently removal of order book or order did not cleanup expiration schedule");
             return;
         };
@@ -664,8 +664,8 @@ impl<T: Config> Pallet<T> {
         if let Err(error) = order_book.cancel_limit_order_unchecked::<Self>(order, data_layer) {
             dbg!(error);
             Self::deposit_event(Event::<T>::ExpirationFailure {
-                order_book_id,
-                order_id,
+                order_book_id: order_book_id.clone(),
+                order_id: order_id.clone(),
                 error,
             });
         }
