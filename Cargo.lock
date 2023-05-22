@@ -8972,6 +8972,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "xst",
 ]
 
 [[package]]

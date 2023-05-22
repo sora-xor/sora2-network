@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::{Balance, TradingPair};
+use common::{Balance, PriceVariant, TradingPair};
 use frame_support::{BoundedBTreeMap, BoundedVec, RuntimeDebug};
 
 #[cfg(feature = "std")]
@@ -42,6 +42,12 @@ pub type MarketSide<MaxSidePriceCount> =
     BoundedBTreeMap<OrderPrice, OrderVolume, MaxSidePriceCount>;
 pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
     BoundedVec<OrderId, MaxOpenedLimitOrdersPerUser>;
+
+#[derive(Eq, PartialEq, Clone, Copy, RuntimeDebug)]
+pub enum OrderAmount {
+    Base(OrderVolume),
+    Quote(OrderVolume),
+}
 
 #[derive(
     Encode,
@@ -81,4 +87,14 @@ impl<AssetId> From<OrderBookId<AssetId>> for TradingPair<AssetId> {
             target_asset_id: order_book_id.base,
         }
     }
+}
+
+#[derive(Eq, PartialEq, Clone, RuntimeDebug)]
+pub struct DealInfo<AssetId> {
+    pub input_asset_id: AssetId,
+    pub input_amount: OrderVolume,
+    pub output_asset_id: AssetId,
+    pub output_amount: OrderVolume,
+    pub average_price: OrderPrice,
+    pub side: PriceVariant,
 }

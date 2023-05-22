@@ -300,6 +300,8 @@ private-net = [
 wip = [
     "order-book/wip",
     "framenode-chain-spec/wip",
+    "common/wip",
+    "dex-api/wip",
     "pallet-mmr",
     "beefy-light-client",
     "beefy-light-client-runtime-api",

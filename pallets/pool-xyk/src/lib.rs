@@ -44,7 +44,7 @@ use common::prelude::{
 use common::{
     fixed_wrapper, AssetInfoProvider, DexInfoProvider, EnsureTradingPairExists, GetPoolReserves,
     LiquiditySource, LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet,
-    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager,
 };
 
 mod aliases;
@@ -177,6 +177,8 @@ impl<T: Config> Pallet<T> {
                 common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
             (asset_a_pair.0, asset_b_pair.0)
         };
+
+        // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
         trading_pair::Pallet::<T>::enable_source_for_trading_pair(
             dex_id,
             sorted_asset_a,
@@ -638,13 +640,14 @@ use sp_runtime::traits::Zero;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, OnPoolCreated};
+    use common::{AccountIdOf, Fixed, GetMarketInfo, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     // TODO: #392 use DexInfoProvider instead of dex-manager pallet
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -672,6 +675,7 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type XSTMarketInfo: GetMarketInfo<Self::AssetId>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
@@ -803,6 +807,13 @@ pub mod pallet {
                         && assets::AssetInfos::<T>::get(asset_b).2 != 0,
                     Error::<T>::UnableToCreatePoolWithIndivisibleAssets
                 );
+
+                let synthetic_assets = T::XSTMarketInfo::enabled_target_assets();
+                ensure!(
+                    !synthetic_assets.contains(&asset_a) && !synthetic_assets.contains(&asset_b),
+                    Error::<T>::UnableToCreatePoolWithSyntheticAssets
+                );
+
                 let (_, tech_account_id, fees_account_id) = Pallet::<T>::initialize_pool_unchecked(
                     source.clone(),
                     dex_id,
@@ -963,6 +974,8 @@ pub mod pallet {
         UnableToOperateWithIndivisibleAssets,
         /// Not enough liquidity out of farming to withdraw
         NotEnoughLiquidityOutOfFarming,
+        /// Cannot create a pool with synthetic assets
+        UnableToCreatePoolWithSyntheticAssets,
     }
 
     /// Updated after last liquidity change operation.
