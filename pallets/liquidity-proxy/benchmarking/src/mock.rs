@@ -286,6 +286,9 @@ impl dex_api::Config for Runtime {
     type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+
+    #[cfg(feature = "wip")] // order-book
+    type OrderBook = ();
 }
 
 impl trading_pair::Config for Runtime {
@@ -315,6 +318,7 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
+    type XSTMarketInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {

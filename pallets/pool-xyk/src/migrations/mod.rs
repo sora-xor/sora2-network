@@ -6,6 +6,7 @@ use crate::{Config, Pallet};
 pub mod v1_1;
 pub mod v1_2;
 pub mod v2;
+pub mod v3;
 
 pub fn migrate<T: Config>() -> Weight {
     let version = Pallet::<T>::on_chain_storage_version();

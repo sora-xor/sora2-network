@@ -53,7 +53,8 @@ use common::BuyBackHandler;
 use common::{
     balance, fixed, fixed_wrapper, AssetInfoProvider, DEXId, DexIdOf, GetMarketInfo,
     LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
-    ManagementMode, PriceVariant, RewardReason, VestedRewardsPallet, PSWAP, TBCD, VAL, XOR, XST,
+    ManagementMode, PriceVariant, RewardReason, TradingPairSourceManager, VestedRewardsPallet,
+    PSWAP, TBCD, VAL, XOR, XST,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -184,6 +185,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     // TODO: #395 use AssetInfoProvider instead of assets pallet
+    // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
     #[pallet::config]
     pub trait Config:
         frame_system::Config
@@ -874,6 +876,8 @@ impl<T: Config> Pallet<T> {
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
             )?;
+
+            // TODO: #441 use TradingPairSourceManager instead of trading-pair pallet
             trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),

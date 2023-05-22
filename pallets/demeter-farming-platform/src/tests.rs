@@ -5,7 +5,8 @@ mod tests {
     use common::{
         balance, generate_storage_instance, AssetId32, AssetInfoProvider, AssetName, AssetSymbol,
         Balance, LiquiditySourceType, PoolXykPallet, PredefinedAssetId, ToFeeAccount,
-        CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION, DEMETER_ASSET_ID, XOR, XSTUSD,
+        TradingPairSourceManager, CERES_ASSET_ID, DEFAULT_BALANCE_PRECISION, DEMETER_ASSET_ID, XOR,
+        XSTUSD,
     };
     use demeter_farming_platform::{PoolData, TokenInfo, UserInfo};
     use frame_support::pallet_prelude::{StorageDoubleMap, StorageMap};

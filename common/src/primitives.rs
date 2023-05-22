@@ -694,6 +694,9 @@ pub enum LiquiditySourceType {
     MockPool3,
     MockPool4,
     XSTPool,
+
+    #[cfg(feature = "wip")] // order-book
+    OrderBook,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
