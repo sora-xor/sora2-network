@@ -1,9 +1,9 @@
 @Library('jenkins-library@feature/dops-2395/rust_library') _
 
-def featureList    = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
-def palletListFile = 'pallet_list.txt'
-def wasmReportFile = 'subwasm_report.json'
-def sudoCheckStatus = 0
+String featureList    = 'private-net include-real-files reduced-pswap-reward-periods wip ready-to-test'
+String palletListFile = 'pallet_list.txt'
+String wasmReportFile = 'subwasm_report.json'
+String sudoCheckStatus = 0
 
 def pipeline = new org.rust.substratePipeline(steps: this,
       assignReviewers: true,
