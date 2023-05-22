@@ -256,12 +256,17 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             *market_change.market_input.value(),
         )?;
 
+        let receiver = if let Some(to) = order.to {
+            to
+        } else {
+            order.owner
+        };
         let taker_unlock_asset = market_change
             .market_output
             .associated_asset(&self.order_book_id);
         Unlocker::unlock_liquidity(
             self.dex_id,
-            &order.owner,
+            &receiver,
             self.order_book_id,
             taker_unlock_asset,
             *market_change.market_output.value(),
