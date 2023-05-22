@@ -45,7 +45,7 @@ use frame_support::traits::{Get, Time};
 use frame_support::weights::{Weight, WeightMeter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, One, Zero};
-use sp_runtime::{Perbill, Saturating};
+use sp_runtime::{BoundedVec, Perbill, Saturating};
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -499,7 +499,7 @@ pub mod pallet {
             data.commit();
             <OrderBooks<T>>::insert(order_book_id, order_book);
             Self::schedule(expires_at, order_book_id, order_id)
-                .map_err(|e| <SchedulerError as Into<Error<T>>>::into(e))?;
+                .map_err(|e| <ScheduleError as Into<Error<T>>>::into(e))?;
             Self::deposit_event(Event::<T>::OrderPlaced {
                 order_book_id,
                 dex_id,
@@ -529,7 +529,7 @@ pub mod pallet {
 
             order_book.cancel_limit_order::<Self>(order, &mut data)?;
             Self::unschedule(expires_at, order_book_id, order_id)
-                .map_err(|e| <SchedulerError as Into<Error<T>>>::into(e))?;
+                .map_err(|e| <UnscheduleError as Into<Error<T>>>::into(e))?;
             data.commit();
             Self::deposit_event(Event::<T>::OrderCanceled {
                 order_book_id,
@@ -604,32 +604,44 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, Error> {
+pub trait ExpirationScheduler<BlockNumber, OrderBookId, OrderId, ScheduleError, UnscheduleError> {
     fn service(now: BlockNumber, weight: &mut WeightMeter);
     fn schedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
-    ) -> Result<(), Error>;
+    ) -> Result<(), ScheduleError>;
     fn unschedule(
         when: BlockNumber,
         order_book_id: OrderBookId,
         order_id: OrderId,
-    ) -> Result<(), Error>;
+    ) -> Result<(), UnscheduleError>;
 }
 
-enum SchedulerError {
-    /// Expiration schedule for this block is full
+/// Expiration schedule for this block is full
+#[derive(Debug)]
+enum ScheduleError {
     BlockScheduleFull,
-    /// Could not find expiration in given block schedule
+}
+
+impl<T: Config> Into<Error<T>> for ScheduleError {
+    fn into(self) -> Error<T> {
+        match self {
+            ScheduleError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
+        }
+    }
+}
+
+/// Could not find expiration in given block schedule
+#[derive(Debug)]
+enum UnscheduleError {
     ExpirationNotFound,
 }
 
-impl<T: Config> Into<Error<T>> for SchedulerError {
+impl<T: Config> Into<Error<T>> for UnscheduleError {
     fn into(self) -> Error<T> {
         match self {
-            SchedulerError::BlockScheduleFull => Error::<T>::BlockScheduleFull,
-            SchedulerError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
+            UnscheduleError::ExpirationNotFound => Error::<T>::ExpirationNotFound,
         }
     }
 }
@@ -658,6 +670,35 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Distribute postponed orders to the blocks
+    /// following `last_completed_block`
+    fn postpone_orders(
+        last_completed_block: T::BlockNumber,
+        mut postponed_expirations: BoundedVec<
+            (
+                OrderBookId<<T as assets::Config>::AssetId>,
+                <T as Config>::OrderId,
+            ),
+            <T as Config>::MaxExpiringOrdersPerBlock,
+        >,
+    ) {
+        let mut block_to_fill = last_completed_block + 1u32.into();
+        while let Some(expiration) = postponed_expirations.last() {
+            println!("rescheduling");
+            if let Err(ScheduleError::BlockScheduleFull) =
+                Self::schedule(block_to_fill, expiration.0, expiration.1)
+            {
+                // move on to the next block
+                println!("next block is full, moving on");
+                block_to_fill += 1u32.into();
+            } else {
+                // success, can remove
+                dbg!(block_to_fill);
+                postponed_expirations.pop();
+            }
+        }
+    }
+
     /// Expire orders that are scheduled to expire at `block`.
     /// `weight` is used to track weight spent on the expirations, so that
     /// it doesn't accidentally spend weight of the entire block (or even more).
@@ -669,12 +710,13 @@ impl<T: Config> Pallet<T> {
         block: T::BlockNumber,
         weight: &mut WeightMeter,
     ) -> bool {
+        dbg!(block);
         if !weight.check_accrue(<T as Config>::WeightInfo::service_block_base()) {
             return false;
         }
 
-        let mut expired_orders = <ExpirationsAgenda<T>>::take(block);
-        if expired_orders.is_empty() {
+        let mut expirations = <ExpirationsAgenda<T>>::take(block);
+        if expirations.is_empty() {
             return true;
         }
         // how many we can service with remaining weight;
@@ -682,24 +724,30 @@ impl<T: Config> Pallet<T> {
         let to_service = check_accrue_n(
             weight,
             <T as Config>::WeightInfo::service_single_expiration(),
-            expired_orders.len() as u64,
+            expirations.len() as u64,
         );
-        let postponed = expired_orders.len() as u64 - to_service;
+        let postponed = expirations.len() as u64 - to_service;
         let mut serviced = 0;
-        while let Some((order_book_id, order_id)) = expired_orders.pop() {
+        while let Some((order_book_id, order_id)) = expirations.pop() {
             if serviced >= to_service {
                 break;
             }
             Self::service_single_expiration(data_layer, order_book_id, order_id);
             serviced += 1;
         }
+        Self::postpone_orders(block, expirations);
         postponed == 0
     }
 }
 
 impl<T: Config>
-    ExpirationScheduler<T::BlockNumber, OrderBookId<AssetIdOf<T>>, T::OrderId, SchedulerError>
-    for Pallet<T>
+    ExpirationScheduler<
+        T::BlockNumber,
+        OrderBookId<AssetIdOf<T>>,
+        T::OrderId,
+        ScheduleError,
+        UnscheduleError,
+    > for Pallet<T>
 {
     fn service(now: T::BlockNumber, weight: &mut WeightMeter) {
         if !weight.check_accrue(<T as Config>::WeightInfo::service_base()) {
@@ -728,11 +776,11 @@ impl<T: Config>
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
-    ) -> Result<(), SchedulerError> {
+    ) -> Result<(), ScheduleError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
             block_expirations
                 .try_push((order_book_id, order_id))
-                .map_err(|_| SchedulerError::BlockScheduleFull)
+                .map_err(|_| ScheduleError::BlockScheduleFull)
         })
     }
 
@@ -740,10 +788,10 @@ impl<T: Config>
         when: T::BlockNumber,
         order_book_id: OrderBookId<AssetIdOf<T>>,
         order_id: T::OrderId,
-    ) -> Result<(), SchedulerError> {
+    ) -> Result<(), UnscheduleError> {
         <ExpirationsAgenda<T>>::try_mutate(when, |block_expirations| {
             let Some(remove_index) = block_expirations.iter().position(|next| next == &(order_book_id, order_id)) else {
-                return Err(SchedulerError::ExpirationNotFound);
+                return Err(UnscheduleError::ExpirationNotFound);
             };
             block_expirations.remove(remove_index);
             Ok(())
